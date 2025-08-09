@@ -3,13 +3,13 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pygame-nevui"
+name = "nevu-ui"
 version = "0.5.0"
 authors = [
   { name="GolemNikidastrov", email="bebrovgolem@gmail.com" },
 ]
 description = "A powerful GUI framework for Pygame that allows you to create menus"
-readme = "README.md" # Укажи файл с описанием
+readme = "README.md" 
 requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Python :: 3",

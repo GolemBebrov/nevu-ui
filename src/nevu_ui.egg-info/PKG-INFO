@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
-Name: pygame-nevui
-Version: 0.1.0
+Name: nevu-ui
+Version: 0.5.0
 Summary: A powerful GUI framework for Pygame that allows you to create menus
 Author-email: GolemNikidastrov <bebrovgolem@gmail.com>
 Project-URL: Homepage, https://github.com/GolemBebrov/pygame-nevui
@@ -13,4 +13,3 @@ Description-Content-Type: text/markdown
 Requires-Dist: pygame-ce>=2.3.0
 Requires-Dist: numpy
 Requires-Dist: Pillow
-Requires-Dist: taichi
