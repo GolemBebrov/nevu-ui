@@ -162,7 +162,7 @@ class Widget(NevuObject):
 
     def _boot_up(self):
         pass
-        #print("booted widget", self)
+        print("booted widget", self)
 
 
     def bake_text(self, text: str, unlimited_y: bool = False, words_indent: bool = False,

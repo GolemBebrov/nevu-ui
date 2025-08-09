@@ -1,7 +1,7 @@
 
 import sys
 import copy
-import pygame_nevui as ui
+import nevu_ui as ui
 import pygame
 #import taichi as ti
 pygame.init()
@@ -37,7 +37,7 @@ class Mygame(ui.Manager):
                 layout = ui.Grid([100*ui.fill,100*ui.fill],3,3, 
                          content = {
                          (2,2): ui.Scrollable([70*ui.fill, 25*ui.fill], content={
-                            ui.Align.CENTER: copy.copy(b)
+                            ui.Align.CENTER: ui.Button(lambda: print("Button 1"), "Test Chamber", [50*ui.fill,15*ui.fill],style=main_style(borderradius=15,borderwidth=10, ),words_indent=True, alt=True)
                          }),
                          (2,1): i,
                          (2,3): ui.Grid([70*ui.fill, 25*ui.fill], 3,3, 

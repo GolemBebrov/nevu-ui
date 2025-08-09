@@ -28,12 +28,13 @@ class LayoutType(NevuObject):
         self.surface.blit(item.surface,[int(coordinates[0]),int(coordinates[1])])
 
     def _boot_up(self):
-        #print("booted layout", self)
+        print("booted layout", self)
         for item in self.items + self.freedom_items:
-            self.read_item_coords(item)
-            self._start_item(item)
             item.booted = True
             item._boot_up()
+            self.read_item_coords(item)
+            self._start_item(item)
+
             
 
     @property
@@ -136,8 +137,9 @@ class LayoutType(NevuObject):
         is_ruled = is_x_rule or is_y_rule
 
     def _start_item(self, item: NevuObject):
-        if self.booted == False: return
-        item._wait_mode = False; item._init_start()
+        if self.booted == False: print("Cant start item", item); return
+        item._wait_mode = False; item._init_start(); print("started item", item, item._lazy_kwargs['size'])
+        item._connect_to_layout(self)
 
     def resize(self, resize_ratio: Vector2):
         super().resize(resize_ratio)
@@ -703,6 +705,12 @@ class Scrollable(LayoutType):
         for _item in self.items:
             self.max_y += self.rely(_item.size[1] + self.padding)
         super().add_item(item)
+        if getattr(item, "size", None) is None:
+            #item.booted = True
+            #item._boot_up()
+            self.read_item_coords(item)
+            self._start_item(item)
+            print("ADJUSTED")
         self.max_y += self.rely(item.size[1] + self.padding)
         self.actual_max_y = self.max_y - self.size[1]
         self.widgets_alignment.append(alignment)
