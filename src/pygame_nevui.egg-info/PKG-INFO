@@ -1,0 +1,16 @@
+Metadata-Version: 2.4
+Name: pygame-nevui
+Version: 0.1.0
+Summary: A powerful GUI framework for Pygame that allows you to create menus
+Author-email: GolemNikidastrov <bebrovgolem@gmail.com>
+Project-URL: Homepage, https://github.com/GolemBebrov/pygame-nevui
+Project-URL: Repository, https://github.com/GolemBebrov/pygame-nevui
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: pygame-ce>=2.3.0
+Requires-Dist: numpy
+Requires-Dist: Pillow
+Requires-Dist: taichi
