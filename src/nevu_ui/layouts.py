@@ -29,6 +29,7 @@ class LayoutType(NevuObject):
 
     def _boot_up(self):
         print("booted layout", self)
+        self.booted = True
         for item in self.items + self.freedom_items:
             item.booted = True
             item._boot_up()
@@ -139,7 +140,8 @@ class LayoutType(NevuObject):
     def _start_item(self, item: NevuObject):
         if self.booted == False: print("Cant start item", item); return
         item._wait_mode = False; item._init_start(); print("started item", item, item._lazy_kwargs['size'])
-        item._connect_to_layout(self)
+        if isinstance(item, LayoutType):
+            item._connect_to_layout(self)
 
     def resize(self, resize_ratio: Vector2):
         super().resize(resize_ratio)
@@ -542,11 +544,11 @@ class Scrollable(LayoutType):
             self.scroll_sizeB = scrsizeb
             self.minval = minval
             self.maxval = maxval
-    def __init__(self, size: Vector2|list, style: Style = default_style, content: dict[Align, NevuObject] = None, draw_scrool_area: bool = False, id: str = None):
+    def __init__(self, size: Vector2|list, style: Style = default_style, content: tuple[list[Align, NevuObject]] = None, draw_scrool_area: bool = False, id: str = None):
         ### TESTS USE WITH CAUTION!
-        self._test_list_instances_compatibility = False # Needed for correct work for now
+        self._test_list_instances_compatibility = False
         self._test_debug_print = False
-        self._test_rect_calculation = False
+        self._test_rect_calculation = True
         self._test_always_update = True
         ### TESTS USE WITH CAUTION!
         
@@ -556,7 +558,7 @@ class Scrollable(LayoutType):
         # USE WITH CAUTION!!!
         #
         # THANK YOU FOR UNDERSTANDING
-        
+        print(content)
         super().__init__(size, style, content, False, id)
         self.max_x = 0
         self.max_y = 0
@@ -570,7 +572,9 @@ class Scrollable(LayoutType):
         self.original_size = self.size.copy()
         self.__init_scroll_bars__()
         if content and type(self) == Scrollable:
-            for align, item in content.items():
+            
+            for mass in content:
+                align, item = mass
                 self.add_item(item, align)
         self.first_update_fuctions.append(self.__first_update_bars__)
         
@@ -595,6 +599,10 @@ class Scrollable(LayoutType):
             print("used init scroll bars")
         self.scroll_bar_y = self.Scroll_Bar([self.size[0]/40,self.size[1]/20],default_style(bgcolor=(100,100,100)),0,0,0,0,1,self)
         self.scroll_bar_x = self.Scroll_Bar([self.size[0]/20,self.size[1]/40],default_style(bgcolor=(100,100,100)),0,0,0,0,2,self)
+        self.scroll_bar_y._boot_up()
+        self.scroll_bar_y._init_start()
+        self.scroll_bar_x._boot_up()
+        self.scroll_bar_x._init_start()
     def _connect_to_layout(self, layout: LayoutType):
         if self._test_debug_print:
             print("used connect to layout")
@@ -650,7 +658,7 @@ class Scrollable(LayoutType):
                 item.coordinates[0] = self._coordinates[0] + self.relx((self.size[0] - item.size[0] - self.padding))
                 
             case Align.CENTER:
-                item.coordinates[0] = self._coordinates[0] + (self.rel_size[0] / 2 - item.rel_size[0] / 2)
+                item.coordinates[0] = self._coordinates[0] + (self._csize[0] / 2 - item._csize[0] / 2)
     
     def get_offset(self) -> int | float:
         percentage = self.scroll_bar_y.percentage
@@ -682,7 +690,7 @@ class Scrollable(LayoutType):
                 self.cached_coordinates.append(item.coordinates)
                 item.master_coordinates = self._get_item_master_coordinates(item)
                 current_end = item.coordinates[1] + self.rely(offset)
-                padding_offset = current_end + item.rel_size[1] + self.rely(self.padding)
+                padding_offset = current_end + item._csize[1] + self.rely(self.padding)
         
         self._light_update(0, -self.rely(offset))    
                 
@@ -700,20 +708,27 @@ class Scrollable(LayoutType):
         if self._test_debug_print:
             print("used add widget", item, alignment)
         
+        # Явным образом вызываем инициализацию виджета ПЕРЕД любыми расчетами.
+        # Эти две строки берут на себя работу, которую должен был сделать super().add_item(),
+        # но делают это в правильном и предсказуемом порядке.
+        self.read_item_coords(item)
+        self._start_item(item)
+        
+        # Добавляем уже полностью инициализированный виджет в список.
+        self.items.append(item)
+        
+        # Теперь, когда у item гарантированно есть атрибут .size, мы можем выполнять расчеты.
         self.max_y = self.padding
         self.max_x = self.original_size[0] if self.original_size != self.size else self.size[0]
+        
+        # Пересчитываем max_y на основе всех элементов, включая только что добавленный.
         for _item in self.items:
             self.max_y += self.rely(_item.size[1] + self.padding)
-        super().add_item(item)
-        if getattr(item, "size", None) is None:
-            #item.booted = True
-            #item._boot_up()
-            self.read_item_coords(item)
-            self._start_item(item)
-            print("ADJUSTED")
-        self.max_y += self.rely(item.size[1] + self.padding)
+
         self.actual_max_y = self.max_y - self.size[1]
         self.widgets_alignment.append(alignment)
+        self.cached_coordinates = None # Сбрасываем кэш координат
+
         if self.layout:
             self.layout._event_on_add_widget()
     def clear(self):

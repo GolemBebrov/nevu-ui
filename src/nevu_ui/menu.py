@@ -248,10 +248,11 @@ class Menu:
     @layout.setter
     def layout(self, layout):
         if layout._can_be_main_layout:
-            layout.booted = True
-            layout._boot_up()
             self.read_item_coords(layout)
             layout._init_start()
+            layout._boot_up()
+           
+            
             layout.coordinates = (self.size[0]/2 - layout.size[0]/2, self.size[1]/2 - layout.size[1]/2)
             layout._connect_to_menu(self)
 

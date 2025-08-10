@@ -20,7 +20,7 @@ class Mygame(ui.Manager):
         self._dirty_mode = True
         self.background = (0,0,100)
         self.window = ui.window.Window((300,300))
-        main_style = ui.Style(borderradius=10,borderwidth=2,colortheme=ui.material3_dark_color_theme,fontname="font.ttf",gradient=ui.style.Gradient(colors=[ui.Color.AQUA,(100,100,100)],type='radial',direction=ui.style.Gradient.TOP_CENTER))
+        main_style = ui.Style(borderradius=10,borderwidth=2,colortheme=ui.material3_dark_color_theme,fontname="vk_font.ttf",gradient=ui.style.Gradient(colors=[ui.Color.AQUA,(100,100,100)],type='radial',direction=ui.style.Gradient.TOP_CENTER))
         style_mini_font = main_style(fontsize=10, border_radius=15,borderwidth=10)
         #Widget customization
         b = ui.Button(lambda: print("Button 1"), "Test Chamber", [50*ui.fill,15*ui.fill],style=main_style(borderradius=15,borderwidth=10, ),words_indent=True, alt=True)
@@ -29,17 +29,20 @@ class Mygame(ui.Manager):
         #b.animation_manager.add_start_animation(ui.AnimationEaseInBack(1,[0,100],[0,0],ui.AnimationType.POSITION))
         #b.animation_manager.add_continuous_animation(ui.AnimationBounce(5,[90,50],[-90,50],ui.AnimationType.POSITION))
         
-        i = ui.Input([100*ui.fill,33*ui.fill],main_style(borderradius=30,fontname="font.ttf"),"","Введите",multiple=True, alt=True)
+        i = ui.Input([100*ui.fill,33*ui.fill],main_style(borderradius=30,fontname="vk_font.ttf"),"","Введите",multiple=True, alt=True)
         i.animation_manager.add_start_animation(ui.AnimationEaseOut(3,[0,-100],[0,0],ui.AnimationType.POSITION))
         strelka_size = [32*ui.fill,45*ui.fill]
         self.menu = ui.menu.Menu(self.window,(100*ui.vw,100*ui.vh),
                 style = main_style(borderradius=30,borderwidth=5), alt=False, 
                 layout = ui.Grid([100*ui.fill,100*ui.fill],3,3, 
                          content = {
-                         (2,2): ui.Scrollable([70*ui.fill, 25*ui.fill], content={
-                            ui.Align.CENTER: ui.Button(lambda: print("Button 1"), "Test Chamber", [50*ui.fill,15*ui.fill],style=main_style(borderradius=15,borderwidth=10, ),words_indent=True, alt=True)
-                         }),
-                         (2,1): i,
+                         (2,1): ui.Scrollable([70*ui.fill, 50*ui.fill], 
+                                content=(
+                                        [ui.Align.CENTER, ui.Button(lambda: print("Button 1"), "Test Chamber", [50*ui.fill,100*ui.fill],style=style_mini_font(borderradius=15,borderwidth=10, ),words_indent=True, alt=True)],
+                                        [ui.Align.CENTER, ui.Button(lambda: print("Button 1"), "Test Chamber", [50*ui.fill,100*ui.fill],style=style_mini_font(borderradius=15,borderwidth=10, ),words_indent=True, alt=True)]
+                                    )
+                         ),
+                         #(2,1): i,
                          (2,3): ui.Grid([70*ui.fill, 25*ui.fill], 3,3, 
                                 content={
                                         (1,1): ui.Button(lambda: print("Button Topleft"), "Test Chamber", [50*ui.fill,30*ui.fill],style=style_mini_font,words_indent=True, alt=True),
