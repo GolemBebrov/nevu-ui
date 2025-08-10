@@ -508,57 +508,76 @@ class Scrollable(LayoutType):
     # ......
     ```
     """
-    class Scroll_Bar(Widget):
-        def __init__(self, size, style, minval, maxval, scrsizet, scrsizeb, t, master = None):
+    class ScrollBar(Widget):
+        def __init__(self, size, style, orientation: str, master = None):
             super().__init__(size, style)
-            self.minval = minval
-            self.maxval = maxval
-            self.percentage = 0
-            self.scroll = False
-            self.scroll_sizeT = scrsizet
-            self.scroll_sizeB = scrsizeb
-            self.type = t
-            self.master = master
-            if not isinstance(self.master, LayoutType):
-                print("WARNING: this class only used in InfiniteScroll and is not compatible with other code")
-        def secondary_update(self, *args):
-            if self.type == 1:
-                rect = pygame.Rect(self.master_coordinates[0], self.scroll_sizeT, self.size[0] * self._resize_ratio[0], self.scroll_sizeB * self._resize_ratio[1])
-            elif self.type == 2:
-                rect = pygame.Rect(self.scroll_sizeT * self._resize_ratio[0], self.master_coordinates[1], self.scroll_sizeB * self._resize_ratio[0], self.size[1] * self._resize_ratio[1])
-            if mouse.left_fdown:
-                self.scroll = rect.collidepoint(mouse.pos)
-            if mouse.left_up:
-                self.scroll = False
-            if self.scroll:
-                self.coordinates[1] = mouse.pos[1] - self.master_coordinates[1] + self.coordinates[1]
-            try:
-                self.percentage = self.coordinates[1] / (self.scroll_sizeB * self._resize_ratio[1]) * 100
-            except ZeroDivisionError:
-                self.percentage = 0
 
-            self.percentage = max(0, min(self.percentage, 100))
-            self.coordinates[1] = max(0, min(self.coordinates[1], (self.scroll_sizeT + self.scroll_sizeB - self.size[1]) * self._resize_ratio[1]))
-        def set_mv_mx_val(self, minval, maxval, scrsizet, scrsizeb):
-            self.scroll_sizeT = scrsizet
-            self.scroll_sizeB = scrsizeb
-            self.minval = minval
-            self.maxval = maxval
+            if not isinstance(master, LayoutType):
+                print("WARNING: this class is intended to be used in Scrollable layout.")
+            
+            self.master = master
+            
+            if orientation not in ['vertical', 'horizontal']:
+                raise ValueError("Orientation must be 'vertical' or 'horizontal'")
+            self.orientation = orientation
+            
+            self.is_scrolling = False
+            self.percentage = 0.0
+        
+            self.track_start_abs = 0  
+            self.track_length = 0   
+
+        def set_scroll_params(self, track_start_abs, track_length):
+            self.track_start_abs = track_start_abs
+            self.track_length = track_length
+
+        def secondary_update(self, *args):
+            axis = 1 if self.orientation == 'vertical' else 0
+            track_rect = self.get_rect()
+
+            if mouse.left_fdown and not self.is_scrolling:
+                if track_rect.collidepoint(mouse.pos):
+                    self.is_scrolling = True
+            
+            if mouse.left_up:
+                self.is_scrolling = False
+
+            if self.is_scrolling:
+                relative_mouse_pos = mouse.pos[axis] - self.master_coordinates[axis]
+                handle_size = self.size[axis] * self._resize_ratio[axis]
+                self.coordinates[axis] = relative_mouse_pos - handle_size / 2
+            
+            handle_size = self.size[axis] * self._resize_ratio[axis]
+            scaled_track_length = self.track_length * self._resize_ratio[axis]
+            
+            min_coord = 0
+            max_coord = scaled_track_length - handle_size
+            
+            if max_coord < min_coord:
+                max_coord = min_coord
+
+            #self.coordinates[axis] = max(min_coord, min(self.coordinates[axis], max_coord))
+            
+            if max_coord > 0: self.percentage = (self.coordinates[axis] / max_coord) * 100
+            else: self.percentage = 0
+            self.percentage = max(0.0, min(self.percentage, 100.0))
     def __init__(self, size: Vector2|list, style: Style = default_style, content: tuple[list[Align, NevuObject]] = None, draw_scrool_area: bool = False, id: str = None):
-        ### TESTS USE WITH CAUTION!
+        #------ TESTS USE WITH CAUTION! ------
         self._test_list_instances_compatibility = False
         self._test_debug_print = False
         self._test_rect_calculation = True
-        self._test_always_update = True
-        ### TESTS USE WITH CAUTION!
+        self._test_always_update = False
+        #------ TESTS USE WITH CAUTION! ------
         
-        # WARNING!!!!
+        #------ WARNING! ------
         #
         # IN THIS LAYOUT FOUND UNKNOWN BUGS THAT AFFECT PERFORMANCE AND SPEED
         # USE WITH CAUTION!!!
         #
-        # THANK YOU FOR UNDERSTANDING
-        print(content)
+        # THANK YOU FOR UNDERSTANDING 
+        #
+        #------ WARNING! ------
+
         super().__init__(size, style, content, False, id)
         self.max_x = 0
         self.max_y = 0
@@ -572,11 +591,10 @@ class Scrollable(LayoutType):
         self.original_size = self.size.copy()
         self.__init_scroll_bars__()
         if content and type(self) == Scrollable:
-            
             for mass in content:
                 align, item = mass
                 self.add_item(item, align)
-        self.first_update_fuctions.append(self.__first_update_bars__)
+        self.__first_update_bars__()
         
     def _event_on_add_widget(self):
         self.cached_coordinates = None
@@ -592,13 +610,25 @@ class Scrollable(LayoutType):
     def __first_update_bars__(self):
         if self._test_debug_print:
             print("used first update bars")
-        self.scroll_bar_y.set_mv_mx_val(self._coordinates[1],self.max_y,self._coordinates[1]+self.first_parent_menu.coordinatesMW[1],self.size[1])
-        self.scroll_bar_x.set_mv_mx_val(self._coordinates[0]-self.max_x/2,self._coordinates[0]+self.max_x/2,self._coordinates[0]+self.first_parent_menu.coordinatesMW[0],self.size[0])
+        
+        # Для вертикального скроллбара
+        # 1-й параметр (track_start_abs): абсолютная Y-координата начала области
+        # 2-й параметр (track_length): высота видимой области
+        track_start_y = self._coordinates[1] + self.first_parent_menu.coordinatesMW[1]
+        track_length_y = self.size[1]
+        self.scroll_bar_y.set_scroll_params(track_start_y, track_length_y)
+
+        # Для горизонтального скроллбара
+        # 1-й параметр (track_start_abs): абсолютная X-координата начала области
+        # 2-й параметр (track_length): ширина видимой области
+        track_start_x = self._coordinates[0] + self.first_parent_menu.coordinatesMW[0]
+        track_length_x = self.size[0]
+        self.scroll_bar_x.set_scroll_params(track_start_x, track_length_x)
     def __init_scroll_bars__(self):
         if self._test_debug_print:
             print("used init scroll bars")
-        self.scroll_bar_y = self.Scroll_Bar([self.size[0]/40,self.size[1]/20],default_style(bgcolor=(100,100,100)),0,0,0,0,1,self)
-        self.scroll_bar_x = self.Scroll_Bar([self.size[0]/20,self.size[1]/40],default_style(bgcolor=(100,100,100)),0,0,0,0,2,self)
+        self.scroll_bar_y = self.ScrollBar([self.size[0]/40,self.size[1]/20],default_style(bgcolor=(100,100,100)), 'vertical', self)
+        self.scroll_bar_x = self.ScrollBar([self.size[0]/20,self.size[1]/40],default_style(bgcolor=(100,100,100)), 'horizontal', self)
         self.scroll_bar_y._boot_up()
         self.scroll_bar_y._init_start()
         self.scroll_bar_x._boot_up()
@@ -653,10 +683,8 @@ class Scrollable(LayoutType):
         match align:
             case Align.LEFT:
                 item.coordinates[0] = self._coordinates[0] + self.relx(self.padding)
-                
             case Align.RIGHT:
-                item.coordinates[0] = self._coordinates[0] + self.relx((self.size[0] - item.size[0] - self.padding))
-                
+                item.coordinates[0] = self._coordinates[0] + (self._csize[0] - item._csize[0] - self.relx(self.padding))
             case Align.CENTER:
                 item.coordinates[0] = self._coordinates[0] + (self._csize[0] / 2 - item._csize[0] / 2)
     
@@ -678,12 +706,13 @@ class Scrollable(LayoutType):
             for i in range(len(self.items)):
                 item = self.items[i]
                 align = self.widgets_alignment[i]
-                ### THIS IS ONLY FOR TESTING PURPOSES!
+
+                #------ ONLY FOR TESTING PURPOSES! ------
                 if self._test_list_instances_compatibility:
                     try:
                         item.coordinates = item.coordinates.tolist()
                     except: pass   
-                ### THIS IS ONLY FOR TESTING PURPOSES!
+                #------ ONLY FOR TESTING PURPOSES! ------
                 
                 self._set_item_x(item, align)
                 item.coordinates[1] = self._coordinates[1] + padding_offset
@@ -707,36 +736,30 @@ class Scrollable(LayoutType):
     def add_item(self, item: NevuObject, alignment: Align = Align.LEFT):
         if self._test_debug_print:
             print("used add widget", item, alignment)
-        
-        # Явным образом вызываем инициализацию виджета ПЕРЕД любыми расчетами.
-        # Эти две строки берут на себя работу, которую должен был сделать super().add_item(),
-        # но делают это в правильном и предсказуемом порядке.
         self.read_item_coords(item)
         self._start_item(item)
-        
-        # Добавляем уже полностью инициализированный виджет в список.
         self.items.append(item)
-        
-        # Теперь, когда у item гарантированно есть атрибут .size, мы можем выполнять расчеты.
+
         self.max_y = self.padding
         self.max_x = self.original_size[0] if self.original_size != self.size else self.size[0]
-        
-        # Пересчитываем max_y на основе всех элементов, включая только что добавленный.
+
         for _item in self.items:
             self.max_y += self.rely(_item.size[1] + self.padding)
 
         self.actual_max_y = self.max_y - self.size[1]
         self.widgets_alignment.append(alignment)
-        self.cached_coordinates = None # Сбрасываем кэш координат
+        self.cached_coordinates = None 
 
         if self.layout:
             self.layout._event_on_add_widget()
+
     def clear(self):
         self.items.clear()
         self.widgets_alignment.clear()
         self.max_x = 0
         self.max_y = self.padding
         self.actual_max_y = 0
+
     def apply_style_to_childs(self, style: Style):
         super().apply_style_to_childs(style)
         self.scroll_bar_y.style = style

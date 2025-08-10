@@ -10,6 +10,7 @@ from .animations import *
 from .widgets import *
 class Menu:
     def __init__(self, window: Window, size: tuple | Vector2, style: Style = default_style, alt: bool = False, layout = None): 
+        self._coordinatesWindow = Vector2(0,0)
         #PRIMARY VARIABLES
         self.window = window
         self.window_surface = None
@@ -34,7 +35,7 @@ class Menu:
             self.size = Vector2(self.size)
         else: self.size = size
 
-        self._coordinatesWindow = Vector2(0,0)
+        
         self.coordinates = Vector2(0,0)
         self._resize_ratio = Vector2(1,1)
         

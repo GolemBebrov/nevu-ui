@@ -17,7 +17,7 @@ class Mygame(ui.Manager):
     def __init__(self):
         super().__init__()
         self.fps = 5000000
-        self._dirty_mode = True
+        self._dirty_mode = False
         self.background = (0,0,100)
         self.window = ui.window.Window((300,300))
         main_style = ui.Style(borderradius=10,borderwidth=2,colortheme=ui.material3_dark_color_theme,fontname="vk_font.ttf",gradient=ui.style.Gradient(colors=[ui.Color.AQUA,(100,100,100)],type='radial',direction=ui.style.Gradient.TOP_CENTER))
@@ -36,7 +36,7 @@ class Mygame(ui.Manager):
                 style = main_style(borderradius=30,borderwidth=5), alt=False, 
                 layout = ui.Grid([100*ui.fill,100*ui.fill],3,3, 
                          content = {
-                         (2,1): ui.Scrollable([70*ui.fill, 50*ui.fill], 
+                         (2,1.5): ui.Scrollable([70*ui.fill, 50*ui.fill], 
                                 content=(
                                         [ui.Align.CENTER, ui.Button(lambda: print("Button 1"), "Test Chamber", [50*ui.fill,100*ui.fill],style=style_mini_font(borderradius=15,borderwidth=10, ),words_indent=True, alt=True)],
                                         [ui.Align.CENTER, ui.Button(lambda: print("Button 1"), "Test Chamber", [50*ui.fill,100*ui.fill],style=style_mini_font(borderradius=15,borderwidth=10, ),words_indent=True, alt=True)]
@@ -61,12 +61,15 @@ class Mygame(ui.Manager):
         
     def draw_loop(self):
         self.menu.draw()
+        pygame.draw.rect(self.window.surface, self.background, pygame.Rect(ui.mouse.pos, (5,5)), 1)
+        pygame.draw.rect(self.window.surface, self.background, self.menu.layout.get_item(2,1.5).scroll_bar_y.get_rect(), 1)
     def update_loop(self, events):
         self.menu.update()
         show_fps = True
         fps_mode = "Unslowed"
-        if show_fps:
-            print(f"FPS {fps_mode}: ",ui.time.fps)
+        print(self.menu.layout.get_item(2,1.5).scroll_bar_y.percentage)
+        #if show_fps:
+            #print(f"FPS {fps_mode}: ",ui.time.fps)
 
         #print(f"Window: {self.window._next_update_dirty_rects}") #Window
         #print(f"Menu: {self.menu._dirty_rects}") #Menu
