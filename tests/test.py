@@ -16,7 +16,7 @@ pygame.init()
 class Mygame(ui.Manager):
     def __init__(self):
         super().__init__()
-        self.fps = 5000000
+        self.fps = 50
         self._dirty_mode = False
         self.background = (0,0,100)
         self.window = ui.window.Window((300,300))
@@ -63,6 +63,7 @@ class Mygame(ui.Manager):
         self.menu.draw()
         pygame.draw.rect(self.window.surface, self.background, pygame.Rect(ui.mouse.pos, (5,5)), 1)
         pygame.draw.rect(self.window.surface, self.background, self.menu.layout.get_item(2,1.5).scroll_bar_y.get_rect(), 1)
+        pygame.draw.rect(self.window.surface, self.background, self.menu.layout.get_item(2,1.5).get_rect(), 1)
     def update_loop(self, events):
         self.menu.update()
         show_fps = True

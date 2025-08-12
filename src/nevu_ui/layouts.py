@@ -512,7 +512,7 @@ class Scrollable(LayoutType):
         def __init__(self, size, style, orientation: str, master = None):
             super().__init__(size, style)
 
-            if not isinstance(master, LayoutType):
+            if not isinstance(master, Scrollable):
                 print("WARNING: this class is intended to be used in Scrollable layout.")
             
             self.master = master
@@ -524,42 +524,34 @@ class Scrollable(LayoutType):
             self.is_scrolling = False
             self.percentage = 0.0
         
-            self.track_start_abs = 0  
-            self.track_length = 0   
+            self.track_start_coordinates = Vector2(0, 0)
+            self.track_path = Vector2(0, 0)   
 
-        def set_scroll_params(self, track_start_abs, track_length):
-            self.track_start_abs = track_start_abs
-            self.track_length = track_length
+        def set_scroll_params(self, track_start_abs, track_path, coordinatesMW):
+            self.track_path = track_path
+            self.track_start_coordinates = track_start_abs
+            #self.coordinates = track_start_abs
+            self._menu_coordinatesMW = coordinatesMW
 
         def secondary_update(self, *args):
             axis = 1 if self.orientation == 'vertical' else 0
-            track_rect = self.get_rect()
-
             if mouse.left_fdown and not self.is_scrolling:
+                track_rect = self.get_rect()
                 if track_rect.collidepoint(mouse.pos):
                     self.is_scrolling = True
-            
             if mouse.left_up:
                 self.is_scrolling = False
 
-            if self.is_scrolling:
-                relative_mouse_pos = mouse.pos[axis] - self.master_coordinates[axis]
-                handle_size = self.size[axis] * self._resize_ratio[axis]
-                self.coordinates[axis] = relative_mouse_pos - handle_size / 2
-            
-            handle_size = self.size[axis] * self._resize_ratio[axis]
-            scaled_track_length = self.track_length * self._resize_ratio[axis]
-            
-            min_coord = 0
-            max_coord = scaled_track_length - handle_size
-            
-            if max_coord < min_coord:
-                max_coord = min_coord
+            handle_size = self.size * self._resize_ratio
 
-            #self.coordinates[axis] = max(min_coord, min(self.coordinates[axis], max_coord))
+            if self.is_scrolling:
+                relative_mouse_pos = mouse.pos[axis] + self._menu_coordinatesMW[axis]
+                self.coordinates[axis] = relative_mouse_pos
             
-            if max_coord > 0: self.percentage = (self.coordinates[axis] / max_coord) * 100
-            else: self.percentage = 0
+            scaled_track_path = (self.track_path) * self._resize_ratio - self.rel(self.size)
+            
+            self.coordinates[axis] = max(self.track_start_coordinates[axis], min(self.coordinates[axis], scaled_track_path[axis]+self.track_start_coordinates[axis]))
+            self.percentage = ((self.coordinates[axis]-self.track_start_coordinates[axis]) / (scaled_track_path)[axis]) * 100
             self.percentage = max(0.0, min(self.percentage, 100.0))
     def __init__(self, size: Vector2|list, style: Style = default_style, content: tuple[list[Align, NevuObject]] = None, draw_scrool_area: bool = False, id: str = None):
         #------ TESTS USE WITH CAUTION! ------
@@ -585,6 +577,16 @@ class Scrollable(LayoutType):
         self.padding = 30
         self.draw_scrool_area = draw_scrool_area
         self.widgets_alignment = []
+        self._coordinates = Vector2(0, 0)
+    @property
+    def coordinates(self):
+        return self._coordinates
+    @coordinates.setter
+    def coordinates(self, value):
+        self._coordinates = value
+        self.cached_coordinates = None
+        if self.booted == False: return
+        self._update_scroll_bars()
 
     def _lazy_init(self, size: Vector2|list, content: dict[Align, NevuObject] = None):
         super()._lazy_init(size, content)
@@ -594,36 +596,33 @@ class Scrollable(LayoutType):
             for mass in content:
                 align, item = mass
                 self.add_item(item, align)
-        self.__first_update_bars__()
+        self._update_scroll_bars()
         
     def _event_on_add_widget(self):
         self.cached_coordinates = None
         if self._test_debug_print:
             print("used event on add widget")
         self.__init_scroll_bars__()
-        self.__first_update_bars__()
+        self._update_scroll_bars()
         self.max_y = self.padding
         self.max_x = self.original_size[0] if self.original_size != self.size else self.size[0]
         for item in self.items:
             self.max_y += self.relx(item.size[1] + self.padding)
         self.actual_max_y = self.max_y - self.size[1]
-    def __first_update_bars__(self):
+    def _update_scroll_bars(self):
         if self._test_debug_print:
             print("used first update bars")
         
-        # Для вертикального скроллбара
-        # 1-й параметр (track_start_abs): абсолютная Y-координата начала области
-        # 2-й параметр (track_length): высота видимой области
-        track_start_y = self._coordinates[1] + self.first_parent_menu.coordinatesMW[1]
-        track_length_y = self.size[1]
-        self.scroll_bar_y.set_scroll_params(track_start_y, track_length_y)
+        track_start_y = self.master_coordinates[1]
+        track_path_y = self.size[1]
+        self.scroll_bar_y.set_scroll_params(Vector2(self.coordinates[0] + self.relx(self.size[0] - self.scroll_bar_y.size[0]), track_start_y), 
+                                            Vector2(0,track_path_y),
+                                            self.first_parent_menu.coordinatesMW)
 
-        # Для горизонтального скроллбара
-        # 1-й параметр (track_start_abs): абсолютная X-координата начала области
-        # 2-й параметр (track_length): ширина видимой области
-        track_start_x = self._coordinates[0] + self.first_parent_menu.coordinatesMW[0]
-        track_length_x = self.size[0]
-        self.scroll_bar_x.set_scroll_params(track_start_x, track_length_x)
+        #------ TODO ------
+        #track_start_x = self._coordinates[0] + self.first_parent_menu.coordinatesMW[0]
+        #track_length_x = self.size[0]
+        #self.scroll_bar_x.set_scroll_params(track_start_x, track_length_x) #old code
     def __init_scroll_bars__(self):
         if self._test_debug_print:
             print("used init scroll bars")
@@ -724,9 +723,10 @@ class Scrollable(LayoutType):
         self._light_update(0, -self.rely(offset))    
                 
         if self.actual_max_y > 0:
+            self.scroll_bar_y.update()
             self.scroll_bar_y.coordinates = [self._coordinates[0] + self.relx(self.size[0] - self.scroll_bar_y.size[0]), self.scroll_bar_y.coordinates[1]]
             self.scroll_bar_y.master_coordinates = self._get_item_master_coordinates(self.scroll_bar_y)
-            self.scroll_bar_y.update()
+            
     def resize(self, resize_ratio: list | tuple):
         if self._test_debug_print:
             print("used resize", resize_ratio)
