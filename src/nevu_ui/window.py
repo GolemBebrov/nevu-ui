@@ -20,7 +20,7 @@ class Window:
             crop_height = height - (width * ry / rx)
             return default[0], crop_height
 
-    def __init__(self, size, minsize=(10, 10), title="pygame window", resizable=True, ratio: list[int, int] = None):
+    def __init__(self, size, minsize=(10, 10), title="pygame window", resizable=True, ratio: NvVector2 | None = None):
         self._original_size = tuple(size)
         self.size = list(size)
         self.minsize = list(minsize)
@@ -35,7 +35,7 @@ class Window:
         self._title = title
         pygame.display.set_caption(self._title)
         
-        self._ratio = ratio
+        self._ratio = ratio or NvVector2(0, 0)
         self._clock = pygame.time.Clock()
         
         self._events: list[Event] = []
@@ -133,7 +133,7 @@ class Window:
         return self._ratio
 
     @ratio.setter
-    def ratio(self, ratio:list[int, int]):
+    def ratio(self, ratio: NvVector2):
         self._ratio = ratio
         self._recalculate_render_area()
 

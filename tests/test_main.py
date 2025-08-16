@@ -11,12 +11,12 @@ pygame.init()
 
 #ti.init(arch=ti.gpu) #Unused
 
-#--------- NEW WAY ---------
+#--------- NEW WAY --------
 
 class Mygame(ui.Manager):
     def __init__(self):
         super().__init__()
-        self.fps = 50
+        self.fps = 75
         self._dirty_mode = False
         self.background = (0,0,100)
         self.window = ui.window.Window((300,300))
@@ -130,3 +130,4 @@ while True:
     #if len(fps_list) > 300: print(f"Avg FPS: {int(sum(fps_list)/len(fps_list))}"); fps_list.clear()
     w.update(events, 99999)
     pygame.display.update()
+

@@ -258,21 +258,25 @@ class NevuObject:
         pass
     def secondary_draw(self):
         pass
-    def relx(self, num: int | float, min: int = None, max: int = None, type: int|float = round) -> int | float:
-        result = type(num*self._resize_ratio.x)
+    
+    def _rel_corner(self, result: int | float, min: int | None, max: int | None) -> int | float:
         if min is not None and result < min: return min
-        if max is not None and result > max: return max
-        return result
-    def rely(self, num: int | float, min: int = None, max: int = None, type: int|float = round) -> int | float:
-        result = type(num*self._resize_ratio.y)
-        if min is not None and result < min: return min
-        if max is not None and result > max: return max
-        return result
-    def relm(self, num: int | float, min: int = None, max: int = None, type: int|float = round) -> int | float:
-        result = type(num*((self._resize_ratio.x + self._resize_ratio.y)/2))
-        if min is not None and result < min: return min
-        if max is not None and result > max: return max
-        return result
-    def rel(self, mass: list | tuple, vector: bool = False, type: int|float = round) -> list | Vector2:
-        return [type(mass[0] * self._resize_ratio.x), type(mass[1] * self._resize_ratio.y)] \
-                if not vector else Vector2(type(mass[0] * self._resize_ratio.x), type(mass[1] * self._resize_ratio.y))
+        return max if max is not None and result > max else result
+    
+    def relx(self, num: int | float, min: int | None = None, max: int| None = None, function = None) -> int | float:
+        if not function: function = round
+        result = function(num*self._resize_ratio.x)
+        return self._rel_corner(result, min, max)
+    def rely(self, num: int | float, min: int | None = None, max: int | None = None, function = None) -> int | float:
+        if not function: function = round
+        result = function(num*self._resize_ratio.x)
+        return self._rel_corner(result, min, max)
+    def relm(self, num: int | float, min: int | None = None, max: int | None = None, function = None) -> int | float:
+        if not function: function = round
+        result = function(num*self._resize_ratio.x)
+        return self._rel_corner(result, min, max)
+    
+    def rel(self, mass: list | tuple, vector: bool = False) -> list | Vector2:  
+        return (Vector2(mass[0] * self._resize_ratio.x, mass[1] * self._resize_ratio.y) if vector 
+                else [mass[0] * self._resize_ratio.x, mass[1] * self._resize_ratio.y] )
+    

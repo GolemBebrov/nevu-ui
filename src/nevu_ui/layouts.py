@@ -12,19 +12,17 @@ class LayoutType(NevuObject):
     def _get_item_master_coordinates(self, item: NevuObject):
         return [item.coordinates[0] + self.first_parent_menu.coordinatesMW[0], item.coordinates[1] + self.first_parent_menu.coordinatesMW[1]]
 
-    def _draw_widget(self, item: NevuObject, multiply: list = None, add: list = None):
+    def _draw_widget(self, item: NevuObject, multiply: list | None = None, add: list | None = None):
+        if not isinstance(item, (LayoutType, Widget)) or not isinstance(self.surface, pygame.Surface): return
         if item._wait_mode:
-            #print("item", item, "wait mode")
             self.read_item_coords(item)
             self._start_item(item)
             return
         item.draw()
-        if self.is_layout(item) or not self.surface: return
+        if self.is_layout(item) or not isinstance(item.surface, pygame.Surface): return
         coordinates = item.coordinates
-        if multiply:
-            coordinates = zip(coordinates, multiply)
-            coordinates = [x * y for x, y in coordinates]
-        if add: coordinates = zip(coordinates, add)
+        if multiply: coordinates = [x * y for x, y in zip(coordinates, multiply)]
+        if add:  coordinates = [x + y for x, y in zip(coordinates, add)]
         self.surface.blit(item.surface,[int(coordinates[0]),int(coordinates[1])])
 
     def _boot_up(self):
@@ -36,14 +34,11 @@ class LayoutType(NevuObject):
             self.read_item_coords(item)
             self._start_item(item)
 
-            
-
     @property
     def _rsize(self):
         bw = self.menu.style.borderwidth if self.menu else self.first_parent_menu.style.borderwidth
-        #bw = int(self.relm(bw))
-        if self.menu: return self._csize - Vector2(bw,bw)
-        return self._csize
+        return self._csize - Vector2(bw,bw) if self.menu else self._csize
+        
     @property
     def _rsize_marg(self):
         bw = self.menu.style.borderwidth if self.menu else self.first_parent_menu.style.borderwidth
@@ -155,7 +150,7 @@ class LayoutType(NevuObject):
         if isinstance(item, LayoutType): return True
         return False
 
-    def _event_on_add_widget(self): pass
+    def _event_on_add_item(self): pass
 
     def add_item(self, item: NevuObject):
         if isinstance(item,LayoutType):item._connect_to_layout(self)
@@ -269,7 +264,7 @@ class Grid(LayoutType):
         item.x = x-1
         item.y = y-1
         super().add_item(item)
-        if self.layout: self.layout._event_on_add_widget()
+        if self.layout: self.layout._event_on_add_item()
 
     def secondary_draw(self):
         super().secondary_draw()
@@ -429,7 +424,7 @@ class Pages(LayoutType):
     def add_item(self, item: LayoutType):
         if not self.is_layout(item): raise Exception("Widget must be Layout")
         super().add_item(item)
-        if self.layout: self.layout._event_on_add_widget()
+        if self.layout: self.layout._event_on_add_item()
         if not self.selected_page:
             self.selected_page = item
             self.selected_page_id = 0
@@ -536,6 +531,11 @@ class Scrollable(LayoutType):
 
         def secondary_update(self, *args):
             axis = 1 if self.orientation == 'vertical' else 0
+            scaled_track_path = (self.track_path) * self._resize_ratio - self.rel(self.size)
+
+            # Если handle оказался вне трека (например, после ресайза), вернуть его в допустимые границы
+            self.coordinates[axis] = max(self.track_start_coordinates[axis], min(self.coordinates[axis], scaled_track_path[axis]+self.track_start_coordinates[axis]))
+
             if mouse.left_fdown and not self.is_scrolling:
                 track_rect = self.get_rect()
                 if track_rect.collidepoint(mouse.pos):
@@ -543,17 +543,63 @@ class Scrollable(LayoutType):
             if mouse.left_up:
                 self.is_scrolling = False
 
-            handle_size = self.size * self._resize_ratio
-
             if self.is_scrolling:
-                relative_mouse_pos = mouse.pos[axis] + self._menu_coordinatesMW[axis]
-                self.coordinates[axis] = relative_mouse_pos
-            
-            scaled_track_path = (self.track_path) * self._resize_ratio - self.rel(self.size)
-            
-            self.coordinates[axis] = max(self.track_start_coordinates[axis], min(self.coordinates[axis], scaled_track_path[axis]+self.track_start_coordinates[axis]))
-            self.percentage = ((self.coordinates[axis]-self.track_start_coordinates[axis]) / (scaled_track_path)[axis]) * 100
+                # Корректно: позиция мыши относительно начала трека (оба в координатах окна)
+                mouse_offset = mouse.pos[axis] - self.track_start_coordinates[axis]
+                self.coordinates[axis] = max(
+                    self.track_start_coordinates[axis],
+                    min(mouse_offset + self.track_start_coordinates[axis], scaled_track_path[axis] + self.track_start_coordinates[axis])
+                )
+            # Пересчитать процент
+            if scaled_track_path[axis] != 0:
+                self.percentage = ((self.coordinates[axis]-self.track_start_coordinates[axis]) / (scaled_track_path)[axis]) * 100
+            else:
+                self.percentage = 0.0
             self.percentage = max(0.0, min(self.percentage, 100.0))
+        def move_by_percents(self, percents: int):
+            """Moves the scrollbar handle by the specified percentage relative to its current position.
+
+            This method adds the given percentage to the current scrollbar position,
+            ensuring the handle stays within the valid track range.
+
+            Args:
+                percents: The percentage (positive or negative) to move the scrollbar handle by.
+
+            Returns:
+                None
+            """
+            axis = 1 if self.orientation == 'vertical' else 0
+            scaled_track_path = (self.track_path) * self._resize_ratio - self.rel(self.size)
+            current_perc = ((self.coordinates[axis] - self.track_start_coordinates[axis]) / (scaled_track_path)[axis]) * 100 if scaled_track_path[axis] != 0 else 0
+            new_perc = max(0.0, min(current_perc + percents, 100.0))
+            added_path = scaled_track_path[axis] * (new_perc/100)
+            self.coordinates[axis] = max(
+                self.track_start_coordinates[axis],
+                min(added_path + self.track_start_coordinates[axis], scaled_track_path[axis] + self.track_start_coordinates[axis])
+            )
+            self.is_scrolling = False
+
+        def set_percents(self, percents: int):
+            """Sets the scrollbar handle to the specified percentage position.
+
+            This method sets the scrollbar position to the given percentage,
+            ensuring the handle stays within the valid track range.
+
+            Args:
+                percents: The percentage (0-100) to set the scrollbar handle to.
+
+            Returns:
+                None
+            """
+            axis = 1 if self.orientation == 'vertical' else 0
+            scaled_track_path = (self.track_path) * self._resize_ratio - self.rel(self.size)
+            perc = max(0.0, min(percents, 100.0))
+            added_path = scaled_track_path[axis] * (perc/100)
+            self.coordinates[axis] = max(
+                self.track_start_coordinates[axis],
+                min(added_path + self.track_start_coordinates[axis], scaled_track_path[axis] + self.track_start_coordinates[axis])
+            )
+            self.is_scrolling = False
     def __init__(self, size: Vector2|list, style: Style = default_style, content: tuple[list[Align, NevuObject]] = None, draw_scrool_area: bool = False, id: str = None):
         #------ TESTS USE WITH CAUTION! ------
         self._test_list_instances_compatibility = False
@@ -562,15 +608,6 @@ class Scrollable(LayoutType):
         self._test_always_update = False
         #------ TESTS USE WITH CAUTION! ------
         
-        #------ WARNING! ------
-        #
-        # IN THIS LAYOUT FOUND UNKNOWN BUGS THAT AFFECT PERFORMANCE AND SPEED
-        # USE WITH CAUTION!!!
-        #
-        # THANK YOU FOR UNDERSTANDING 
-        #
-        #------ WARNING! ------
-
         super().__init__(size, style, content, False, id)
         self.max_x = 0
         self.max_y = 0
@@ -589,7 +626,7 @@ class Scrollable(LayoutType):
         if self.booted == False: return
         self._update_scroll_bars()
 
-    def _lazy_init(self, size: Vector2|list, content: dict[Align, NevuObject] = None):
+    def _lazy_init(self, size: Vector2|list, content: list[list[Align | NevuObject]] = None):
         super()._lazy_init(size, content)
         self.original_size = self.size.copy()
         self.__init_scroll_bars__()
@@ -599,17 +636,6 @@ class Scrollable(LayoutType):
                 self.add_item(item, align)
         self._update_scroll_bars()
         
-    def _event_on_add_widget(self):
-        self.cached_coordinates = None
-        if self._test_debug_print:
-            print("used event on add widget")
-        self.__init_scroll_bars__()
-        self._update_scroll_bars()
-        self.max_y = self.padding
-        self.max_x = self.original_size[0] if self.original_size != self.size else self.size[0]
-        for item in self.items:
-            self.max_y += self.relx(item.size[1] + self.padding)
-        self.actual_max_y = self.max_y - self.size[1]
     def _update_scroll_bars(self):
         if self._test_debug_print:
             print("used first update bars")
@@ -668,6 +694,7 @@ class Scrollable(LayoutType):
         overdose_top = item.coordinates[1] + self.rely(item._anim_coordinates[1] + item.size[1]) < self.coordinates[1]
         overall = overdose_right or overdose_left or overdose_bottom or overdose_top
         return not overall
+    
     def secondary_draw(self):
         if self._test_debug_print:
             print("used draw")
@@ -677,25 +704,27 @@ class Scrollable(LayoutType):
             if drawable: self._draw_widget(item)
         if self.actual_max_y > 0:
             self.scroll_bar_y.draw()
-        #    if self.surface: self.surface.blit(self.scroll_bar_y.surface,self.scroll_bar_y.coordinates)
             
     def _set_item_x(self, item: NevuObject, align: Align):
+        container_width = self.relx(self.size[0])
+        widget_width = self.relx(item.size[0])
+        padding = self.relx(self.padding)
+
         match align:
             case Align.LEFT:
-                item.coordinates[0] = self._coordinates[0] + self.relx(self.padding)
+                item.coordinates[0] = self._coordinates[0] + padding
             case Align.RIGHT:
-                item.coordinates[0] = self._coordinates[0] + (self._csize[0] - item._csize[0] - self.relx(self.padding))
+                item.coordinates[0] = self._coordinates[0] + (container_width - widget_width - padding)
             case Align.CENTER:
-                item.coordinates[0] = self._coordinates[0] + (self._csize[0] / 2 - item._csize[0] / 2)
+                item.coordinates[0] = self._coordinates[0] + (container_width / 2 - widget_width / 2)
     
     def get_offset(self) -> int | float:
         percentage = self.scroll_bar_y.percentage
-        offset = self.actual_max_y / 100 * percentage
-        return offset
+        return self.actual_max_y / 100 * percentage
     
     def secondary_update(self, *args):
         if self._test_debug_print:
-            print("used update")
+            print(f"in {self} used update")
             for name, data in self.__dict__.items():
                 print(name+":", data)
         super().secondary_update()
@@ -721,40 +750,84 @@ class Scrollable(LayoutType):
                 padding_offset += item._csize[1] + self.rely(self.padding)
 
         self._light_update(0, -self.rely(offset))    
-                
+        
         if self.actual_max_y > 0:
             self.scroll_bar_y.update()
             self.scroll_bar_y.coordinates = [self._coordinates[0] + self.relx(self.size[0] - self.scroll_bar_y.size[0]), self.scroll_bar_y.coordinates[1]]
             self.scroll_bar_y.master_coordinates = self._get_item_master_coordinates(self.scroll_bar_y)
+    def event_update(self, events: list = []):
+        super().event_update(events)
+        for event in events:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    self.scroll_bar_y.move_by_percents(-5)
+                if event.key == pygame.K_DOWN:
+                    self.scroll_bar_y.move_by_percents(5)
             
     def resize(self, resize_ratio: list | tuple):
         if self._test_debug_print:
-            print("used resize", resize_ratio)
-        prev_offset = self.get_offset() if hasattr(self, "get_offset") else 0
+            print(f"in {self} used resize, current ratio: {resize_ratio}")
+        prev_percentage = self.scroll_bar_y.percentage if hasattr(self, "scroll_bar_y") else 0.0
+
+        if hasattr(self, "scroll_bar_y"):
+            self.scroll_bar_y.is_scrolling = False
+
         super().resize(resize_ratio)
         self.scroll_bar_y.resize(resize_ratio)
         self.scroll_bar_y.coordinates[1] = self.rely(self.scroll_bar_y.size[1])
         self.cached_coordinates = None
-        self._light_update(0, -self.rely(prev_offset))
-    def add_item(self, item: NevuObject, alignment: Align = Align.LEFT):
+        
+        self.scroll_bar_y.is_scrolling = False
+        self._update_scroll_bars()
+        new_actual_max_y = self.actual_max_y if hasattr(self, "actual_max_y") else 1
+
+        if new_actual_max_y > 0:
+            new_percentage = max(0.0, min(prev_percentage, 100.0))
+        else:
+            new_percentage = 0.0
+
+        self.scroll_bar_y.set_percents(new_percentage)
+        self._light_update(0, -self.rely(self.get_offset()))
+
+    def _event_on_add_item(self):
+        self.cached_coordinates = None
         if self._test_debug_print:
-            print("used add widget", item, alignment)
+            print(f"in {self} used event on add widget")
+        self.__init_scroll_bars__()
+        self._update_scroll_bars()
+        self.max_y = self.padding
+        self.max_x = self.original_size[0] if self.original_size != self.size else self.size[0]
+        for item in self.items:
+            self.max_y += self.relx(item.size[1] + self.padding)
+        self.actual_max_y = self.max_y - self.size[1]
+        
+
+    def add_item(self, item: NevuObject, alignment: Align = Align.LEFT):
+        """Adds a widget to the scrollable layout with the specified alignment.
+
+        This method inserts a new item into the scrollable area, updates the
+        internal list of items and alignments, and recalculates the scrollable
+        region to accommodate the new widget.
+
+        Args:
+            item: The widget to add to the scrollable layout.
+            alignment: The alignment for the widget (e.g., Align.LEFT, Align.CENTER, Align.RIGHT).
+
+        Returns:
+            None
+        """
+        if self._test_debug_print:
+            print(f"in {self} added widget: {item} at {alignment}.")
+            
         self.read_item_coords(item)
         self._start_item(item)
         self.items.append(item)
-
-        self.max_y = self.padding
-        self.max_x = self.original_size[0] if self.original_size != self.size else self.size[0]
-
-        for _item in self.items:
-            self.max_y += self.rely(_item.size[1] + self.padding)
-
-        self.actual_max_y = self.max_y - self.size[1]
         self.widgets_alignment.append(alignment)
-        self.cached_coordinates = None 
 
+        self._event_on_add_item()
+        
         if self.layout:
-            self.layout._event_on_add_widget()
+            self.layout._event_on_add_item()
 
     def clear(self):
         self.items.clear()
@@ -770,9 +843,9 @@ class Scrollable(LayoutType):
 class Appending_Layout_Type(LayoutType):
     def __init__(self, content: list = [], style: Style = default_style):
         
-        ### TESTS USE WITH CAUTION!
+        #------ TESTS USE WITH CAUTION! ------
         self._test_always_update = True
-        ### TESTS USE WITH CAUTION!
+        #------ TESTS USE WITH CAUTION! ------
         
         self._margin = 20
         super().__init__((self.margin, 0), style)
@@ -786,13 +859,13 @@ class Appending_Layout_Type(LayoutType):
         super().add_widget(item)
         self.widgets_alignment.append(alignment)
         self._recalculate_size()
-        if self.layout: self.layout._event_on_add_widget()
+        if self.layout: self.layout._event_on_add_item()
     def insert_item(self, item: Widget | LayoutType, id: int = -1):
         try:
             self.items.insert(id,item)
             self.widgets_alignment.insert(id,Align.CENTER)
             self._recalculate_size()
-            if self.layout: self.layout._event_on_add_widget()
+            if self.layout: self.layout._event_on_add_item()
         except Exception as e: raise e #TODO
     def _connect_to_layout(self, layout: LayoutType):
         super()._connect_to_layout(layout)
@@ -800,9 +873,9 @@ class Appending_Layout_Type(LayoutType):
     def _connect_to_menu(self, menu: Menu):
         super()._connect_to_menu(menu)
         self._recalculate_widget_coordinates() 
-    def _event_on_add_widget(self):
+    def _event_on_add_item(self):
         self._recalculate_size()
-        if self.layout: self.layout._event_on_add_widget()
+        if self.layout: self.layout._event_on_add_item()
     def update(self, *args):
         super().update()
         if self.cached_coordinates is None or self._test_always_update:

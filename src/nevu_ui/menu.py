@@ -9,93 +9,93 @@ from .window import Window
 from .animations import *
 from .widgets import *
 class Menu:
-    def __init__(self, window: Window, size: tuple | Vector2, style: Style = default_style, alt: bool = False, layout = None): 
+    def __init__(self, window: Window | None, size: list | tuple | Vector2, style: Style = default_style, alt: bool = False, layout = None): 
         self._coordinatesWindow = Vector2(0,0)
-        #PRIMARY VARIABLES
+        self._init_primary(window, style)
+        if not self.window:
+            print("Created empty menu!")
+            return
+        self._init_size(size)
+        self._init_secondary()
+        self._init_tertiary(size)
+        self._init_subtheme(alt)
+        self._init_dirty_rects()
+        if layout:
+            self.layout = layout
+
+    def _init_primary(self, window: Window | None, style: Style):
         self.window = window
         self.window_surface = None
         self.cache = Cache()
         self.quality = Quality.Decent
         self.style = style
         if self.window:
-            self.window.add_event(Event(Event.RESIZE,self.resize))
-        else:
-            print("Created empty menu!")
-            return
-        self.size = size if not isinstance(size, (tuple, Vector2)) else list(size) 
-        #self.size =size
-        #convert_size
-        for i in range(len(self.size)):
-            item = self.size[i]
+            self.window.add_event(Event(Event.RESIZE, self.resize))
+
+    def _init_size(self, size: list | tuple | Vector2):
+        initial_size = list(size)
+        for i in range(len(initial_size)):
+            item = initial_size[i]
             if isinstance(item, SizeRule):
                 print("Ruled", item)
-                self.size[i], is_ruled = self._convert_item_coord(item)
-        print(self.size)
-        if not isinstance(size,Vector2):
-            self.size = Vector2(self.size)
-        else: self.size = size
-
-        
-        self.coordinates = Vector2(0,0)
-        self._resize_ratio = Vector2(1,1)
-        
+                converted, is_ruled = self._convert_item_coord(item, i)
+                initial_size[i] = float(converted)
+            else:
+                initial_size[i] = float(item)
+        self.size = Vector2(initial_size)
+        self.coordinates = Vector2(0, 0)
+        self._resize_ratio = Vector2(1, 1)
         self._layout = None
 
-        #SECONDARY VARIABLES
+    def _init_secondary(self):
         self._changed = True
-        print(self.size, self._resize_ratio)
-        print(self.size*self._resize_ratio)
         self._update_surface()
         self.isrelativeplaced = False
-        self.relx = None
-        self.rely = None
+        self.relative_percent_x = None
+        self.relative_percent_y = None
         self._enabled = True
-        
-        #TERTIARY VARIABLES
-        self.first_window_size = self.window.size
+
+    def _init_tertiary(self, size):
+        self.first_window_size = self.window.size if self.window else Vector2(0, 0)
         self.first_size = size
-        self.first_coordinates = Vector2(0,0)
+        self.first_coordinates = Vector2(0, 0)
         self._opened_sub_menu = None
         self._subtheme_role = SubThemeRole.PRIMARY
 
+    def _init_subtheme(self, alt):
         if not alt:
             self._subtheme_border = self._main_subtheme_border
             self._subtheme_content = self._main_subtheme_content
         else:
             self._subtheme_border = self._alt_subtheme_border
             self._subtheme_content = self._alt_subtheme_content
-        
-        self._dirty_rects = []
-        self.window._next_update_dirty_rects.append(pygame.Rect(0,0,*self.size))
 
-        if layout:
-            self.layout = layout
-        #DEPRECATED!
-        #self._global_changed = True
-        #if not self.window:
-        #    self.window_surface = self.window
-        #    self.window = None
-        #    return
-    def _convert_item_coord(self, coord, i: int = 0):
-        if isinstance(coord, SizeRule):
-            if isinstance(coord, (Vh, Vw)):
-                if type(coord) == Vh: return self.window.size[1]/100 * coord.value, True
-                elif type(coord) == Vw: return self.window.size[0]/100 * coord.value, True
+    def _init_dirty_rects(self):
+        self._dirty_rects = []
+        if self.window:
+            self.window._next_update_dirty_rects.append(pygame.Rect(0, 0, *self.size))
+        
+    def _convert_item_coord(self, coord: int | float | SizeRule, i: int = 0) -> tuple[float, bool]:
+        if not self.window: raise ValueError("Window is not initialized!")
+        if isinstance(coord, (int, float)): return coord, False
+        elif isinstance(coord, SizeRule):
+            if type(coord) == Vh: return self.window.size[1]/100 * coord.value, True
+            elif type(coord) == Vw: return self.window.size[0]/100 * coord.value, True
             elif type(coord) == Fill: return self.size[i]*self._resize_ratio[i]/ 100 * coord.value, True
-            return coord, False
-        return coord, False
+            raise NotImplementedError(f"Handling for SizeRule type '{type(coord).__name__}' is not implemented!")
+        raise TypeError(f"Unsupported coordinate type: {type(coord).__name__}")
+    
     def read_item_coords(self, item: NevuObject):
         w_size = item._lazy_kwargs['size']
         x, y = w_size
         x, is_x_rule = self._convert_item_coord(x, 0)
         y, is_y_rule = self._convert_item_coord(y, 1)
-
         item._lazy_kwargs['size'] = [x,y]
-        #is_ruled = is_x_rule or is_y_rule
-        #if is_ruled: item.wait_mode = False; item._init_start(); print("Ruled", item, item._lazy_kwargs['size'])
+        
     def _proper_load_layout(self):
         if not self._layout: return
         self._layout._boot_up()
+        
     @property
     def _main_subtheme_content(self):
         return self._subtheme.color
@@ -108,24 +108,28 @@ class Menu:
     @property
     def _alt_subtheme_border(self):
         return self._subtheme.oncontainer
-    def relx(self, num: int | float, min: int = None, max: int = None, type: int|float = round) -> int | float:
-        result = type(num*self._resize_ratio.x)
+    
+    def _rel_corner(self, result: int | float, min: int | None, max: int | None) -> int | float:
         if min is not None and result < min: return min
-        if max is not None and result > max: return max
-        return result
-    def rely(self, num: int | float, min: int = None, max: int = None, type: int|float = round) -> int | float:
-        result = type(num*self._resize_ratio.y)
-        if min is not None and result < min: return min
-        if max is not None and result > max: return max
-        return result
-    def relm(self, num: int | float, min: int = None, max: int = None, type: int|float = round) -> int | float:
-        result = type(num*((self._resize_ratio.x + self._resize_ratio.y)/2))
-        if min is not None and result < min: return min
-        if max is not None and result > max: return max
-        return result
-    def rel(self, mass: list | tuple, vector: bool = False, type: int|float = round) -> list | Vector2:
-        return [type(mass[0] * self._resize_ratio.x), type(mass[1] * self._resize_ratio.y)] \
-                if not vector else Vector2(type(mass[0] * self._resize_ratio.x), type(mass[1] * self._resize_ratio.y))
+        return max if max is not None and result > max else result
+    
+    def relx(self, num: int | float, min: int | None = None, max: int| None = None, function = None) -> int | float:
+        if not function: function = round
+        result = function(num*self._resize_ratio.x)
+        return self._rel_corner(result, min, max)
+    def rely(self, num: int | float, min: int | None = None, max: int | None = None, function = None) -> int | float:
+        if not function: function = round
+        result = function(num*self._resize_ratio.x)
+        return self._rel_corner(result, min, max)
+    def relm(self, num: int | float, min: int | None = None, max: int | None = None, function = None) -> int | float:
+        if not function: function = round
+        result = function(num*self._resize_ratio.x)
+        return self._rel_corner(result, min, max)
+    
+    def rel(self, mass: list | tuple | Vector2) -> Vector2:  
+        return Vector2(mass[0] * self._resize_ratio.x, mass[1] * self._resize_ratio.y)
+
+    
     def _draw_gradient(self, _set = False):
         if not self.style.gradient: return
         cached_gradient = pygame.Surface(self.size*_QUALITY_TO_RESOLUTION[self.quality], flags = pygame.SRCALPHA)
@@ -137,8 +141,9 @@ class Menu:
             return cached_gradient
     def _scale_gradient(self, size = None):
         if not self.style.gradient: return
-        size = size if size else self.size*self._resize_ratio
+        size = size or self.size * self._resize_ratio
         cached_gradient = self.cache.get_or_exec(CacheType.Gradient, self._draw_gradient)
+        if cached_gradient is None: return
         target_size_vector = size
         target_size_tuple = (
             max(1, int(target_size_vector.x)), 
@@ -148,25 +153,27 @@ class Menu:
         return cached_gradient
     def _generate_background(self):
         bgsurface = pygame.Surface(self.size*_QUALITY_TO_RESOLUTION[self.quality], flags = pygame.SRCALPHA)
-        if True:
-            if isinstance(self.style.gradient,Gradient):
-                content_surf = self.cache.get_or_exec(CacheType.Scaled_Gradient, lambda: self._scale_gradient(self.size*_QUALITY_TO_RESOLUTION[self.quality]))
-                if self.style.transparency: bgsurface.set_alpha(self.style.transparency)
-            else:
-                content_surf = self.cache.get(CacheType.Scaled_Gradient)
-            if content_surf:
-                bgsurface.blit(content_surf,(0,0))
-            else: bgsurface.fill(self._subtheme.container)
+        if isinstance(self.style.gradient,Gradient):
+            content_surf = self.cache.get_or_exec(CacheType.Scaled_Gradient, lambda: self._scale_gradient(self.size*_QUALITY_TO_RESOLUTION[self.quality]))
+            if self.style.transparency: bgsurface.set_alpha(self.style.transparency)
+        else: content_surf = self.cache.get(CacheType.Scaled_Gradient)
+        if content_surf:
+            bgsurface.blit(content_surf,(0,0))
+        else: bgsurface.fill(self._subtheme.container)
         
         if self._style.borderwidth > 0:
-            bgsurface.blit(self.cache.get_or_exec(CacheType.Borders, lambda: self._create_outlined_rect(self.size*_QUALITY_TO_RESOLUTION[self.quality])),(0,0))
+            border = self.cache.get_or_exec(CacheType.Borders, lambda: self._create_outlined_rect(self.size*_QUALITY_TO_RESOLUTION[self.quality]))
+            if border:
+                bgsurface.blit(border,(0,0))
         if self._style.borderradius > 0:
             mask_surf = self.cache.get_or_exec(CacheType.Surface, lambda: self._create_surf_base(self.size*_QUALITY_TO_RESOLUTION[self.quality]))
-            AlphaBlit.blit(bgsurface,mask_surf,(0,0))
+            if mask_surf:
+                AlphaBlit.blit(bgsurface, mask_surf,(0,0))
         return bgsurface
     def _scale_background(self, size = None):
         size = size if size else self.size*self._resize_ratio
         surf = self.cache.get_or_exec(CacheType.Background, self._generate_background)
+        if surf is None: return
         surf = pygame.transform.smoothscale(surf, (max(1, int(size.x)), max(1, int(size.y))))
         return surf
     @property
@@ -187,18 +194,24 @@ class Menu:
         return self._coordinatesWindow
     @coordinatesMW.setter
     def coordinatesMW(self, coordinates: Vector2):
-        self._coordinatesWindow = [coordinates.x * self._resize_ratio.x + self.window._offset[0], 
-                               coordinates.y * self._resize_ratio.y + self.window._offset[1]]
+        if self.window is None: raise ValueError("Window is not initialized!")
+        self._coordinatesWindow = Vector2(coordinates.x * self._resize_ratio.x + self.window._offset[0], 
+                               coordinates.y * self._resize_ratio.y + self.window._offset[1])
+        
     def coordinatesMW_update(self):
-        self.coordinatesMW = self.coordinates #WARAHELL IS DIS SHIT
+        """Applies offset to coordinates"""
+        self.coordinatesMW = self.coordinates
+        
     def open_submenu(self, menu, style: Style|None = None,*args):
         self._opened_sub_menu = menu
         self._args_menus_to_draw = []
-        for item in args: self._args_menus_to_draw.append(item)
+        for item in args: self._args_menus_to_draw.extend(item)
         if style: self._opened_sub_menu.apply_style_to_all(style)
         self._opened_sub_menu._resize_with_ratio(self._resize_ratio)
+        
     def close_submenu(self):
         self._opened_sub_menu = None
+        
     def _update_surface(self):
         if self.style.borderradius>0:self.surface = pygame.Surface(self.size*self._resize_ratio, pygame.SRCALPHA)
         else: self.surface = pygame.Surface(self.size*self._resize_ratio)
@@ -208,11 +221,11 @@ class Menu:
         self.clear_surfaces()
         self._changed = True
         self._resize_ratio = Vector2([size[0] / self.first_window_size[0], size[1] / self.first_window_size[1]])
-
+        if self.window is None: raise ValueError("Window is not initialized!")
         if self.isrelativeplaced:
             self.coordinates = Vector2([
-                (self.window.size[0] - self.window._crop_width_offset) / 100 * self.relx - self.size[0] / 2,
-                (self.window.size[1] - self.window._crop_height_offset) / 100 * self.rely - self.size[1] / 2
+                (self.window.size[0] - self.window._crop_width_offset) / 100 * self.relative_percent_x - self.size[0] / 2,
+                (self.window.size[1] - self.window._crop_height_offset) / 100 * self.relative_percent_y - self.size[1] / 2
             ])
 
         self.coordinatesMW_update()
@@ -220,7 +233,7 @@ class Menu:
         
         if self._layout:
             self._layout.resize(self._resize_ratio)
-            self._layout.coordinates = (self.rel(self.size, vector=True)/2 - self.rel(self._layout.size, vector=True)/2)
+            self._layout.coordinates = Vector2(self.rel(self.size)/2 - self.rel(self._layout.size)/2)
             self._layout.update()
             self._layout.draw()
         if self.style.transparency:
@@ -252,31 +265,31 @@ class Menu:
             self.read_item_coords(layout)
             layout._init_start()
             layout._boot_up()
-           
-            
+
             layout.coordinates = (self.size[0]/2 - layout.size[0]/2, self.size[1]/2 - layout.size[1]/2)
             layout._connect_to_menu(self)
 
-            
             self._layout = layout
-        else: raise Exception("this Layout can't be main")
+        else: raise ValueError(f"Layout {type(layout).__name__} can't be main")
     def _set_layout_coordinates(self, layout):
-        layout.coordinates = [self.size[0]/2 - layout.size[0]/2, self.size[1]/2 - layout.size[1]/2]
+        layout.coordinates = Vector2(self.size[0]/2 - layout.size[0]/2, self.size[1]/2 - layout.size[1]/2)
     def set_coordinates(self, x: int, y: int):
         self.coordinates = Vector2(x, y)
         self.coordinatesMW_update()
         
         self.isrelativeplaced = False
-        self.relx = None
-        self.rely = None
+        self.relative_percent_x = None
+        self.relative_percent_y = None
         
         self.first_coordinates = self.coordinates
-    def set_coordinates_relative(self, relx: int, rely: int):
-        self.coordinates = Vector2([(self.window.size[0]-self.window._crop_width_offset)/100*relx-self.size[0]/2,(self.window.size[1]-self.window._crop_height_offset)/100*rely-self.size[1]/2])
+    def set_coordinates_relative(self, percent_x: int, percent_y: int):
+        if self.window is None: raise ValueError("Window is not initialized!")
+        self.coordinates = Vector2([(self.window.size[0]-self.window._crop_width_offset)/100*percent_x-self.size[0]/2,
+                                    (self.window.size[1]-self.window._crop_height_offset)/100*percent_y-self.size[1]/2])
         self.coordinatesMW_update()
         self.isrelativeplaced = True
-        self.relx = relx
-        self.rely = rely
+        self.relative_percent_x = percent_x
+        self.relative_percent_y = percent_y
         self.first_coordinates = self.coordinates
     def _create_surf_base(self, size = None):
         ss = (self.size*self._resize_ratio).xy if size is None else size
@@ -289,14 +302,19 @@ class Menu:
     def _create_outlined_rect(self, size = None):
         ss = (self.size*self._resize_ratio).xy if size is None else size
         resize_ratio = self._resize_ratio*_QUALITY_TO_RESOLUTION[self.quality]
-        a =OutlinedRoundedRect.create_sdf([int(ss[0]), int(ss[1])], int(self._style.borderradius*(resize_ratio[0]+resize_ratio[1])/2), int(self._style.borderwidth*(resize_ratio[0]+resize_ratio[1])/2), self._subtheme_border)
-        return a
+        outlined_rect = OutlinedRoundedRect.create_sdf([int(ss[0]), int(ss[1])], int(self._style.borderradius*(resize_ratio[0]+resize_ratio[1])/2), int(self._style.borderwidth*(resize_ratio[0]+resize_ratio[1])/2), self._subtheme_border)
+        return outlined_rect
+    
     def draw(self):
         if not self.enabled: return
-        self.surface.blit(self.cache.get_or_exec(CacheType.Scaled_Background, self._scale_background),(0,0))
-        if len(self.layout._dirty_rect)>0:
-            self._dirty_rects.extend(self.layout._dirty_rect)
-            self._layout.draw()
+        if self.window is None: return
+        scaled_bg = self.cache.get_or_exec(CacheType.Scaled_Background, self._scale_background)
+        if scaled_bg:
+            self.surface.blit(scaled_bg,(0,0))
+        if self._layout is not None:
+            if len(self._layout._dirty_rect)>0:
+                self._dirty_rects.extend(self._layout._dirty_rect)
+                self._layout.draw()
         self.window.surface.blit(self.surface, self.coordinatesMW)
         
         if self._opened_sub_menu:
@@ -304,6 +322,7 @@ class Menu:
             self._opened_sub_menu.draw()
     def update(self):
         if not self.enabled: return
+        if self.window is None: return
         if len(self._dirty_rects) > 0:
             self.window._next_update_dirty_rects.extend(self._dirty_rects)
             self._dirty_rects = []
@@ -316,6 +335,16 @@ class Menu:
     def get_rect(self) -> pygame.Rect:
         return pygame.Rect(self.coordinatesMW, self.size * self._resize_ratio)
 
+
+# ------ ALL OF CODE AFTER THIS LINE IS DEPRECATED! ------ #
+#
+#  * DO NOT USE THIS CODE IN YOUR PROJECTS!
+#  * ITS WILL BE RECREATED IN THE FUTURE!
+#  * USE AT YOUR OWN RISK!
+#
+# -------------------------------------------------------- #
+
+"""
 class DropDownMenu(Menu):
     def __init__(self, window:Window, size:list[int,int], style:Style=default_style,side:Align=Align.TOP,opened:bool=False,button_size:list[int,int]=None):
         super().__init__(window, size, style)
@@ -505,3 +534,5 @@ class Group():
         self._opened_menu._resize_with_ratio(self._resize_ratio)
     def close(self):
         self._opened_menu = None
+
+"""
