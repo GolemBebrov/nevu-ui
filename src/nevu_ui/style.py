@@ -32,22 +32,31 @@ class Gradient:
         self.transparency = transparency
 
     def _validate_type_direction(self):
+        self._validate_gradient_type()
+        if self.type == 'linear':
+            self._validate_linear_direction()
+        elif self.type == 'radial':
+            self._validate_radial_direction()
+
+    def _validate_gradient_type(self):
+        if self.type not in ['linear', 'radial']:
+            raise ValueError(f"Gradient type '{self.type}' is not supported. Choose 'linear' or 'radial'.")
+
+    def _validate_linear_direction(self):
         linear_directions = [
             Gradient.TO_RIGHT, Gradient.TO_LEFT, Gradient.TO_TOP, Gradient.TO_BOTTOM,
             Gradient.TO_TOP_RIGHT, Gradient.TO_TOP_LEFT, Gradient.TO_BOTTOM_RIGHT, Gradient.TO_BOTTOM_LEFT
         ]
+        if self.direction not in linear_directions and not (isinstance(self.direction, str) and self.direction.endswith('deg')):
+            raise ValueError(f"Linear gradient direction '{self.direction}' is not supported.")
+
+    def _validate_radial_direction(self):
         radial_directions = [
             Gradient.CENTER, Gradient.TOP_CENTER, Gradient.TOP_LEFT, Gradient.TOP_RIGHT,
             Gradient.BOTTOM_CENTER, Gradient.BOTTOM_LEFT, Gradient.BOTTOM_RIGHT
         ]
-        if self.type not in ['linear', 'radial']:
-            raise ValueError(f"Gradient type '{self.type}' is not supported. Choose 'linear' or 'radial'.")
-        if self.type == 'linear':
-            if self.direction not in linear_directions and not (isinstance(self.direction, str) and self.direction.endswith('deg')):
-                raise ValueError(f"Linear gradient direction '{self.direction}' is not supported.")
-        elif self.type == 'radial':
-            if self.direction not in radial_directions:
-                raise ValueError(f"Radial gradient direction '{self.direction}' is not supported.")
+        if self.direction not in radial_directions:
+            raise ValueError(f"Radial gradient direction '{self.direction}' is not supported.")
 
     def with_transparency(self, transparency):
         return Gradient(self.colors, self.type, self.direction, transparency)
@@ -68,7 +77,11 @@ class Gradient:
 
         w_m = width - 1 if width > 1 else 1
         h_m = height - 1 if height > 1 else 1
-        
+
+        progress = self._get_linear_gradient_progress(x, y, w_m, h_m)
+        self._blit_numpy_gradient(surface, progress)
+
+    def _get_linear_gradient_progress(self, x, y, w_m, h_m):
         dir_map = {
             self.TO_RIGHT: x / w_m,
             self.TO_LEFT: 1.0 - (x / w_m),
@@ -79,13 +92,10 @@ class Gradient:
             self.TO_TOP_RIGHT: ((x / w_m) + (1.0 - y / h_m)) / 2,
             self.TO_BOTTOM_LEFT: ((1.0 - x / w_m) + (y / h_m)) / 2
         }
-
         progress = dir_map.get(self.direction)
         if progress is None:
             raise ValueError(f"Unsupported gradient direction: {self.direction}")
-
-        self._blit_numpy_gradient(surface, progress)
-
+        return progress
     def _apply_radial_gradient(self, surface):
         width, height = surface.get_size()
         center_x, center_y = self._get_radial_center(width, height)
@@ -106,25 +116,24 @@ class Gradient:
 
     def _blit_numpy_gradient(self, surface, progress):
         progress = np.clip(progress, 0.0, 1.0)
-
         stops = np.linspace(0, 1, len(self.colors))
 
+        r, g, b = self._interpolate_channels(progress, stops)
+        gradient_array = self._stack_gradient_array(r, g, b)
+        gradient_array_transposed = gradient_array.transpose(1, 0, 2)
+        pygame.surfarray.blit_array(surface, gradient_array_transposed)
+
+    def _interpolate_channels(self, progress, stops):
         r_stops = [c[0] for c in self.colors]
         g_stops = [c[1] for c in self.colors]
         b_stops = [c[2] for c in self.colors]
-
         r = np.interp(progress, stops, r_stops)
         g = np.interp(progress, stops, g_stops)
         b = np.interp(progress, stops, b_stops)
+        return r, g, b
 
-        # Собираем массив в формате (Высота, Ширина)
-        gradient_array = np.stack([r, g, b], axis=-1).astype(np.uint8)
-
-        # *** ВОТ ИСПРАВЛЕНИЕ: ***
-        # Меняем оси (Высота, Ширина) на (Ширина, Высота)
-        gradient_array_transposed = gradient_array.transpose(1, 0, 2)
-        
-        pygame.surfarray.blit_array(surface, gradient_array_transposed)
+    def _stack_gradient_array(self, r, g, b):
+        return np.stack([r, g, b], axis=-1).astype(np.uint8)
 
     def _get_radial_center(self, width, height):
         w_m, h_m = width - 1, height - 1

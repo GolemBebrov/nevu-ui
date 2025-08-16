@@ -9,7 +9,7 @@ import copy
 from .color import *
 
 class HoverState(Enum):
-    UNHOVERED = auto()
+    UN_HOVERED = auto()
     HOVERED = auto()
     CLICKED = auto()
 
@@ -23,7 +23,7 @@ class NevuObject:
         #Objects
         self.cache = Cache()
         self._subtheme_role = SubThemeRole.TERTIARY
-        self._hover_state = HoverState.UNHOVERED
+        self._hover_state = HoverState.UN_HOVERED
         self.animation_manager = AnimationManager()
         self.style = style
 
@@ -38,7 +38,7 @@ class NevuObject:
         #Lists
         self.coordinates = Vector2()
         self.master_coordinates = Vector2()
-        self.first_update_fuctions = []
+        self.first_update_functions = []
         self._events = []
         self._dirty_rect = []
         self._floating = floating
@@ -53,9 +53,7 @@ class NevuObject:
             self._lazy_init(**self._lazy_kwargs)
 
     def _lazy_init(self, size):
-        if not isinstance(size, Vector2):
-            self.size = Vector2(size)
-        else: self.size = size
+        self.size = Vector2(size) if not isinstance(size, Vector2) else size
 
     def num_handler(self, number: SizeRule | int) -> SizeRule | int:
         if isinstance(number, SizeRule):
@@ -73,7 +71,7 @@ class NevuObject:
         return self._wait_mode
     @wait_mode.setter
     def wait_mode(self, value: bool):
-        if self._wait_mode == True and value == False:
+        if self._wait_mode == True and not value:
             self._lazy_init(**self._lazy_kwargs)
             #print("WAIT MODE DISABLED")
         self._wait_mode = value
@@ -83,7 +81,7 @@ class NevuObject:
         return self.cache.get_or_exec(CacheType.RelSize,self._update_size)
 
     def add_first_update_action(self, function: callable):
-        self.first_update_fuctions.append(function)
+        self.first_update_functions.append(function)
 
     def show(self):
         self._visible = True
@@ -130,26 +128,34 @@ class NevuObject:
         return self.animation_manager.get_value(animation_type)
 
     def _update_hover_state(self):
-        match self._hover_state:
-            case HoverState.UNHOVERED:
-                if self.get_rect().collidepoint(mouse.pos):
-                    self._hover_state = HoverState.HOVERED
-                    self.on_hover()
-                    self._on_hover_system()
-            case HoverState.HOVERED:
-                if not self.get_rect().collidepoint(mouse.pos):
-                    self._hover_state = HoverState.UNHOVERED
-                    self.on_unhover()
-                    self._on_unhover_system()
-                if mouse.left_fdown:
-                    self._hover_state = HoverState.CLICKED
-                    self.on_click()
-                    self._on_click_system()
-            case HoverState.CLICKED:
-                if mouse.left_up:
-                    self._hover_state = HoverState.HOVERED 
-                    self.on_keyup()
-                    self._on_keyup_system()
+        if self._hover_state == HoverState.UN_HOVERED:
+            self._handle_unhovered()
+        elif self._hover_state == HoverState.HOVERED:
+            self._handle_hovered()
+        elif self._hover_state == HoverState.CLICKED:
+            self._handle_clicked()
+
+    def _handle_unhovered(self):
+        if self.get_rect().collidepoint(mouse.pos):
+            self._hover_state = HoverState.HOVERED
+            self.on_hover()
+            self._on_hover_system()
+
+    def _handle_hovered(self):
+        if not self.get_rect().collidepoint(mouse.pos):
+            self._hover_state = HoverState.UN_HOVERED
+            self.on_unhover()
+            self._on_unhover_system()
+        elif mouse.left_fdown:
+            self._hover_state = HoverState.CLICKED
+            self.on_click()
+            self._on_click_system()
+
+    def _handle_clicked(self):
+        if mouse.left_up:
+            self._hover_state = HoverState.HOVERED 
+            self.on_keyup()
+            self._on_keyup_system()
 
     def on_click(self):
         """Override this function to run code when the object is clicked"""
@@ -196,8 +202,12 @@ class NevuObject:
         return self.rel(self.size)
 
     def get_font(self):
-        if self.style.fontname == "Arial": renderFont = pygame.font.SysFont(self.style.fontname,int(self.style.fontsize*self._resize_ratio[1]))
-        else: renderFont = pygame.font.Font(self.style.fontname,int(self.style.fontsize*self._resize_ratio[1]))
+        avg_resize_ratio = (self._resize_ratio[0] + self._resize_ratio[1]) / 2
+        font_size = int(self.style.fontsize * avg_resize_ratio)
+        if self.style.fontname == "Arial":
+            renderFont = pygame.font.SysFont(self.style.fontname, font_size)
+        else:
+            renderFont = pygame.font.Font(self.style.fontname, font_size)
         return renderFont
 
     @property

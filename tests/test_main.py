@@ -87,10 +87,14 @@ class Mygame(ui.Manager):
                                     }
                          )"""
 
-game = Mygame()
-game.run()
+def test_main():
 
-sys.exit()
+    game = Mygame()
+    game.run()
+
+    sys.exit()
+
+test_main()
 
 
 

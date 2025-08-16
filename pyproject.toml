@@ -22,6 +22,9 @@ dependencies = [
     "Pillow",
 ]
 
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [project.urls]
 Homepage = "https://github.com/GolemBebrov/pygame-nevui"
 Repository = "https://github.com/GolemBebrov/pygame-nevui"

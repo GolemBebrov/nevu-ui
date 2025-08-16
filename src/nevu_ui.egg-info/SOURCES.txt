@@ -1,3 +1,4 @@
+LICENSE
 README.md
 pyproject.toml
 src/nevu_ui/__init__.py
@@ -16,4 +17,4 @@ src/nevu_ui.egg-info/SOURCES.txt
 src/nevu_ui.egg-info/dependency_links.txt
 src/nevu_ui.egg-info/requires.txt
 src/nevu_ui.egg-info/top_level.txt
-tests/test.py
+tests/test_main.py

@@ -79,7 +79,8 @@ class LayoutType(NevuObject):
                 self.add_item(i)
 
     def _light_update(self, add_x: int = 0, add_y: int = 0 ):
-        if len(self.items) != len(self.cached_coordinates): return
+        if self.cached_coordinates is None or self.items is None or \
+            len(self.items) != len(self.cached_coordinates): return
         for i in range(len(self.items)):
             item: NevuObject = self.items[i]
             item.animation_manager: AnimationManager
@@ -712,14 +713,13 @@ class Scrollable(LayoutType):
                         item.coordinates = item.coordinates.tolist()
                     except: pass   
                 #------ ONLY FOR TESTING PURPOSES! ------
-                
+
                 self._set_item_x(item, align)
                 item.coordinates[1] = self._coordinates[1] + padding_offset
                 self.cached_coordinates.append(item.coordinates)
                 item.master_coordinates = self._get_item_master_coordinates(item)
-                current_end = item.coordinates[1] + self.rely(offset)
-                padding_offset = current_end + item._csize[1] + self.rely(self.padding)
-        
+                padding_offset += item._csize[1] + self.rely(self.padding)
+
         self._light_update(0, -self.rely(offset))    
                 
         if self.actual_max_y > 0:
@@ -730,9 +730,12 @@ class Scrollable(LayoutType):
     def resize(self, resize_ratio: list | tuple):
         if self._test_debug_print:
             print("used resize", resize_ratio)
+        prev_offset = self.get_offset() if hasattr(self, "get_offset") else 0
         super().resize(resize_ratio)
         self.scroll_bar_y.resize(resize_ratio)
-        self.scroll_bar_y.coordinates[1] = self.scroll_bar_y.size[1] * self._resize_ratio[1]
+        self.scroll_bar_y.coordinates[1] = self.rely(self.scroll_bar_y.size[1])
+        self.cached_coordinates = None
+        self._light_update(0, -self.rely(prev_offset))
     def add_item(self, item: NevuObject, alignment: Align = Align.LEFT):
         if self._test_debug_print:
             print("used add widget", item, alignment)
