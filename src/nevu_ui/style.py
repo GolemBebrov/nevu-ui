@@ -221,9 +221,9 @@ class Style:
         self.add_style_parameter("colortheme", "colortheme", lambda value:self.parse_class_type(value, ColorTheme))
         self.add_style_parameter("gradient", "gradient", lambda value:self.parse_class_type(value, Gradient))
         self._kwargs_handler(**kwargs)
-    def add_style_parameter(self, name, attribute_name: str, checker: lambda: [bool, any]):
-        self.kwargs_dict[name] = (attribute_name, checker)
-    def parse_color(self, value:any, can_be_gradient: bool = False, can_be_trasparent: bool = False, can_be_string: bool = False) -> [bool, any]:
+    def add_style_parameter(self, name, attribute_name: str, checker_lambda):
+        self.kwargs_dict[name] = (attribute_name, checker_lambda)
+    def parse_color(self, value, can_be_gradient: bool = False, can_be_trasparent: bool = False, can_be_string: bool = False) -> tuple[bool, tuple|None]:
         if isinstance(value, Gradient) and can_be_gradient:
             return True, None
 
@@ -239,13 +239,14 @@ class Style:
             except KeyError:
                 return False, None
             else:
+                assert isinstance(color_value, tuple)
                 return True, color_value
 
         elif value == Color_Type.TRANSPARENT and can_be_trasparent:
             return True, None
         
         return False, None
-    def parse_int(self, value: int, max_restriction: int|None = None, min_restriction: int|None = None) -> bool:
+    def parse_int(self, value: int, max_restriction: int|None = None, min_restriction: int|None = None) -> tuple[bool, None]:
         if isinstance(value, int):
             if max_restriction is not None and value > max_restriction:
                 return False, None
@@ -253,27 +254,22 @@ class Style:
                 return False, None
             return True, None
         return False, None
-    def parse_str(self, value: str) -> bool:
-        if isinstance(value, str):
-            return True, None
-        return False, None
-    def parse_class_type(self, value: str, type: type|tuple) -> bool:
-        if isinstance(value, type):
-            return True, None
-        return False, None
+    def parse_str(self, value: str) -> tuple[bool, None]:
+        return self.parse_class_type(value, str)
+    def parse_class_type(self, value: str, type: type|tuple) -> tuple[bool, None]:
+        return (True, None) if isinstance(value, type) else (False, None)
     def _kwargs_handler(self, raise_errors: bool = False, **kwargs):
         for item_name, item_value in kwargs.items():
             dict_value = self.kwargs_dict.get(item_name.lower(), None)
-            if dict_value == None:
+            if dict_value is None:
                 continue
             attribute_name, checker = dict_value
             checker_result, checker_value = checker(item_value)
             if checker_result:
                 end_value = checker_value if checker_value is not None else item_value
                 setattr(self, attribute_name, end_value)
-            else:
-                if raise_errors:
-                    raise ValueError(f"Некорректное значение {item_name}")
+            elif raise_errors:
+                raise ValueError(f"Некорректное значение {item_name}")
 
     def __call__(self ,**kwargs):
         style = copy.copy(self)
@@ -310,17 +306,20 @@ class SizeUnit:
     def __mul__(self, other_value):
         return self._create_rule(other_value)
 
-#Rules
+#------ SizeRules ------
 class Fill(PercentSizeRule): pass
 class Px(SizeRule): pass
 class Vh(PercentSizeRule): pass
 class Vw(PercentSizeRule): pass
+#------ SizeRules ------
 
-#Units
+
+#------ SizeUnits ------
 px = SizeUnit(Px)
 fill = SizeUnit(Fill)
 vh = SizeUnit(Vh)
 vw = SizeUnit(Vw)
+#------ SizeUnits ------
 
 class Quality(Enum):
     Poor = auto()

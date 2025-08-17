@@ -1,6 +1,8 @@
 import pygame
 import numpy as np
 import copy
+
+from nevu_ui.widgets import Vector2
 from .style import Style,Align,SizeRule, vh, vw, fill
 from .widgets import *
 from .menu import Menu
@@ -22,7 +24,7 @@ class LayoutType(NevuObject):
         if self.is_layout(item) or not isinstance(item.surface, pygame.Surface): return
         coordinates = item.coordinates
         if multiply: coordinates = [x * y for x, y in zip(coordinates, multiply)]
-        if add:  coordinates = [x + y for x, y in zip(coordinates, add)]
+        if add: coordinates = [x + y for x, y in zip(coordinates, add)]
         self.surface.blit(item.surface,[int(coordinates[0]),int(coordinates[1])])
 
     def _boot_up(self):
@@ -46,7 +48,7 @@ class LayoutType(NevuObject):
         if self.menu: return (self._csize - (self._csize - Vector2(bw,bw)))/2
         return Vector2(0,0)
 
-    def __init__(self, size: Vector2|list, style: Style = default_style, content: list = None, floating: bool = False, id: str = None):
+    def __init__(self, size: Vector2|list, style: Style = default_style, content: list | None  = None, floating: bool = False, id: str | None = None):
         super().__init__(size, style, floating, id)
         self.freedom_items = []
         self.items = []
@@ -67,7 +69,7 @@ class LayoutType(NevuObject):
         self.border_name = " "
         #if type(self) == LayoutType: self._init_start()
 
-    def _lazy_init(self, size: Vector2|list, content: list = None):
+    def _lazy_init(self, size: Vector2|list, content: list | None = None):
         super()._lazy_init(size)
         if content and type(self) == LayoutType:
             for i in content:
@@ -78,16 +80,15 @@ class LayoutType(NevuObject):
             len(self.items) != len(self.cached_coordinates): return
         for i in range(len(self.items)):
             item: NevuObject = self.items[i]
-            item.animation_manager: AnimationManager
             coords = self.cached_coordinates[i]
             anim_coords = item.animation_manager.get_animation_value(AnimationType.POSITION)
             anim_coords = [0,0] if anim_coords is None else anim_coords
-            item.coordinates = pygame.Vector2([coords[0] + self.relx(anim_coords[0]) + add_x,
-                                              coords[1] + self.relx(anim_coords[1]) + add_y])
-            item.master_coordinates = pygame.Vector2([item.coordinates[0] + self.first_parent_menu.coordinatesMW[0],
-                                                      item.coordinates[1] + self.first_parent_menu.coordinatesMW[1]])
-            try: item.update(self.first_parent_menu.window.last_events)
-            except:item.update([])
+            item.coordinates = Vector2([coords[0] + self.relx(anim_coords[0]) + add_x,
+                                        coords[1] + self.relx(anim_coords[1]) + add_y])
+            item.master_coordinates = Vector2([item.coordinates[0] + self.first_parent_menu.coordinatesMW[0],
+                                               item.coordinates[1] + self.first_parent_menu.coordinatesMW[1]])
+            last_events = self.first_parent_menu.window.last_events if self.first_parent_menu.window else []
+            item.update(last_events)
 
     @property
     def coordinates(self): return self._coordinates
@@ -219,8 +220,8 @@ class LayoutType(NevuObject):
 
 class Grid(LayoutType):
     def __init__(self, size: Vector2|list, x: int = 1, y: int = 1, style: Style = default_style, 
-                 floating: bool = False, id: str = None, content: dict[tuple, NevuObject] = None):
-        super().__init__(size, style, floating, id)
+                 floating: bool = False, id: str | None = None, content: dict[tuple[int] , NevuObject] | None = None):
+        super().__init__(size, style, content, floating, id)
         self._lazy_kwargs = {'size': size, 'content': content}
         self.grid_x = x
         self.grid_y = y
@@ -255,14 +256,10 @@ class Grid(LayoutType):
         if type(self) == Grid: self._dirty_rect = self._read_dirty_rects()
     def add_item(self, item: NevuObject, x: int, y: int):
         range_error = ValueError("Grid index out of range x: {x}, y: {y} ".format(x=x,y=y)+f"Grid size: {self.grid_x}x{self.grid_y}")
-        
-        range_overflow = x > self.grid_x or y > self.grid_y or x < 1 or y < 1
-        if range_overflow: raise range_error
-        
+        if x > self.grid_x or y > self.grid_y or x < 1 or y < 1: raise range_error
         for _widget in self.items: 
             if _widget.x == x-1 and _widget.y == y-1: raise range_error
-        item.x = x-1
-        item.y = y-1
+        item.x, item.y = x-1, y-1
         super().add_item(item)
         if self.layout: self.layout._event_on_add_item()
 
@@ -271,25 +268,22 @@ class Grid(LayoutType):
         for item in self.items: self._draw_widget(item)
 
     def get_row(self, x: int) -> list[Widget]:
-        needed = []
-        for item in self.items:
-            if item.x == x: needed.append(item)
-        return needed
+        row = []
+        row.extend(item for item in self.items if item.x == x)
+        return row
 
     def get_column(self, y: int) -> list[Widget]:
-        needed = []
-        for item in self.items:
-            if item.y == y: needed.append(item)
-        return needed
+        column = []
+        column.extend(item for item in self.items if item.y == y)
+        return column
 
-    def get_item(self, x: int, y: int) -> Widget:
-        w = None
+    def get_item(self, x: int, y: int) -> NevuObject | None:
         for item in self.items:
             if item.x == x-1 and item.y == y-1:
-                w = item
-                return w
+                return item
 
     def overwrite_widget(self, x: int, y: int, item: Widget) -> bool:
+        """Likely dont work, use at your own risk"""
         for _widget in self.items:
             if _widget.x == x-1 and _widget.y == y-1:
                 self.items.remove(_widget)
@@ -417,19 +411,25 @@ class IntPickerGrid(Grid):
             if i == len(self.items): break
             self.items[i].text = str(color[i])
 class Pages(LayoutType):
-    def __init__(self, size: list|tuple):
-        super().__init__(size)
+    def __init__(self, size: list | Vector2, style: Style = default_style, content: list | None = None, floating: bool = False, id: str | None = None):
+        super().__init__(size, style, content, floating, id)
         self.selected_page = None
         self.selected_page_id = 0
-    def add_item(self, item: LayoutType):
-        if not self.is_layout(item): raise Exception("Widget must be Layout")
+    def _lazy_init(self, size: NvVector2 | list, content: list | None = None):
+        super()._lazy_init(size, content)
+        if content:
+            for item in content:
+                self.add_item(item)
+    def add_item(self, item: LayoutType): # type: ignore
+        if not self.is_layout(item): raise ValueError("Widget must be Layout")
         super().add_item(item)
         if self.layout: self.layout._event_on_add_item()
         if not self.selected_page:
             self.selected_page = item
             self.selected_page_id = 0
-    def draw(self):
-        super().draw()
+    def secondary_draw(self):
+        super().secondary_draw()
+        assert self.surface
         pygame.draw.line(self.surface,(0,0,0),[self.coordinates[0]+self.relx(20),self.coordinates[1]+self.rely(20)],[self.coordinates[0]+self.relx(40),self.coordinates[1]+self.rely(20)],2)
         pygame.draw.line(self.surface,(0,0,0),[self.coordinates[0]+self.relx(20),self.coordinates[1]+self.rely(20)],[self.coordinates[0]+self.relx(20),self.coordinates[1]+self.rely(40)],2)
         
@@ -443,66 +443,99 @@ class Pages(LayoutType):
         self.selected_page = self.items[self.selected_page_id]
         if self.selected_page_id >= len(self.items): self.selected_page_id = 0
         self.selected_page = self.items[self.selected_page_id]
-    def update(self, *args):
-        super().update()
+    def get_left_rect(self):
+        return pygame.Rect(self.coordinates[0]+(self.first_parent_menu.coordinatesMW[0]),self.coordinates[1]+self.first_parent_menu.coordinatesMW[1],
+                           self.relx(self.size[0]/10),self.rely(self.size[1]))
+    def get_right_rect(self):
+        return pygame.Rect(self.coordinates[0]+self.relx(self.size[0]-self.size[0]/10)+self.first_parent_menu.coordinatesMW[0],self.coordinates[1]+self.first_parent_menu.coordinatesMW[1],
+                           self.relx(self.size[0]/10),self.rely(self.size[1]))
+    def secondary_update(self, *args):
+        super().secondary_update()
         if mouse.left_fdown:
-            rectleft = pygame.Rect(self.coordinates[0]+(self.first_parent_menu.coordinatesMW[0]),self.coordinates[1]+self.first_parent_menu.coordinatesMW[1],self.relx(self.size[0]/10),self.rely(self.size[1]))
-            rectright = pygame.Rect(self.coordinates[0]+self.relx(self.size[0]-self.size[0]/10)+self.first_parent_menu.coordinatesMW[0],self.coordinates[1]+self.first_parent_menu.coordinatesMW[1],self.relx(self.size[0]/10),self.rely(self.size[1]))
+            rectleft = self.get_left_rect()
+            rectright = self.get_right_rect()
             if rectleft.collidepoint(mouse.pos): self.move_by_point(-1)
             if rectright.collidepoint(mouse.pos): self.move_by_point(1)
-
-        self.items[self.selected_page_id].coordinates = [self.coordinates[0]+self.relx(self.size[0]/2-self.items[self.selected_page_id].size[0]/2),
-                                                           self.coordinates[1]+self.rely(self.size[1]/2-self.items[self.selected_page_id].size[1]/2),]
-        self.items[self.selected_page_id].first_parent_menu = self.first_parent_menu
-        self.items[self.selected_page_id].update()
+        selected_page = self.items[self.selected_page_id]
+        assert isinstance(selected_page, LayoutType)
+        selected_page.coordinates = [self.coordinates[0]+self.relx(self.size[0]/2-self.items[self.selected_page_id].size[0]/2),
+                                                         self.coordinates[1]+self.rely(self.size[1]/2-self.items[self.selected_page_id].size[1]/2),]
+        selected_page.first_parent_menu = self.first_parent_menu
+        if not selected_page.booted: selected_page._boot_up()
+        selected_page.update()
     def get_selected(self): return self.items[self.selected_page_id]
 class Gallery_Pages(Pages):
     def __init__(self, size: list|tuple):
         super().__init__(size)
         
-    def add_item(self, item: Widget):
-        if self.is_layout(item): raise Exception("Widget must not be Layout, layout creates automatically")
-        if isinstance(item,ImageWidget) or isinstance(item,GifWidget):
+    def add_item(self, item: Widget): # type: ignore
+        if self.is_layout(item): raise ValueError("Widget must not be Layout, layout creates automatically")
+        if isinstance(item, (ImageWidget, GifWidget)):
             g = Grid(self.size)
             g.add_item(item, 1, 1)
             super().add_item(g)
 
 class Scrollable(LayoutType):
-    """
-    WARNING: VERY OUTDATED DOKSTING
-    Implements an infinite scrolling layout to display items that exceed the visible area.
+    """A highly configurable layout that provides scrollable containers for content
+    that exceeds its visible boundaries.
 
-    This layout allows for displaying a long list or a large number of items
-    that do not fit within the given layout size by using scroll bars for navigation.
+    This class creates a scrollable area with a vertical scrollbar, allowing for the
+    display of a large number of widgets. It is designed to be highly customizable,
+    offering control over scroll speed, direction, and behavior.
 
-    It supports both vertical and horizontal scrolling (though horizontal scrolling
-    might be less developed at the moment) and allows adding items
-    with different alignment options.
+    The component is built on top of the base `LayoutType` and uses a nested
+    `ScrollBar` widget to manage the scrolling logic. It leverages the custom
+
+    `Mouse` and `Keyboard` APIs for clean, high-level input handling.
+
+    :param size: The size of the scrollable area, as a `Vector2`, `list`, or `tuple`.
+    :param style: The `Style` object that defines the appearance of the layout and
+                  its scrollbar. Defaults to `default_style`.
+    :param content: An optional initial list of widgets to add to the layout. Each
+                    item should be a tuple of `(Align, NevuObject)`. Defaults to `None`.
+    :param draw_scroll_area: If `True`, draws a debug rectangle around the scrollable
+                             area. Defaults to `False`.
+    :param id: An optional string identifier for the object. Defaults to `None`.
+    :param arrow_scroll_power: The percentage to scroll when an arrow key is pressed.
+                               Defaults to `5`.
+    :param wheel_scroll_power: The percentage to scroll per one "tick" of the mouse
+                               wheel. Defaults to `5`.
+    :param inverted_scrolling: If `True`, inverts the direction of the mouse wheel and
+                               arrow key scrolling. Defaults to `False`.
 
     **Nested Class:**
 
-    * `Scroll_Bar`:  The scroll bar item that controls the visibility and position
-                      of the scrollable area.
+    * `ScrollBar`: A private widget class that implements the logic and visuals for
+                   the scroll handle and track. It operates on a percentage-based
+                   system for maximum flexibility.
 
     **Key Features:**
 
-    * **Infinite Scrolling:** Displays content exceeding layout bounds using scrollbars.
-    * **Vertical and Horizontal Scrolling:** Supports scrolling in both directions.
-    * **Widget Management:** Adding and managing items within the scrollable area.
-    * **Widget Alignment:**  Allows aligning items to the left, center, or right.
-    * **Interactivity:** Scroll control via mouse interaction.
+    * **Configurable Input:** Fully adjustable scroll speed for keyboard arrows and
+      the mouse wheel, including inverted scrolling.
+    * **Robust Scrolling Logic:** Utilizes a nested `ScrollBar` with a percentage-based
+      positioning system that is resilient to resizing.
+    * **Performance-Oriented:** Caches widget coordinates and only recalculates them
+      when necessary to ensure high performance.
+    * **Clean API:** Manages complex scrolling logic internally, exposing simple
+      methods like `add_item()` and `clear()`.
 
     **Usage Example:**
+    
+    .. code-block:: python
 
-    ```python
-    # Example requires definitions for LayoutType, Widget, default_style, Align and pygame
+        # Create a scrollable layout with inverted scrolling and fast wheel speed
+        my_scroll_area = Scrollable(
+            size=(300, 400),
+            style=my_custom_style,
+            wheel_scroll_power=10,
+            inverted_scrolling=True
+        )
 
-    # Creating an infinite scroll layout
-    infinite_scroll_layout = Scrollable((300, 200))
-
-    # Adding items
-    # ......
-    ```
+        # Add widgets to the scrollable area
+        #for i in range(20):
+            #label = Label(text=f"Item #{i+1}")
+            #my_scroll_area.add_item(label, alignment=Align.CENTER)
     """
     class ScrollBar(Widget):
         def __init__(self, size, style, orientation: str, master = None):
@@ -526,14 +559,12 @@ class Scrollable(LayoutType):
         def set_scroll_params(self, track_start_abs, track_path, coordinatesMW):
             self.track_path = track_path
             self.track_start_coordinates = track_start_abs
-            #self.coordinates = track_start_abs
             self._menu_coordinatesMW = coordinatesMW
 
         def secondary_update(self, *args):
             axis = 1 if self.orientation == 'vertical' else 0
             scaled_track_path = (self.track_path) * self._resize_ratio - self.rel(self.size)
 
-            # Если handle оказался вне трека (например, после ресайза), вернуть его в допустимые границы
             self.coordinates[axis] = max(self.track_start_coordinates[axis], min(self.coordinates[axis], scaled_track_path[axis]+self.track_start_coordinates[axis]))
 
             if mouse.left_fdown and not self.is_scrolling:
@@ -544,13 +575,11 @@ class Scrollable(LayoutType):
                 self.is_scrolling = False
 
             if self.is_scrolling:
-                # Корректно: позиция мыши относительно начала трека (оба в координатах окна)
                 mouse_offset = mouse.pos[axis] - self.track_start_coordinates[axis]
                 self.coordinates[axis] = max(
                     self.track_start_coordinates[axis],
                     min(mouse_offset + self.track_start_coordinates[axis], scaled_track_path[axis] + self.track_start_coordinates[axis])
                 )
-            # Пересчитать процент
             if scaled_track_path[axis] != 0:
                 self.percentage = ((self.coordinates[axis]-self.track_start_coordinates[axis]) / (scaled_track_path)[axis]) * 100
             else:
@@ -600,7 +629,8 @@ class Scrollable(LayoutType):
                 min(added_path + self.track_start_coordinates[axis], scaled_track_path[axis] + self.track_start_coordinates[axis])
             )
             self.is_scrolling = False
-    def __init__(self, size: Vector2|list, style: Style = default_style, content: tuple[list[Align, NevuObject]] = None, draw_scrool_area: bool = False, id: str = None):
+    def __init__(self, size: Vector2|list, style: Style = default_style, content: tuple[list[Align | NevuObject]] | None = None, draw_scrool_area: bool = False, id: str | None = None,
+                 arrow_scroll_power: int = 5, wheel_scroll_power: int = 5, inverted_scrolling: bool = False):
         #------ TESTS USE WITH CAUTION! ------
         self._test_list_instances_compatibility = False
         self._test_debug_print = False
@@ -608,7 +638,12 @@ class Scrollable(LayoutType):
         self._test_always_update = False
         #------ TESTS USE WITH CAUTION! ------
         
-        super().__init__(size, style, content, False, id)
+        self.arrow_scroll_power = arrow_scroll_power
+        self.wheel_scroll_power = wheel_scroll_power
+        self.inverted_scrolling = inverted_scrolling
+        
+        super().__init__(size, style, [], False, id)
+        self._lazy_kwargs = {'size': size, 'content': content}
         self.max_x = 0
         self.max_y = 0
         self.actual_max_y = 1
@@ -620,19 +655,22 @@ class Scrollable(LayoutType):
     def coordinates(self):
         return self._coordinates
     @coordinates.setter
-    def coordinates(self, value):
+    def coordinates(self, value: list | Vector2):
         self._coordinates = value
         self.cached_coordinates = None
         if self.booted == False: return
         self._update_scroll_bars()
 
-    def _lazy_init(self, size: Vector2|list, content: list[list[Align | NevuObject]] = None):
+    def _lazy_init(self, size: Vector2|list, content: list[list[Align | NevuObject]] | None = None):
         super()._lazy_init(size, content)
         self.original_size = self.size.copy()
         self.__init_scroll_bars__()
         if content and type(self) == Scrollable:
             for mass in content:
+                assert len(mass) == 2
                 align, item = mass
+                print(align, item)
+                assert type(align) == Align and isinstance(item, NevuObject)
                 self.add_item(item, align)
         self._update_scroll_bars()
         
@@ -650,24 +688,28 @@ class Scrollable(LayoutType):
         #track_start_x = self._coordinates[0] + self.first_parent_menu.coordinatesMW[0]
         #track_length_x = self.size[0]
         #self.scroll_bar_x.set_scroll_params(track_start_x, track_length_x) #old code
+        
     def __init_scroll_bars__(self):
         if self._test_debug_print:
-            print("used init scroll bars")
+            print(f"in {self} used init scroll bars")
         self.scroll_bar_y = self.ScrollBar([self.size[0]/40,self.size[1]/20],default_style(bgcolor=(100,100,100)), 'vertical', self)
-        self.scroll_bar_x = self.ScrollBar([self.size[0]/20,self.size[1]/40],default_style(bgcolor=(100,100,100)), 'horizontal', self)
+        #self.scroll_bar_x = self.ScrollBar([self.size[0]/20,self.size[1]/40],default_style(bgcolor=(100,100,100)), 'horizontal', self)
         self.scroll_bar_y._boot_up()
         self.scroll_bar_y._init_start()
-        self.scroll_bar_x._boot_up()
-        self.scroll_bar_x._init_start()
+        #self.scroll_bar_x._boot_up()
+        #self.scroll_bar_x._init_start()
+        
     def _connect_to_layout(self, layout: LayoutType):
         if self._test_debug_print:
-            print("used connect to layout")
+            print(f"in {self} used connect to layout: {layout}")
         super()._connect_to_layout(layout)
         #self.__init_scroll_bars__()
+        
     def _connect_to_menu(self, menu: Menu):
         if self._test_debug_print:
-            print("used connect to menu")
+            print(f"in {self} used connect to menu: {menu}")
         super()._connect_to_menu(menu)
+        assert self.menu is not None
         need_resize = False
         if menu.size[0] < self.size[0]:
             self.size[0] = menu.size[0]
@@ -677,17 +719,16 @@ class Scrollable(LayoutType):
             need_resize = True
         if need_resize:
             self.menu._set_layout_coordinates(self)
-        #self.__init_scroll_bars__()
     def _is_widget_drawable(self, item: NevuObject):
         if self._test_debug_print:
-            print("used is drawable for", item)
+            print(f"in {self} used is drawable for", item)
         item_rect = item.get_rect()
         self_rect = self.get_rect()
         if item_rect.colliderect(self_rect): return True
         return False
     def _is_widget_drawable_optimized(self, item: NevuObject):
         if self._test_debug_print:
-            print("used is drawable optimized(test) for", item)
+            print("in {self} used is drawable optimized(test) for", item)
         overdose_right = item.coordinates[0] + self.relx(item._anim_coordinates[0]) > self.coordinates[0] + self.size[0]
         overdose_left = item.coordinates[0] + self.relx(item._anim_coordinates[0] + item.size[0]) < self.coordinates[0]
         overdose_bottom = item.coordinates[1] + self.rely(item._anim_coordinates[1]) > self.coordinates[1] + self.size[1]
@@ -755,16 +796,18 @@ class Scrollable(LayoutType):
             self.scroll_bar_y.update()
             self.scroll_bar_y.coordinates = [self._coordinates[0] + self.relx(self.size[0] - self.scroll_bar_y.size[0]), self.scroll_bar_y.coordinates[1]]
             self.scroll_bar_y.master_coordinates = self._get_item_master_coordinates(self.scroll_bar_y)
-    def event_update(self, events: list = []):
-        super().event_update(events)
-        for event in events:
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
-                    self.scroll_bar_y.move_by_percents(-5)
-                if event.key == pygame.K_DOWN:
-                    self.scroll_bar_y.move_by_percents(5)
+    def logic_update(self):
+        inverse = -1 if self.inverted_scrolling else 1
+        if keyboard.is_fdown(pygame.K_UP):
+            self.scroll_bar_y.move_by_percents(self.arrow_scroll_power * -inverse)
+        if keyboard.is_fdown(pygame.K_DOWN):
+            self.scroll_bar_y.move_by_percents(self.arrow_scroll_power * inverse)
+        if mouse.wheel_up: 
+            self.scroll_bar_y.move_by_percents(self.wheel_scroll_power * -inverse)
+        if mouse.wheel_down: 
+            self.scroll_bar_y.move_by_percents(self.wheel_scroll_power * inverse)
             
-    def resize(self, resize_ratio: list | tuple):
+    def resize(self, resize_ratio: Vector2):
         if self._test_debug_print:
             print(f"in {self} used resize, current ratio: {resize_ratio}")
         prev_percentage = self.scroll_bar_y.percentage if hasattr(self, "scroll_bar_y") else 0.0
@@ -793,6 +836,7 @@ class Scrollable(LayoutType):
         self.cached_coordinates = None
         if self._test_debug_print:
             print(f"in {self} used event on add widget")
+        if self.booted == False: return
         self.__init_scroll_bars__()
         self._update_scroll_bars()
         self.max_y = self.padding

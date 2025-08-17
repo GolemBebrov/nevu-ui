@@ -5,13 +5,13 @@ from .utils import *
 import random
 from enum import Enum, auto
 
-class AnimationType:
-    COLOR = 0
-    SIZE = 1
-    POSITION = 2
-    ROTATION = 3
-    OPACITY = 4
-    _not_used = 999
+class AnimationType(Enum):
+    COLOR = auto()
+    SIZE = auto()
+    POSITION = auto()
+    ROTATION = auto()
+    OPACITY = auto()
+    _not_used = auto()
 
 class Animation(ABC):
     def __init__(self, time: int = 0, start: any = None, end: any = None, type: AnimationType = AnimationType._not_used):
@@ -401,8 +401,10 @@ class AnimationManager:
 
         self.restart_anim_values()
     def restart_anim_values(self):
+        self.current_animations: dict[AnimationType, Animation]
         self.current_values = self.basic_set_of_animations.copy()
     def process_animation(self, animation: Animation):
+        
         self.current_values[animation.type] = animation.current_value
 
     def update(self):

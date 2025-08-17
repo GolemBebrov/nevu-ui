@@ -85,8 +85,9 @@ class Window:
         """
         
         self.last_events = events
-        mouse.update()
+        mouse.update(events)
         time.update()
+        keyboard.update()
         for item in keyboards_list:
             item.update()
             

@@ -2,6 +2,7 @@ import pygame
 import numpy as np
 import time as tt
 from enum import Enum, auto, StrEnum
+import functools
 
 class RenderMode(Enum):
     AA = auto()
@@ -54,8 +55,8 @@ class Cache:
         name = name if name else self.name
         cachename = self.cache[name]
         blacklist = [] if blacklist is None else blacklist
-        whitelist = [CacheType.RelCoords,
-                     CacheType.Size,
+        whitelist = [CacheType.RelSize,
+                     CacheType.Coords,
                      CacheType.Surface,
                      CacheType.Gradient,
                      CacheType.Image,
@@ -68,18 +69,18 @@ class Cache:
             if not item in blacklist and item in whitelist:
                 cachename[item] = None
     def get(self, type: CacheType, name = None):
-        name = name if name else self.name
+        name = name or self.name
         return self.cache[name][type]
     def set(self, type: CacheType, value, name = None):
-        name = name if name else self.name
+        name = name or self.name
         self.cache[name][type] = value
     def get_or_set_val(self, type: CacheType, value, name = None):
-        name = name if name else self.name
+        name = name or self.name
         if self.cache[name][type] is None:
             self.cache[name][type] = value
         return self.cache[name][type]
     def get_or_exec(self, type: CacheType, func, name = None):
-        name = name if name else self.name
+        name = name or self.name
         if self.cache[name][type] is None:
             self.cache[name][type] = func()
         return self.cache[name][type]
@@ -99,52 +100,46 @@ class NvVector2(pygame.Vector2):
     def __mul__(self, other):
         if isinstance(other, pygame.Vector2):
             return NvVector2(self.x * other.x, self.y * other.y)
-        return super().__mul__(other)
+        return NvVector2(super().__mul__(other))
 
     def __rmul__(self, other):
         return self.__mul__(other)
+
     def __neg__(self):
-        return self.for_each_to_neg()
+        return NvVector2(-self.x, -self.y)
+
     def __add__(self, other):
         if isinstance(other, pygame.Vector2):
             return NvVector2(self.x + other.x, self.y + other.y)
-        return super().__add__(other)
+        return NvVector2(super().__add__(other))
+
     def __radd__(self, other):
         return self.__add__(other)
 
     def __sub__(self, other):
         if isinstance(other, pygame.Vector2):
             return NvVector2(self.x - other.x, self.y - other.y)
-        return super().__sub__(other)
+        return NvVector2(super().__sub__(other))
+
     def __rsub__(self, other):
         if isinstance(other, pygame.Vector2):
             return NvVector2(other.x - self.x, other.y - self.y)
-        return super().__rsub__(other)
-    def for_each_to_int(self):
+        return NvVector2(super().__rsub__(other))
+
+    def to_int(self):
         return NvVector2(int(self.x), int(self.y))
-    def for_each_convert_int(self):
-        self.x  = int(self.x)
-        self.y = int(self.y)
-    def for_each_convert_float(self):
-        self.x  = float(self.x)
-        self.y = float(self.y)
-    def for_each_to_float(self):
+
+    def to_float(self):
         return NvVector2(float(self.x), float(self.y))
-    def for_each_to_abs(self):
+
+    def to_abs(self):
         return NvVector2(abs(self.x), abs(self.y))
-    def for_each_convert_abs(self):
-        self.x = abs(self.x)
-        self.y = abs(self.y)
-    def for_each_convert_neg(self):
-        self.x = -self.x
-        self.y = -self.y
-    def for_each_to_neg(self):
+
+    def to_neg(self):
         return NvVector2(-self.x, -self.y)
+
     def for_each(self, func):
         return NvVector2(func(self.x), func(self.y))
-    def for_each_convert(self, func):
-        self.x = func(self.x)
-        self.y = func(self.y)
 
 
 class Mouse:
@@ -152,14 +147,24 @@ class Mouse:
     FDOWN = 1
     DOWN = 2
     UP = 3
+    
+    WHEEL_DOWN = -10
+    WHEEL_UP = 10
+    WHEEL_STILL = 0
 
     def __init__(self):
         self._pos = (0, 0)
+        self._wheel_y = 0
+        self._wheel_side = self.WHEEL_STILL # -10 = down 0 = still 10 = up
         self._states = [self.STILL, self.STILL, self.STILL]
 
     @property
     def pos(self):
         return self._pos
+    
+    @property
+    def wheel_y(self):
+        return self._wheel_y
 
     @property
     def left_up(self):
@@ -221,9 +226,50 @@ class Mouse:
     def any_up(self):
         return self.left_up or self.right_up or self.center_up
     
-    def update(self):
+    @property
+    def wheel_up(self):
+        return self._wheel_side == self.WHEEL_UP
+    
+    @property
+    def wheel_down(self):
+        return self._wheel_side == self.WHEEL_DOWN
+
+    @property
+    def wheel_still(self):
+        return self._wheel_side == self.WHEEL_STILL
+
+    @property
+    def wheel_side(self):
+        return self._wheel_side
+    
+    @property
+    def any_wheel(self):
+        return self._wheel_side in [self.WHEEL_DOWN, self.WHEEL_UP]
+    
+    def update_wheel(self, events):
+        wheel_event_found = False
+        for event in events:
+            if event.type == pygame.MOUSEWHEEL:
+                wheel_event_found = True
+                new_wheel_y = event.y
+                if new_wheel_y > 0:
+                    self._wheel_side = self.WHEEL_UP
+                elif new_wheel_y < 0:
+                    self._wheel_side = self.WHEEL_DOWN
+                else:
+                    self._wheel_side = self.WHEEL_STILL
+                self._wheel_y += event.y
+                break
+        if not wheel_event_found:
+            self._wheel_side = self.WHEEL_STILL
+    def update(self, events: list | None = None):
         self._pos = pygame.mouse.get_pos()
         pressed = pygame.mouse.get_pressed(num_buttons=3)
+        
+        if events and len(events) != 0:
+            self.update_wheel(events)
+        else:
+            self._wheel_side = self.WHEEL_STILL
         
         for i in range(3):
             current_state = self._states[i]
@@ -276,74 +322,44 @@ class Time():
         self._calculate_delta_time()
         self._calculate_fps()
 
-class Key:
-    STILL= 0
-    FDOWN= 1
-    DOWN = 2
-    UP= 3
-    def __init__(self,key):
-        self.key_value = key
-        self.up = False
-        self.fdown = False
-        self.down = False
-        self.still = False
-        self.state = 0
-    def updateKeys(self, is_clicked, key_state):
-        if is_clicked:
-            if key_state == self.STILL or key_state == self.UP:
-                return self.FDOWN
-            return self.DOWN
-        else:
-            if key_state == self.DOWN or key_state == self.FDOWN:
-                return self.UP
-            return self.STILL
-    def set_states(self,state):
-        up = False
-        fd = False
-        dw = False
-        st = False
-        if state == self.STILL:
-            st = True
-        elif state == self.FDOWN:
-            fd = True
-        elif state == self.DOWN:
-            dw = True
-        elif state == self.UP:
-            up = True
-        return up,fd,dw,st
-    def update(self,keys):
-        self.state = self.updateKeys(keys[self.key_value],self.state)
-        self.up,self.fdown,self.down,self.still = self.set_states(self.state)
-        
+def _keyboard_initialised_only(func):
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        return False if self._keys_now is None else func(self, *args, **kwargs)
+    
+    return wrapper
 
 class Keyboard:
-    def __init__(self,keys:list[Key]=[],function_on_click=None):
-        self.keys = keys
-        self.fun = function_on_click
-        self.pg_keys = pygame.key.get_pressed()
-        keyboards_list.append(self)
-    def is_pressed(self):
-        for key in self.keys:
-            if key.state > 0: return True
-        return False
-    def is_up(self):
-        for key in self.keys:
-            if key.state == 3: return True
-        return False
-    def is_fdown(self):
-        for key in self.keys:
-            if key.state == 1: return True
-        return False
+    def __init__(self):
+        self._keys_now = None
+        self._keys_prev = None
+    def update(self) -> None:
+        if self._keys_now is None:
+            self._keys_now = pygame.key.get_pressed()
+            self._keys_prev = self._keys_now
+            return
+        self._keys_prev = self._keys_now
+        self._keys_now = pygame.key.get_pressed()
 
-    def update(self):
-        self.pg_keys = pygame.key.get_pressed()
-        for key in self.keys:
-            key.update(self.pg_keys)
+    @_keyboard_initialised_only
+    def is_fdown(self, key_code: int) -> bool:
+        assert self._keys_now is not None and self._keys_prev is not None
+        return self._keys_now[key_code] and not self._keys_prev[key_code]
+    @_keyboard_initialised_only
+    def is_down(self, key_code: int) -> bool:
+        assert self._keys_now is not None and self._keys_prev is not None
+        return self._keys_now[key_code]
+    @_keyboard_initialised_only
+    def is_up(self, key_code: int) -> bool:
+        assert self._keys_now is not None and self._keys_prev is not None
+        return not self._keys_now[key_code] and self._keys_prev[key_code]
+    
+keyboards_list = [] #DO NOT ADD, its DEAD
 
+keyboard = Keyboard()
 time = Time()
 mouse = Mouse()
 
-keyboards_list = []
 
 class Event:
     DRAW = 0

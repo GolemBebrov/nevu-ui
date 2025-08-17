@@ -72,6 +72,7 @@ class Widget(NevuObject):
     def _scale_gradient(self):
         if not self.style.gradient: return
         cached_gradient = self.cache.get_or_exec(CacheType.Gradient, self._draw_gradient)
+        if cached_gradient is None: return
         cached_gradient = pygame.transform.scale(cached_gradient, self._csize)
         return cached_gradient
 
@@ -156,7 +157,7 @@ class Widget(NevuObject):
 
         if self._first_update:
             self._first_update = False
-            for function in self.first_update_fuctions: function()
+            for function in self.first_update_functions: function()
 
         self._update_hover_state()
 
@@ -236,12 +237,12 @@ class Widget(NevuObject):
     def _bake_text_single_continuous(self, text: str):
         renderFont = self.get_font()
         self.font_size = renderFont.size(text)
-        self._text_surface = renderFont.redner(self._entered_text, True, self._subtheme.oncontainer)
+        self._text_surface = renderFont.render(self._entered_text, True, self._subtheme.oncontainer)
         if not self.font_size[0] + self.relx(10) >= self._csize[0]: 
             self._text_rect = self._text_surface.get_rect(left = self.relx(10), centery = self._csize[1] / 2)
         else: self._text_rect = self._text_surface.get_rect(right = self.relx(self._csize[0] - 10), centery = self._csize[1] / 2)
 
-    def resize(self, resize_ratio: pygame.Vector2):
+    def resize(self, resize_ratio: Vector2):
         super().resize(resize_ratio)
         self._resize_ratio = resize_ratio
 
@@ -271,7 +272,7 @@ class Tooltip(Widget):
     
 class Label(Widget):
     def __init__(self, text: str, size: Vector2|list, style: Style = default_style, 
-                 floating: bool = False, id: str = None, words_indent: bool = False, alt: bool = False):
+                 floating: bool = False, id: str | None = None, words_indent: bool = False, alt: bool = False):
         super().__init__(size, style, floating, id, alt)
         self._lazy_kwargs = {'size': size, 'text': text}
         self._changed = True
@@ -1162,8 +1163,8 @@ class SliderBar(Widget):
             self.current_value = round(self.current_value / self.step) * self.step
             self.current_value = max(self.begin_val, min(self.end_val, self.current_value))
 
-    def update(self, *args):
-        super().update(*args)
+    def secondary_update(self, *args):
+        super().secondary_update(*args)
         if not self.active: return
         if mouse.left_down or mouse.left_fdown:
             if self.get_rect().collidepoint(mouse.pos): self.is_dragging = True
@@ -1174,8 +1175,8 @@ class SliderBar(Widget):
             self.slider_pos = max(0, min(self.size[0], relative_x))
             self._update_value_from_position()
             self._update_slider_position()
-        self.button.coordinates = [0,0]
-        self.button.master_coordinates = [0,0]
+        self.button.coordinates = Vector2(0,0)
+        self.button.master_coordinates = Vector2(0,0)
         self.button.update()
     def draw(self):
         if not self.visible:return
@@ -1185,11 +1186,10 @@ class SliderBar(Widget):
         #pygame.draw.rect(self.surface, self.style.secondarycolor, slider_rect)
         self.button.draw()
         self.surface.blit(self.button.surface, slider_rect)
-        self.bake_text(str(self.current_value), alignx='left', aligny='center')
+        self.bake_text(str(self.current_value), alignx=Align.CENTER, aligny=Align.CENTER)
+        assert self._text_surface is not None and self._text_rect is not None
         self.surface.blit(self._text_surface, self._text_rect)
         if self._changed:
-            if self.animation_manager.anim_rotation:
-                self.surface = pygame.transform.rotate(self.surface, self.animation_manager.anim_rotation)
             self._changed = False
         
 

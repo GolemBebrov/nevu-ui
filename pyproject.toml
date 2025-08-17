@@ -20,6 +20,7 @@ dependencies = [
     "pygame-ce>=2.3.0", 
     "numpy",
     "Pillow",
+    "functools"
 ]
 
 [tool.setuptools.packages.find]

@@ -129,7 +129,6 @@ class Menu:
     def rel(self, mass: list | tuple | Vector2) -> Vector2:  
         return Vector2(mass[0] * self._resize_ratio.x, mass[1] * self._resize_ratio.y)
 
-    
     def _draw_gradient(self, _set = False):
         if not self.style.gradient: return
         cached_gradient = pygame.Surface(self.size*_QUALITY_TO_RESOLUTION[self.quality], flags = pygame.SRCALPHA)

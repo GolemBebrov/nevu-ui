@@ -14,7 +14,7 @@ class HoverState(Enum):
     CLICKED = auto()
 
 class NevuObject:
-    def __init__(self, size: Vector2|list, style: Style, floating: bool = False, id: str = None):
+    def __init__(self, size: Vector2 | list, style: Style, floating: bool = False, id: str | None = None):
         self._lazy_kwargs = {'size': size}
         
         self.id = id
@@ -42,8 +42,6 @@ class NevuObject:
         self._events = []
         self._dirty_rect = []
         self._floating = floating
-        
-        #if type(self) == NevuObject: self._init_start()
 
     def _init_start(self):
         self._wait_mode = False
@@ -55,7 +53,7 @@ class NevuObject:
     def _lazy_init(self, size):
         self.size = Vector2(size) if not isinstance(size, Vector2) else size
 
-    def num_handler(self, number: SizeRule | int) -> SizeRule | int:
+    def num_handler(self, number: SizeRule | int | float) -> SizeRule | int | float:
         if isinstance(number, SizeRule):
             if type(number) == Px:
                 return number.value
@@ -78,9 +76,9 @@ class NevuObject:
 
     @property
     def _csize(self):
-        return self.cache.get_or_exec(CacheType.RelSize,self._update_size)
+        return self.cache.get_or_exec(CacheType.RelSize,self._update_size) or self.size
 
-    def add_first_update_action(self, function: callable):
+    def add_first_update_action(self, function: None = None):
         self.first_update_functions.append(function)
 
     def show(self):
@@ -125,7 +123,7 @@ class NevuObject:
         self._style = copy.copy(style)
     
     def get_animation_value(self, animation_type: AnimationType):
-        return self.animation_manager.get_value(animation_type)
+        return self.animation_manager.get_current_value(animation_type)
 
     def _update_hover_state(self):
         if self._hover_state == HoverState.UN_HOVERED:
@@ -276,7 +274,7 @@ class NevuObject:
         result = function(num*self._resize_ratio.x)
         return self._rel_corner(result, min, max)
     
-    def rel(self, mass: list | tuple, vector: bool = False) -> list | Vector2:  
+    def rel(self, mass: list | tuple | Vector2, vector: bool = False) -> list | Vector2:  
         return (Vector2(mass[0] * self._resize_ratio.x, mass[1] * self._resize_ratio.y) if vector 
                 else [mass[0] * self._resize_ratio.x, mass[1] * self._resize_ratio.y] )
     

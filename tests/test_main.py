@@ -23,12 +23,13 @@ class Mygame(ui.Manager):
         main_style = ui.Style(borderradius=10,borderwidth=2,colortheme=ui.material3_dark_color_theme,fontname="vk_font.ttf",gradient=ui.style.Gradient(colors=[ui.Color.AQUA,(100,100,100)],type='radial',direction=ui.style.Gradient.TOP_CENTER))
         style_mini_font = main_style(fontsize=10, border_radius=15,borderwidth=10)
         #Widget customization
-        b = ui.Button(lambda: print("Button 1"), "Test Chamber", [50*ui.fill,15*ui.fill],style=main_style(borderradius=15,borderwidth=10, ),words_indent=True, alt=True)
+        
         #b.animation_manager.transition_animation = ui.AnimationEaseIn
         #b.animation_manager.transition_time = 5
         #b.animation_manager.add_start_animation(ui.AnimationEaseInBack(1,[0,100],[0,0],ui.AnimationType.POSITION))
         #b.animation_manager.add_continuous_animation(ui.AnimationBounce(5,[90,50],[-90,50],ui.AnimationType.POSITION))
-        
+        b = ui.Button(lambda: print("Button 1"), "Test Chamber", [50*ui.fill,100*ui.fill],style=main_style(borderradius=15,borderwidth=10, ),words_indent=True, alt=True)
+        l = ui.Button(lambda: print("Button 1"), "Test Chamber", [100*ui.fill,2*ui.fill],style=main_style(borderradius=15,borderwidth=10, ),words_indent=True, alt=True)
         i = ui.Input([100*ui.fill,33*ui.fill],main_style(borderradius=30,fontname="vk_font.ttf"),"","Введите",multiple=True, alt=True)
         i.animation_manager.add_start_animation(ui.AnimationEaseOut(3,[0,-100],[0,0],ui.AnimationType.POSITION))
         strelka_size = [32*ui.fill,45*ui.fill]
@@ -36,12 +37,30 @@ class Mygame(ui.Manager):
                 style = main_style(borderradius=30,borderwidth=5), alt=False, 
                 layout = ui.Grid([100*ui.fill,100*ui.fill],3,3, 
                          content = {
-                         (2,1.5): ui.Scrollable([70*ui.fill, 50*ui.fill], 
-                                content=(
-                                        [ui.Align.CENTER, ui.Button(lambda: print("Button 1"), "Test Chamber", [50*ui.fill,100*ui.fill],style=style_mini_font(borderradius=15,borderwidth=10, ),words_indent=True, alt=True)],
-                                        [ui.Align.CENTER, ui.Button(lambda: print("Button 1"), "Test Chamber", [50*ui.fill,100*ui.fill],style=style_mini_font(borderradius=15,borderwidth=10, ),words_indent=True, alt=True)]
-                                    )
-                         ),
+                         (2,1.5): ui.Pages([70*ui.fill, 50*ui.fill],
+                                    content = [
+                                        ui.Scrollable([100*ui.fill, 100*ui.fill], wheel_scroll_power=5, 
+                                            content=(
+                                            [ui.Align.CENTER, copy.copy(b)],
+                                            [ui.Align.CENTER, copy.copy(l)],
+                                            [ui.Align.CENTER, copy.copy(b)],
+                                            [ui.Align.CENTER, copy.copy(b)],
+                                            [ui.Align.CENTER, copy.copy(l)],
+                                            [ui.Align.CENTER, copy.copy(b)],
+                                                )
+                                            ),
+                                        ui.Scrollable([100*ui.fill, 100*ui.fill], wheel_scroll_power=5, 
+                                            content=(
+                                            [ui.Align.CENTER, copy.copy(b)],
+                                            [ui.Align.CENTER, copy.copy(l)],
+                                            [ui.Align.CENTER, copy.copy(b)],
+                                            [ui.Align.CENTER, copy.copy(b)],
+                                            [ui.Align.CENTER, copy.copy(l)],
+                                            [ui.Align.CENTER, copy.copy(b)],
+                                                )
+                                            )
+                                        ]
+                                    ),
                          #(2,1): i,
                          (2,3): ui.Grid([70*ui.fill, 25*ui.fill], 3,3, 
                                 content={
@@ -62,13 +81,14 @@ class Mygame(ui.Manager):
     def draw_loop(self):
         self.menu.draw()
         pygame.draw.rect(self.window.surface, self.background, pygame.Rect(ui.mouse.pos, (5,5)), 1)
-        pygame.draw.rect(self.window.surface, self.background, self.menu.layout.get_item(2,1.5).scroll_bar_y.get_rect(), 1)
-        pygame.draw.rect(self.window.surface, self.background, self.menu.layout.get_item(2,1.5).get_rect(), 1)
+        #pygame.draw.rect(self.window.surface, self.background, self.menu.layout.get_item(2,1.5).scroll_bar_y.get_rect(), 1)
+        #pygame.draw.rect(self.window.surface, self.background, self.menu.layout.get_item(2,1.5).get_rect(), 1)
     def update_loop(self, events):
         self.menu.update()
         show_fps = True
         fps_mode = "Unslowed"
-        print(self.menu.layout.get_item(2,1.5).scroll_bar_y.percentage)
+        #print(self.menu.layout.get_item(2,1.5).scroll_bar_y.percentage)
+        print(ui.mouse.wheel_y)
         #if show_fps:
             #print(f"FPS {fps_mode}: ",ui.time.fps)
 
@@ -85,6 +105,16 @@ class Mygame(ui.Manager):
                                         (1,2): ui.Button(None, "<", strelka_size,style=style_mini_font,words_indent=True, alt=True),
                                         (3,2): ui.Button(None, ">", strelka_size,style=style_mini_font,words_indent=True, alt=True),
                                     }
+                         )
+ui.Scrollable([70*ui.fill, 50*ui.fill], wheel_scroll_power=5, 
+                                content=(
+                                        [ui.Align.CENTER, copy.copy(b)],
+                                        [ui.Align.CENTER, copy.copy(l)],
+                                        [ui.Align.CENTER, copy.copy(b)],
+                                        [ui.Align.CENTER, copy.copy(b)],
+                                        [ui.Align.CENTER, copy.copy(l)],
+                                        [ui.Align.CENTER, copy.copy(b)],
+                                    )
                          )"""
 
 def test_main():
