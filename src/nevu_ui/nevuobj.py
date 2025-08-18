@@ -16,42 +16,50 @@ class HoverState(Enum):
 class NevuObject:
     def __init__(self, size: Vector2 | list, style: Style, floating: bool = False, id: str | None = None):
         self._lazy_kwargs = {'size': size}
-        
         self.id = id
-        self._resize_ratio = Vector2(1, 1)
-
+    
         #Objects
+        self._init_objects(style)
+
+        #Booleans
+        self._init_booleans(floating)
+
+        #Lists
+        self._init_lists()
+
+    def _init_objects(self, style: Style):
         self.cache = Cache()
         self._subtheme_role = SubThemeRole.TERTIARY
         self._hover_state = HoverState.UN_HOVERED
         self.animation_manager = AnimationManager()
         self.style = style
-
-        #Booleans
+        
+    def _init_booleans(self, floating: bool):
         self._visible = True
         self._active = True
         self._changed = True
         self._first_update = True
         self.booted = False
         self._wait_mode = False
-
-        #Lists
+        self._floating = floating
+        
+    def _init_lists(self):
+        self._resize_ratio = Vector2(1, 1)
         self.coordinates = Vector2()
         self.master_coordinates = Vector2()
         self.first_update_functions = []
         self._events = []
         self._dirty_rect = []
-        self._floating = floating
-
+        
     def _init_start(self):
         self._wait_mode = False
         for i, item in enumerate(self._lazy_kwargs["size"]):
-            self._lazy_kwargs["size"][i] = self.num_handler(item)
+            self._lazy_kwargs["size"][i] = self.num_handler(item) #type: ignore
         if not self._wait_mode:
             self._lazy_init(**self._lazy_kwargs)
 
     def _lazy_init(self, size):
-        self.size = Vector2(size) if not isinstance(size, Vector2) else size
+        self.size = size if isinstance(size, Vector2) else Vector2(size)
 
     def num_handler(self, number: SizeRule | int | float) -> SizeRule | int | float:
         if isinstance(number, SizeRule):
@@ -78,7 +86,7 @@ class NevuObject:
     def _csize(self):
         return self.cache.get_or_exec(CacheType.RelSize,self._update_size) or self.size
 
-    def add_first_update_action(self, function: None = None):
+    def add_first_update_action(self, function):
         self.first_update_functions.append(function)
 
     def show(self):
@@ -174,16 +182,15 @@ class NevuObject:
         pass #realizes in the subclasses
 
     def get_rect_opt(self, without_animation: bool = False):
-        if without_animation:
-            anim_coords = self.animation_manager.get_animation_value(AnimationType.POSITION)
-            anim_coords = [0,0] if anim_coords is None else anim_coords
-            return pygame.Rect(
-                self.master_coordinates[0] - self.relx(anim_coords[0]),
-                self.master_coordinates[1] - self.rely(anim_coords[1]),
-                *self.rel(self.size)
-            )
-        else:
+        if not without_animation:
             return self.get_rect()
+        anim_coords = self.animation_manager.get_animation_value(AnimationType.POSITION)
+        anim_coords = anim_coords or [0,0]
+        return pygame.Rect(
+            self.master_coordinates[0] - self.relx(anim_coords[0]),
+            self.master_coordinates[1] - self.rely(anim_coords[1]),
+            *self.rel(self.size)
+        )
     def get_rect(self):
         anim_coordinates = self.animation_manager.get_animation_value(AnimationType.POSITION)
         anim_coordinates = [0,0] if anim_coordinates is None else anim_coordinates
@@ -202,12 +209,18 @@ class NevuObject:
     def get_font(self):
         avg_resize_ratio = (self._resize_ratio[0] + self._resize_ratio[1]) / 2
         font_size = int(self.style.fontsize * avg_resize_ratio)
-        if self.style.fontname == "Arial":
-            renderFont = pygame.font.SysFont(self.style.fontname, font_size)
-        else:
-            renderFont = pygame.font.Font(self.style.fontname, font_size)
-        return renderFont
-
+        return (pygame.font.SysFont(self.style.fontname, font_size) if self.style.fontname == "Arial" 
+                else pygame.font.Font(self.style.fontname, font_size))
+    @property
+    def subtheme_role(self):
+        return self._subtheme_role
+    @subtheme_role.setter
+    def subtheme_role(self, value: SubThemeRole):
+        self._subtheme_role = value
+        self.cache.clear()
+        self._on_subtheme_role_change()
+    def _on_subtheme_role_change(self):
+        pass
     @property
     def _subtheme(self):
         return self.style.colortheme.get_subtheme(self._subtheme_role)
@@ -222,11 +235,13 @@ class NevuObject:
     #            widget/layout update code
     #--------------------------------------
 
-    def update(self, events: list = []):
+    def update(self, events: list | None = None):
+        events = events or []
         self.primary_update(events)
         self.secondary_update()
         self._event_cycle(Event.UPDATE)
-    def primary_update(self, events: list = []):
+    def primary_update(self, events: list | None = None):
+        events = events or []
         self.logic_update()
         self.animation_update()
         self.event_update(events)
@@ -234,7 +249,7 @@ class NevuObject:
         pass #TODO
     def animation_update(self):
         self.animation_manager.update()
-    def event_update(self, events: list = []):
+    def event_update(self, events: list):
         pass
     def secondary_update(self):
         pass
@@ -252,6 +267,7 @@ class NevuObject:
         self._event_cycle(Event.DRAW)
         self.secondary_draw()
         self._event_cycle(Event.RENDER)
+        
     def primary_draw(self):
         pass
     def secondary_draw(self):
@@ -267,14 +283,16 @@ class NevuObject:
         return self._rel_corner(result, min, max)
     def rely(self, num: int | float, min: int | None = None, max: int | None = None, function = None) -> int | float:
         if not function: function = round
-        result = function(num*self._resize_ratio.x)
+        result = function(num*self._resize_ratio.y)
         return self._rel_corner(result, min, max)
     def relm(self, num: int | float, min: int | None = None, max: int | None = None, function = None) -> int | float:
         if not function: function = round
-        result = function(num*self._resize_ratio.x)
+        result = function(num*((self._resize_ratio.x+self._resize_ratio.y)/2))
         return self._rel_corner(result, min, max)
     
     def rel(self, mass: list | tuple | Vector2, vector: bool = False) -> list | Vector2:  
+        if not (hasattr(mass, '__getitem__') and len(mass) >= 2):
+            raise ValueError("mass must be a sequence with two elements")
         return (Vector2(mass[0] * self._resize_ratio.x, mass[1] * self._resize_ratio.y) if vector 
                 else [mass[0] * self._resize_ratio.x, mass[1] * self._resize_ratio.y] )
     

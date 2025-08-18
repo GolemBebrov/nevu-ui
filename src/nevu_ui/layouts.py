@@ -48,28 +48,29 @@ class LayoutType(NevuObject):
         if self.menu: return (self._csize - (self._csize - Vector2(bw,bw)))/2
         return Vector2(0,0)
 
-    def __init__(self, size: Vector2|list, style: Style = default_style, content: list | None  = None, floating: bool = False, id: str | None = None):
+    def __init__(self, size: Vector2 | list, style: Style = default_style, content: list | None  = None, floating: bool = False, id: str | None = None):
         super().__init__(size, style, floating, id)
+
+        self._lazy_kwargs = {'size': size, 'content': content}
+        self.border_name = " "
+        
+    def _init_lists(self):
+        super()._init_lists()
         self.freedom_items = []
         self.items = []
-        self._lazy_kwargs = {'size': size, 'content': content}
-        
+        self.cached_coordinates = None
+        self.all_layouts_coords = [0,0]
+    def _init_booleans(self, floating: bool):
+        super()._init_booleans(floating)
+        self._can_be_main_layout = True
+        self._borders = False
+    def _init_objects(self, style: Style):
+        super()._init_objects(style)
+        self.first_parent_menu = Menu(None, (1,1), style)
         self.menu = None
         self.layout = None
         self.surface = None
-        self.cached_coordinates = None
-        self.style = style
-        
-        self.first_parent_menu = Menu(None, (100,100), style)
-        self.all_layouts_coords = [0,0]
-        
-        self._can_be_main_layout = True
-        self._borders = False
-        
-        self.border_name = " "
-        #if type(self) == LayoutType: self._init_start()
-
-    def _lazy_init(self, size: Vector2|list, content: list | None = None):
+    def _lazy_init(self, size: Vector2 | list, content: list | None = None):
         super()._lazy_init(size)
         if content and type(self) == LayoutType:
             for i in content:
@@ -430,8 +431,8 @@ class Pages(LayoutType):
     def secondary_draw(self):
         super().secondary_draw()
         assert self.surface
-        pygame.draw.line(self.surface,(0,0,0),[self.coordinates[0]+self.relx(20),self.coordinates[1]+self.rely(20)],[self.coordinates[0]+self.relx(40),self.coordinates[1]+self.rely(20)],2)
-        pygame.draw.line(self.surface,(0,0,0),[self.coordinates[0]+self.relx(20),self.coordinates[1]+self.rely(20)],[self.coordinates[0]+self.relx(20),self.coordinates[1]+self.rely(40)],2)
+        pygame.draw.line(self.surface,(0,0,0),[self.coordinates[0]+self.relx(10),self.coordinates[1]+self.rely(20)],[self.coordinates[0]+self.relx(40),self.coordinates[1]+self.rely(20)],2)
+        pygame.draw.line(self.surface,(0,0,0),[self.coordinates[0]+self.relx(10),self.coordinates[1]+self.rely(20)],[self.coordinates[0]+self.relx(20),self.coordinates[1]+self.rely(40)],2)
         
         self.items[self.selected_page_id].draw()
         for i in range(len(self.items)):

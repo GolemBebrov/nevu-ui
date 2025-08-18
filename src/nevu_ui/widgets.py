@@ -13,34 +13,42 @@ from .nevuobj import NevuObject
 default_style = Style()
 
 class Widget(NevuObject):
-    def __init__(self, size: Vector2|list, style: Style = default_style, floating: bool = False, id: str = None, alt: bool = False):
+    def __init__(self, size: Vector2|list, style: Style = default_style, floating: bool = False, id: str | None = None, alt: bool = False):
         super().__init__(size, style, floating, id)
         self._lazy_kwargs = {'size': size}
 
         #Text Cache
+        self._init_text_cache()
+
+        #Alt
+        self._init_alt(alt)
+
+    def _init_text_cache(self):
         self._text_baked = None
         self._text_surface = None
         self._text_rect = None
-
-        #Objects
+    def _init_objects(self, style: Style):
+        super()._init_objects(style)
         self.quality = Quality.Poor
         self._subtheme_role = SubThemeRole.SECONDARY
-
-        #Lists
+    def _init_lists(self):
+        super()._init_lists()
         self._dr_coordinates_old = self.coordinates.copy()
         self._dr_coordinates_new = self.coordinates.copy()
-
-        #Booleans
+    def _init_booleans(self, floating: bool):
+        super()._init_booleans(floating)
         self._optimized_dirty_rect_for_short_animations = True
-
+    def _on_subtheme_role_change(self):
+        super()._on_subtheme_role_change()
+        self._init_alt(self.alt)
+    def _init_alt(self, alt: bool):
+        self.alt = alt
         if not alt:
             self._subtheme_font = self._main_subtheme_font
             self._subtheme_content = self._main_subtheme_content
         else:
             self._subtheme_font = self._alt_subtheme_font
             self._subtheme_content = self._alt_subtheme_content
-
-        #if type(self) == Widget: self._init_start()
     def _lazy_init(self, size: Vector2|list):
         super()._lazy_init(size)
         
@@ -278,11 +286,10 @@ class Label(Widget):
         self._changed = True
         self.style = style
         self._words_split = words_indent
-        #if type(self) == Label: self._init_start()
 
-    def _lazy_init(self, size: Vector2|list, text: str):
+    def _lazy_init(self, size: Vector2|list, text: str): # type: ignore
         super()._lazy_init(size)
-        text = str(text)
+        assert isinstance(text, str)
         self._text = "" 
         self.text = text 
 
@@ -319,11 +326,12 @@ class Label(Widget):
         if not self.visible: return
         if self._changed:
             self._changed = False
+            assert self._text_surface is not None and self._text_rect is not None
             self.surface.blit(self._text_surface, self._text_rect)
         self._event_cycle(Event.RENDER)
 
 class Button(Label):
-    def __init__(self, function: callable, text: str,size, style: Style = default_style,
+    def __init__(self, function, text: str,size, style: Style = default_style,
                  active: bool = True, throw_errors: bool = False, floating: bool = False, words_indent: bool = False, alt: bool = False, id: str = None):
         super().__init__(text, size, style, floating, id, words_indent, alt)
         self._lazy_kwargs = {'text': text, 'size': size}

@@ -3,7 +3,7 @@ import numpy as np
 import time as tt
 from enum import Enum, auto, StrEnum
 import functools
-
+from .fast_shapes import _create_outlined_rounded_rect_sdf, _create_rounded_rect_surface_optimized
 class RenderMode(Enum):
     AA = auto()
     SDF = auto()
@@ -507,7 +507,7 @@ class RoundedRect:
         return _create_rounded_rect_AA(size, radius, color, AA_factor)
     @classmethod
     def create_sdf(cls, size, radius, color):
-        return _create_rounded_rect_surface_optimized(size, radius, color)
+        return _create_rounded_rect_surface_optimized(tuple(size), radius, color)
 
 class Rect:
     _convertor = Convertor
@@ -570,41 +570,7 @@ def _create_rounded_rect_AA(size, radius, color, _factor = 4):
 
     return surf
 
-def _create_rounded_rect_surface_optimized(size, radius, color):
-    width, height = int(size[0]), int(size[1])
-    radius = min(radius, width // 2, height // 2)
 
-    if radius <= 0:
-        surf = pygame.Surface(size, pygame.SRCALPHA)
-        surf.fill(color)
-        return surf
-
-    alpha_value = color[3] if len(color) > 3 else 255
-    if alpha_value == 0:
-        return pygame.Surface(size, pygame.SRCALPHA)
-
-    center_x = (width - 1) / 2.0
-    center_y = (height - 1) / 2.0
-    inner_width_half = (width - 2 * radius - 1) / 2.0
-    inner_height_half = (height - 2 * radius - 1) / 2.0
-
-    y, x = np.ogrid[:height, :width]
-
-    dx = np.abs(x - center_x) - inner_width_half
-    dy = np.abs(y - center_y) - inner_height_half
-
-    dist = np.sqrt(np.maximum(dx, 0.0)**2 + np.maximum(dy, 0.0)**2)
-    signed_dist = dist - radius
-    alpha_field = np.maximum(0.0, np.minimum(1.0, 0.5 - signed_dist))
-
-    surf = pygame.Surface(size, pygame.SRCALPHA)
-    rgb_data = np.full((height, width, 3), color[:3], dtype=np.uint8)
-    pygame.surfarray.pixels3d(surf)[:] = rgb_data.transpose((1, 0, 2))
-
-    alpha_data = (alpha_field * alpha_value).astype(np.uint8)
-    pygame.surfarray.pixels_alpha(surf)[:] = alpha_data.T
-
-    return surf
 class Circle:
     _convertor = Convertor
     @classmethod
@@ -907,7 +873,7 @@ class OutlinedRoundedRect:
         radius = cls._convertor.convert(radius, int)
         width = cls._convertor.convert(width, float)
         color = cls._convertor.convert(color, tuple)
-        return _create_outlined_rounded_rect_sdf(size, radius, width, color)
+        return _create_outlined_rounded_rect_sdf(tuple(size), radius, width, color)
 
 class OutlinedRect:
     _convertor = Convertor
@@ -951,36 +917,6 @@ def _create_outlined_rounded_rect_AA(size, radius, width, color, _factor = 4):
 
     alpha = alpha_mask_ss.reshape(h, supersample_factor, w, supersample_factor).mean(axis=(1, 3))
     
-    surf = pygame.Surface(size, pygame.SRCALPHA)
-    rgb_data = np.full((w, h, 3), color[:3], dtype=np.uint8)
-    alpha_data = (alpha * (color[3] if len(color) > 3 else 255)).astype(np.uint8)
-    pygame.surfarray.pixels3d(surf)[:] = rgb_data
-    pygame.surfarray.pixels_alpha(surf)[:] = np.transpose(alpha_data, (1, 0))
-
-    return surf
-
-def _create_outlined_rounded_rect_sdf(size, radius, width, color):
-    w, h = size
-    radius = min(radius, w // 2, h // 2)
-    half_width = width / 2.0
-
-    x = np.arange(w)
-    y = np.arange(h)
-    xx, yy = np.meshgrid(x, y)
-
-    inner_w = w - 2 * radius
-    inner_h = h - 2 * radius
-    dist_x = np.abs(xx - (w - 1) / 2) - (inner_w - 1) / 2
-    dist_y = np.abs(yy - (h - 1) / 2) - (inner_h - 1) / 2
-    
-    dist_from_inner_corner = np.sqrt(np.maximum(dist_x, 0)**2 + np.maximum(dist_y, 0)**2)
-    
-    signed_dist = dist_from_inner_corner + np.minimum(np.maximum(dist_x, dist_y), 0) - radius
-    
-    dist_from_edge = np.abs(signed_dist)
-    
-    alpha = np.clip(0.5 - (dist_from_edge - half_width), 0, 1)
-
     surf = pygame.Surface(size, pygame.SRCALPHA)
     rgb_data = np.full((w, h, 3), color[:3], dtype=np.uint8)
     alpha_data = (alpha * (color[3] if len(color) > 3 else 255)).astype(np.uint8)
