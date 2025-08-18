@@ -10,10 +10,12 @@ from .utils import NvVector2 as Vector2
 from .color import *
 from .animations import *
 from .nevuobj import NevuObject
+from nevu_ui.fast_logic import logic_update_helper
 default_style = Style()
 
 class Widget(NevuObject):
     def __init__(self, size: Vector2|list, style: Style = default_style, floating: bool = False, id: str | None = None, alt: bool = False):
+        
         super().__init__(size, style, floating, id)
         self._lazy_kwargs = {'size': size}
 
@@ -136,36 +138,22 @@ class Widget(NevuObject):
                 #AlphaBlit.blit(content_surface, self.surface, (0, 0))
 
     def logic_update(self, *args):
-        if not self._optimized_dirty_rect_for_short_animations:
-            if self.animation_manager.state not in [AnimationManagerState.IDLE, AnimationManagerState.ENDED] and \
-               self.animation_manager.current_animations.get(AnimationType.POSITION): 
-                anim = self.animation_manager.current_animations[AnimationType.POSITION]
-                coordinates = self.get_rect_opt(without_animation=True).topleft
-                start = self.rel(anim.start)
-                end = self.rel(anim.end)
-                start_rect = pygame.Rect(
-                    coordinates[0] + start[0],
-                    coordinates[1] + start[1],
-                    *self._csize)
-
-                end_rect = pygame.Rect(
-                    coordinates[0] + end[0],
-                    coordinates[1] + end[1],
-                    *self._csize)
-
-                total_dirty_rect = start_rect.union(end_rect)
-                self._dirty_rect.append(total_dirty_rect)
-        else:
-            self._dr_coordinates_new = self.master_coordinates
-            rect_new = pygame.Rect(*self._dr_coordinates_new, *self._csize)
-            rect_old = pygame.Rect(*self._dr_coordinates_old, *self._csize)
-            total_dirty_rect = rect_new.union(rect_old)
-            self._dirty_rect.append(total_dirty_rect)
-            self._dr_coordinates_old = self._dr_coordinates_new.copy()
-
-        if self._first_update:
-            self._first_update = False
-            for function in self.first_update_functions: function()
+        new_dr_old, new_first_update = logic_update_helper(
+        self._optimized_dirty_rect_for_short_animations,
+        self.animation_manager,
+        self.get_rect_opt, # Передаем сам метод
+        self.rel,
+        self._csize,
+        self.master_coordinates,
+        self._dirty_rect,
+        self._dr_coordinates_old,
+        self._first_update,
+        self.first_update_functions,
+        self._update_hover_state # И этот метод тоже
+        )
+    
+        self._dr_coordinates_old = new_dr_old
+        self._first_update = new_first_update
 
         self._update_hover_state()
 

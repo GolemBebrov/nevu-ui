@@ -7,6 +7,7 @@ from .style import Style,Align,SizeRule, vh, vw, fill
 from .widgets import *
 from .menu import Menu
 from .nevuobj import NevuObject
+from .fast_logic import _light_update_helper
 default_style = Style()
 
 
@@ -77,19 +78,14 @@ class LayoutType(NevuObject):
                 self.add_item(i)
 
     def _light_update(self, add_x: int = 0, add_y: int = 0 ):
-        if self.cached_coordinates is None or self.items is None or \
-            len(self.items) != len(self.cached_coordinates): return
-        for i in range(len(self.items)):
-            item: NevuObject = self.items[i]
-            coords = self.cached_coordinates[i]
-            anim_coords = item.animation_manager.get_animation_value(AnimationType.POSITION)
-            anim_coords = [0,0] if anim_coords is None else anim_coords
-            item.coordinates = Vector2([coords[0] + self.relx(anim_coords[0]) + add_x,
-                                        coords[1] + self.relx(anim_coords[1]) + add_y])
-            item.master_coordinates = Vector2([item.coordinates[0] + self.first_parent_menu.coordinatesMW[0],
-                                               item.coordinates[1] + self.first_parent_menu.coordinatesMW[1]])
-            last_events = self.first_parent_menu.window.last_events if self.first_parent_menu.window else []
-            item.update(last_events)
+        _light_update_helper(
+            self.items,
+            self.cached_coordinates,
+            self.first_parent_menu,
+            self.relx,
+            add_x,
+            add_y
+        )
 
     @property
     def coordinates(self): return self._coordinates
