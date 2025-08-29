@@ -1,6 +1,5 @@
 import pygame
 from .utils import NvVector2 as Vector2
-from .nevuobj import NevuObject
 from .animations import AnimationManagerState, AnimationType
 
 import cython
@@ -68,6 +67,7 @@ cpdef object _light_update_helper(
     list cached_coordinates,
     object first_parent_menu,
     object relx_func,
+    object rely_func,
 
     int add_x,
     int add_y
@@ -82,28 +82,77 @@ cpdef object _light_update_helper(
 
     n_items = len(items)
 
-    if cached_coordinates is None or items is None or n_items != len(cached_coordinates):
+    if cached_coordinates is None or items is None or len(items) != len(cached_coordinates): 
         return
-
-    last_events = first_parent_menu.window.last_events if first_parent_menu.window else []
-
-    for i in range(n_items):
+        
+    for i in range(len(items)):
         item = items[i]
         coords = cached_coordinates[i]
-
         anim_coords = item.animation_manager.get_animation_value(AnimationType.POSITION)
-        
-        if anim_coords is None:
-            item_coordinates = Vector2(coords[0] + add_x,
-                                       coords[1] + add_y)
-        else:
-            item_coordinates = Vector2(coords[0] + relx_func(anim_coords[0]) + add_x,
-                                       coords[1] + relx_func(anim_coords[1]) + add_y)
-
-        item.coordinates = item_coordinates
-
-        item_master_coordinates = Vector2(item.coordinates.x + first_parent_menu.coordinatesMW[0],
-                                          item.coordinates.y + first_parent_menu.coordinatesMW[1])
-        item.master_coordinates = item_master_coordinates
-        
+        anim_coords = [0,0] if anim_coords is None else anim_coords
+        item.coordinates = Vector2([coords[0] + relx_func(anim_coords[0]) + add_x,
+                                    coords[1] + rely_func(anim_coords[1]) + add_y])
+        item.master_coordinates = Vector2([item.coordinates[0] + first_parent_menu.coordinatesMW[0],
+                                           item.coordinates[1] + first_parent_menu.coordinatesMW[1]])
+        last_events = first_parent_menu.window.last_events if first_parent_menu.window else []
         item.update(last_events)
+
+
+cdef inline float _rel_corner_helper(float result, float c_min, float c_max, bint has_min, bint has_max):
+    if has_min and result < c_min:
+        return c_min
+    if has_max and result > c_max:
+        return c_max
+    return result
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cpdef float relx_helper(float num, float resize_ratio_x, object min_val, object max_val):
+
+    cdef float result, c_min, c_max
+    cdef bint has_min = min_val is not None
+    cdef bint has_max = max_val is not None
+
+    result = round(num * resize_ratio_x)
+
+    c_min = min_val if has_min else 0.0
+    c_max = max_val if has_max else 0.0
+
+    # Вызываем нашу быструю C-функцию
+    return _rel_corner_helper(result, c_min, c_max, has_min, has_max)
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cpdef float rely_helper(float num, float resize_ratio_y, object min_val, object max_val):
+    cdef float result, c_min, c_max
+    cdef bint has_min = min_val is not None
+    cdef bint has_max = max_val is not None
+    result = round(num * resize_ratio_y)
+    c_min = min_val if has_min else 0.0
+    c_max = max_val if has_max else 0.0
+    return _rel_corner_helper(result, c_min, c_max, has_min, has_max)
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cpdef float relm_helper(float num, float resize_ratio_x, float resize_ratio_y, object min_val, object max_val):
+    cdef float result, c_min, c_max
+    cdef bint has_min = min_val is not None
+    cdef bint has_max = max_val is not None
+    result = round(num * ((resize_ratio_x + resize_ratio_y) / 2.0))
+    c_min = min_val if has_min else 0.0
+    c_max = max_val if has_max else 0.0
+    return _rel_corner_helper(result, c_min, c_max, has_min, has_max)
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cpdef object rel_helper(object mass, float resize_ratio_x, float resize_ratio_y, bint vector):
+    if not (hasattr(mass, '__getitem__') and len(mass) >= 2):
+        raise ValueError("mass must be a sequence with two elements")
+    
+    cdef float x = mass[0] * resize_ratio_x
+    cdef float y = mass[1] * resize_ratio_y
+    
+    if vector:
+        return Vector2(x, y)
+    else:
+        return [x, y]

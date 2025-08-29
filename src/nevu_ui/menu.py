@@ -54,6 +54,7 @@ class Menu:
         self.relative_percent_x = None
         self.relative_percent_y = None
         self._enabled = True
+        self.will_resize = False
 
     def _init_tertiary(self, size):
         self.first_window_size = self.window.size if self.window else Vector2(0, 0)
@@ -119,11 +120,11 @@ class Menu:
         return self._rel_corner(result, min, max)
     def rely(self, num: int | float, min: int | None = None, max: int | None = None, function = None) -> int | float:
         if not function: function = round
-        result = function(num*self._resize_ratio.x)
+        result = function(num*self._resize_ratio.y)
         return self._rel_corner(result, min, max)
     def relm(self, num: int | float, min: int | None = None, max: int | None = None, function = None) -> int | float:
         if not function: function = round
-        result = function(num*self._resize_ratio.x)
+        result = function(num*((self._resize_ratio.x+self._resize_ratio.y)/2))
         return self._rel_corner(result, min, max)
     
     def rel(self, mass: list | tuple | Vector2) -> Vector2:  
@@ -150,10 +151,19 @@ class Menu:
         )
         cached_gradient = pygame.transform.smoothscale(cached_gradient, target_size_tuple)
         return cached_gradient
+    @property
+    def _background(self):
+        if self.will_resize:
+            return lambda: self._scale_background(self.size*self._resize_ratio)
+        else:
+            return lambda: self._generate_background()
+        #return lambda: self._scale_background(self.size*_QUALITY_TO_RESOLUTION[self.quality]) if self.will_resize else self._generate_background
+
     def _generate_background(self):
-        bgsurface = pygame.Surface(self.size*_QUALITY_TO_RESOLUTION[self.quality], flags = pygame.SRCALPHA)
+        resize_factor = _QUALITY_TO_RESOLUTION[self.quality] if self.will_resize else self._resize_ratio
+        bgsurface = pygame.Surface(self.size * resize_factor, flags = pygame.SRCALPHA)
         if isinstance(self.style.gradient,Gradient):
-            content_surf = self.cache.get_or_exec(CacheType.Scaled_Gradient, lambda: self._scale_gradient(self.size*_QUALITY_TO_RESOLUTION[self.quality]))
+            content_surf = self.cache.get_or_exec(CacheType.Scaled_Gradient, lambda: self._scale_gradient(self.size * resize_factor))
             if self.style.transparency: bgsurface.set_alpha(self.style.transparency)
         else: content_surf = self.cache.get(CacheType.Scaled_Gradient)
         if content_surf:
@@ -161,11 +171,11 @@ class Menu:
         else: bgsurface.fill(self._subtheme.container)
         
         if self._style.borderwidth > 0:
-            border = self.cache.get_or_exec(CacheType.Borders, lambda: self._create_outlined_rect(self.size*_QUALITY_TO_RESOLUTION[self.quality]))
+            border = self.cache.get_or_exec(CacheType.Borders, lambda: self._create_outlined_rect(self.size * resize_factor))
             if border:
                 bgsurface.blit(border,(0,0))
         if self._style.borderradius > 0:
-            mask_surf = self.cache.get_or_exec(CacheType.Surface, lambda: self._create_surf_base(self.size*_QUALITY_TO_RESOLUTION[self.quality]))
+            mask_surf = self.cache.get_or_exec(CacheType.Surface, lambda: self._create_surf_base(self.size * resize_factor))
             if mask_surf:
                 AlphaBlit.blit(bgsurface, mask_surf,(0,0))
         return bgsurface
@@ -294,20 +304,27 @@ class Menu:
         ss = (self.size*self._resize_ratio).xy if size is None else size
         surf = pygame.Surface((int(ss[0]), int(ss[1])), pygame.SRCALPHA)
         surf.fill((0,0,0,0))
-        resize_ratio = self._resize_ratio*_QUALITY_TO_RESOLUTION[self.quality]
-        surf.blit( RoundedRect.create_sdf( [int(ss[0]), int(ss[1])], int(self._style.borderradius*(resize_ratio[0]+resize_ratio[1])/2)
-        ,self._subtheme_content),(0,0))
+        if self.will_resize:
+            avg_scale_factor = _QUALITY_TO_RESOLUTION[self.quality]
+        else:
+            avg_scale_factor = (self._resize_ratio[0] + self._resize_ratio[1]) / 2
+
+        radius = self._style.borderradius * avg_scale_factor
+        surf.blit(RoundedRect.create_sdf([int(ss[0]), int(ss[1])], int(radius), self._subtheme_content), (0, 0))
         return surf
     def _create_outlined_rect(self, size = None):
         ss = (self.size*self._resize_ratio).xy if size is None else size
-        resize_ratio = self._resize_ratio*_QUALITY_TO_RESOLUTION[self.quality]
-        outlined_rect = OutlinedRoundedRect.create_sdf([int(ss[0]), int(ss[1])], int(self._style.borderradius*(resize_ratio[0]+resize_ratio[1])/2), int(self._style.borderwidth*(resize_ratio[0]+resize_ratio[1])/2), self._subtheme_border)
-        return outlined_rect
-    
+        if self.will_resize:
+            avg_scale_factor = _QUALITY_TO_RESOLUTION[self.quality]
+        else:
+            avg_scale_factor = (self._resize_ratio[0] + self._resize_ratio[1]) / 2
+        radius = self._style.borderradius * avg_scale_factor
+        width = self._style.borderwidth * avg_scale_factor
+        return OutlinedRoundedRect.create_sdf([int(ss[0]), int(ss[1])], int(radius), int(width), self._subtheme_border)
     def draw(self):
         if not self.enabled: return
         if self.window is None: return
-        scaled_bg = self.cache.get_or_exec(CacheType.Scaled_Background, self._scale_background)
+        scaled_bg = self.cache.get_or_exec(CacheType.Scaled_Background, self._background)
         if scaled_bg:
             self.surface.blit(scaled_bg,(0,0))
         if self._layout is not None:

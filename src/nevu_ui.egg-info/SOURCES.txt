@@ -1,9 +1,11 @@
 LICENSE
 README.md
 pyproject.toml
+setup.py
 src/nevu_ui/__init__.py
 src/nevu_ui/animations.py
 src/nevu_ui/color.py
+src/nevu_ui/fast_logic.c
 src/nevu_ui/layouts.py
 src/nevu_ui/menu.py
 src/nevu_ui/nevuobj.py

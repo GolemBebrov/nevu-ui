@@ -14,46 +14,39 @@ from nevu_ui.fast_logic import logic_update_helper
 default_style = Style()
 
 class Widget(NevuObject):
-    def __init__(self, size: Vector2|list, style: Style = default_style, floating: bool = False, id: str | None = None, alt: bool = False):
-        
-        super().__init__(size, style, floating, id)
-        self._lazy_kwargs = {'size': size}
-
-        #Text Cache
+    alt: bool
+    def __init__(self, size: Vector2 | list, style: Style = default_style, **constant_kwargs):
+        super().__init__(size, style, **constant_kwargs)
+        #=== Text Cache ===
         self._init_text_cache()
-
-        #Alt
-        self._init_alt(alt)
-
+        #=== Alt ===
+        self._init_alt()
+    def _add_constants(self):
+        super()._add_constants()
+        self._add_constant("alt", bool, False)
     def _init_text_cache(self):
         self._text_baked = None
         self._text_surface = None
         self._text_rect = None
-    def _init_objects(self, style: Style):
-        super()._init_objects(style)
+    def _init_objects(self):
+        super()._init_objects()
         self.quality = Quality.Poor
         self._subtheme_role = SubThemeRole.SECONDARY
     def _init_lists(self):
         super()._init_lists()
         self._dr_coordinates_old = self.coordinates.copy()
         self._dr_coordinates_new = self.coordinates.copy()
-    def _init_booleans(self, floating: bool):
-        super()._init_booleans(floating)
+    def _init_booleans(self):
+        super()._init_booleans()
         self._optimized_dirty_rect_for_short_animations = True
     def _on_subtheme_role_change(self):
         super()._on_subtheme_role_change()
-        self._init_alt(self.alt)
-    def _init_alt(self, alt: bool):
-        self.alt = alt
-        if not alt:
-            self._subtheme_font = self._main_subtheme_font
-            self._subtheme_content = self._main_subtheme_content
-        else:
-            self._subtheme_font = self._alt_subtheme_font
-            self._subtheme_content = self._alt_subtheme_content
-    def _lazy_init(self, size: Vector2|list):
+        self._init_alt()
+    def _init_alt(self):
+        if self.alt: self._subtheme_font, self._subtheme_content = self._alt_subtheme_font, self._alt_subtheme_content
+        else: self._subtheme_font, self._subtheme_content = self._main_subtheme_font, self._main_subtheme_content
+    def _lazy_init(self, size: Vector2 | list):
         super()._lazy_init(size)
-        
         self.surface = pygame.Surface(size, flags = pygame.SRCALPHA)
         if isinstance(self.style.gradient, Gradient): self._draw_gradient()
 
@@ -86,14 +79,14 @@ class Widget(NevuObject):
         cached_gradient = pygame.transform.scale(cached_gradient, self._csize)
         return cached_gradient
 
-    def _update_image(self, style: Style = None):
+    def _update_image(self, style: Style | None = None):
         try:
             if not style: style = self.style
             if not style.bgimage: return
             img = pygame.image.load(style.bgimage)
             img.convert_alpha()
             self.cache.set(CacheType.Image, pygame.transform.scale(img, self._csize))
-        except: self.cache.clear_selected(whitelist = [CacheType.Image])
+        except Exception: self.cache.clear_selected(whitelist = [CacheType.Image])
 
     @property
     def _main_subtheme_content(self):
@@ -110,32 +103,37 @@ class Widget(NevuObject):
         return self._subtheme.oncontainer
 
     def _create_surf_base(self):
-        return RoundedRect.create_sdf([int(self._csize[0]), int(self._csize[1])], 
-                                       self.relm(self.style.borderradius), self._subtheme_content)
+        return RoundedRect.create_sdf([int(self._csize[0]), int(self._csize[1])], self.relm(self.style.borderradius), self._subtheme_content)
 
     def _create_outlined_rect(self):
-        return OutlinedRoundedRect.create_sdf([int(self._csize[0]), int(self._csize[1])], 
-                                               int(self.relm(self._style.borderradius)), int(self._style.borderwidth), self._subtheme.oncolor)
-        
+        return OutlinedRoundedRect.create_sdf([int(self._csize[0]), int(self._csize[1])], int(self.relm(self._style.borderradius)), int(self._style.borderwidth), self._subtheme.oncolor)
+    def clone(self):
+        return Widget(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
     def primary_draw(self):
-        TRANSPARENT = (0,0,0,0)
         self._event_cycle(Event.DRAW)
         if self._changed:
             if type(self) == Widget: self._changed = False
             self._dirty_rect.append(self.get_rect())
 
-            self.surface.fill(TRANSPARENT)            
-            self.surface.blit(self.cache.get_or_exec(CacheType.Surface, self._create_surf_base), (0, 0))
-            
-            content_surface = self.surface.copy()
+            TRANSPARENT = (0, 0, 0, 0)
+            self.surface.fill(TRANSPARENT)
 
-            if not self.cache[CacheType.Image]:
+            content_surface = None
+            if self.cache.get(CacheType.Image):
+                content_surface = self.cache.get(CacheType.Image)
+            elif self.style.gradient:
                 content_surface = self.cache.get_or_exec(CacheType.Scaled_Gradient, self._scale_gradient)
-            else: content_surface.blit(self.cache[CacheType.Image],(0,0))
-            
-            if content_surface is not None:
-                self.surface.blit(content_surface, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
-                #AlphaBlit.blit(content_surface, self.surface, (0, 0))
+
+            shape_surface = self.cache.get_or_exec(CacheType.Surface, self._create_surf_base)
+
+            if content_surface and shape_surface:
+                final_image = content_surface.copy()
+                mask = shape_surface.copy()
+                mask.fill((255, 255, 255), special_flags=pygame.BLEND_RGB_ADD)
+                final_image.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+                self.surface.blit(final_image, (0, 0))
+            elif shape_surface:
+                self.surface.blit(shape_surface, (0, 0))
 
     def logic_update(self, *args):
         new_dr_old, new_first_update = logic_update_helper(
@@ -158,7 +156,7 @@ class Widget(NevuObject):
         self._update_hover_state()
 
     def _boot_up(self):
-        pass
+        #pass
         print("booted widget", self)
 
 
@@ -184,7 +182,7 @@ class Widget(NevuObject):
             if word == '\n': ifnn = True
             try:
                 w = word[0] + word[1]
-                if w == '\ '.strip()+"n": ifnn = True
+                if w == '\ '.strip()+"n": ifnn = True # type: ignore
             except: pass
             if ifnn:
                 lines.append(current_line)
@@ -231,9 +229,10 @@ class Widget(NevuObject):
         self._text_rect = text_rect
 
     def _bake_text_single_continuous(self, text: str):
+        assert hasattr(self, "_entered_text")
         renderFont = self.get_font()
         self.font_size = renderFont.size(text)
-        self._text_surface = renderFont.render(self._entered_text, True, self._subtheme.oncontainer)
+        self._text_surface = renderFont.render(self._entered_text, True, self._subtheme.oncontainer) #type: ignore
         if not self.font_size[0] + self.relx(10) >= self._csize[0]: 
             self._text_rect = self._text_surface.get_rect(left = self.relx(10), centery = self._csize[1] / 2)
         else: self._text_rect = self._text_surface.get_rect(right = self.relx(self._csize[0] - 10), centery = self._csize[1] / 2)
@@ -256,31 +255,31 @@ class Empty_Widget(Widget):
         pass
 
 class Tooltip(Widget):
-    #DEPRECATED!! WILL BE RECREATED
     def __init__(self, text, style: Style = default_style):
         self.text = text
         self.style = style
         self.size = (200,400)
         self.bake_text(self.text,False,True,self.style.text_align_x,self.style.text_align_y)
-        raise Exception("Tooltip is not implemented yet, wait till 0.05")
+        raise NotImplementedError("Tooltip is not implemented yet, wait till 0.05")
     def draw(self):
         pass #TODO in version 0.05
     
 class Label(Widget):
-    def __init__(self, text: str, size: Vector2|list, style: Style = default_style, 
-                 floating: bool = False, id: str | None = None, words_indent: bool = False, alt: bool = False):
-        super().__init__(size, style, floating, id, alt)
+    words_indent: bool
+    def __init__(self, text: str, size: Vector2 | list, style: Style = default_style, **constant_kwargs):
+        super().__init__(size, style)
         self._lazy_kwargs = {'size': size, 'text': text}
         self._changed = True
-        self.style = style
-        self._words_split = words_indent
-
-    def _lazy_init(self, size: Vector2|list, text: str): # type: ignore
+    def clone(self):
+        return Label(self._lazy_kwargs['text'], self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
+    def _add_constants(self):
+        super()._add_constants()
+        self._add_constant("words_indent", bool, False)
+    def _lazy_init(self, size: Vector2 | list, text: str): # type: ignore
         super()._lazy_init(size)
         assert isinstance(text, str)
         self._text = "" 
         self.text = text 
-
     @property
     def text(self):
         return self._text
@@ -288,19 +287,18 @@ class Label(Widget):
     def text(self, text: str):
         self._changed = True
         self._text = text
-        self.bake_text(text, False, self._words_split, self.style.text_align_x, self.style.text_align_y)
+        self.bake_text(text, False, self.words_indent, self.style.text_align_x, self.style.text_align_y)
 
     def resize(self, resize_ratio: Vector2):
         super().resize(resize_ratio)
         self._changed = True
-        self.bake_text(self._text, False, self._words_split, self.style.text_align_x, self.style.text_align_y)
+        self.bake_text(self._text, False, self.words_indent, self.style.text_align_x, self.style.text_align_y)
 
     @property
     def style(self):
         return self._style()
     @style.setter
     def style(self,style: Style):
-        #self.cache.clear_selected(whitelist=[CacheType.Gradient])
         self._changed = True
         self._style = copy.deepcopy(style)
         
@@ -319,24 +317,22 @@ class Label(Widget):
         self._event_cycle(Event.RENDER)
 
 class Button(Label):
-    def __init__(self, function, text: str,size, style: Style = default_style,
-                 active: bool = True, throw_errors: bool = False, floating: bool = False, words_indent: bool = False, alt: bool = False, id: str = None):
-        super().__init__(text, size, style, floating, id, words_indent, alt)
-        self._lazy_kwargs = {'text': text, 'size': size}
+    throw_errors: bool
+    def __init__(self, function, text: str, size: Vector2 | list, style: Style = default_style, **constant_kwargs):
+        super().__init__(text, size, style, **constant_kwargs)
         self.function = function
-        self.active = active
-        self._throw = throw_errors
-        #if type(self) == Button: self._init_start()
-
-    def _lazy_init(self, text: str, size: Vector2|list):
-        super()._lazy_init(size, text)
-
+    def _add_constants(self):
+        super()._add_constants()
+        self._add_constant("active", bool, True)
+        self._add_constant("throw_errors", bool, False)
+    def clone(self):
+        return Button(self.function,self._lazy_kwargs['text'], self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
     def _on_click_system(self):
         if self.function:
             try: self.function()
             except Exception as e:
                 print(e)
-                if self._throw: raise e
+                if self.throw_errors: raise e
 class CheckBox(Button):
     def __init__(self,on_change_fuction,state,size,style:Style,active:bool = True):
         super().__init__(lambda:on_change_fuction(state) if on_change_fuction else None,"",size,style)
@@ -470,35 +466,43 @@ class GifWidget(Widget):
             self._event_cycle(Event.RENDER)
 
 class Input(Widget):
-    def __init__(self, size: Vector2|list, style: Style = default_style, default: str = "", placeholder: str = "", blacklist=None,
-                 whitelist = None, on_change_function = None, multiple = False, active = True,
-                 allow_paste = True, words_indent = False, max_characters = None, alt = False, id: str = None):
-        super().__init__(size, style, id = id, alt=alt)
+    blacklist: list | None
+    whitelist: list | None
+    max_characters: int | None
+    multiple: bool
+    allow_paste: bool
+    words_indent: bool
+    active: bool
+    def __init__(self, size: Vector2|list, style: Style = default_style, default: str = "", placeholder: str = "", on_change_function = None, **constant_kwargs):
+        super().__init__(size, style, **constant_kwargs)
         self._lazy_kwargs = {'size': size}
         self._entered_text = ""
         self.selected = False
-        self.blacklist = blacklist
-        self.whitelist = whitelist
         self.placeholder = placeholder
         self._on_change_fun = on_change_function
-        self.active = active
-        self.iy = multiple
-        self.paste = allow_paste
-        self._wordssplit = words_indent
-        self.max_characters = max_characters
+
         self._text_scroll_offset = 0
         self._text_scroll_offset_y = 0
         self.max_scroll_y = 0
         self._cursor_place = 0
         self._text_surface = None
-        self._text_rect = pygame.Rect(0, 0, 0, 0)
         self.left_margin = 10
         self.right_margin = 10
         self.top_margin = 5
         self.bottom_margin = 5
-        
         self.text = default
-
+    def _init_text_cache(self):
+        self._text_surface = None
+        self._text_rect = pygame.Rect(0, 0, 0, 0)
+    def _add_constants(self):
+        super()._add_constants()
+        self._add_constant("active", bool, True)
+        self._add_constant("multiple", bool, False)
+        self._add_constant("allow_paste", bool, True)
+        self._add_constant("words_indent", bool, False)
+        self._add_constant("max_characters", (int, type(None)), None)
+        self._add_constant("blacklist", (list, type(None)), None)
+        self._add_constant("whitelist", (list, type(None)), None)
     def _lazy_init(self, size: Vector2|list):
         super()._lazy_init(size)
         self._init_cursor()
@@ -568,7 +572,7 @@ class Input(Widget):
         self._text_scroll_offset = max(0, min(self._text_scroll_offset, max_scroll_x))
 
     def _update_scroll_offset_y(self):
-        if not self.iy or not hasattr(self, 'style'): return
+        if not self.multiple or not hasattr(self, 'style'): return
         if not self._text_surface: return
         try:
             line_height = self._get_line_height()
@@ -656,7 +660,7 @@ class Input(Widget):
     def _right_bake_text(self):
         if not hasattr(self, 'style'): return
         text_to_render = self._entered_text if len(self._entered_text) > 0 else self.placeholder
-        if self.iy:
+        if self.multiple:
             self.bake_text(text_to_render, multiline_mode=True)
             self._update_scroll_offset_y()
             self._update_scroll_offset()
@@ -707,17 +711,17 @@ class Input(Widget):
                     initial_cursor_place = self._cursor_place
                     initial_text = self._entered_text
                     if event.key == pygame.K_RETURN or event.key == pygame.K_KP_ENTER:
-                        if self.iy:
+                        if self.multiple:
                              if self.max_characters is None or len(self._entered_text) < self.max_characters:
                                 self._entered_text = self._entered_text[:self._cursor_place] + '\n' + self._entered_text[self._cursor_place:]
                                 self._cursor_place += 1
                     elif event.key == pygame.K_UP:
-                        if self.iy:
+                        if self.multiple:
                             current_line, current_col = self._get_cursor_line_col()
                             if current_line > 0:
                                 self._cursor_place = self._get_abs_pos_from_line_col(current_line - 1, current_col)
                     elif event.key == pygame.K_DOWN:
-                         if self.iy:
+                         if self.multiple:
                              lines = self._entered_text.split('\n')
                              current_line, current_col = self._get_cursor_line_col()
                              if current_line < len(lines) - 1:
@@ -736,13 +740,13 @@ class Input(Widget):
                          if self._cursor_place < len(self._entered_text):
                               self._entered_text = self._entered_text[:self._cursor_place] + self._entered_text[self._cursor_place+1:]
                     elif event.key == pygame.K_HOME:
-                         if self.iy:
+                         if self.multiple:
                               line_idx, _ = self._get_cursor_line_col()
                               self._cursor_place = self._get_abs_pos_from_line_col(line_idx, 0)
                          else:
                               self._cursor_place = 0
                     elif event.key == pygame.K_END:
-                         if self.iy:
+                         if self.multiple:
                               line_idx, _ = self._get_cursor_line_col()
                               lines = self._entered_text.split('\n')
                               line_len = len(lines[line_idx]) if line_idx < len(lines) else 0
@@ -750,7 +754,7 @@ class Input(Widget):
                          else:
                               self._cursor_place = len(self._entered_text)
                     elif event.key == pygame.K_v and event.mod & pygame.KMOD_CTRL:
-                        if self.paste:
+                        if self.allow_paste:
                             pasted_text = ""
                             try:
                                 pasted_text = pygame.scrap.get(pygame.SCRAP_TEXT)
@@ -765,7 +769,7 @@ class Input(Widget):
                                     valid_char = True
                                     if self.blacklist and char in self.blacklist: valid_char = False
                                     if self.whitelist and char not in self.whitelist: valid_char = False
-                                    if not self.iy and char in '\r\n': valid_char = False
+                                    if not self.multiple and char in '\r\n': valid_char = False
                                     if valid_char: filtered_text += char
 
                                 if self.max_characters is not None:
@@ -779,7 +783,7 @@ class Input(Widget):
                     elif event.unicode:
                         unicode = event.unicode
                         is_valid_unicode = len(unicode) == 1 and ord(unicode) >= 32 and (unicode != "\x7f")
-                        is_newline_ok = self.iy or (unicode not in '\r\n')
+                        is_newline_ok = self.multiple or (unicode not in '\r\n')
 
                         if is_valid_unicode and is_newline_ok:
                             if self.max_characters is None or len(self._entered_text) < self.max_characters:
@@ -796,7 +800,7 @@ class Input(Widget):
                     if text_changed or cursor_moved: self._changed = True
 
                 elif event.type == pygame.MOUSEWHEEL:
-                    if self.iy and self.selected and mouse_collided:
+                    if self.multiple and self.selected and mouse_collided:
                          scroll_multiplier = 3
                          line_h = 1
                          try:
@@ -829,7 +833,7 @@ class Input(Widget):
                     relative_y = mouse.pos[1] - self.master_coordinates[1]
                     l_margin = self.left_margin * self._resize_ratio[0]
                     t_margin = self.top_margin * self._resize_ratio[1]
-                    if self.iy:
+                    if self.multiple:
                         line_height = self._get_line_height()
                         if line_height <= 0 : line_height = 1 # Prevent division by zero
                         target_line_idx_float = (relative_y - t_margin + self._text_scroll_offset_y) / line_height
@@ -896,7 +900,7 @@ class Input(Widget):
         if not isinstance(text, str): text = str(text)
 
         original_text = self._entered_text
-        if not self.iy:
+        if not self.multiple:
             text = text.replace('\r\n', ' ').replace('\r', ' ').replace('\n', ' ')
 
         if self.max_characters is not None:
@@ -937,7 +941,7 @@ class Input(Widget):
             if clip_rect.width < 0: clip_rect.width = 0
             if clip_rect.height < 0: clip_rect.height = 0
             if self._text_surface:
-                if self.iy:
+                if self.multiple:
                     self._text_rect = self._text_surface.get_rect(topleft=(l_margin - self._text_scroll_offset, t_margin - self._text_scroll_offset_y))
                 else:
                     self._text_rect = self._text_surface.get_rect(left=l_margin - self._text_scroll_offset,centery=(t_margin + self.surface.get_height() - b_margin) / 2 )
@@ -949,7 +953,7 @@ class Input(Widget):
                 cursor_visual_x = 0
                 cursor_visual_y = 0
                 try:
-                    if self.iy:
+                    if self.multiple:
                         cursor_line, cursor_col = self._get_cursor_line_col()
                         lines = self._entered_text.split('\n')
                         line_text = lines[cursor_line] if cursor_line < len(lines) else ""

@@ -149,8 +149,32 @@ class Color:
     def __getitem__(cls, key: str) -> tuple:
         return getattr(cls, key.upper())
 
+def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
+    hex_color = hex_color.lstrip('#')
+    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4)) #type: ignore
       
+def mix(*colors) -> tuple[int, int, int]:
+    final_color_list = []
+    for color in colors:
+        if isinstance(color, str):
+            if color.startswith('#'):
+                color = hex_to_rgb(color)
+            else:
+                try:
+                    color = getattr(Color, color.upper())
+                except AttributeError:
+                    raise ValueError(f"Unknown color name: {color}")
+        
+        if not isinstance(color, tuple):
+             raise TypeError(f"Invalid color format for: {color}")
 
+        final_color_list.append(color)
+
+    if not final_color_list:
+        return (0, 0, 0)
+
+    r, g, b = (sum(c) // len(final_color_list) for c in zip(*final_color_list))
+    return (r, g, b)
 
 class SubThemeRole(StrEnum):
     PRIMARY = "primary"

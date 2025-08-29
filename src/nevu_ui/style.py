@@ -62,13 +62,15 @@ class Gradient:
         return Gradient(self.colors, self.type, self.direction, transparency)
 
     def apply_gradient(self, surface):
+        gradient_surface = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
         if self.type == 'linear':
-            self._apply_linear_gradient(surface)
+            self._apply_linear_gradient(gradient_surface)
         elif self.type == 'radial':
-            self._apply_radial_gradient(surface)
+            self._apply_radial_gradient(gradient_surface)
         
         if self.transparency is not None:
-            surface.set_alpha(self.transparency)
+            gradient_surface.set_alpha(self.transparency)
+        surface.blit(gradient_surface, (0, 0))
         return surface
 
     def _apply_linear_gradient(self, surface):

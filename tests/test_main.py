@@ -20,8 +20,8 @@ class Mygame(ui.Manager):
         self._dirty_mode = False
         self.background = (0,0,100)
         self.window = ui.window.Window((300,300))
-        main_style = ui.Style(borderradius=10,borderwidth=2,colortheme=ui.synthwave_dark_color_theme,fontname="vk_font.ttf",)#gradient=ui.style.Gradient(colors=[ui.Color.AQUA,(100,100,100)],type='radial',direction=ui.style.Gradient.TOP_CENTER))
-        style_mini_font = main_style(fontsize=10, border_radius=15,borderwidth=10)
+        main_style = ui.Style(borderradius=10,borderwidth=2,colortheme=ui.synthwave_dark_color_theme,fontname="vk_font.ttf",gradient=ui.style.Gradient(colors=[ui.Color.AQUA,(100,100,100)],type='radial',direction=ui.style.Gradient.TOP_CENTER))
+        style_mini_font = main_style(fontsize=10, border_radius=15,borderwidth=10,gradient=ui.style.Gradient(colors=[ui.Color.REBECCAPURPLE,ui.mix(ui.Color.AQUA,ui.Color.REBECCAPURPLE)],type='linear',direction=ui.style.Gradient.TO_TOP))
         #Widget customization
         
         #b.animation_manager.transition_animation = ui.AnimationEaseIn
@@ -29,30 +29,14 @@ class Mygame(ui.Manager):
         #b.animation_manager.add_start_animation(ui.AnimationEaseInBack(1,[0,100],[0,0],ui.AnimationType.POSITION))
         #b.animation_manager.add_continuous_animation(ui.AnimationBounce(5,[90,50],[-90,50],ui.AnimationType.POSITION))
         b = ui.Button(lambda: print("Button 1"), "Test Chamber", [50*ui.fill,30*ui.fill],style=main_style(borderradius=15,borderwidth=10, ),words_indent=True, alt=True)
-        b.subtheme_role = ui.SubThemeRole.SECONDARY
+        b.subtheme_role = ui.SubThemeRole.ERROR
         l = ui.Button(lambda: print("Button 1"), "Test Chamber", [100*ui.fill,2*ui.fill],style=main_style(borderradius=15,borderwidth=10, ),words_indent=True, alt=False, id="scroll")
         l.subtheme_role = ui.SubThemeRole.PRIMARY
         i = ui.Input([100*ui.fill,33*ui.fill],main_style(borderradius=30,fontname="vk_font.ttf"),"","Введите",multiple=True, alt=True)
         
         i.animation_manager.add_start_animation(ui.AnimationEaseOut(3,[0,-100],[0,0],ui.AnimationType.POSITION))
         strelka_size = [32*ui.fill,45*ui.fill]
-        self.menu = ui.menu.Menu(self.window,(100*ui.vw,100*ui.vh),
-                style = main_style(borderradius=30,borderwidth=5), alt=False, 
-                layout = ui.Grid([100*ui.fill,100*ui.fill],3,3, 
-                         content = {
-                         (2,2): 
-                                        ui.Scrollable([100*ui.fill, 100*ui.fill], wheel_scroll_power=2, 
-                                            content=(
-                                            [ui.Align.CENTER, copy.copy(b)],
-                                            [ui.Align.CENTER, copy.copy(l)],
-                                            [ui.Align.CENTER, copy.copy(b)],
-                                            [ui.Align.CENTER, copy.copy(b)],
-                                            [ui.Align.CENTER, copy.copy(l)],
-                                            [ui.Align.CENTER, copy.copy(b)],
-                                                )
-                                            ),
-                         #(2,1): i,
-                         (2,3): ui.Grid([70*ui.fill, 25*ui.fill], 3,3, 
+        gridmenu = ui.Grid([70*ui.fill, 25*ui.fill], x=3,y=3, 
                                 content={
                                         (1,1): ui.Button(lambda: print("Button Topleft"), "Test Chamber", [50*ui.fill,30*ui.fill],style=style_mini_font,words_indent=True, ),
                                         (2,2): ui.Button(lambda: print("Button Center"), "Test Chamber", [50*ui.fill,30*ui.fill],style=style_mini_font,words_indent=True, ),
@@ -61,14 +45,23 @@ class Mygame(ui.Manager):
                                         (3,1): ui.Button(lambda: print("Button TopRight"), "Test Chamber", [50*ui.fill,30*ui.fill],style=style_mini_font,words_indent=True, ),
                                     }
                          )
+        self.menu = ui.menu.Menu(self.window,(100*ui.vw,100*ui.vh),
+                style = main_style(borderradius=20,borderwidth=1), alt=False, 
+                layout = ui.Grid([100*ui.fill,100*ui.fill],x=3,y=3, 
+                         content = {
+                         (2,1): gridmenu,
+                         (2,2): gridmenu,
+                         (2,3): gridmenu
                      }   
                  )
              )    
-         
+        self.menu.quality = ui.Quality.Best
+        self.menu.will_resize = True
         #l = self.menu.layout
         #l.get_item(2,1).on_click = lambda: print("JOTA")
-        
+
     def draw_loop(self):
+        self.menu.surface.fill(self.background)
         self.menu.draw()
         pygame.draw.rect(self.window.surface, self.background, pygame.Rect(ui.mouse.pos, (5,5)), 1)
         
@@ -77,13 +70,16 @@ class Mygame(ui.Manager):
     def update_loop(self, events):
         
         self.menu.update()
-        print(self.menu.layout.get_item(2,2).get_item_by_id("scroll")._subtheme_role)
+        lay = self.menu.layout
+        assert isinstance(lay, ui.Grid)
+        #print(lay.get_item(2,2).get_item_by_id("scroll")._subtheme_role)
         show_fps = True
         fps_mode = "Unslowed"
         #print(self.menu.layout.get_item(2,1.5).scroll_bar_y.percentage)
         #print(ui.mouse.wheel_y)
         if show_fps:
             print(f"FPS {fps_mode}: ",ui.time.fps)
+        #print(self.menu.layout.get_item(2,2).get_item_by_id("scroll").master_coordinates)
 
         #print(f"Window: {self.window._next_update_dirty_rects}") #Window
         #print(f"Menu: {self.menu._dirty_rects}") #Menu

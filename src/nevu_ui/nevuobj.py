@@ -6,7 +6,11 @@ from .animations import AnimationType, AnimationManager
 from enum import Enum, auto
 from .utils import NvVector2 as Vector2
 import copy
+from typing import Any
 from .color import *
+from .fast_logic import (
+    relx_helper, rely_helper, relm_helper, rel_helper
+)
 
 class HoverState(Enum):
     UN_HOVERED = auto()
@@ -14,34 +18,132 @@ class HoverState(Enum):
     CLICKED = auto()
 
 class NevuObject:
-    def __init__(self, size: Vector2 | list, style: Style, floating: bool = False, id: str | None = None):
-        self._lazy_kwargs = {'size': size}
-        self.id = id
+    id: str | None
+    floating: bool
+    single_instance: bool
     
-        #Objects
-        self._init_objects(style)
+    #INIT STRUCTURE: ====================
+    #    __init__ >
+    #        constants 
+    #        basic_variables >
+    #            test_flags
+    #            booleans
+    #            numerical
+    #            lists
+    #        complicated_variables >
+    #            objects
+    #            style
+    #    postinit(lazy_init) >
+    #        size dependent code
+    #======================================
+    
+    def __init__(self, size: Vector2 | list, style: Style, **constant_kwargs):
+        self.constant_kwargs = copy.deepcopy(constant_kwargs)
+        self._lazy_kwargs = {'size': size}
 
-        #Booleans
-        self._init_booleans(floating)
+        #=== Constants ===
+        self._init_constants(**constant_kwargs)
+        
+    #=== Basic Variables ===    
 
-        #Lists
+        #=== Test Flags ===
+        self._init_test_flags()
+        
+        #=== Booleans(Flags) ===
+        self._init_booleans()
+        
+        #=== Numerical(int, float) ===
+        self._init_numerical()
+
+        #=== Lists/Vectors ===
         self._init_lists()
-
-    def _init_objects(self, style: Style):
+        
+    #=== Complicated Variables ===
+        #=== Objects ===
+        self._init_objects()
+        
+        #=== Style ===
+        self._init_style(style)
+    def clone(self):
+        return NevuObject(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
+    def __deepcopy__(self, *args, **kwargs):
+        return self.clone()
+    def _add_constant(self, name, supported_classes: tuple | Any, default: Any):
+        self.constant_supported_classes[name] = supported_classes
+        self.constant_defaults[name] = default
+        self.is_constant_set[name] = False
+    def _init_constants_base(self):
+        self.constant_supported_classes = {}
+        self.constant_defaults = {}
+        self.constant_links = {}
+        self.is_constant_set = {}
+        
+    def _add_constants(self):
+        self._add_constant("id", (str, type(None)), None)
+        self._add_constant("floating", bool, False)
+        self._add_constant("single_instance", bool, False)
+    def _add_constant_link(self, name: str, link_name: str):
+        self.constant_links[name] = link_name
+    def _preinit_constants(self):
+        for name, value in self.constant_defaults.items():
+            if not hasattr(self, name):
+                setattr(self, name, value)
+    def _change_constants_kwargs(self, **kwargs):
+        constant_name = None
+        needed_types = None
+        for name, value in kwargs.items():
+            name = name.lower()
+            if name in self.constant_supported_classes.keys():
+                constant_name = name
+                needed_types = self.constant_supported_classes[name]
+            if name in self.constant_links.keys():
+                constant_name = self.constant_links[name]
+                if constant_name in self.constant_supported_classes.keys():
+                    needed_types = self.constant_supported_classes[constant_name]
+                else:
+                    raise ValueError(f"Invalid constant link {name} -> {self.constant_links[name]}. Constant not found.")
+            if constant_name:
+                assert needed_types
+                if isinstance(value, needed_types) and not self.is_constant_set[constant_name]:
+                    print(f"Debug: Set constant {name}({constant_name}) to {value} in {self}({type(self).__name__})")
+                    setattr(self, constant_name, value)
+                    self.is_constant_set[constant_name] = True
+                elif self.is_constant_set[constant_name]:
+                    raise ValueError(f"Constant {name}({constant_name}) is already set")
+                else:
+                    raise TypeError(
+                        f"Invalid type for constant '{constant_name}'. "
+                        f"Expected {needed_types}, but got {type(value).__name__}."
+                    )
+                constant_name = None
+                needed_types = None
+            else:
+                raise ValueError(f"Constant {name} not found")
+    def _init_test_flags(self):
+        pass
+    def _init_numerical(self):
+        pass
+    def _init_constants(self, **kwargs):
+        self._init_constants_base()
+        self._add_constants()
+        self._preinit_constants()
+        self._change_constants_kwargs(**kwargs)
+            
+    def _init_style(self, style: Style):
+        self.style = style
+    def _init_objects(self):
         self.cache = Cache()
         self._subtheme_role = SubThemeRole.TERTIARY
         self._hover_state = HoverState.UN_HOVERED
         self.animation_manager = AnimationManager()
-        self.style = style
         
-    def _init_booleans(self, floating: bool):
+    def _init_booleans(self):
         self._visible = True
         self._active = True
         self._changed = True
         self._first_update = True
         self.booted = False
         self._wait_mode = False
-        self._floating = floating
         
     def _init_lists(self):
         self._resize_ratio = Vector2(1, 1)
@@ -225,7 +327,7 @@ class NevuObject:
     def _subtheme(self):
         return self.style.colortheme.get_subtheme(self._subtheme_role)
 
-    #UPDATE STRUCTURE: -------------------
+    #UPDATE STRUCTURE: ====================
     #    update >
     #        primary_update >
     #            logic_update
@@ -233,7 +335,7 @@ class NevuObject:
     #            event_update
     #        secondary_update >
     #            widget/layout update code
-    #--------------------------------------
+    #======================================
 
     def update(self, events: list | None = None):
         events = events or []
@@ -273,26 +375,14 @@ class NevuObject:
     def secondary_draw(self):
         pass
     
-    def _rel_corner(self, result: int | float, min: int | None, max: int | None) -> int | float:
-        if min is not None and result < min: return min
-        return max if max is not None and result > max else result
-    
     def relx(self, num: int | float, min: int | None = None, max: int| None = None, function = None) -> int | float:
-        if not function: function = round
-        result = function(num*self._resize_ratio.x)
-        return self._rel_corner(result, min, max)
-    def rely(self, num: int | float, min: int | None = None, max: int | None = None, function = None) -> int | float:
-        if not function: function = round
-        result = function(num*self._resize_ratio.y)
-        return self._rel_corner(result, min, max)
+        return relx_helper(num, self._resize_ratio.x, min, max)
+
+    def rely(self, num: int | float, min: int | None = None, max: int| None = None, function = None) -> int | float:
+        return rely_helper(num, self._resize_ratio.y, min, max)
+
     def relm(self, num: int | float, min: int | None = None, max: int | None = None, function = None) -> int | float:
-        if not function: function = round
-        result = function(num*((self._resize_ratio.x+self._resize_ratio.y)/2))
-        return self._rel_corner(result, min, max)
+        return relm_helper(num, self._resize_ratio.x, self._resize_ratio.y, min, max)
     
     def rel(self, mass: list | tuple | Vector2, vector: bool = False) -> list | Vector2:  
-        if not (hasattr(mass, '__getitem__') and len(mass) >= 2):
-            raise ValueError("mass must be a sequence with two elements")
-        return (Vector2(mass[0] * self._resize_ratio.x, mass[1] * self._resize_ratio.y) if vector 
-                else [mass[0] * self._resize_ratio.x, mass[1] * self._resize_ratio.y] )
-    
+        return rel_helper(mass, self._resize_ratio.x, self._resize_ratio.y, vector)
