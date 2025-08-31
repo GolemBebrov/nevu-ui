@@ -7,21 +7,25 @@ from .widgets import *
 from .menu import Menu
 from .nevuobj import NevuObject
 from .fast_logic import _light_update_helper
+import typing
 default_style = Style()
 
 
 class LayoutType(NevuObject):
+    items: list[NevuObject]
+    freedom_items: list[NevuObject]
     def _get_item_master_coordinates(self, item: NevuObject):
-        return [item.coordinates[0] + self.first_parent_menu.coordinatesMW[0], item.coordinates[1] + self.first_parent_menu.coordinatesMW[1]]
+        return Vector2(item.coordinates[0] + self.first_parent_menu.coordinatesMW[0], item.coordinates[1] + self.first_parent_menu.coordinatesMW[1])
 
     def _draw_widget(self, item: NevuObject, multiply: NvVector2 | None = None, add: NvVector2 | None = None):
         if not isinstance(item, (LayoutType, Widget)) or not isinstance(self.surface, pygame.Surface): return
         if item._wait_mode:
             self.read_item_coords(item)
             self._start_item(item)
+            print("started item", item)
             return
         item.draw()
-        if self.is_layout(item) or not isinstance(item.surface, pygame.Surface): return
+        if self.is_layout(item) or not isinstance(item.surface, pygame.Surface): print("not a widget"); return
         coordinates = item.coordinates
         if multiply: coordinates = coordinates * multiply
         if add: coordinates = coordinates + add
@@ -31,6 +35,7 @@ class LayoutType(NevuObject):
         print("booted layout", self)
         self.booted = True
         for item in self.items + self.freedom_items:
+            assert isinstance(item, (Widget, LayoutType))
             item.booted = True
             item._boot_up()
             self.read_item_coords(item)
@@ -78,7 +83,7 @@ class LayoutType(NevuObject):
             for i in content:
                 self.add_item(i)
 
-    def _light_update(self, add_x: int = 0, add_y: int = 0 ):
+    def _light_update(self, add_x: int | float = 0, add_y: int | float = 0 ):
         _light_update_helper(
             self.items,
             self.cached_coordinates,
@@ -110,7 +115,7 @@ class LayoutType(NevuObject):
             try:
                 self.border_font = pygame.sysfont.SysFont("Arial", int(self.first_parent_menu._style.fontsize*self._resize_ratio.x))
                 self.border_font_surface = self.border_font.render(self._border_name, True, (255,255,255))
-            except Exception: pass
+            except Exception as e: print(e)
 
     def _convert_item_coord(self, coord, i: int = 0):
         if not isinstance(coord, SizeRule):
@@ -142,26 +147,32 @@ class LayoutType(NevuObject):
         super().resize(resize_ratio)
         self.cached_coordinates = None
         for item in self.items + self.freedom_items:
+            assert isinstance(item, (Widget, LayoutType))
             item.resize(self._resize_ratio)
         self.border_name = self._border_name
 
-    def is_layout(self, item: NevuObject) -> bool:
+    @staticmethod
+    def is_layout(item: NevuObject) -> typing.TypeGuard['LayoutType']:
         return isinstance(item, LayoutType)
     
-    def is_widget(self, item: NevuObject) -> bool:
+    @staticmethod
+    def is_widget(item: NevuObject) -> typing.TypeGuard['Widget']:
         return isinstance(item, Widget)
     
     def _event_on_add_item(self): pass
 
     def add_item(self, item: NevuObject):
-        if item.single_instance is False:
-            item = item.clone()
-        if self.is_layout(item): item._connect_to_layout(self)
-        elif hasattr(item,"floating"):
+        if item.single_instance is False: item = item.clone()
+        if self.is_layout(item): 
+            assert self.is_layout(item)
+            item._connect_to_layout(self)
+        elif self.is_widget(item):
             self.read_item_coords(item)
             self._start_item(item)
-            if item.floating: self.freedom_items.append(item)
-            else:self.items.append(item)
+            if item.floating: 
+                self.freedom_items.append(item)
+            else:
+                self.items.append(item)
             return
         self.read_item_coords(item)
         self._start_item(item)
@@ -171,22 +182,26 @@ class LayoutType(NevuObject):
 
     def apply_style_to_childs(self, style: Style):
         for item in self.items:
-            if self.is_widget(item): item.style = style
-            else: item.apply_style_to_childs(style)
+            assert isinstance(item, (Widget, LayoutType))
+            if self.is_widget(item): 
+                item.style = style
+            elif self.is_layout(item): 
+                item.apply_style_to_childs(style)
 
     def primary_draw(self):
         super().primary_draw()
         if self.borders and hasattr(self, "border_font_surface"):
             #sschc = [1,1] if self.layout!=None else self._resize_ratio
             assert self.surface
-            self.surface.blit(self.border_font_surface, [self.relx(self.coordinates[0]), self.rely(self.coordinates[1])-self.border_font_surface.get_height()])
-            pygame.draw.rect(self.surface,(255,255,255),[self.relx(self.coordinates[0]), self.rely(self.coordinates[1]),int(self.size[0]*self._resize_ratio[0]),int(self.size[1]*self._resize_ratio[1])],1)
+            self.surface.blit(self.border_font_surface, [self.coordinates[0], self.coordinates[1]-self.border_font_surface.get_height()])
+            pygame.draw.rect(self.surface,(255,255,255),[self.coordinates[0], self.coordinates[1],int(self.size[0]*self._resize_ratio[0]),int(self.size[1]*self._resize_ratio[1])],1)
         for item in self.freedom_items: #+ self.items:
             self._draw_widget(item, item.coordinates * self._resize_ratio)
 
     def _read_dirty_rects(self):
         dirty_rects = []
-        for item in self.items+self.freedom_items:
+        for item in self.items + self.freedom_items:
+            assert isinstance(item, (Widget, LayoutType))
             if len(item._dirty_rect) > 0:
                 dirty_rects.extend(item._dirty_rect)
                 item._dirty_rect = []
@@ -197,7 +212,7 @@ class LayoutType(NevuObject):
         if self.menu:self.surface = self.menu.surface;self.all_layouts_coords = [0,0]
         elif self.layout:self.surface = self.layout.surface;self.all_layouts_coords = [self.layout.all_layouts_coords[0]+self.coordinates[0],self.layout.all_layouts_coords[1]+self.coordinates[1]];self.first_parent_menu = self.layout.first_parent_menu
         for item in self.freedom_items:
-            item.master_coordinates = [item.coordinates[0]+self.first_parent_menu.coordinatesMW[0],item.coordinates[1]+self.first_parent_menu.coordinatesMW[1]]
+            item.master_coordinates = Vector2(item.coordinates[0]+self.first_parent_menu.coordinatesMW[0],item.coordinates[1]+self.first_parent_menu.coordinatesMW[1])
             item.update()
         if type(self) == LayoutType: self._dirty_rect = self._read_dirty_rects()
 
@@ -221,6 +236,7 @@ class LayoutType(NevuObject):
         return next((item for item in mass if item.id == id), None)
     def clone(self):
         return LayoutType(self._lazy_kwargs['size'], copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
+
 class Grid(LayoutType):
     row: int | float
     column: int | float
@@ -261,8 +277,8 @@ class Grid(LayoutType):
                 cw = self._rsize[0] / self.column
                 ch = self._rsize[1] / self.row
                 
-            coordinates = [self.coordinates[0] + self._rsize_marg[0] + self.relx(x * cw + (cw - item.size[0]) / 2 ),
-                           self.coordinates[1] + self._rsize_marg[1] + self.rely(y * ch + (ch - item.size[1]) / 2)]
+            coordinates = Vector2(self.coordinates[0] + self._rsize_marg[0] + self.relx(x * cw + (cw - item.size[0]) / 2 ),
+                           self.coordinates[1] + self._rsize_marg[1] + self.rely(y * ch + (ch - item.size[1]) / 2))
             item.coordinates = coordinates
             item.master_coordinates = self._get_item_master_coordinates(item)
             self.cached_coordinates.append(coordinates)
@@ -284,7 +300,9 @@ class Grid(LayoutType):
 
     def secondary_draw(self):
         super().secondary_draw()
-        for item in self.items: self._draw_widget(item)
+        for item in self.items: 
+            assert isinstance(item, (Widget, LayoutType))
+            self._draw_widget(item)
 
     def get_row(self, x: int) -> list[NevuObject]:
         return [item for item, coords in zip(self.items, self.grid_coordinates) if coords[0] == x - 1]
@@ -323,6 +341,7 @@ class CheckBoxGrid(Grid):
                 self.surface.blit(item.surface,[int(item.coordinates[0]),int(item.coordinates[1])])
     def apply_style_to_childs(self, style:Style):
         for item in self.items:
+            assert isinstance(item, (Widget, LayoutType))
             if not hasattr(item,"menu"):
                 if isinstance(item,CheckBox):
                     item.style = style
@@ -477,7 +496,9 @@ class Pages(LayoutType):
         selected_page.first_parent_menu = self.first_parent_menu
         if not selected_page.booted: selected_page._boot_up()
         selected_page.update()
+        
     def get_selected(self): return self.items[self.selected_page_id]
+    
     def clone(self):
         return Pages(self._lazy_kwargs['size'], copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
 class Gallery_Pages(Pages):
@@ -574,7 +595,7 @@ class Scrollable(LayoutType):
         
             self.track_start_coordinates = Vector2(0, 0)
             self.track_path = Vector2(0, 0)   
-
+        
         def set_scroll_params(self, track_start_abs, track_path, coordinatesMW):
             self.track_path = track_path
             self.track_start_coordinates = track_start_abs
@@ -675,17 +696,19 @@ class Scrollable(LayoutType):
     def coordinates(self):
         return self._coordinates
     @coordinates.setter
-    def coordinates(self, value: list | Vector2):
+    def coordinates(self, value: NvVector2):
         self._coordinates = value
         self.cached_coordinates = None
         if self.booted == False: return
         self._update_scroll_bars()
+        
     def _add_constants(self):
         super()._add_constants()
         self._add_constant('arrow_scroll_power', int, 5)
         self._add_constant('wheel_scroll_power', int, 5)
         self._add_constant('inverted_scrolling', bool, False)
-    def _lazy_init(self, size: Vector2|list, content: list[list[Align | NevuObject]] | None = None):
+        
+    def _lazy_init(self, size: NvVector2 | list, content: list[tuple[Align, NevuObject]] | None = None):
         super()._lazy_init(size, content)
         self.original_size = self.size.copy()
         self.__init_scroll_bars__()
@@ -749,10 +772,10 @@ class Scrollable(LayoutType):
             print(f"in {self} used is drawable for", item)
         item_rect = item.get_rect()
         self_rect = self.get_rect()
-        if item_rect.colliderect(self_rect): return True
-        return False
+        return bool(item_rect.colliderect(self_rect))
     
     def _is_widget_drawable_optimized(self, item: NevuObject):
+        raise DeprecationWarning("Not supported anymore, use _is_widget_drawable instead")
         if self._test_debug_print:
             print("in {self} used is drawable optimized(test) for", item)
         overdose_right = item.coordinates[0] + self.relx(item._anim_coordinates[0]) > self.coordinates[0] + self.size[0]
@@ -767,8 +790,9 @@ class Scrollable(LayoutType):
             print("used draw")
         super().secondary_draw()
         for item in self.items:
+            assert isinstance(item, (Widget, LayoutType))
             drawable = self._is_widget_drawable(item) if self._test_rect_calculation else self._is_widget_drawable_optimized(item)
-            if drawable: self._draw_widget(item)
+            if drawable or True: self._draw_widget(item)
         if self.actual_max_y > 0:
             self.scroll_bar_y.draw()
             
@@ -788,7 +812,6 @@ class Scrollable(LayoutType):
     def get_offset(self) -> int | float:
         percentage = self.scroll_bar_y.percentage
         return self.actual_max_y / 100 * percentage
-    
     def secondary_update(self, *args):
         if self._test_debug_print:
             print(f"in {self} used update")
@@ -868,6 +891,7 @@ class Scrollable(LayoutType):
         self.max_y = self.padding
         self.max_x = self.original_size[0] if self.original_size != self.size else self.size[0]
         for item in self.items:
+            assert isinstance(item, (Widget, LayoutType))
             self.max_y += self.relx(item.size[1] + self.padding)
         self.actual_max_y = self.max_y - self.size[1]
         
@@ -887,7 +911,7 @@ class Scrollable(LayoutType):
             None
         """
         
-        if self._test_debug_print:
+        if not self._test_debug_print:
             print(f"in {self} added widget: {item} at {alignment}.")
         if item.single_instance is False:
             item = item.clone()
@@ -900,7 +924,7 @@ class Scrollable(LayoutType):
         
         if self.layout:
             self.layout._event_on_add_item()
-
+            
     def clear(self):
         self.items.clear()
         self.widgets_alignment.clear()
@@ -913,26 +937,40 @@ class Scrollable(LayoutType):
         self.scroll_bar_y.style = style
 
     def clone(self):
-        return Grid(self._lazy_kwargs['size'], copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
+        return Scrollable(self._lazy_kwargs['size'], copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
+
 class Appending_Layout_Type(LayoutType):
-    def __init__(self, content: list | None = None, style: Style = default_style):
+    _margin: int | float
+    def __init__(self, content: list[tuple[Align, NevuObject]] | None = None, style: Style = default_style, **constant_kwargs):
+        super().__init__(Vector2(0,0), style, None, **constant_kwargs)
+        self._lazy_kwargs = {'size': Vector2(0,0), 'content': content}
+        
+    def _lazy_init(self, size: Vector2 | list, content: list | None = None):
+        super()._lazy_init(size, content)
         if content is None:
             content = []
-            
-        #------ TESTS USE WITH CAUTION! ------
-        self._test_always_update = True
-        #------ TESTS USE WITH CAUTION! ------
-
-        self._margin = 20
-        super().__init__((self.margin, 0), style)
-        self.widgets_alignment = []
-        self._can_be_main_layout = True
         if len(content) == 0: return
-        for item in content:
-            item, align = item
-            self.add_widget(item, align)
-    def add_widget(self, item: Widget | LayoutType, alignment: Align = Align.CENTER):
-        super().add_widget(item)
+        for inner_tuple in content:
+            align, item = inner_tuple
+            self.add_item(item, align)
+            
+    def _init_lists(self):
+        super()._init_lists()
+        self.widgets_alignment = []
+        
+    def _add_constants(self):
+        super()._add_constants()
+        self._add_constant("margin",(int, float), 10)
+        
+    def _init_test_flags(self):
+        super()._init_test_flags()
+        self._test_always_update = True
+    
+    def _recalculate_size(self):
+        pass
+    
+    def add_item(self, item: NevuObject, alignment: Align = Align.CENTER):
+        super().add_item(item)
         self.widgets_alignment.append(alignment)
         self._recalculate_size()
         if self.layout: self.layout._event_on_add_item()
@@ -961,6 +999,7 @@ class Appending_Layout_Type(LayoutType):
         super().draw()
         
         for item in self.items:
+            assert isinstance(item, (Widget, LayoutType))
             self._draw_widget(item)
     @property
     def margin(self): return self._margin
@@ -971,8 +1010,8 @@ class Appending_Layout_Type(LayoutType):
         
 class Appending_Layout_H(Appending_Layout_Type):
     def _recalculate_size(self):
-        self.size[0] = sum(item.size[0]+self._margin for item in self.items) if len(self.items) > 0 else 0
-        self.size[1] = max(x.size[1] for x in self.items) if len(self.items) > 0 else 0
+        self.size.x = sum(item.size[0]+self._margin for item in self.items) if len(self.items) > 0 else 0
+        self.size.y = max(x.size[1] for x in self.items) if len(self.items) > 0 else 0
     def _recalculate_widget_coordinates(self):
         self.cached_coordinates = []
         m = self.relx(self.margin)
