@@ -1,7 +1,8 @@
 import pygame
 from dataclasses import dataclass
 from enum import StrEnum
-
+import random
+import colorsys
 # Likely will be unused
 class Color_Type:
     TRANSPARENT = 101
@@ -149,92 +150,124 @@ class Color:
     def __getitem__(cls, key: str) -> tuple:
         return getattr(cls, key.upper())
 
-def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
-    hex_color = hex_color.lstrip('#')
-    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4)) #type: ignore
-      
-def mix(*colors) -> tuple[int, int, int]:
-    final_color_list = []
-    for color in colors:
-        if isinstance(color, str):
-            if color.startswith('#'):
-                color = hex_to_rgb(color)
-            else:
-                try:
-                    color = getattr(Color, color.upper())
-                except AttributeError:
-                    raise ValueError(f"Unknown color name: {color}")
-        
-        if not isinstance(color, tuple):
-             raise TypeError(f"Invalid color format for: {color}")
+    @staticmethod
+    def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
+        """Converts HEX string to RGB tuple."""
+        hex_color = hex_color.lstrip('#')
+        if len(hex_color) != 6:
+            raise ValueError("Invalid HEX color format. Use #RRGGBB.")
+        return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 
-        final_color_list.append(color)
+    @staticmethod
+    def hsl_to_rgb(hsl: tuple[float, float, float]) -> tuple[int, int, int]:
+        """Converts HSL (0-1) to RGB (0-255)."""
+        h, l, s = hsl
+        r, g, b = colorsys.hls_to_rgb(h, l, s)
+        return (round(r * 255), round(g * 255), round(b * 255))
 
-    if not final_color_list:
-        return (0, 0, 0)
+    @staticmethod
+    def rgb_to_hsl(rgb: tuple[int, int, int]) -> tuple[float, float, float]:
+        """Converts RGB (0-255) to HSL (0-1)."""
+        r, g, b = rgb
+        h, l, s = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
+        return (h, l, s)
 
-    r, g, b = (sum(c) // len(final_color_list) for c in zip(*final_color_list))
-    return (r, g, b)
+    @staticmethod
+    def invert(rgb: tuple[int, int, int]) -> tuple[int, int, int]:
+        """Inverts the color (makes negative)."""
+        return tuple(255 - c for c in rgb)
 
-class SubThemeRole(StrEnum):
+    @staticmethod
+    def lighten(rgb: tuple[int, int, int], amount: float = 0.2) -> tuple[int, int, int]:
+        """
+        Lightens the color.
+        amount: from 0.0 (no change) to 1.0 (completely white).
+        """
+        if not (0.0 <= amount <= 1.0):
+            raise ValueError("The 'amount' value should be between 0.0 and 1.0.")
+        h, l, s = Color.rgb_to_hsl(rgb)
+        l = l + (1 - l) * amount
+        return Color.hsl_to_rgb((h, l, s))
+
+    @staticmethod
+    def darken(rgb: tuple[int, int, int], amount: float = 0.2) -> tuple[int, int, int]:
+        """
+        Makes the color darker.
+        amount: from 0.0 (no change) to 1.0 (completely black).
+        """
+        if not (0.0 <= amount <= 1.0):
+            raise ValueError("The 'amount' value should be between 0.0 and 1.0.")
+        h, l, s = Color.rgb_to_hsl(rgb)
+        l = l * (1 - amount)
+        return Color.hsl_to_rgb((h, l, s))
+
+    @staticmethod
+    def random() -> tuple[int, int, int]:
+        """Returns a random RGB color."""
+        return (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+
+    @staticmethod
+    def text_color_for_bg(bg_rgb: tuple[int, int, int]) -> tuple[int, int, int]:
+        """
+        Determines which text color (black or white) will be better readable
+        on a given background color.
+        """
+        r, g, b = bg_rgb
+        luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+        return Color.BLACK if luminance > 0.5 else Color.WHITE
+
+    @staticmethod
+    def mix(*colors) -> tuple[int, int, int]:
+        """
+        Mixes several colors together.
+        Takes colors in RGB-tuple, HEX-string or color name from the Color class.
+        """
+        final_color_list = []
+        for color in colors:
+            if isinstance(color, str):
+                if color.startswith('#'):
+                    color = Color.hex_to_rgb(color)
+                else:
+                    try:
+                        color = getattr(Color, color.upper())
+                    except AttributeError:
+                        raise ValueError(f"Unknown color name: {color}")
+            
+            if not isinstance(color, tuple):
+                 raise TypeError(f"Invalid color format for: {color}")
+
+            final_color_list.append(color)
+
+        if not final_color_list:
+            return (0, 0, 0)
+
+        r, g, b = (sum(c) // len(final_color_list) for c in zip(*final_color_list))
+        return (r, g, b)
+
+
+class _RoleAncestor(StrEnum):
+    pass
+
+class SubThemeRole(_RoleAncestor):
     PRIMARY = "primary"
     SECONDARY = "secondary"
     TERTIARY = "tertiary"
     ERROR = "error"
 
+class PairColorRole(_RoleAncestor):
+    BACKGROUND = "background"
+    SURFACE = "surface"
+    SURFACE_VARIANT = "surface_variant"
+    INVERSE_SURFACE = "inverse_surface"
+
+class TupleColorRole(_RoleAncestor):
+    OUTLINE = "outline"
+    INVERSE_PRIMARY = "inverse_primary"
 @dataclass
-class ColorTheme:
-    """Представляет полную цветовую схему, основанную на ролях Material Design 3."""
-    primary: tuple
-    on_primary: tuple
-    primary_container: tuple
-    on_primary_container: tuple
-    secondary: tuple
-    on_secondary: tuple
-    secondary_container: tuple
-    on_secondary_container: tuple
-    tertiary: tuple
-    on_tertiary: tuple
-    tertiary_container: tuple
-    on_tertiary_container: tuple
-    error: tuple
-    on_error: tuple
-    error_container: tuple
-    on_error_container: tuple
-    background: tuple
-    on_background: tuple
-    surface: tuple
-    on_surface: tuple
-    surface_variant: tuple
-    on_surface_variant: tuple
-    outline: tuple
-    inverse_surface: tuple
-    inverse_on_surface: tuple
-    inverse_primary: tuple
-
-    def get_subtheme(self, role: SubThemeRole) -> 'ColorSubTheme':
-        """
-        Извлекает часть цветовой схемы в виде объекта ColorSubTheme.
-
-        Args:
-            role: Роль для извлечения (используйте SubThemeRole.PRIMARY и т.д.).
-
-        Returns:
-            Объект ColorSubTheme с соответствующими цветами.
-        """
-        role_name = role.value
-        
-        color = getattr(self, role_name)
-        on_color = getattr(self, f"on_{role_name}")
-        container = getattr(self, f"{role_name}_container")
-        on_container = getattr(self, f"on_{role_name}_container")
-
-        return ColorSubTheme(
-            color=color,
-            oncolor=on_color,
-            container=container,
-            oncontainer=on_container
-        )
+class ColorPair:
+    """Представляет пару цветов (основной цвет и цвет контента на нем)."""
+    color: tuple
+    oncolor: tuple
 
 @dataclass
 class ColorSubTheme:
@@ -244,51 +277,86 @@ class ColorSubTheme:
     container: tuple
     oncontainer: tuple
 
+@dataclass
+class ColorTheme:
+    """
+    Представляет полную, структурированную цветовую схему,
+    организованную по ролям Material Design 3.
+    """
+    primary: ColorSubTheme
+    secondary: ColorSubTheme
+    tertiary: ColorSubTheme
+    error: ColorSubTheme
+    background: ColorPair
+    surface: ColorPair
+    surface_variant: ColorPair
+    outline: tuple
+    inverse_surface: ColorPair
+    inverse_primary: tuple
+
+    def get_subtheme(self, role: SubThemeRole) -> ColorSubTheme:
+        assert isinstance(role, SubThemeRole)
+        return getattr(self, role.value)
+    
+    def get_pair(self, role: PairColorRole) -> ColorPair:
+        assert isinstance(role, PairColorRole)
+        return getattr(self, role.value)
+
+    def get_tuple(self, role: TupleColorRole) -> tuple:
+        assert isinstance(role, TupleColorRole)
+        return getattr(self, role.value)
+    def get(self, any_role) -> ColorSubTheme | ColorPair | tuple:
+        assert isinstance(any_role, _RoleAncestor)
+        return getattr(self, any_role.value)
 
 material3_light_color_theme = ColorTheme(
-    primary=(103, 80, 164), on_primary=(255, 255, 255), primary_container=(234, 221, 255), on_primary_container=(33, 0, 93),
-    secondary=(98, 91, 113), on_secondary=(255, 255, 255), secondary_container=(232, 222, 248), on_secondary_container=(30, 25, 43),
-    tertiary=(125, 82, 96), on_tertiary=(255, 255, 255), tertiary_container=(255, 216, 228), on_tertiary_container=(55, 11, 30),
-    error=(179, 38, 30), on_error=(255, 255, 255), error_container=(249, 222, 220), on_error_container=(65, 14, 11),
-    background=(255, 251, 255), on_background=(28, 27, 31),
-    surface=(255, 251, 255), on_surface=(28, 27, 31),
-    surface_variant=(231, 224, 236), on_surface_variant=(73, 69, 79),
+    primary=ColorSubTheme(color=(103, 80, 164), oncolor=(255, 255, 255), container=(234, 221, 255), oncontainer=(33, 0, 93)),
+    secondary=ColorSubTheme(color=(98, 91, 113), oncolor=(255, 255, 255), container=(232, 222, 248), oncontainer=(30, 25, 43)),
+    tertiary=ColorSubTheme(color=(125, 82, 96), oncolor=(255, 255, 255), container=(255, 216, 228), oncontainer=(55, 11, 30)),
+    error=ColorSubTheme(color=(179, 38, 30), oncolor=(255, 255, 255), container=(249, 222, 220), oncontainer=(65, 14, 11)),
+    background=ColorPair(color=(255, 251, 255), oncolor=(28, 27, 31)),
+    surface=ColorPair(color=(255, 251, 255), oncolor=(28, 27, 31)),
+    surface_variant=ColorPair(color=(231, 224, 236), oncolor=(73, 69, 79)),
     outline=(121, 116, 126),
-    inverse_surface=(49, 48, 51), inverse_on_surface=(244, 239, 244), inverse_primary=(208, 188, 255)
+    inverse_surface=ColorPair(color=(49, 48, 51), oncolor=(244, 239, 244)),
+    inverse_primary=(208, 188, 255)
 )
 
 material3_dark_color_theme = ColorTheme(
-    primary=(208, 188, 255), on_primary=(56, 30, 114), primary_container=(79, 55, 139), on_primary_container=(234, 221, 255),
-    secondary=(204, 194, 220), on_secondary=(51, 45, 65), secondary_container=(74, 68, 88), on_secondary_container=(232, 222, 248),
-    tertiary=(239, 184, 200), on_tertiary=(75, 34, 52), tertiary_container=(100, 57, 72), on_tertiary_container=(255, 216, 228),
-    error=(242, 184, 181), on_error=(96, 20, 16), error_container=(140, 29, 24), on_error_container=(249, 222, 220),
-    background=(28, 27, 31), on_background=(230, 225, 229),
-    surface=(28, 27, 31), on_surface=(230, 225, 229),
-    surface_variant=(73, 69, 79), on_surface_variant=(202, 196, 208),
+    primary=ColorSubTheme(color=(208, 188, 255), oncolor=(56, 30, 114), container=(79, 55, 139), oncontainer=(234, 221, 255)),
+    secondary=ColorSubTheme(color=(204, 194, 220), oncolor=(51, 45, 65), container=(74, 68, 88), oncontainer=(232, 222, 248)),
+    tertiary=ColorSubTheme(color=(239, 184, 200), oncolor=(75, 34, 52), container=(100, 57, 72), oncontainer=(255, 216, 228)),
+    error=ColorSubTheme(color=(242, 184, 181), oncolor=(96, 20, 16), container=(140, 29, 24), oncontainer=(249, 222, 220)),
+    background=ColorPair(color=(28, 27, 31), oncolor=(230, 225, 229)),
+    surface=ColorPair(color=(28, 27, 31), oncolor=(230, 225, 229)),
+    surface_variant=ColorPair(color=(73, 69, 79), oncolor=(202, 196, 208)),
     outline=(147, 143, 153),
-    inverse_surface=(230, 225, 229), inverse_on_surface=(49, 48, 51), inverse_primary=(103, 80, 164)
+    inverse_surface=ColorPair(color=(230, 225, 229), oncolor=(49, 48, 51)),
+    inverse_primary=(103, 80, 164)
 )
 
 ocean_light_color_theme = ColorTheme(
-    primary=Color.STEELBLUE, on_primary=Color.WHITE, primary_container=Color.LIGHTBLUE, on_primary_container=Color.DARKSLATEBLUE,
-    secondary=Color.MEDIUMAQUAMARINE, on_secondary=Color.BLACK, secondary_container=Color.PALEGREEN, on_secondary_container=Color.DARKGREEN,
-    tertiary=Color.SADDLEBROWN, on_tertiary=Color.BLACK, tertiary_container=Color.WHEAT, on_tertiary_container=Color.SADDLEBROWN,
-    error=Color.TOMATO, on_error=Color.WHITE, error_container=Color.MISTYROSE, on_error_container=Color.DARKRED,
-    background=Color.ALICEBLUE, on_background=Color.DARKSLATEGRAY,
-    surface=Color.WHITE, on_surface=Color.DARKSLATEGRAY,
-    surface_variant=Color.POWDERBLUE, on_surface_variant=Color.SLATEGRAY,
+    primary=ColorSubTheme(color=Color.STEELBLUE, oncolor=Color.WHITE, container=Color.LIGHTBLUE, oncontainer=Color.DARKSLATEBLUE),
+    secondary=ColorSubTheme(color=Color.MEDIUMAQUAMARINE, oncolor=Color.BLACK, container=Color.PALEGREEN, oncontainer=Color.DARKGREEN),
+    tertiary=ColorSubTheme(color=Color.SADDLEBROWN, oncolor=Color.BLACK, container=Color.WHEAT, oncontainer=Color.SADDLEBROWN),
+    error=ColorSubTheme(color=Color.TOMATO, oncolor=Color.WHITE, container=Color.MISTYROSE, oncontainer=Color.DARKRED),
+    background=ColorPair(color=Color.ALICEBLUE, oncolor=Color.DARKSLATEGRAY),
+    surface=ColorPair(color=Color.WHITE, oncolor=Color.DARKSLATEGRAY),
+    surface_variant=ColorPair(color=Color.POWDERBLUE, oncolor=Color.SLATEGRAY),
     outline=Color.LIGHTSLATEGRAY,
-    inverse_surface=Color.DARKSLATEGRAY, inverse_on_surface=Color.WHITE, inverse_primary=Color.SKYBLUE
+    inverse_surface=ColorPair(color=Color.DARKSLATEGRAY, oncolor=Color.WHITE),
+    inverse_primary=Color.SKYBLUE
 )
 
 synthwave_dark_color_theme = ColorTheme(
-    primary=Color.DEEPPINK, on_primary=Color.WHITE, primary_container=(99, 0, 57), on_primary_container=Color.PINK,
-    secondary=Color.CYAN, on_secondary=Color.BLACK, secondary_container=(0, 77, 77), on_secondary_container=Color.AQUAMARINE,
-    tertiary=Color.YELLOW, on_tertiary=Color.BLACK, tertiary_container=(102, 91, 0), on_tertiary_container=Color.LIGHTYELLOW,
-    error=Color.ORANGERED, on_error=Color.WHITE, error_container=(150, 40, 0), on_error_container=Color.ALICEBLUE,
-    background=(21, 2, 53), on_background=Color.LAVENDER,
-    surface=(36, 17, 68), on_surface=Color.LAVENDER,
-    surface_variant=Color.DARKSLATEBLUE, on_surface_variant=Color.THISTLE,
+    primary=ColorSubTheme(color=Color.DEEPPINK, oncolor=Color.WHITE, container=(99, 0, 57), oncontainer=Color.PINK),
+    secondary=ColorSubTheme(color=Color.CYAN, oncolor=Color.BLACK, container=(0, 77, 77), oncontainer=Color.AQUAMARINE),
+    tertiary=ColorSubTheme(color=Color.YELLOW, oncolor=Color.BLACK, container=(102, 91, 0), oncontainer=Color.LIGHTYELLOW),
+    error=ColorSubTheme(color=Color.ORANGERED, oncolor=Color.WHITE, container=(150, 40, 0), oncontainer=Color.ALICEBLUE),
+    background=ColorPair(color=(21, 2, 53), oncolor=Color.LAVENDER),
+    surface=ColorPair(color=(36, 17, 68), oncolor=Color.LAVENDER),
+    surface_variant=ColorPair(color=Color.DARKSLATEBLUE, oncolor=Color.THISTLE),
     outline=Color.SLATEBLUE,
-    inverse_surface=Color.LAVENDER, inverse_on_surface=(21, 2, 53), inverse_primary=Color.MAGENTA
+    inverse_surface=ColorPair(color=Color.LAVENDER, oncolor=(21, 2, 53)),
+    inverse_primary=Color.MAGENTA
 )
