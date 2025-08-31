@@ -324,30 +324,37 @@ class Menu:
     def draw(self):
         if not self.enabled: return
         if self.window is None: return
+        assert isinstance(self.window, Window)
         scaled_bg = self.cache.get_or_exec(CacheType.Scaled_Background, self._background)
         if scaled_bg:
             self.surface.blit(scaled_bg,(0,0))
         if self._layout is not None:
             if len(self._layout._dirty_rect)>0:
                 self._dirty_rects.extend(self._layout._dirty_rect)
-                self._layout.draw()
+            self._layout.draw()
         self.window.surface.blit(self.surface, self.coordinatesMW)
         
+        assert isinstance(self._opened_sub_menu, (Menu, type(None)))
         if self._opened_sub_menu:
             for item in self._args_menus_to_draw: item.draw()
             self._opened_sub_menu.draw()
+            
     def update(self):
         if not self.enabled: return
         if self.window is None: return
+        assert isinstance(self.window, Window)
+        
         if len(self._dirty_rects) > 0:
             self.window._next_update_dirty_rects.extend(self._dirty_rects)
             self._dirty_rects = []
+            
+        assert isinstance(self._opened_sub_menu, (Menu, type(None)))
         if self._opened_sub_menu:
             self._opened_sub_menu.update()
             return
-        if self._layout: self._layout.update()
-        #DEPRECATED!
-        #self._global_changed = self.layout._is_changed
+        if self._layout: 
+            self._layout.update(self.window.last_events)
+        
     def get_rect(self) -> pygame.Rect:
         return pygame.Rect(self.coordinatesMW, self.size * self._resize_ratio)
 
