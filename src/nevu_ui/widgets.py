@@ -491,6 +491,8 @@ class Input(Widget):
         self.top_margin = 5
         self.bottom_margin = 5
         self.text = default
+        self._default_text = default
+        
     def _init_text_cache(self):
         self._text_surface = None
         self._text_rect = pygame.Rect(0, 0, 0, 0)
@@ -688,8 +690,9 @@ class Input(Widget):
         #self._init_cursor()
         if hasattr(self,'_entered_text'):
              self._right_bake_text()
-    def event_update(self,events:list[pygame.event.Event]):
-        super().event_update()
+    def event_update(self,events:list[pygame.event.Event] | None = None):
+        if events is None: events = []
+        super().event_update(events)
         if not self.active:
             if self.selected:
                  self.selected = False
@@ -972,7 +975,8 @@ class Input(Widget):
                         self.surface.blit(self.cursor, cursor_draw_rect.topleft)
                 except (pygame.error, AttributeError, IndexError):pass
         self._event_cycle(Event.RENDER)
-        
+    def clone(self):
+        return Input(self._lazy_kwargs['size'], copy.deepcopy(self.style), copy.copy(self._default_text), copy.copy(self.placeholder), self._on_change_fun, **self.constant_kwargs)
 class MusicPlayer(Widget):
     def __init__(self, size, music_path, style: Style = default_style):
         super().__init__(size, style)
