@@ -19,9 +19,9 @@ class Mygame(ui.Manager):
         self.fps = 750000000000000000
         self._dirty_mode = False
         self.background = (0,0,100)
-        self.window = ui.window.Window((300,300))
+        self.window = ui.window.Window((300,300), resize_type=ui.ResizeType.FillAllScreen)
         main_style = ui.Style(borderradius=10,borderwidth=2,colortheme=ui.synthwave_dark_color_theme,fontname="vk_font.ttf",gradient=ui.style.Gradient(colors=[ui.Color.AQUA,(100,100,100)],type='radial',direction=ui.style.Gradient.TOP_CENTER))
-        style_mini_font = main_style(fontsize=10, border_radius=15,borderwidth=10,gradient=ui.style.Gradient(colors=[ui.Color.REBECCAPURPLE,ui.mix(ui.Color.AQUA,ui.Color.REBECCAPURPLE)],type='linear',direction=ui.style.Gradient.TO_TOP))
+        style_mini_font = main_style(fontsize=10, border_radius=15,borderwidth=10,gradient=ui.style.Gradient(colors=[ui.Color.REBECCAPURPLE,ui.Color.mix(ui.Color.AQUA,ui.Color.REBECCAPURPLE)],type='linear',direction=ui.style.Gradient.TO_TOP))
         #Widget customization
         
         #b.animation_manager.transition_animation = ui.AnimationEaseIn

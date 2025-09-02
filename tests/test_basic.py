@@ -2,10 +2,10 @@ import nevu_ui as ui
 import pygame
 
 def create_test_instances():
-    test_window = ui.window.Window((300,300), "Test Window")
+    test_window = ui.window.Window((300,700), "Test Window", resize_type=ui.ResizeType.FillAllScreen)
     test_widget = ui.Button(lambda: print("pressed"), "Press me", (100, 100), ui.default_style(),single_instance=False)
-    test_hard_widget = ui.Input([70*ui.fill,20*ui.fill],ui.default_style(borderradius=30),"InputTest",multiple=True,single_instance=True)
-    test_inner_layout = ui.Grid([50*ui.fill, 35*ui.fill], x=3,y=3, single_instance=True, 
+    test_hard_widget = ui.Input([70*ui.vw,20* ui.vh],ui.default_style(borderradius=30),"InputTest",multiple=True,single_instance=True)
+    test_inner_layout = ui.Grid([50*ui.vw, 35*ui.vh], x=3,y=3, single_instance=True, 
                                     content={
                                             (1,1): ui.Button(lambda: print("Button Topleft"), "Test Chamber", [50*ui.fill,30*ui.fill],words_indent=True, ),
                                             (2,2): ui.Button(lambda: print("Button Center"), "Test Chamber", [50*ui.fill,30*ui.fill],words_indent=True, ),
@@ -25,6 +25,7 @@ class NevuTest(ui.Manager):
         super().__init__(self.window)
         self.add_to_layout()
         self.do_fps_test = False
+        self._dirty_mode = False
     def add_to_layout(self):
         pass
         #Override in test

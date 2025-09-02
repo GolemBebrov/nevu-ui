@@ -6,14 +6,16 @@ class TestGrid(NevuTest):
     def add_to_layout(self):
         self.do_fps_test = True
         self.test_menu.layout = \
-        ui.Grid([100*ui.fill, 100*ui.fill], x=3,y=3,
+        ui.Grid([ui.Fill(100), ui.Fill(100)], x=3,y=3,
                 content={
-            
                     (2,1): self.test_widget,
                     (2,2): self.test_hard_widget,
                     (2,3): self.test_inner_layout,
                     }
                 )
-
+        self.grid = self.test_menu.layout
+    def update_loop(self, events=None):
+        super().update_loop(events)
+        print(self.test_hard_widget.text)
 ts = TestGrid()
 ts.run()
