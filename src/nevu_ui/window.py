@@ -1,13 +1,16 @@
 from .utils import *
 import sys
 import pygame
-
+from enum import Enum, auto
 _context_to_draw = None
+
+class ResizeType(Enum):
+    CropToRatio = auto()
+    FillAllScreen = auto()
 
 class Window:
     @staticmethod
     def cropToRatio(width: int, height: int, ratio, default=(0, 0)):
-        # ...и этот метод остается без изменений, я гейлорд ска))) ЖОПА ЖОПА ЖОПА ПИСКА ЖОПА 
         if height == 0 or ratio[1] == 0: return default
         rx, ry = ratio
         aspect_ratio = width / height
@@ -20,10 +23,11 @@ class Window:
             crop_height = height - (width * ry / rx)
             return default[0], crop_height
 
-    def __init__(self, size, minsize=(10, 10), title="pygame window", resizable=True, ratio: NvVector2 | None = None):
+    def __init__(self, size, minsize=(10, 10), title="pygame window", resizable=True, ratio: NvVector2 | None = None, resize_type: ResizeType = ResizeType.CropToRatio):
         self._original_size = tuple(size)
         self.size = list(size)
         self.minsize = list(minsize)
+        self.resize_type = resize_type
         
         flags = pygame.RESIZABLE if resizable else 0
         
@@ -44,7 +48,8 @@ class Window:
         self._crop_width_offset = 0
         self._crop_height_offset = 0
         self._offset = NvVector2(0, 0)
-        self._recalculate_render_area() 
+        if self.resize_type == ResizeType.CropToRatio:
+            self._recalculate_render_area() 
 
         self._selected_context_menu = None
 
@@ -98,11 +103,13 @@ class Window:
                 
             if event.type == pygame.VIDEORESIZE:
                 self.size = [event.w, event.h]
-                self._recalculate_render_area()
-                
-                render_width = self.size[0] - self._crop_width_offset
-                render_height = self.size[1] - self._crop_height_offset
-                self._event_cycle(Event.RESIZE, [render_width, render_height])
+                if self.resize_type == ResizeType.CropToRatio:
+                    self._recalculate_render_area()
+                    render_width = self.size[0] - self._crop_width_offset
+                    render_height = self.size[1] - self._crop_height_offset
+                    self._event_cycle(Event.RESIZE, [render_width, render_height])
+                else:
+                    self._event_cycle(Event.RESIZE, self.size)
                 self._next_update_dirty_rects.append(pygame.Rect(0,0,*self.size))
 
             if mouse.right_up:
