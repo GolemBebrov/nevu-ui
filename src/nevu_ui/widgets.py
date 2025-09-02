@@ -4,14 +4,14 @@ import copy
 import math
 from PIL import Image
 from .style import *
-from .style import _QUALITY_TO_RESOLUTION
+from .core_types import _QUALITY_TO_RESOLUTION, Quality
 from .utils import *
 from .utils import NvVector2 as Vector2
 from .color import *
 from .animations import *
 from .nevuobj import NevuObject
 from nevu_ui.fast_logic import logic_update_helper
-default_style = Style()
+
 
 class Widget(NevuObject):
     alt: bool
@@ -118,13 +118,13 @@ class Widget(NevuObject):
             TRANSPARENT = (0, 0, 0, 0)
             self.surface.fill(TRANSPARENT)
 
-            content_surface = None
+            content_surface: pygame.Surface | None = None
             if self.cache.get(CacheType.Image):
                 content_surface = self.cache.get(CacheType.Image)
             elif self.style.gradient:
                 content_surface = self.cache.get_or_exec(CacheType.Scaled_Gradient, self._scale_gradient)
 
-            shape_surface = self.cache.get_or_exec(CacheType.Surface, self._create_surf_base)
+            shape_surface: pygame.Surface | None  = self.cache.get_or_exec(CacheType.Surface, self._create_surf_base)
 
             if content_surface and shape_surface:
                 final_image = content_surface.copy()
@@ -135,11 +135,12 @@ class Widget(NevuObject):
             elif shape_surface:
                 self.surface.blit(shape_surface, (0, 0))
 
-    def logic_update(self, *args):
+    def logic_update(self):
+        super().logic_update()
         new_dr_old, new_first_update = logic_update_helper(
         self._optimized_dirty_rect_for_short_animations,
         self.animation_manager,
-        self.get_rect_opt, # Передаем сам метод
+        self.get_rect_opt, 
         self.rel,
         self._csize,
         self.master_coordinates,
@@ -147,18 +148,14 @@ class Widget(NevuObject):
         self._dr_coordinates_old,
         self._first_update,
         self.first_update_functions,
-        self._update_hover_state # И этот метод тоже
         )
     
         self._dr_coordinates_old = new_dr_old
         self._first_update = new_first_update
 
-        self._update_hover_state()
-
     def _boot_up(self):
         #pass
-        print("booted widget", self)
-
+        print(f"booted widget: {self}")
 
     def bake_text(self, text: str, unlimited_y: bool = False, words_indent: bool = False,
                   alignx: Align = Align.CENTER, aligny: Align = Align.CENTER, continuous: bool = False):
@@ -318,21 +315,26 @@ class Label(Widget):
 
 class Button(Label):
     throw_errors: bool
+    is_active: bool
     def __init__(self, function, text: str, size: Vector2 | list, style: Style = default_style, **constant_kwargs):
         super().__init__(text, size, style, **constant_kwargs)
         self.function = function
+        
     def _add_constants(self):
         super()._add_constants()
-        self._add_constant("active", bool, True)
+        self._add_constant("is_active", bool, True)
         self._add_constant("throw_errors", bool, False)
-    def clone(self):
-        return Button(self.function,self._lazy_kwargs['text'], self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
+
     def _on_click_system(self):
-        if self.function:
+        if self.function and self.is_active:
             try: self.function()
             except Exception as e:
-                print(e)
                 if self.throw_errors: raise e
+                else: print(e)
+                
+    def clone(self):
+        return Button(self.function,self._lazy_kwargs['text'], self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
+    
 class CheckBox(Button):
     def __init__(self,on_change_fuction,state,size,style:Style,active:bool = True):
         super().__init__(lambda:on_change_fuction(state) if on_change_fuction else None,"",size,style)
@@ -472,7 +474,7 @@ class Input(Widget):
     multiple: bool
     allow_paste: bool
     words_indent: bool
-    active: bool
+    is_active: bool
     def __init__(self, size: Vector2|list, style: Style = default_style, default: str = "", placeholder: str = "", on_change_function = None, **constant_kwargs):
         super().__init__(size, style, **constant_kwargs)
         self._lazy_kwargs = {'size': size}
@@ -498,7 +500,7 @@ class Input(Widget):
         self._text_rect = pygame.Rect(0, 0, 0, 0)
     def _add_constants(self):
         super()._add_constants()
-        self._add_constant("active", bool, True)
+        self._add_constant("is_active", bool, True)
         self._add_constant("multiple", bool, False)
         self._add_constant("allow_paste", bool, True)
         self._add_constant("words_indent", bool, False)
@@ -656,21 +658,23 @@ class Input(Widget):
                 cury += line_height
 
             self._text_rect = self._text_surface.get_rect(topleft=(self.left_margin*self._resize_ratio[0], self.top_margin*self._resize_ratio[1]))
+        
         except (pygame.error, AttributeError):
              self._text_surface = None
              self._text_rect = pygame.Rect(0,0,0,0)
+             
     def _right_bake_text(self):
         if not hasattr(self, 'style'): return
         text_to_render = self._entered_text if len(self._entered_text) > 0 else self.placeholder
         if self.multiple:
             self.bake_text(text_to_render, multiline_mode=True)
             self._update_scroll_offset_y()
-            self._update_scroll_offset()
         else:
             self.bake_text(text_to_render, continuous=True)
-            self._update_scroll_offset()
-    def resize(self, _resize_ratio):
-        super().resize(_resize_ratio)
+        self._update_scroll_offset()
+        
+    def resize(self, resize_ratio: NvVector2):
+        super().resize(resize_ratio)
         self._init_cursor()
         self._right_bake_text()
     @property
@@ -690,10 +694,10 @@ class Input(Widget):
         #self._init_cursor()
         if hasattr(self,'_entered_text'):
              self._right_bake_text()
-    def event_update(self,events:list[pygame.event.Event] | None = None):
+    def event_update(self, events: list | None = None):
         if events is None: events = []
         super().event_update(events)
-        if not self.active:
+        if not self.is_active:
             if self.selected:
                  self.selected = False
                  self._changed = True
