@@ -64,14 +64,17 @@ class NevuObject:
         
         #=== Style ===
         self._init_style(style)
+        
     def clone(self):
         return NevuObject(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
     def __deepcopy__(self, *args, **kwargs):
         return self.clone()
+    
     def _add_constant(self, name, supported_classes: tuple | Any, default: Any):
         self.constant_supported_classes[name] = supported_classes
         self.constant_defaults[name] = default
         self.is_constant_set[name] = False
+        
     def _init_constants_base(self):
         self.constant_supported_classes = {}
         self.constant_defaults = {}
@@ -82,47 +85,62 @@ class NevuObject:
         self._add_constant("id", (str, type(None)), None)
         self._add_constant("floating", bool, False)
         self._add_constant("single_instance", bool, False)
+        
     def _add_constant_link(self, name: str, link_name: str):
         self.constant_links[name] = link_name
+        
     def _preinit_constants(self):
         for name, value in self.constant_defaults.items():
             if not hasattr(self, name):
                 setattr(self, name, value)
+                
     def _change_constants_kwargs(self, **kwargs):
         constant_name = None
         needed_types = None
         for name, value in kwargs.items():
             name = name.lower()
-            if name in self.constant_supported_classes.keys():
-                constant_name = name
-                needed_types = self.constant_supported_classes[name]
-            if name in self.constant_links.keys():
-                constant_name = self.constant_links[name]
-                if constant_name in self.constant_supported_classes.keys():
-                    needed_types = self.constant_supported_classes[constant_name]
-                else:
-                    raise ValueError(f"Invalid constant link {name} -> {self.constant_links[name]}. Constant not found.")
-            if constant_name:
-                assert needed_types
-                if isinstance(value, needed_types) and not self.is_constant_set[constant_name]:
-                    print(f"Debug: Set constant {name}({constant_name}) to {value} in {self}({type(self).__name__})")
-                    setattr(self, constant_name, value)
-                    self.is_constant_set[constant_name] = True
-                elif self.is_constant_set[constant_name]:
-                    raise ValueError(f"Constant {name}({constant_name}) is already set")
-                else:
-                    raise TypeError(
-                        f"Invalid type for constant '{constant_name}'. "
-                        f"Expected {needed_types}, but got {type(value).__name__}."
-                    )
-                constant_name = None
-                needed_types = None
+            
+            constant_name, needed_types = self._extract_constant_data(name)
+                
+            self._process_constant(name, constant_name, needed_types, value)
+            constant_name = None
+            needed_types = None
+    
+    def _extract_constant_data(self, name):
+        if name in self.constant_supported_classes.keys():
+            constant_name = name
+            needed_types = self.constant_supported_classes[name]
+        elif name in self.constant_links.keys():
+            constant_name = self.constant_links[name]
+            if constant_name in self.constant_supported_classes.keys():
+                needed_types = self.constant_supported_classes[constant_name]
             else:
-                raise ValueError(f"Constant {name} not found")
+                raise ValueError(f"Invalid constant link {name} -> {self.constant_links[name]}. Constant not found.")
+        else:
+            raise ValueError(f"Constant {name} not found")
+        return constant_name, needed_types
+    
+    def _process_constant(self, name, constant_name, needed_types, value):
+        assert needed_types
+        if isinstance(value, needed_types) and not self.is_constant_set[constant_name]:
+            print(f"Debug: Set constant {name}({constant_name}) to {value} in {self}({type(self).__name__})")
+            setattr(self, constant_name, value)
+            self.is_constant_set[constant_name] = True
+            
+        elif self.is_constant_set[constant_name]:
+            raise ValueError(f"Constant {name}({constant_name}) is already set")
+        
+        else:
+            raise TypeError(
+                f"Invalid type for constant '{constant_name}'. "
+                f"Expected {needed_types}, but got {type(value).__name__}."
+            )
     def _init_test_flags(self):
         pass
+    
     def _init_numerical(self):
         pass
+    
     def _init_constants(self, **kwargs):
         self._init_constants_base()
         self._add_constants()
@@ -131,6 +149,7 @@ class NevuObject:
             
     def _init_style(self, style: Style):
         self.style = style
+        
     def _init_objects(self):
         self.cache = Cache()
         self._subtheme_role = SubThemeRole.TERTIARY
@@ -223,6 +242,7 @@ class NevuObject:
     def resize(self, resize_ratio: Vector2):
         self._changed = True
         self._resize_ratio = resize_ratio
+        self.cache.clear_selected(whitelist=[CacheType.RelSize])
 
     @property
     def style(self):
@@ -348,7 +368,7 @@ class NevuObject:
         self.animation_update()
         self.event_update(events)
     def logic_update(self):
-        pass #TODO
+        self._update_hover_state()
     def animation_update(self):
         self.animation_manager.update()
     def event_update(self, events: list):
