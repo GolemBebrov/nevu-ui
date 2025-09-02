@@ -207,15 +207,18 @@ class LayoutType(NevuObject):
                 item._dirty_rect = []
         return dirty_rects
 
-    def secondary_update(self, *args):
+    def secondary_update(self):
         super().secondary_update()
         if self.menu:self.surface = self.menu.surface;self.all_layouts_coords = [0,0]
-        elif self.layout:self.surface = self.layout.surface;self.all_layouts_coords = [self.layout.all_layouts_coords[0]+self.coordinates[0],self.layout.all_layouts_coords[1]+self.coordinates[1]];self.first_parent_menu = self.layout.first_parent_menu
+        elif self.layout: self.surface = self.layout.surface;self.all_layouts_coords = [self.layout.all_layouts_coords[0]+self.coordinates[0],self.layout.all_layouts_coords[1]+self.coordinates[1]];self.first_parent_menu = self.layout.first_parent_menu
         for item in self.freedom_items:
             item.master_coordinates = Vector2(item.coordinates[0]+self.first_parent_menu.coordinatesMW[0],item.coordinates[1]+self.first_parent_menu.coordinatesMW[1])
             item.update()
+        if self.cached_coordinates is None:
+            self._regenerate_coordinates()
         if type(self) == LayoutType: self._dirty_rect = self._read_dirty_rects()
-
+    def _regenerate_coordinates(self):
+        pass
     def _connect_to_menu(self, menu: Menu):
         self.cached_coordinates = None
         self.menu = menu
@@ -284,8 +287,7 @@ class Grid(LayoutType):
             self.cached_coordinates.append(coordinates)
     def secondary_update(self, *args):
         super().secondary_update()
-        if self.cached_coordinates is None:
-            self._regenerate_coordinates()
+
         self._light_update()
         if type(self) == Grid: self._dirty_rect = self._read_dirty_rects()
         
@@ -515,7 +517,7 @@ class Gallery_Pages(Pages):
 class Scrollable(LayoutType):
     arrow_scroll_power: float | int
     wheel_scroll_power: float | int
-    inverted_scroll: bool
+    inverted_scrolling: bool
     """A highly configurable layout that provides scrollable containers for content
     that exceeds its visible boundaries.
 
@@ -625,7 +627,7 @@ class Scrollable(LayoutType):
             else:
                 self.percentage = 0.0
             self.percentage = max(0.0, min(self.percentage, 100.0))
-        def move_by_percents(self, percents: int):
+        def move_by_percents(self, percents: int | float):
             """Moves the scrollbar handle by the specified percentage relative to its current position.
 
             This method adds the given percentage to the current scrollbar position,
@@ -648,7 +650,7 @@ class Scrollable(LayoutType):
             )
             self.is_scrolling = False
 
-        def set_percents(self, percents: int):
+        def set_percents(self, percents: int | float):
             """Sets the scrollbar handle to the specified percentage position.
 
             This method sets the scrollbar position to the given percentage,
@@ -675,7 +677,6 @@ class Scrollable(LayoutType):
         
     def _init_test_flags(self):
         super()._init_test_flags()
-        self._test_list_instances_compatibility = False
         self._test_debug_print = False
         self._test_rect_calculation = True
         self._test_always_update = False
@@ -812,40 +813,38 @@ class Scrollable(LayoutType):
     def get_offset(self) -> int | float:
         percentage = self.scroll_bar_y.percentage
         return self.actual_max_y / 100 * percentage
-    def secondary_update(self, *args):
+    def secondary_update(self): 
         if self._test_debug_print:
             print(f"in {self} used update")
             for name, data in self.__dict__.items():
-                print(name+":", data)
+                print(f"{name}: {data}")
         super().secondary_update()
         offset = self.get_offset()
-        if self.cached_coordinates is None or self._test_always_update:
-            self.cached_coordinates = []
-            padding_offset = self.rely(self.padding)
-            for i in range(len(self.items)):
-                item = self.items[i]
-                align = self.widgets_alignment[i]
 
-                #------ ONLY FOR TESTING PURPOSES! ------
-                if self._test_list_instances_compatibility:
-                    try:
-                        item.coordinates = item.coordinates.tolist()
-                    except: pass   
-                #------ ONLY FOR TESTING PURPOSES! ------
 
-                self._set_item_x(item, align)
-                item.coordinates[1] = self._coordinates[1] + padding_offset
-                self.cached_coordinates.append(item.coordinates)
-                item.master_coordinates = self._get_item_master_coordinates(item)
-                padding_offset += item._csize[1] + self.rely(self.padding)
-
-        self._light_update(0, -self.rely(offset))    
+        self._light_update(0, -offset)    
         
         if self.actual_max_y > 0:
             self.scroll_bar_y.update()
-            self.scroll_bar_y.coordinates = [self._coordinates[0] + self.relx(self.size[0] - self.scroll_bar_y.size[0]), self.scroll_bar_y.coordinates[1]]
+            self.scroll_bar_y.coordinates = Vector2(self._coordinates[0] + self.relx(self.size[0] - self.scroll_bar_y.size[0]), self.scroll_bar_y.coordinates[1])
             self.scroll_bar_y.master_coordinates = self._get_item_master_coordinates(self.scroll_bar_y)
+            
+    def _regenerate_coordinates(self):
+        self.cached_coordinates = []
+        self._regenerate_max_values()
+        padding_offset = self.rely(self.padding)
+        for i in range(len(self.items)):
+            item = self.items[i]
+            align = self.widgets_alignment[i]
+            
+            self._set_item_x(item, align)
+            item.coordinates[1] = self._coordinates[1] + padding_offset
+            self.cached_coordinates.append(item.coordinates)
+            item.master_coordinates = self._get_item_master_coordinates(item)
+            padding_offset += item._csize[1] + self.rely(self.padding)
+            
     def logic_update(self):
+        super().logic_update()
         inverse = -1 if self.inverted_scrolling else 1
         if keyboard.is_fdown(pygame.K_UP):
             self.scroll_bar_y.move_by_percents(self.arrow_scroll_power * -inverse)
@@ -868,7 +867,7 @@ class Scrollable(LayoutType):
         self.scroll_bar_y.resize(resize_ratio)
         self.scroll_bar_y.coordinates[1] = self.rely(self.scroll_bar_y.size[1])
         self.cached_coordinates = None
-        
+        self._regenerate_coordinates()
         self.scroll_bar_y.is_scrolling = False
         self._update_scroll_bars()
         new_actual_max_y = self.actual_max_y if hasattr(self, "actual_max_y") else 1
@@ -879,7 +878,7 @@ class Scrollable(LayoutType):
             new_percentage = 0.0
 
         self.scroll_bar_y.set_percents(new_percentage)
-        self._light_update(0, -self.rely(self.get_offset()))
+        self._light_update(0, -self.get_offset())
 
     def _event_on_add_item(self):
         self.cached_coordinates = None
@@ -888,13 +887,15 @@ class Scrollable(LayoutType):
         if self.booted == False: return
         self.__init_scroll_bars__()
         self._update_scroll_bars()
-        self.max_y = self.padding
-        self.max_x = self.original_size[0] if self.original_size != self.size else self.size[0]
+
+    def _regenerate_max_values(self):
+        total_content_height = self.rely(self.padding)
         for item in self.items:
-            assert isinstance(item, (Widget, LayoutType))
-            self.max_y += self.relx(item.size[1] + self.padding)
-        self.actual_max_y = self.max_y - self.size[1]
+            total_content_height += self.rely(item.size[1]) + self.rely(self.padding)
+            
+        visible_height = self.rely(self.size[1])
         
+        self.actual_max_y = max(0, total_content_height - visible_height)
 
     def add_item(self, item: NevuObject, alignment: Align = Align.LEFT):
         """Adds a widget to the scrollable layout with the specified alignment.
@@ -967,6 +968,9 @@ class Appending_Layout_Type(LayoutType):
         self._test_always_update = True
     
     def _recalculate_size(self):
+        pass
+    
+    def _recalculate_widget_coordinates(self):
         pass
     
     def add_item(self, item: NevuObject, alignment: Align = Align.CENTER):
