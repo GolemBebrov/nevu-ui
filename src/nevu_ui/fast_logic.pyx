@@ -19,7 +19,6 @@ cpdef logic_update_helper(
     dr_coordinates_old,
     bint first_update,
     list first_update_functions,
-    object update_hover_state_func
     ):
 
     cdef bint _first_update = first_update
@@ -56,7 +55,6 @@ cpdef logic_update_helper(
         _first_update = False
         for function in first_update_functions: function()
 
-    update_hover_state_func()
     return _dr_coordinates_old, _first_update
 
 @cython.boundscheck(False)
@@ -84,7 +82,7 @@ cpdef object _light_update_helper(
 
     if cached_coordinates is None or items is None or len(items) != len(cached_coordinates): 
         return
-        
+
     for i in range(len(items)):
         item = items[i]
         coords = cached_coordinates[i]
