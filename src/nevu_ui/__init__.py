@@ -6,6 +6,10 @@ from .menu import *
 from .window import *
 from .utils import *
 from .ui_manager import *
+from .nevuobj import NevuObject
+from .animations import *
+from .core_types import *
+
 #бля это херня просто что бы пукет работал безэтой херни хуета полуается
 __all__ = [ # Определяем публичный API пакета
     'Color', 'Color_Type',  # Из colors.py
