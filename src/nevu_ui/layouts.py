@@ -2,14 +2,16 @@ import pygame
 import numpy as np
 import copy
 from .widgets import Vector2
-from .style import Style,Align,SizeRule, vh, vw, fill
+from .style import Style,Align
 from .widgets import *
 from .menu import Menu
 from .nevuobj import NevuObject
 from .fast_logic import _light_update_helper
 import typing
+from .core_types import (
+    SizeRule, Vh, Vw, Fill
+)
 default_style = Style()
-
 
 class LayoutType(NevuObject):
     items: list[NevuObject]
@@ -37,8 +39,9 @@ class LayoutType(NevuObject):
         for item in self.items + self.freedom_items:
             assert isinstance(item, (Widget, LayoutType))
             item.booted = True
-            item._boot_up()
             self.read_item_coords(item)
+            item._boot_up()
+
             self._start_item(item)
 
     @property
@@ -121,8 +124,8 @@ class LayoutType(NevuObject):
         if not isinstance(coord, SizeRule):
             return coord, False
         if isinstance(coord, (Vh, Vw)):
-            if self.first_parent_menu is None: raise ValueError("Cant use Vh or Vw in unconnected layout")
-            if self.first_parent_menu.window is None: raise ValueError("Cant use Vh or Vw in uninitialized layout")
+            if self.first_parent_menu is None: raise ValueError(f"Cant use Vh or Vw in unconnected layout {self}")
+            if self.first_parent_menu.window is None: raise ValueError(f"Cant use Vh or Vw in uninitialized layout {self}")
             if type(coord) == Vh: return self.first_parent_menu.window.size[1]/100 * coord.value, True
             elif type(coord) == Vw: return self.first_parent_menu.window.size[0]/100 * coord.value, True
         elif type(coord) == Fill: return self._rsize[i]/ 100 * coord.value, True
@@ -138,10 +141,12 @@ class LayoutType(NevuObject):
         item._lazy_kwargs['size'] = [x,y]
 
     def _start_item(self, item: NevuObject):
-        if self.booted == False: print("Cant start item", item); return
-        item._wait_mode = False; item._init_start(); print("started item", item, item._lazy_kwargs['size'])
         if isinstance(item, LayoutType):
             item._connect_to_layout(self)
+        if self.booted == False: print("Cant start item", item); return
+        item._wait_mode = False; item._init_start(); print("started item", item, item._lazy_kwargs['size'])
+
+
 
     def resize(self, resize_ratio: NvVector2):
         super().resize(resize_ratio)
@@ -162,6 +167,7 @@ class LayoutType(NevuObject):
     def _event_on_add_item(self): pass
 
     def add_item(self, item: NevuObject):
+        print(item)
         if item.single_instance is False: item = item.clone()
         if self.is_layout(item): 
             assert self.is_layout(item)
@@ -214,12 +220,18 @@ class LayoutType(NevuObject):
         for item in self.freedom_items:
             item.master_coordinates = Vector2(item.coordinates[0]+self.first_parent_menu.coordinatesMW[0],item.coordinates[1]+self.first_parent_menu.coordinatesMW[1])
             item.update()
-        if self.cached_coordinates is None:
+        if self.cached_coordinates is None and self.booted:
             self._regenerate_coordinates()
         if type(self) == LayoutType: self._dirty_rect = self._read_dirty_rects()
     def _regenerate_coordinates(self):
-        pass
+        for item in self.items + self.freedom_items:
+            if item._wait_mode:
+                self.read_item_coords(item)
+                self._start_item(item)
+                print("started item", item)
+                return
     def _connect_to_menu(self, menu: Menu):
+        print(f"in {self} used connect to menu: {menu}")
         self.cached_coordinates = None
         self.menu = menu
         self.surface = self.menu.surface
@@ -227,6 +239,7 @@ class LayoutType(NevuObject):
         self.border_name = self._border_name
 
     def _connect_to_layout(self, layout):
+        print(f"in {self} used connect to layout: {layout}")
         self.surface = layout.surface
         self.layout = layout
         self.first_parent_menu = layout.first_parent_menu
@@ -268,20 +281,22 @@ class Grid(LayoutType):
             return
         for coords, item in content.items():
             self.add_item(item, coords[0], coords[1])
+            
     def _regenerate_coordinates(self):
+        super()._regenerate_coordinates()
         self.cached_coordinates = []
         for i in range(len(self.items)):
             item = self.items[i]
             x, y = self.grid_coordinates[i]
             if not self.menu:
-                cw = self.cell_width
-                ch = self.cell_height
+                cw = self.relx(self.cell_width)
+                ch = self.rely(self.cell_height)
             else: 
                 cw = self._rsize[0] / self.column
                 ch = self._rsize[1] / self.row
                 
-            coordinates = Vector2(self.coordinates[0] + self._rsize_marg[0] + self.relx(x * cw + (cw - item.size[0]) / 2 ),
-                           self.coordinates[1] + self._rsize_marg[1] + self.rely(y * ch + (ch - item.size[1]) / 2))
+            coordinates = Vector2(self.coordinates[0] + self._rsize_marg[0] + x * cw + (cw - self.relx(item.size[0])) / 2 ,
+                           self.coordinates[1] + self._rsize_marg[1] +y * ch + (ch -  self.rely(item.size[1])) / 2)
             item.coordinates = coordinates
             item.master_coordinates = self._get_item_master_coordinates(item)
             self.cached_coordinates.append(coordinates)
@@ -504,7 +519,7 @@ class Pages(LayoutType):
     def clone(self):
         return Pages(self._lazy_kwargs['size'], copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
 class Gallery_Pages(Pages):
-    def __init__(self, size: list|tuple):
+    def __init__(self, size: Vector2 | list):
         super().__init__(size)
         
     def add_item(self, item: Widget): # type: ignore
@@ -593,84 +608,72 @@ class Scrollable(LayoutType):
             self.orientation = orientation
             
             self.is_scrolling = False
-            self.percentage = 0.0
+            self.offset = Vector2(0, 0)
+            self._percentage = 0.0
         
             self.track_start_coordinates = Vector2(0, 0)
-            self.track_path = Vector2(0, 0)   
+            self.track_path = Vector2(0, 0)
+
+        @property
+        def percentage(self) -> float:
+            axis = 1 if self.orientation == 'vertical' else 0
+            scaled_track_path_val = (self.track_path[axis] * self._resize_ratio[axis]) - self.rel(self.size)[axis]
+            
+            if scaled_track_path_val == 0:
+                return 0.0
+                
+            start_coord = self.track_start_coordinates[axis] - self.offset[axis]
+            current_path = self.coordinates[axis] - start_coord
+            
+            perc = (current_path / scaled_track_path_val) * 100
+            return max(0.0, min(perc, 100.0))
+
+        @percentage.setter
+        def percentage(self, value: float | int):
+            self._percentage = max(0.0, min(float(value), 100.0))
+            
+            axis = 1 if self.orientation == 'vertical' else 0
+            scaled_track_path = (self.track_path * self._resize_ratio) - self.rel(self.size)
+
+            start_coord = self.track_start_coordinates[axis] - self.offset[axis]
+            
+            if scaled_track_path[axis] == 0:
+                self.coordinates[axis] = start_coord
+                return
+
+            path_to_add = scaled_track_path[axis] * (self._percentage / 100)
+            self.coordinates[axis] = start_coord + path_to_add
         
-        def set_scroll_params(self, track_start_abs, track_path, coordinatesMW):
+        def set_scroll_params(self, track_start_abs, track_path, offset: Vector2):
             self.track_path = track_path
             self.track_start_coordinates = track_start_abs
-            self._menu_coordinatesMW = coordinatesMW
+            self.offset = offset
 
         def secondary_update(self, *args):
             axis = 1 if self.orientation == 'vertical' else 0
-            scaled_track_path = (self.track_path) * self._resize_ratio - self.rel(self.size)
-
-            self.coordinates[axis] = max(self.track_start_coordinates[axis], min(self.coordinates[axis], scaled_track_path[axis]+self.track_start_coordinates[axis]))
 
             if mouse.left_fdown and not self.is_scrolling:
-                track_rect = self.get_rect()
-                if track_rect.collidepoint(mouse.pos):
+                if self.get_rect().collidepoint(mouse.pos):
                     self.is_scrolling = True
             if mouse.left_up:
                 self.is_scrolling = False
 
             if self.is_scrolling:
-                mouse_offset = mouse.pos[axis] - self.track_start_coordinates[axis]
-                self.coordinates[axis] = max(
-                    self.track_start_coordinates[axis],
-                    min(mouse_offset + self.track_start_coordinates[axis], scaled_track_path[axis] + self.track_start_coordinates[axis])
-                )
-            if scaled_track_path[axis] != 0:
-                self.percentage = ((self.coordinates[axis]-self.track_start_coordinates[axis]) / (scaled_track_path)[axis]) * 100
+                scaled_track_path_val = (self.track_path[axis] * self._resize_ratio[axis]) - self.rel(self.size)[axis]
+                if scaled_track_path_val != 0:
+                    mouse_relative_to_track = mouse.pos[axis] - self.track_start_coordinates[axis]
+                    self.percentage = (mouse_relative_to_track / scaled_track_path_val) * 100
             else:
-                self.percentage = 0.0
-            self.percentage = max(0.0, min(self.percentage, 100.0))
+                self.percentage = self._percentage
+
         def move_by_percents(self, percents: int | float):
-            """Moves the scrollbar handle by the specified percentage relative to its current position.
-
-            This method adds the given percentage to the current scrollbar position,
-            ensuring the handle stays within the valid track range.
-
-            Args:
-                percents: The percentage (positive or negative) to move the scrollbar handle by.
-
-            Returns:
-                None
-            """
-            axis = 1 if self.orientation == 'vertical' else 0
-            scaled_track_path = (self.track_path) * self._resize_ratio - self.rel(self.size)
-            current_perc = ((self.coordinates[axis] - self.track_start_coordinates[axis]) / (scaled_track_path)[axis]) * 100 if scaled_track_path[axis] != 0 else 0
-            new_perc = max(0.0, min(current_perc + percents, 100.0))
-            added_path = scaled_track_path[axis] * (new_perc/100)
-            self.coordinates[axis] = max(
-                self.track_start_coordinates[axis],
-                min(added_path + self.track_start_coordinates[axis], scaled_track_path[axis] + self.track_start_coordinates[axis])
-            )
+            self.percentage += percents
             self.is_scrolling = False
 
         def set_percents(self, percents: int | float):
-            """Sets the scrollbar handle to the specified percentage position.
-
-            This method sets the scrollbar position to the given percentage,
-            ensuring the handle stays within the valid track range.
-
-            Args:
-                percents: The percentage (0-100) to set the scrollbar handle to.
-
-            Returns:
-                None
-            """
-            axis = 1 if self.orientation == 'vertical' else 0
-            scaled_track_path = (self.track_path) * self._resize_ratio - self.rel(self.size)
-            perc = max(0.0, min(percents, 100.0))
-            added_path = scaled_track_path[axis] * (perc/100)
-            self.coordinates[axis] = max(
-                self.track_start_coordinates[axis],
-                min(added_path + self.track_start_coordinates[axis], scaled_track_path[axis] + self.track_start_coordinates[axis])
-            )
+            self.percentage = percents
             self.is_scrolling = False
+            
     def __init__(self, size: NvVector2 | list, style: Style = default_style, content: tuple[list[Align | NevuObject]] | None = None, **constant_kwargs):
         super().__init__(size, style, **constant_kwargs)
         self._lazy_kwargs = {'size': size, 'content': content}
@@ -728,9 +731,11 @@ class Scrollable(LayoutType):
         
         track_start_y = self.master_coordinates[1]
         track_path_y = self.size[1]
-        self.scroll_bar_y.set_scroll_params(Vector2(self.coordinates[0] + self.relx(self.size[0] - self.scroll_bar_y.size[0]), track_start_y), 
+        offset = Vector2(self.first_parent_menu.window._crop_width_offset,self.first_parent_menu.window._crop_height_offset) if self.first_parent_menu.window else Vector2(0,0)
+        print(offset)
+        self.scroll_bar_y.set_scroll_params(Vector2(self.coordinates[0] + self.relx(self.size[0] - self.scroll_bar_y.size[0]) , track_start_y), 
                                             Vector2(0,track_path_y),
-                                            self.first_parent_menu.coordinatesMW)
+                                            offset/2)
 
         #------ TODO ------
         #track_start_x = self._coordinates[0] + self.first_parent_menu.coordinatesMW[0]
@@ -748,6 +753,7 @@ class Scrollable(LayoutType):
         #self.scroll_bar_x._init_start()
         
     def _connect_to_layout(self, layout: LayoutType):
+        
         if self._test_debug_print:
             print(f"in {self} used connect to layout: {layout}")
         super()._connect_to_layout(layout)
@@ -830,6 +836,7 @@ class Scrollable(LayoutType):
             self.scroll_bar_y.master_coordinates = self._get_item_master_coordinates(self.scroll_bar_y)
             
     def _regenerate_coordinates(self):
+        super()._regenerate_coordinates()
         self.cached_coordinates = []
         self._regenerate_max_values()
         padding_offset = self.rely(self.padding)
@@ -942,14 +949,14 @@ class Scrollable(LayoutType):
 
 class Appending_Layout_Type(LayoutType):
     _margin: int | float
-    def __init__(self, content: list[tuple[Align, NevuObject]] | None = None, style: Style = default_style, **constant_kwargs):
+    def __init__(self, style: Style = default_style, content: list[tuple[Align, NevuObject]] | None = None, **constant_kwargs):
         super().__init__(Vector2(0,0), style, None, **constant_kwargs)
         self._lazy_kwargs = {'size': Vector2(0,0), 'content': content}
         
-    def _lazy_init(self, size: Vector2 | list, content: list | None = None):
+    def _lazy_init(self, size: Vector2 | list, content: list[tuple[Align, NevuObject]] | None = None):
         super()._lazy_init(size, content)
         if content is None:
-            content = []
+            return
         if len(content) == 0: return
         for inner_tuple in content:
             align, item = inner_tuple
@@ -974,10 +981,12 @@ class Appending_Layout_Type(LayoutType):
         pass
     
     def add_item(self, item: NevuObject, alignment: Align = Align.CENTER):
+        print(self.first_parent_menu.window)
         super().add_item(item)
         self.widgets_alignment.append(alignment)
-        self._recalculate_size()
+        self.cached_coordinates = None
         if self.layout: self.layout._event_on_add_item()
+        
     def insert_item(self, item: Widget | LayoutType, id: int = -1):
         try:
             self.items.insert(id,item)
@@ -985,23 +994,24 @@ class Appending_Layout_Type(LayoutType):
             self._recalculate_size()
             if self.layout: self.layout._event_on_add_item()
         except Exception as e: raise e #TODO
+        
     def _connect_to_layout(self, layout: LayoutType):
         super()._connect_to_layout(layout)
         self._recalculate_widget_coordinates()
+        
     def _connect_to_menu(self, menu: Menu):
         super()._connect_to_menu(menu)
         self._recalculate_widget_coordinates() 
+        
     def _event_on_add_item(self):
         self._recalculate_size()
         if self.layout: self.layout._event_on_add_item()
-    def update(self, *args):
-        super().update()
-        if self.cached_coordinates is None or self._test_always_update:
-            self._recalculate_widget_coordinates()
-        self._light_update()
-    def draw(self):
-        super().draw()
         
+    def secondary_update(self, *args):
+        super().secondary_update()
+        self._light_update()
+    def secondary_draw(self):
+        super().secondary_draw()
         for item in self.items:
             assert isinstance(item, (Widget, LayoutType))
             self._draw_widget(item)
@@ -1010,13 +1020,17 @@ class Appending_Layout_Type(LayoutType):
     @margin.setter
     def margin(self, val):
         self._margin = val
+    def _regenerate_coordinates(self):
+        super()._regenerate_coordinates()
         self._recalculate_size()
-        
+        self._recalculate_widget_coordinates()
 class Appending_Layout_H(Appending_Layout_Type):
     def _recalculate_size(self):
         self.size.x = sum(item.size[0]+self._margin for item in self.items) if len(self.items) > 0 else 0
         self.size.y = max(x.size[1] for x in self.items) if len(self.items) > 0 else 0
+
     def _recalculate_widget_coordinates(self):
+        if self.booted == False: return
         self.cached_coordinates = []
         m = self.relx(self.margin)
         current_x = 0 
@@ -1034,12 +1048,15 @@ class Appending_Layout_H(Appending_Layout_Type):
             item.master_coordinates = self._get_item_master_coordinates(item)
             current_x += self.relx(item.size[0] + self.margin)
             self.cached_coordinates.append(item.coordinates)
+    def clone(self):
+        return Appending_Layout_H(copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
 
 class Appending_Layout_V(Appending_Layout_Type):
     def _recalculate_size(self):
         self.size[1] = sum(item.size[1]+self._margin for item in self.items) if len(self.items) > 0 else 0
         self.size[0] = max(x.size[0] for x in self.items) if len(self.items) > 0 else 0
     def _recalculate_widget_coordinates(self):
+        if self.booted == False: return
         self.cached_coordinates = []
         m = self.rely(self.margin)
         current_y = 0
@@ -1057,3 +1074,5 @@ class Appending_Layout_V(Appending_Layout_Type):
             item.master_coordinates = self._get_item_master_coordinates(item)
             current_y += self.rely(item.size[1] + self.margin)
             self.cached_coordinates.append(item.coordinates)
+    def clone(self):
+        return Appending_Layout_V(copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
