@@ -1,5 +1,5 @@
 import pygame
-from .style import *
+from .style import Style
 from .utils import *
 from .utils import Event
 from .animations import AnimationType, AnimationManager
@@ -11,11 +11,9 @@ from .color import *
 from .fast_logic import (
     relx_helper, rely_helper, relm_helper, rel_helper
 )
-
-class HoverState(Enum):
-    UN_HOVERED = auto()
-    HOVERED = auto()
-    CLICKED = auto()
+from .core_types import (
+    SizeRule, Px, Vh, Vw, Fill, HoverState
+)
 
 class NevuObject:
     id: str | None
@@ -395,13 +393,13 @@ class NevuObject:
     def secondary_draw(self):
         pass
     
-    def relx(self, num: int | float, min: int | None = None, max: int| None = None, function = None) -> int | float:
+    def relx(self, num: int | float, min: int | None = None, max: int| None = None) -> int | float:
         return relx_helper(num, self._resize_ratio.x, min, max)
 
-    def rely(self, num: int | float, min: int | None = None, max: int| None = None, function = None) -> int | float:
+    def rely(self, num: int | float, min: int | None = None, max: int| None = None) -> int | float:
         return rely_helper(num, self._resize_ratio.y, min, max)
 
-    def relm(self, num: int | float, min: int | None = None, max: int | None = None, function = None) -> int | float:
+    def relm(self, num: int | float, min: int | None = None, max: int | None = None) -> int | float:
         return relm_helper(num, self._resize_ratio.x, self._resize_ratio.y, min, max)
     
     def rel(self, mass: list | tuple | Vector2, vector: bool = False) -> list | Vector2:  
