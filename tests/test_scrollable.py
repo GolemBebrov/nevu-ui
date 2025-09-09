@@ -5,6 +5,7 @@ pygame.init()
 class TestScrollable(NevuTest):
     def add_to_layout(self):
         self.do_fps_test = True
+        self._dirty_mode = True
         self.test_menu.layout = \
         ui.Scrollable([100*ui.fill, 100*ui.vh],
                 content=[
@@ -27,10 +28,10 @@ class TestScrollable(NevuTest):
         super().draw_loop()
         #self.scrollable.update(self.window.last_events)
         #print(self.scrollable.items[0].get_rect())
-        print(self.scrollable._hover_state)
+        #print(self.scrollable._hover_state)
         pygame.draw.rect(self.window.surface, (0,0,0), self.scrollable.scroll_bar_y.get_rect(), 5)
         #print(self.scrollable._csize)
-        print(self.window._crop_height_offset)
+        #print(self.window._crop_height_offset)
         
         #self.scrollable._regenerate_coordinates()
         

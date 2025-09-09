@@ -9,7 +9,7 @@ class TestGrid(NevuTest):
         ui.Grid([ui.Fill(100), ui.Fill(100)], x=3,y=3,
                 content={
                     (2,1): self.test_widget,
-                    (2,2): self.test_hard_widget,
+                    (2,1.8): self.test_hard_widget,
                     (2,3): self.test_inner_layout,
                     }
                 )

@@ -1,90 +1,70 @@
 
 import sys
-import copy
 import nevu_ui as ui
 import pygame
-#import taichi as ti
 pygame.init()
-
-#This is a test for global audience
-#Change veve to pygame_nevui or your package name if it localy placedо
-
-#ti.init(arch=ti.gpu) #Unused
-
-#--------- NEW WAY --------
 
 class Mygame(ui.Manager):
     def __init__(self):
         super().__init__()
-        self.fps = 750000000000000000
-        self._dirty_mode = False
-        self.background = (0,0,100)
-        self.window = ui.window.Window((300,300), resize_type=ui.ResizeType.FillAllScreen)
-        main_style = ui.Style(borderradius=10,borderwidth=2,colortheme=ui.synthwave_dark_color_theme,fontname="vk_font.ttf",gradient=ui.style.Gradient(colors=[ui.Color.AQUA,(100,100,100)],type='radial',direction=ui.style.Gradient.TOP_CENTER))
-        style_mini_font = main_style(fontsize=10, border_radius=15,borderwidth=10,gradient=ui.style.Gradient(colors=[ui.Color.REBECCAPURPLE,ui.Color.mix(ui.Color.AQUA,ui.Color.REBECCAPURPLE)],type='linear',direction=ui.style.Gradient.TO_TOP))
-        #Widget customization
+        self.fps = 75 #Задаем нуженый fps
+        self._dirty_mode = False #Для оптимизации(не рекомендуется включать)
+        self.background = (0,0,100) #Цвет фона
+        self.window = ui.window.Window((300,300), resize_type=ui.ResizeType.FillAllScreen) #Создаем окно
+        main_style = ui.Style( #Гланый стиль
+            borderradius=10, borderwidth=2, colortheme=ui.synthwave_dark_color_theme,
+            fontname="vk_font.ttf", gradient=ui.style.Gradient(colors=[ui.Color.AQUA,(100,100,100)],type='radial',direction=ui.style.Gradient.TOP_CENTER))
+        style_mini_font = main_style( #Подстиль
+            fontsize=15, border_radius=15,  
+            borderwidth=4, gradient=ui.style.Gradient(colors=[ui.Color.REBECCAPURPLE,ui.Color.mix(ui.Color.AQUA,ui.Color.REBECCAPURPLE)],type='linear',direction=ui.style.Gradient.TO_TOP))
+    
+        b = ui.Button(lambda: print("Button 1"), "Test Chamber", [100*ui.fill,33*ui.fill], style=style_mini_font(borderradius=15, borderwidth=2), words_indent=True, alt=True, will_resize=True) #Создаем кнопку
+        i = ui.Input([100*ui.fill,33*ui.fill],style_mini_font(borderradius=30,fontname="vk_font.ttf"),"","Введите", alt=True, will_resize=True) #Создаем инпут
         
-        #b.animation_manager.transition_animation = ui.AnimationEaseIn
-        #b.animation_manager.transition_time = 5
-        #b.animation_manager.add_start_animation(ui.AnimationEaseInBack(1,[0,100],[0,0],ui.AnimationType.POSITION))
-        #b.animation_manager.add_continuous_animation(ui.AnimationBounce(5,[90,50],[-90,50],ui.AnimationType.POSITION))
-        b = ui.Button(lambda: print("Button 1"), "Test Chamber", [50*ui.fill,30*ui.fill],style=main_style(borderradius=15,borderwidth=10, ),words_indent=True, alt=True)
-        b.subtheme_role = ui.SubThemeRole.ERROR
-        l = ui.Button(lambda: print("Button 1"), "Test Chamber", [100*ui.fill,2*ui.fill],style=main_style(borderradius=15,borderwidth=10, ),words_indent=True, alt=False, id="scroll")
-        l.subtheme_role = ui.SubThemeRole.PRIMARY
-        i = ui.Input([100*ui.fill,33*ui.fill],main_style(borderradius=30,fontname="vk_font.ttf"),"","Введите",multiple=True, alt=True)
-        
-        i.animation_manager.add_start_animation(ui.AnimationEaseOut(3,[0,-100],[0,0],ui.AnimationType.POSITION))
-        strelka_size = [32*ui.fill,45*ui.fill]
-        gridmenu = ui.Grid([70*ui.fill, 25*ui.fill], x=3,y=3, 
+        i.animation_manager.add_start_animation(ui.AnimationEaseOut(3,[0,-100],[0,0],ui.AnimationType.POSITION)) #Добавляем анимацию в начало
+        "ss" if True else "dd"
+        #создаем макет
+        gridmenu = ui.Grid([66*ui.fill, 40*ui.fill], x=3,y=3, 
                                 content={
-                                        (1,1): ui.Button(lambda: print("Button Topleft"), "Test Chamber", [50*ui.fill,30*ui.fill],style=style_mini_font,words_indent=True, ),
-                                        (2,2): ui.Button(lambda: print("Button Center"), "Test Chamber", [50*ui.fill,30*ui.fill],style=style_mini_font,words_indent=True, ),
-                                        (3,3): ui.Button(lambda: print("Button BottomRight"), "Test Chamber", [50*ui.fill,30*ui.fill],style=style_mini_font,words_indent=True, ),
-                                        (1,3): ui.Button(lambda: print("Button BottomLeft"), "Test Chamber", [50*ui.fill,30*ui.fill],style=style_mini_font,words_indent=True, ),
-                                        (3,1): ui.Button(lambda: print("Button TopRight"), "Test Chamber", [50*ui.fill,30*ui.fill],style=style_mini_font,words_indent=True, ),
+                                        (2,1): b,
+                                        (2,2): i
                                     }
                          )
+        
         self.menu = ui.menu.Menu(self.window,(100*ui.vw,100*ui.vh),
                 style = main_style(borderradius=20,borderwidth=1), alt=False, 
                 layout = ui.Grid([100*ui.fill,100*ui.fill],x=3,y=3, 
                          content = {
-                         (2,1): gridmenu,
-                         (2,2): gridmenu,
-                         (2,3): gridmenu
+                         (2,1.2): gridmenu,
+                         (2,2.1): gridmenu, #Внимание: Grid поддерживает 
+                         (2,3): gridmenu    #Координаты с плавающими числами в допустимом диапозоне
                      }   
                  )
              )    
-        self.menu.quality = ui.Quality.Best
-        self.menu.will_resize = True
-        #l = self.menu.layout
-        #l.get_item(2,1).on_click = lambda: print("JOTA")
+        self.menu.quality = ui.Quality.Best #Для качества(по умолчанию Quality.Decent)
+        self.menu.will_resize = True #Для оптимизации
 
     def draw_loop(self):
         self.menu.surface.fill(self.background)
         self.menu.draw()
-        pygame.draw.rect(self.window.surface, self.background, pygame.Rect(ui.mouse.pos, (5,5)), 1)
-        
-        #pygame.draw.rect(self.window.surface, self.background, self.menu.layout.get_item(2,1.5).scroll_bar_y.get_rect(), 1)
-        #pygame.draw.rect(self.window.surface, self.background, self.menu.layout.get_item(2,1.5).get_rect(), 1)
+        #рисуем меню
+      
     def update_loop(self, events):
-        
         self.menu.update()
-        lay = self.menu.layout
-        assert isinstance(lay, ui.Grid)
-        #print(lay.get_item(2,2).get_item_by_id("scroll")._subtheme_role)
         show_fps = True
         fps_mode = "Unslowed"
-        #print(self.menu.layout.get_item(2,1.5).scroll_bar_y.percentage)
-        #print(ui.mouse.wheel_y)
+        #Для показа фпс
         if show_fps:
             print(f"FPS {fps_mode}: ",ui.time.fps)
-        #print(self.menu.layout.get_item(2,2).get_item_by_id("scroll").master_coordinates)
 
-        #print(f"Window: {self.window._next_update_dirty_rects}") #Window
-        #print(f"Menu: {self.menu._dirty_rects}") #Menu
-        #print(f"Layout: {self.menu.layout._dirty_rect}") #Layout
-        #print(f"Widget: {self.menu.layout.get_widget(2,2)._dirty_rect}") #Widget
+def test_main():
+    #Запускаем
+    game = Mygame()
+    game.run()
+
+    sys.exit()
+
+test_main()
 
 #Unused part
 """ui.Grid([30*ui.fill, 15*ui.fill], 3,2,
@@ -106,14 +86,7 @@ ui.Scrollable([70*ui.fill, 50*ui.fill], wheel_scroll_power=5,
                                     )
                          )"""
 
-def test_main():
 
-    game = Mygame()
-    game.run()
-
-    sys.exit()
-
-test_main()
 
 
 

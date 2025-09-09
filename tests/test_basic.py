@@ -2,9 +2,12 @@ import nevu_ui as ui
 import pygame
 
 def create_test_instances():
-    test_window = ui.window.Window((300,700), "Test Window", resize_type=ui.ResizeType.FillAllScreen)
-    test_widget = ui.Button(lambda: print("pressed"), "Press me", (100, 100), ui.default_style(),single_instance=False)
-    test_hard_widget = ui.Input([70*ui.vw,20* ui.vh],ui.default_style(borderradius=30),"InputTest",multiple=True,single_instance=True)
+    test_window = ui.window.Window((300,300), "Test Window", resize_type=ui.ResizeType.CropToRatio, ratio=(1,1))
+    test_widget = ui.RectCheckBox(25 ,ui.default_style(borderradius=3, colortheme=ui.synthwave_dark_color_theme),single_instance=False, active_rect_factor=0.7, alt=True)#ui.Button(lambda: print("pressed"), "Nevu UI!", (100, 100), ui.default_style(borderwidth=10, borderradius = 15),single_instance=False)
+    test_widget.active_rect_factor = 0.5
+    test_widget.subtheme_role = ui.SubThemeRole.ERROR
+    
+    test_hard_widget = ui.Input([70*ui.vw, 20*ui.vh],ui.default_style(borderradius=30),"InputTest",multiple=True,single_instance=True, alt=True)
     test_inner_layout = ui.Grid([50*ui.vw, 35*ui.vh], x=3,y=3, single_instance=True, 
                                     content={
                                             (1,1): ui.Button(lambda: print("Button Topleft"), "Test Chamber", [50*ui.fill,30*ui.fill],words_indent=True, ),
