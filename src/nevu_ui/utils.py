@@ -4,6 +4,7 @@ import time as tt
 from enum import Enum, auto, StrEnum
 import functools
 from .fast_shapes import _create_outlined_rounded_rect_sdf, _create_rounded_rect_surface_optimized
+
 class RenderMode(Enum):
     AA = auto()
     SDF = auto()
@@ -386,57 +387,87 @@ class Event:
         if kwargs: self._kwargs = kwargs
         self._function(*self._args, **self._kwargs)
 
-class InputType():
-    NUMBERS = "0123456789"
-    LETTERS_ENG = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
-    LETTERS_RUS = "йцукенгшщзхъфывапролджэячсмитьбюЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮ"
-    BASIC_SYMBOLS = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
+class EventType(Enum):
+    Resize = auto()
+    Render = auto()
+    Draw = auto()
+    Update = auto()
+    OnClick = auto()
 
-    LETTERS_UKR = "ієїґа-яІЄЇҐ"+LETTERS_RUS
+class NevuEvent:
+    def __init__(self, sender, function, type: EventType, *args, **kwargs):
+        self._sender = sender
+        self._function = function
+        self._type = type
+        self._args = args
+        self._kwargs = kwargs
+        
+    def __call__(self, *args, **kwargs):
+        if args: self._args = args
+        if kwargs: self._kwargs = kwargs
+        try:
+            self._function(*self._args, **self._kwargs)
+        except Exception as e:
+            print(f"Event function execution Error: {e}")
+
+class InputType:
+    NUMBERS = "0123456789"
+    HEX_DIGITS = NUMBERS + "abcdefABCDEF"
+
+    LETTERS_ENG = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
+    LETTERS_RUS = "йцукенгшщзхъфывапролджэячсмитьбюЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮ"
+    LETTERS_UKR = "абвгґдеєжзиіїйклмнопрстуфхцчшщьюяАБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯ"
     LETTERS_BEL = "абвгдеёжзійклмнопрстуўфхцчшыьэюяАБВГДЕЁЖЗІЙКЛМНОПРСТУЎФХЦЧШЫЬЭЮЯ"
-    LETTERS_GER = "äöüÄÖÜß" + LETTERS_ENG
-    LETTERS_FR = "àâçéèêëîïôûüÿÀÂÇÉÈÊËÎÏÔÛÜŸæœÆŒ" + LETTERS_ENG
-    LETTERS_ES = "áéíóúüñÁÉÍÓÚÜÑ" + LETTERS_ENG
-    LETTERS_IT = "àèéìòóùÀÈÉÌÒÓÙ" + LETTERS_ENG
-    LETTERS_PL = "ąćęłńóśźżĄĆĘŁŃÓŚŹŻ" + LETTERS_ENG
-    LETTERS_PT = "àáâãçéêíóôõúüÀÁÂÃÇÉÊÍÓÔÕÚÜ" + LETTERS_ENG
+    
+    LETTERS_GER = LETTERS_ENG + "äöüÄÖÜß"
+    LETTERS_FR = LETTERS_ENG + "àâçéèêëîïôûüÿæœÀÂÇÉÈÊËÎÏÔÛÜŸÆŒ"
+    LETTERS_ES = LETTERS_ENG + "áéíóúüñÁÉÍÓÚÜÑ"
+    LETTERS_IT = LETTERS_ENG + "àèéìòóùÀÈÉÌÒÓÙ"
+    LETTERS_PL = LETTERS_ENG + "ąćęłńóśźżĄĆĘŁŃÓŚŹŻ"
+    LETTERS_PT = LETTERS_ENG + "àáâãçéêíóôõúüÀÁÂÃÇÉÊÍÓÔÕÚÜ"
+    
     LETTERS_GR = "αβγδεζηθικλμνξοπρστυφχψωΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ"
     LETTERS_AR = "ءآأؤإئابةتثجحخدذرزسشصضطظعغفقكلمنهوي"
-    LETTERS_JP = "ぁあぃいぅうぇえぉおかがきぎくぐけげこごさざしじすずせぜそぞただちぢっつづてでとどなにぬねのはばぱひびぴふぶぷへべぺほぼぽまみむめもゃやゅゆょよらりるれろゎわをんアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン"
-    LETTERS_CN = "的一是不了人我在有他这为之大来以个中上们"
+    LETTERS_HE = "אבגדהוזחטיכךלמםנןסעפףצץקרשת"
+    LETTERS_JP_KANA = "ァアィイゥウェエォオカガキギクグケゲコゴサザシジスズセゼソゾタダチヂッツヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャヤュユョヨラリルレロワヲンーぁあぃいぅうぇえぉおかがきぎくぐけげこごさざしじすずせぜそぞただちぢっつづてでとどなにぬねのはばぱひびぴふぶぷへべぺほぼぽまみむめもゃやゅゆょよらりるれろゎわをん"
+    LETTERS_CN_COMMON = "的一是不了人我在有他这为之大来以个中上们"
+    LETTERS_KR_HANGUL = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ"
+    LETTERS_HI_DEVANAGARI = "अआइईउऊऋएऐओऔकखगघङचछजझञटठडढणतथदधनपफबभमयरलवशषसह"
 
     WHITESPACE = " \t\n\r\f\v"
-    SEPARATORS_COMMON = ",.;:?!"
-    SEPARATORS_BRACKETS = "()[]{}"
-    SEPARATORS_QUOTES = "\"'`«»"
-
-    MATH_SYMBOLS_BASIC = "+-*/="
-    MATH_SYMBOLS_ADVANCED = "><≤≥≠≈±√∑∫"
-    MATH_SYMBOLS_CURRENCY = "€£¥₽$"
-    MATH_SYMBOLS_GREEK = "πΩΣΔΘΛΞΦΨΓ"
-
-    URL_SYMBOLS = "-._~:/?#[]@!$&'()*+,;=%abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    EMAIL_SYMBOLS = "-._%+-@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
-    HEX_DIGITS = "0123456789abcdefABCDEF"
-
-    PUNCTUATION_MARKS = ",.;:?!—…"
-    DASHES = "-—‒–"
-    APOSTROPHE = "'"
-
     CONTROL_CHARS = "".join(chr(i) for i in range(32))
 
-    MARKDOWN_SYMBOLS = "*_`~>#+![]()="
-    COMBINATIONS = ":-) :-( :D :P <3"
+    PUNCTUATION = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
+    DASHES = "-—‒–"
+    QUOTES = "\"'`«»"
+    BRACKETS = "()[]{}"
+    APOSTROPHE = "'"
+    
+    MATH_BASIC = "+-*/="
+    MATH_ADVANCED = "><≤≥≠≈±√∑∫"
+    CURRENCY = "€£¥₽$"
+    MATH_GREEK = "πΩΣΔΘΛΞΦΨΓ"
+    
+    URL_SYMBOLS = LETTERS_ENG + NUMBERS + "-._~:/?#[]@!$&'()*+,;=%"
+    EMAIL_SYMBOLS = LETTERS_ENG + NUMBERS + "-._%+"
+    
+    MARKDOWN = "*_`~>#+![]()="
+    EMOJIS_BASIC = "😀😂😍🤔👍👎❤️💔"
     SPECIAL_SYMBOLS = "©®™°№§"
+    BOX_DRAWING = "─│┌┐└┘├┤┬┴┼═║╔╗╚╝╠╣╦╩╬"
 
-    ALL_LETTERS = (LETTERS_ENG + LETTERS_RUS + LETTERS_UKR + LETTERS_BEL + LETTERS_GER + 
-                   LETTERS_FR + LETTERS_ES + LETTERS_IT + LETTERS_PL + LETTERS_PT + 
-                   LETTERS_GR + LETTERS_AR + LETTERS_JP + LETTERS_CN)
-    ALL_SYMBOLS = (BASIC_SYMBOLS + SEPARATORS_COMMON + SEPARATORS_BRACKETS + SEPARATORS_QUOTES + 
-                   MATH_SYMBOLS_BASIC + MATH_SYMBOLS_ADVANCED + MATH_SYMBOLS_CURRENCY + 
-                   PUNCTUATION_MARKS + DASHES + APOSTROPHE + MARKDOWN_SYMBOLS + SPECIAL_SYMBOLS + 
-                   MATH_SYMBOLS_GREEK)
+    ALL_CYRILLIC_LETTERS = "".join(set(LETTERS_RUS + LETTERS_UKR + LETTERS_BEL))
+    ALL_LATIN_EXT_LETTERS = "".join(set(LETTERS_GER + LETTERS_FR + LETTERS_ES + LETTERS_IT + LETTERS_PL + LETTERS_PT))
+    ALL_LETTERS = "".join(set(ALL_CYRILLIC_LETTERS + ALL_LATIN_EXT_LETTERS + LETTERS_GR + LETTERS_AR + LETTERS_HE + LETTERS_JP_KANA + LETTERS_CN_COMMON + LETTERS_KR_HANGUL + LETTERS_HI_DEVANAGARI))
+
+    ALL_PUNCTUATION = "".join(set(PUNCTUATION + DASHES + QUOTES + BRACKETS + APOSTROPHE))
+    ALL_MATH = "".join(set(MATH_BASIC + MATH_ADVANCED + CURRENCY + MATH_GREEK))
+    ALL_SYMBOLS = "".join(set(ALL_PUNCTUATION + ALL_MATH + MARKDOWN + EMOJIS_BASIC + SPECIAL_SYMBOLS + BOX_DRAWING))
+    
+    ALPHANUMERIC_ENG = LETTERS_ENG + NUMBERS
+    ALPHANUMERIC_RUS = LETTERS_RUS + NUMBERS
+
+    PRINTABLE = ALL_LETTERS + NUMBERS + ALL_SYMBOLS + WHITESPACE
 
 class Convertor:
     @classmethod
@@ -840,23 +871,59 @@ class AlphaBlit:
         width, height = source_surf.get_size()
         roi_rect = pygame.Rect(x, y, width, height)
         roi_rect_clipped = roi_rect.clip(dest_surf.get_rect())
+
         if roi_rect_clipped.width == 0 or roi_rect_clipped.height == 0:
-            return 
+            return
 
         src_x_offset = roi_rect_clipped.x - roi_rect.x
         src_y_offset = roi_rect_clipped.y - roi_rect.y
 
         try:
-            source_alpha_view = pygame.surfarray.pixels_alpha(source_surf)[src_x_offset : src_x_offset + roi_rect_clipped.width, src_y_offset : src_y_offset + roi_rect_clipped.height]
-            
-            dest_alpha_view = pygame.surfarray.pixels_alpha(dest_surf)[roi_rect_clipped.x : roi_rect_clipped.right, roi_rect_clipped.y : roi_rect_clipped.bottom]
+            src_slice_x = slice(src_x_offset, src_x_offset + roi_rect_clipped.width)
+            src_slice_y = slice(src_y_offset, src_y_offset + roi_rect_clipped.height)
+            dest_slice_x = slice(roi_rect_clipped.x, roi_rect_clipped.right)
+            dest_slice_y = slice(roi_rect_clipped.y, roi_rect_clipped.bottom)
 
+            source_alpha_view = pygame.surfarray.pixels_alpha(source_surf)[src_slice_x, src_slice_y]
+            dest_alpha_view = pygame.surfarray.pixels_alpha(dest_surf)[dest_slice_x, dest_slice_y]
+            
             np.copyto(dest_alpha_view, source_alpha_view)
 
-        except ValueError as e:
-            print(f"Ошибка: Поверхности должны иметь альфа-канал. {e}")
-            dest_surf.blit(source_surf, dest_pos)
+        except ValueError:
+            clipped_source_rect = pygame.Rect(src_x_offset, src_y_offset, roi_rect_clipped.width, roi_rect_clipped.height)
+            dest_surf.blit(source_surf.subsurface(clipped_source_rect), roi_rect_clipped.topleft, special_flags=pygame.BLEND_RGBA_MULT)
 
+class FastBlit:
+    @staticmethod
+    def blit(dest_surf: pygame.Surface, source_surf: pygame.Surface, dest_pos: tuple[int, int]):
+        x, y = dest_pos
+        width, height = source_surf.get_size()
+        roi_rect = pygame.Rect(x, y, width, height)
+        roi_rect_clipped = roi_rect.clip(dest_surf.get_rect())
+
+        if roi_rect_clipped.width == 0 or roi_rect_clipped.height == 0:
+            return
+
+        src_x_offset = roi_rect_clipped.x - roi_rect.x
+        src_y_offset = roi_rect_clipped.y - roi_rect.y
+
+        try:
+            src_slice_x = slice(src_x_offset, src_x_offset + roi_rect_clipped.width)
+            src_slice_y = slice(src_y_offset, src_y_offset + roi_rect_clipped.height)
+            dest_slice_x = slice(roi_rect_clipped.x, roi_rect_clipped.right)
+            dest_slice_y = slice(roi_rect_clipped.y, roi_rect_clipped.bottom)
+
+            source_rgb_view = pygame.surfarray.pixels3d(source_surf)[src_slice_x, src_slice_y]
+            dest_rgb_view = pygame.surfarray.pixels3d(dest_surf)[dest_slice_x, dest_slice_y]
+            np.copyto(dest_rgb_view, source_rgb_view)
+            
+            source_alpha_view = pygame.surfarray.pixels_alpha(source_surf)[src_slice_x, src_slice_y]
+            dest_alpha_view = pygame.surfarray.pixels_alpha(dest_surf)[dest_slice_x, dest_slice_y]
+            np.copyto(dest_alpha_view, source_alpha_view)
+
+        except ValueError:
+            clipped_source_rect = pygame.Rect(src_x_offset, src_y_offset, roi_rect_clipped.width, roi_rect_clipped.height)
+            dest_surf.blit(source_surf.subsurface(clipped_source_rect), roi_rect_clipped.topleft)
 class OutlinedRoundedRect:
     _convertor = Convertor
     @classmethod
