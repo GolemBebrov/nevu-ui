@@ -223,8 +223,10 @@ class Style:
         self.add_style_parameter("colortheme", "colortheme", lambda value:self.parse_class_type(value, ColorTheme))
         self.add_style_parameter("gradient", "gradient", lambda value:self.parse_class_type(value, Gradient))
         self._kwargs_handler(**kwargs)
+        
     def add_style_parameter(self, name, attribute_name: str, checker_lambda):
         self.kwargs_dict[name] = (attribute_name, checker_lambda)
+        
     def parse_color(self, value, can_be_gradient: bool = False, can_be_trasparent: bool = False, can_be_string: bool = False) -> tuple[bool, tuple|None]:
         if isinstance(value, Gradient) and can_be_gradient:
             return True, None
