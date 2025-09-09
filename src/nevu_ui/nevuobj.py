@@ -14,7 +14,7 @@ from .fast_logic import (
 from .core_types import (
     SizeRule, Px, Vh, Vw, Fill, HoverState
 )
-
+from collections.abc import Callable
 class NevuObject:
     id: str | None
     floating: bool
@@ -120,7 +120,17 @@ class NevuObject:
     
     def _process_constant(self, name, constant_name, needed_types, value):
         assert needed_types
-        if isinstance(value, needed_types) and not self.is_constant_set[constant_name]:
+        if not isinstance(needed_types, tuple):
+            needed_types = (needed_types,)
+        is_valid = False
+        for needed_type in needed_types:
+            if needed_type == Callable:
+                is_valid = callable(value) if is_valid == False else is_valid
+            elif needed_type == Any:
+                is_valid = True
+            else:
+                is_valid = isinstance(value, needed_type) if is_valid == False else is_valid
+        if is_valid and not self.is_constant_set[constant_name]:
             print(f"Debug: Set constant {name}({constant_name}) to {value} in {self}({type(self).__name__})")
             setattr(self, constant_name, value)
             self.is_constant_set[constant_name] = True
@@ -324,7 +334,7 @@ class NevuObject:
         return self.coordinates
 
     def _update_size(self):
-        return self.rel(self.size)
+        return Vector2(self.rel(self.size))
 
     def get_font(self):
         avg_resize_ratio = (self._resize_ratio[0] + self._resize_ratio[1]) / 2
@@ -404,3 +414,4 @@ class NevuObject:
     
     def rel(self, mass: list | tuple | Vector2, vector: bool = False) -> list | Vector2:  
         return rel_helper(mass, self._resize_ratio.x, self._resize_ratio.y, vector)
+    
