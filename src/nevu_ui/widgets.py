@@ -11,10 +11,13 @@ from .color import *
 from .animations import *
 from .nevuobj import NevuObject
 from nevu_ui.fast_logic import logic_update_helper
+from collections.abc import Callable
+
 
 
 class Widget(NevuObject):
-    alt: bool
+    _alt: bool
+    will_resize: bool
     def __init__(self, size: Vector2 | list, style: Style = default_style, **constant_kwargs):
         super().__init__(size, style, **constant_kwargs)
         #=== Text Cache ===
@@ -23,32 +26,53 @@ class Widget(NevuObject):
         self._init_alt()
     def _add_constants(self):
         super()._add_constants()
-        self._add_constant("alt", bool, False)
+        self._add_constant("_alt", bool, False)
+        self._add_constant_link("alt", "_alt")
+        self._add_constant("will_resize", bool, True)
     def _init_text_cache(self):
         self._text_baked = None
         self._text_surface = None
         self._text_rect = None
     def _init_objects(self):
         super()._init_objects()
-        self.quality = Quality.Poor
+        self.quality = Quality.Decent
         self._subtheme_role = SubThemeRole.SECONDARY
+        self.renderer = BackgroundRenderer(self)
     def _init_lists(self):
         super()._init_lists()
         self._dr_coordinates_old = self.coordinates.copy()
         self._dr_coordinates_new = self.coordinates.copy()
+
     def _init_booleans(self):
         super()._init_booleans()
         self._optimized_dirty_rect_for_short_animations = True
     def _on_subtheme_role_change(self):
         super()._on_subtheme_role_change()
         self._init_alt()
+        self._on_style_change()
+    @property
+    def alt(self):
+        return self._alt
+    @alt.setter
+    def alt(self, value):
+        self._alt = value
+        self._init_alt()
+        self._on_style_change()
+    def _on_hover_system(self):
+        super()._on_hover_system()
+        self.alt = not self.alt
+        print("alt", self.alt)
+    def _on_unhover_system(self):
+        super()._on_unhover_system()
+        self.alt = not self.alt
+        print("alt", self.alt)
     def _init_alt(self):
         if self.alt: self._subtheme_font, self._subtheme_content = self._alt_subtheme_font, self._alt_subtheme_content
         else: self._subtheme_font, self._subtheme_content = self._main_subtheme_font, self._main_subtheme_content
     def _lazy_init(self, size: Vector2 | list):
         super()._lazy_init(size)
         self.surface = pygame.Surface(size, flags = pygame.SRCALPHA)
-        if isinstance(self.style.gradient, Gradient): self._draw_gradient()
+        #if isinstance(self.style.gradient, Gradient): self._draw_gradient()
 
     def clear_all(self):
         """
@@ -63,22 +87,10 @@ class Widget(NevuObject):
         This includes Image, Scaled_Gradient, Surface, and Borders.
         Highly recommended to use this method instead of clear_all.
         """
-        self.cache.clear_selected(whitelist = [CacheType.Image, CacheType.Scaled_Gradient, CacheType.Surface, CacheType.Borders])
-
-    def _draw_gradient(self, _set: bool = False):
-        if not self.style.gradient: return
-        cached_gradient = pygame.Surface(self.size * _QUALITY_TO_RESOLUTION[self.quality], flags = pygame.SRCALPHA)
-        if self.style.transparency: cached_gradient = self.style.gradient.with_transparency(self.style.transparency).apply_gradient(cached_gradient)
-        else: cached_gradient =  self.style.gradient.apply_gradient(cached_gradient)
-        if _set: self.cache.set(CacheType.Gradient, cached_gradient)
-        else: return cached_gradient
-    def _scale_gradient(self):
-        if not self.style.gradient: return
-        cached_gradient = self.cache.get_or_exec(CacheType.Gradient, self._draw_gradient)
-        if cached_gradient is None: return
-        cached_gradient = pygame.transform.scale(cached_gradient, self._csize)
-        return cached_gradient
-
+        self.cache.clear_selected(whitelist = [CacheType.Image, CacheType.Scaled_Gradient, CacheType.Surface, CacheType.Borders, CacheType.Scaled_Background, CacheType.Background])
+    def _on_style_change(self):
+        self.clear_surfaces()
+        self._changed = True
     def _update_image(self, style: Style | None = None):
         try:
             if not style: style = self.style
@@ -101,12 +113,14 @@ class Widget(NevuObject):
     @property
     def _alt_subtheme_font(self):
         return self._subtheme.oncontainer
+    @property
+    def _rsize(self) -> NvVector2:
+        bw = self.style.borderwidth
+        return self._csize - (NvVector2(bw, bw)) /2
 
-    def _create_surf_base(self):
-        return RoundedRect.create_sdf([int(self._csize[0]), int(self._csize[1])], self.relm(self.style.borderradius), self._subtheme_content)
-
-    def _create_outlined_rect(self):
-        return OutlinedRoundedRect.create_sdf([int(self._csize[0]), int(self._csize[1])], int(self.relm(self._style.borderradius)), int(self._style.borderwidth), self._subtheme.oncolor)
+    @property
+    def _rsize_marg(self) -> NvVector2:
+        return (self._csize - self._rsize)/2
     def clone(self):
         return Widget(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
     def primary_draw(self):
@@ -114,27 +128,10 @@ class Widget(NevuObject):
         if self._changed:
             if type(self) == Widget: self._changed = False
             self._dirty_rect.append(self.get_rect())
-
             TRANSPARENT = (0, 0, 0, 0)
             self.surface.fill(TRANSPARENT)
-
-            content_surface: pygame.Surface | None = None
-            if self.cache.get(CacheType.Image):
-                content_surface = self.cache.get(CacheType.Image)
-            elif self.style.gradient:
-                content_surface = self.cache.get_or_exec(CacheType.Scaled_Gradient, self._scale_gradient)
-
-            shape_surface: pygame.Surface | None  = self.cache.get_or_exec(CacheType.Surface, self._create_surf_base)
-
-            if content_surface and shape_surface:
-                final_image = content_surface.copy()
-                mask = shape_surface.copy()
-                mask.fill((255, 255, 255), special_flags=pygame.BLEND_RGB_ADD)
-                final_image.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
-                self.surface.blit(final_image, (0, 0))
-            elif shape_surface:
-                self.surface.blit(shape_surface, (0, 0))
-
+            self.surface = self.renderer._scale_background(self._csize) if self.will_resize else self.renderer._generate_background()
+            
     def logic_update(self):
         super().logic_update()
         new_dr_old, new_first_update = logic_update_helper(
@@ -154,8 +151,8 @@ class Widget(NevuObject):
         self._first_update = new_first_update
 
     def _boot_up(self):
-        #pass
-        print(f"booted widget: {self}")
+        pass
+        #print(f"booted widget: {self}")
 
     def bake_text(self, text: str, unlimited_y: bool = False, words_indent: bool = False,
                   alignx: Align = Align.CENTER, aligny: Align = Align.CENTER, continuous: bool = False):
@@ -247,6 +244,88 @@ class Widget(NevuObject):
 
         self._changed = True
 
+class BackgroundRenderer:
+    def __init__(self, root: Widget):
+        assert isinstance(root, Widget)
+        self.root = root
+    def _draw_gradient(renderer, _set = False):
+        self = renderer.root
+        if not self.style.gradient: return
+        
+        cached_gradient = pygame.Surface(self.size*_QUALITY_TO_RESOLUTION[self.quality], flags = pygame.SRCALPHA)
+        if self.style.transparency: cached_gradient = self.style.gradient.with_transparency(self.style.transparency).apply_gradient(cached_gradient)
+        else: cached_gradient =  self.style.gradient.apply_gradient(cached_gradient)
+        if _set:
+            self.cache.set(CacheType.Gradient, cached_gradient)
+        else:
+            return cached_gradient
+    def _scale_gradient(renderer, size = None):
+        self = renderer.root
+        if not self.style.gradient: return
+        size = size or self.size * self._resize_ratio
+        cached_gradient = self.cache.get_or_exec(CacheType.Gradient, renderer._draw_gradient)
+        if cached_gradient is None: return
+        target_size_vector = size
+        target_size_tuple = (
+            max(1, int(target_size_vector.x)), 
+            max(1, int(target_size_vector.y))
+        )
+        cached_gradient = pygame.transform.smoothscale(cached_gradient, target_size_tuple)
+        return cached_gradient
+    def _create_surf_base(renderer, size = None):
+        self = renderer.root
+        needed_size = (self.size*self._resize_ratio).xy if size is None else size
+        surf = pygame.Surface((int(needed_size[0]), int(needed_size[1])), pygame.SRCALPHA)
+        surf.fill((0,0,0,0))
+        if self.will_resize:
+            avg_scale_factor = _QUALITY_TO_RESOLUTION[self.quality]
+        else:
+            avg_scale_factor = (self._resize_ratio[0] + self._resize_ratio[1]) / 2
+
+        radius = self._style.borderradius * avg_scale_factor
+        surf.blit(RoundedRect.create_sdf([int(needed_size[0]), int(needed_size[1])], int(radius), self._subtheme_content), (0, 0))
+        return surf
+    
+    def _create_outlined_rect(renderer, size = None):
+        self = renderer.root
+        needed_size = (self.size*self._resize_ratio).xy if size is None else size
+        if self.will_resize:
+            avg_scale_factor = _QUALITY_TO_RESOLUTION[self.quality]
+        else:
+            avg_scale_factor = (self._resize_ratio[0] + self._resize_ratio[1]) / 2
+        radius = self._style.borderradius * avg_scale_factor
+        width = self._style.borderwidth * avg_scale_factor
+        return OutlinedRoundedRect.create_sdf([int(needed_size[0]), int(needed_size[1])], int(radius), int(width), self._subtheme_font)
+    
+    def _generate_background(renderer):
+        self = renderer.root
+        resize_factor = _QUALITY_TO_RESOLUTION[self.quality] if self.will_resize else self._resize_ratio
+        bgsurface = pygame.Surface(self.size * resize_factor, flags = pygame.SRCALPHA)
+        if isinstance(self.style.gradient,Gradient):
+            content_surf = self.cache.get_or_exec(CacheType.Scaled_Gradient, lambda: renderer._scale_gradient(self.size * resize_factor))
+            if self.style.transparency: bgsurface.set_alpha(self.style.transparency)
+        else: content_surf = self.cache.get(CacheType.Scaled_Gradient)
+        if content_surf:
+            bgsurface.blit(content_surf,(0,0))
+        else: bgsurface.fill(self._subtheme_content)
+        
+        if self._style.borderwidth > 0:
+            border = self.cache.get_or_exec(CacheType.Borders, lambda: renderer._create_outlined_rect(self.size * resize_factor))
+            if border:
+                bgsurface.blit(border,(0,0))
+        if self._style.borderradius > 0:
+            mask_surf = self.cache.get_or_exec(CacheType.Surface, lambda: renderer._create_surf_base(self.size * resize_factor))
+            if mask_surf:
+                AlphaBlit.blit(bgsurface, mask_surf,(0,0))
+        return bgsurface
+    
+    def _scale_background(renderer, size = None):
+        self = renderer.root
+        size = size if size else self.size*self._resize_ratio
+        surf = self.cache.get_or_exec(CacheType.Background, renderer._generate_background)
+        assert surf
+        surf = pygame.transform.smoothscale(surf, (max(1, int(size.x)), max(1, int(size.y))))
+        return surf
 class Empty_Widget(Widget):
     def draw(self):
         pass
@@ -1295,31 +1374,40 @@ class FileDialog(Button):
                 except Exception as e:
                     print(e)
 class RectCheckBox(Widget):
-    def __init__(self, size:int, style: Style = default_style,default=False, freedom=False,on_change_function=None):
-        super().__init__([size,size], style,freedom)
+    function: Callable | None
+    active_rect_factor: float | int
+    def __init__(self, size: int, style: Style = default_style, **constant_kwargs):
+        super().__init__(Vector2(size, size), style, **constant_kwargs)
+    def _init_booleans(self):
+        super()._init_booleans()
         self._toogled = False
-        self.function = on_change_function
-        self.toogled = default 
+    def _add_constants(self):
+        super()._add_constants()
+        self._add_constant("function", (type(None), Callable), None)
+        self._add_constant_link("on_toogle", "function")
+        self._add_constant("toogled", bool, False)
+        self._add_constant_link("active", "toogled")
+
+        self._add_constant("active_rect_factor", (float, int), 0.8)
+        self._add_constant_link("active_factor", "active_rect_factor")
     @property
     def toogled(self):
         return self._toogled
     @toogled.setter
-    def toogled(self,value:bool):
+    def toogled(self,value: bool):
         self._toogled = value
-        if self.function: self.function(value)
         self._changed = True
+        if self.function: self.function(value)
     def draw(self):
         super().draw()
         if self._changed:
             if self._toogled:
-                cooficient = 1.1
-                size = self.size[0]/cooficient
-                offset = (self.size[0]-size)/2
-                pygame.draw.rect(self.surface,self.style.secondarycolor,[offset,offset,size,size],0,self.style.radius)
+                active_size = self._csize * self.active_rect_factor
+                offset = (self._csize - active_size)/2
+                pygame.draw.rect(self.surface, self._alt_subtheme_content, pygame.Rect(offset, active_size))
             self._changed = False
-    def update(self,*args):
-        super().update(*args)
-        if not self.active: return
-        if self.hovered and mouse.left_fdown:
-            self.toogled = not self.toogled
-            
+    def _on_click_system(self):
+        super()._on_click_system()
+        self.toogled = not self.toogled
+    def clone(self):
+        return RectCheckBox(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
