@@ -24,17 +24,17 @@ class LayoutType(NevuObject):
         if item._wait_mode:
             self.read_item_coords(item)
             self._start_item(item)
-            print("started item", item)
+            #("started item", item)
             return
         item.draw()
-        if self.is_layout(item) or not isinstance(item.surface, pygame.Surface): print("not a widget"); return
+        if self.is_layout(item) or not isinstance(item.surface, pygame.Surface): return
         coordinates = item.coordinates
         if multiply: coordinates = coordinates * multiply
         if add: coordinates = coordinates + add
         self.surface.blit(item.surface, (int(coordinates[0]),int(coordinates[1])))
 
     def _boot_up(self):
-        print("booted layout", self)
+        #print("booted layout", self)
         self.booted = True
         for item in self.items + self.freedom_items:
             assert isinstance(item, (Widget, LayoutType))
@@ -132,7 +132,7 @@ class LayoutType(NevuObject):
         return coord, False
 
     def read_item_coords(self, item: NevuObject):
-        if self.booted == False: print("Cant read item coords", item); return
+        if self.booted == False: return
         w_size = item._lazy_kwargs['size']
         x, y = w_size
         x, is_x_rule = self._convert_item_coord(x, 0)
@@ -143,10 +143,8 @@ class LayoutType(NevuObject):
     def _start_item(self, item: NevuObject):
         if isinstance(item, LayoutType):
             item._connect_to_layout(self)
-        if self.booted == False: print("Cant start item", item); return
-        item._wait_mode = False; item._init_start(); print("started item", item, item._lazy_kwargs['size'])
-
-
+        if self.booted == False:  return
+        item._wait_mode = False; item._init_start()
 
     def resize(self, resize_ratio: NvVector2):
         super().resize(resize_ratio)
@@ -167,7 +165,7 @@ class LayoutType(NevuObject):
     def _event_on_add_item(self): pass
 
     def add_item(self, item: NevuObject):
-        print(item)
+        #print(item)
         if item.single_instance is False: item = item.clone()
         if self.is_layout(item): 
             assert self.is_layout(item)
@@ -228,10 +226,10 @@ class LayoutType(NevuObject):
             if item._wait_mode:
                 self.read_item_coords(item)
                 self._start_item(item)
-                print("started item", item)
+                #print("started item", item)
                 return
     def _connect_to_menu(self, menu: Menu):
-        print(f"in {self} used connect to menu: {menu}")
+        #print(f"in {self} used connect to menu: {menu}")
         self.cached_coordinates = None
         self.menu = menu
         self.surface = self.menu.surface
@@ -239,7 +237,7 @@ class LayoutType(NevuObject):
         self.border_name = self._border_name
 
     def _connect_to_layout(self, layout):
-        print(f"in {self} used connect to layout: {layout}")
+        #print(f"in {self} used connect to layout: {layout}")
         self.surface = layout.surface
         self.layout = layout
         self.first_parent_menu = layout.first_parent_menu
@@ -267,7 +265,7 @@ class Grid(LayoutType):
         
         self._add_constant_link("y", "row")
         self._add_constant_link("x", "column")
-        print(self.constant_defaults)
+        #print(self.constant_defaults)
     
     def _init_lists(self):
         super()._init_lists()
@@ -335,8 +333,7 @@ class Grid(LayoutType):
             return None
     def clone(self):
         return Grid(self._lazy_kwargs['size'], copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
-#МЫНАМИНТИП(COEMS)!!!!!
-#Opa gangam style!!!!!
+
 class CheckBoxGrid(Grid):
     def __init__(self, deprecated_deprecated_deprecated = float | bool | NvVector3 | list | NevuObject | str):
         if deprecated_deprecated_deprecated == 88005553535 or deprecated_deprecated_deprecated == "bebrovgolem@gmail.com":
@@ -720,7 +717,7 @@ class Scrollable(LayoutType):
             for mass in content:
                 assert len(mass) == 2
                 align, item = mass
-                print(align, item)
+                #print(align, item)
                 assert type(align) == Align and isinstance(item, NevuObject)
                 self.add_item(item, align)
         self._update_scroll_bars()
@@ -732,7 +729,7 @@ class Scrollable(LayoutType):
         track_start_y = self.master_coordinates[1]
         track_path_y = self.size[1]
         offset = Vector2(self.first_parent_menu.window._crop_width_offset,self.first_parent_menu.window._crop_height_offset) if self.first_parent_menu.window else Vector2(0,0)
-        print(offset)
+        #print(offset)
         self.scroll_bar_y.set_scroll_params(Vector2(self.coordinates[0] + self.relx(self.size[0] - self.scroll_bar_y.size[0]) , track_start_y), 
                                             Vector2(0,track_path_y),
                                             offset/2)
@@ -834,6 +831,7 @@ class Scrollable(LayoutType):
             self.scroll_bar_y.update()
             self.scroll_bar_y.coordinates = Vector2(self._coordinates[0] + self.relx(self.size[0] - self.scroll_bar_y.size[0]), self.scroll_bar_y.coordinates[1])
             self.scroll_bar_y.master_coordinates = self._get_item_master_coordinates(self.scroll_bar_y)
+        if type(self) == Scrollable: self._dirty_rect = self._read_dirty_rects()
             
     def _regenerate_coordinates(self):
         super()._regenerate_coordinates()
@@ -981,7 +979,7 @@ class Appending_Layout_Type(LayoutType):
         pass
     
     def add_item(self, item: NevuObject, alignment: Align = Align.CENTER):
-        print(self.first_parent_menu.window)
+        #print(self.first_parent_menu.window)
         super().add_item(item)
         self.widgets_alignment.append(alignment)
         self.cached_coordinates = None

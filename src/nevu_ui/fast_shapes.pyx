@@ -9,19 +9,29 @@ cpdef object _create_outlined_rounded_rect_sdf(tuple size, int radius, float wid
     cdef int w = size[0]
     cdef int h = size[1]
     cdef float half_width = width / 2.0
+
     radius = min(radius, w // 2, h // 2)
+
+    cdef float center_radius = radius - half_width
+    if center_radius < 0:
+        center_radius = 0.0
 
     cdef object surf = pygame.Surface(size, pygame.SRCALPHA)
 
     cdef np.ndarray y, x
     y, x = np.ogrid[:h, :w]
 
-    cdef np.ndarray dist_x = np.abs(x - (w - 1) / 2.0) - (w - 2 * radius - 1) / 2.0
-    cdef np.ndarray dist_y = np.abs(y - (h - 1) / 2.0) - (h - 2 * radius - 1) / 2.0
+    cdef float centerline_straight_half_w = ((w - width) - 2 * center_radius - 1) / 2.0
+    cdef float centerline_straight_half_h = ((h - width) - 2 * center_radius - 1) / 2.0
+
+    cdef np.ndarray dist_x = np.abs(x - (w - 1) / 2.0) - centerline_straight_half_w
+    cdef np.ndarray dist_y = np.abs(y - (h - 1) / 2.0) - centerline_straight_half_h
 
     cdef np.ndarray dist_from_inner_corner = np.sqrt(np.maximum(dist_x, 0.0)**2 + np.maximum(dist_y, 0.0)**2)
-    cdef np.ndarray signed_dist = dist_from_inner_corner + np.minimum(np.maximum(dist_x, dist_y), 0.0) - radius
+    cdef np.ndarray signed_dist = dist_from_inner_corner + np.minimum(np.maximum(dist_x, dist_y), 0.0) - center_radius
+    
     cdef np.ndarray dist_from_edge = np.abs(signed_dist)
+    
     cdef np.ndarray alpha = np.clip(0.5 - (dist_from_edge - half_width), 0.0, 1.0)
 
     cdef np.ndarray[np.uint8_t, ndim=3] pixels3d = pygame.surfarray.pixels3d(surf)
@@ -34,6 +44,7 @@ cpdef object _create_outlined_rounded_rect_sdf(tuple size, int radius, float wid
     del pixels_alpha
 
     return surf
+
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
