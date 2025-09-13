@@ -18,8 +18,8 @@ class Mygame(ui.Manager):
             fontsize=15, border_radius=15,  
             borderwidth=4, gradient=ui.style.Gradient(colors=[ui.Color.REBECCAPURPLE,ui.Color.mix(ui.Color.AQUA,ui.Color.REBECCAPURPLE)],type='linear',direction=ui.style.Gradient.TO_TOP))
     
-        b = ui.Button(lambda: print("Button 1"), "Test Chamber", [100*ui.fill,33*ui.fill], style=style_mini_font(borderradius=15, borderwidth=2), words_indent=True, alt=True, will_resize=True) #Создаем кнопку
-        i = ui.Input([100*ui.fill,33*ui.fill],style_mini_font(borderradius=30,fontname="vk_font.ttf"),"","Введите", alt=True, will_resize=True) #Создаем инпут
+        b = ui.Button(lambda: print("Button 1"), "Test Chamber", [50*ui.fill,11*ui.fill], style=style_mini_font(borderradius=15, borderwidth=2, fontsize=10), words_indent=True, alt=True, will_resize=True) #Создаем кнопку
+        i = ui.Input([100*ui.fill,66*ui.fill],style_mini_font(borderradius=30,fontname="vk_font.ttf"),"","Введите", alt=True, will_resize=True, multiple=True) #Создаем инпут
         
         i.animation_manager.add_start_animation(ui.AnimationEaseOut(3,[0,-100],[0,0],ui.AnimationType.POSITION)) #Добавляем анимацию в начало
         "ss" if True else "dd"
