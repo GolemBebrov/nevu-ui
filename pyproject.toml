@@ -1,16 +1,20 @@
 [build-system]
-requires = ["setuptools>=61.0", "Cython", "numpy"]
+requires = [
+    "setuptools>=61.0",
+    "cython",
+    "numpy",
+]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "nevu-ui"
-version = "0.5.0"
+version = "0.5.1" 
 authors = [
   { name="GolemNikidastrov", email="bebrovgolem@gmail.com" },
 ]
 description = "A powerful GUI framework for Pygame that allows you to create menus"
 readme = "README.md" 
-requires-python = ">=3.8"
+requires-python = ">=3.12"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -22,9 +26,12 @@ dependencies = [
     "Pillow",
 ]
 
+[project.urls]
+Homepage = "https://github.com/GolemBebrov/nevu-ui"
+Repository = "https://github.com/GolemBebrov/nevu-ui"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[project.urls]
-Homepage = "https://github.com/GolemBebrov/pygame-nevui"
-Repository = "https://github.com/GolemBebrov/pygame-nevui"
+[tool.setuptools.package-data]
+"nevu_ui" = ["*.pyx"]

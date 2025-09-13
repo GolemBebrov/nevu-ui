@@ -30,11 +30,9 @@ class Window:
         self.resize_type = resize_type
         
         flags = pygame.RESIZABLE if resizable else 0
-        
         flags |= pygame.HWSURFACE | pygame.DOUBLEBUF
         
         self.surface = pygame.display.set_mode(size, flags=flags)
-        
         
         self._title = title
         pygame.display.set_caption(self._title)
@@ -42,7 +40,7 @@ class Window:
         self._ratio = ratio or NvVector2(0, 0)
         self._clock = pygame.time.Clock()
         
-        self._events: list[Event] = []
+        self._events: list[NevuEvent] = []
         self.last_events = []
         
         self._crop_width_offset = 0
@@ -52,12 +50,11 @@ class Window:
             self._recalculate_render_area() 
 
         self._selected_context_menu = None
-
         self._next_update_dirty_rects = []
         
     def clear(self, color = (0, 0, 0)):
-        """Fill the entire surface with the given color
-        
+        """
+        Fill the entire surface with the given color
         Args:
             color (tuple[int, int, int], optional): RGB color to fill with. Defaults to (0, 0, 0).
         """
@@ -65,28 +62,17 @@ class Window:
 
     def _recalculate_render_area(self):
         current_w, current_h = self.surface.get_size()
-        target_ratio = self._ratio if self._ratio else self._original_size
-        
+        target_ratio = self._ratio or self._original_size
         self._crop_width_offset, self._crop_height_offset = self.cropToRatio(current_w, current_h, target_ratio)
         self._offset = NvVector2(self._crop_width_offset // 2, self._crop_height_offset // 2)
-        
-        render_width = self.size[0] - self._crop_width_offset
-        render_height = self.size[1] - self._crop_height_offset
 
-    def update(self, events, fps=60):
-        
+    def update(self, events, fps: int = 60):
         """
         Updates the window state and processes events.
 
         Args:
-            events (list[Event]): List of events to process.
+            events (list[pygame.Event]): List of events to process.
             fps (int, optional): Desired frames per second. Defaults to 60.
-
-        Processes all events in the list and updates the mouse, time, and keyboard states.
-        If the window is resized, updates the size and recalculate the render area.
-        If the right mouse button is released, opens the context menu at the mouse position.
-        If the mouse is moved outside of the context menu, closes it.
-        Limits the frame rate to the given value.
         """
         
         self.last_events = events
@@ -107,21 +93,13 @@ class Window:
                     self._recalculate_render_area()
                     render_width = self.size[0] - self._crop_width_offset
                     render_height = self.size[1] - self._crop_height_offset
-                    self._event_cycle(Event.RESIZE, [render_width, render_height])
+                    self._event_cycle(EventType.Resize, [render_width, render_height])
                 else:
-                    self._event_cycle(Event.RESIZE, self.size)
-                self._next_update_dirty_rects.append(pygame.Rect(0,0,*self.size))
+                    self._event_cycle(EventType.Resize, self.size)
+                self._next_update_dirty_rects.append(pygame.Rect(0, 0, *self.size))
 
-            if mouse.right_up:
-                if self._selected_context_menu:
-                   self._selected_context_menu._open_context(mouse.pos)
-            if mouse.any_down or mouse.any_fdown:
-                if self._selected_context_menu:
-                    if not self._selected_context_menu.get_rect().collidepoint(mouse.pos):
-                        self._selected_context_menu._close_context()
-                    
         self._clock.tick(fps)
-        self._event_cycle(Event.UPDATE)
+        self._event_cycle(EventType.Update)
 
     @property
     def offset(self):
@@ -149,14 +127,14 @@ class Window:
     def original_size(self):
         return self._original_size
 
-    def add_event(self,event:Event):
+    def add_event(self, event: NevuEvent):
         self._events.append(event)
 
-    def _event_cycle(self,type:int,*args, **kwargs):
+    def _event_cycle(self, type: EventType, *args, **kwargs):
         for event in self._events:
-            if event.type == type:
+            if event._type == type:
                 event(*args, **kwargs)
-                
+
     @property
     def rel(self):
         render_width = self.size[0] - self._crop_width_offset

@@ -40,7 +40,7 @@ class Menu:
         self.quality = Quality.Decent
         self.style = style
         if self.window:
-            self.window.add_event(Event(Event.RESIZE, self.resize))
+            self.window.add_event(NevuEvent(self, self.resize, EventType.Resize))
 
     def _init_size(self, size: list | tuple | Vector2):
         initial_size = list(size)
@@ -181,28 +181,36 @@ class Menu:
             if mask_surf:
                 AlphaBlit.blit(bgsurface, mask_surf,(0,0))
         return bgsurface
+    
     def _scale_background(self, size = None):
         size = size if size else self.size*self._resize_ratio
         surf = self.cache.get_or_exec(CacheType.Background, self._generate_background)
         if surf is None: return
         surf = pygame.transform.smoothscale(surf, (max(1, int(size.x)), max(1, int(size.y))))
         return surf
+    
     @property
     def _subtheme(self):
         return self.style.colortheme.get_subtheme(self._subtheme_role)
+    
     @property
     def enabled(self) -> bool:
         return self._enabled
+    
     @enabled.setter
     def enabled(self, value: bool):
         self._enabled = value
+        
     def clear_all(self):
         self.cache.clear()
+        
     def clear_surfaces(self):
         self.cache.clear_selected(whitelist = [CacheType.Image, CacheType.Scaled_Gradient, CacheType.Surface, CacheType.Borders, CacheType.Scaled_Background])
+    
     @property
     def coordinatesMW(self) -> Vector2:
         return self._coordinatesWindow
+    
     @coordinatesMW.setter
     def coordinatesMW(self, coordinates: Vector2):
         if self.window is None: raise ValueError("Window is not initialized!")
@@ -275,6 +283,7 @@ class Menu:
     @property
     def layout(self):
         return self._layout
+    
     @layout.setter
     def layout(self, layout):
         if layout._can_be_main_layout:
@@ -285,7 +294,6 @@ class Menu:
 
             layout.coordinates = (self.size[0]/2 - layout.size[0]/2, self.size[1]/2 - layout.size[1]/2)
             
-
             self._layout = layout
         else: raise ValueError(f"Layout {type(layout).__name__} can't be main")
         
@@ -299,7 +307,6 @@ class Menu:
         self.isrelativeplaced = False
         self.relative_percent_x = None
         self.relative_percent_y = None
-        
         self.first_coordinates = self.coordinates
         
     def set_coordinates_relative(self, percent_x: int, percent_y: int):
@@ -334,6 +341,7 @@ class Menu:
         radius = self._style.borderradius * avg_scale_factor
         width = self._style.borderwidth * avg_scale_factor
         return OutlinedRoundedRect.create_sdf([int(ss[0]), int(ss[1])], int(radius), int(width), self._subtheme_border)
+    
     def draw(self):
         if not self.enabled: return
         if self.window is None: return

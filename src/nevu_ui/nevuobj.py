@@ -8,6 +8,7 @@ from .utils import NvVector2 as Vector2
 import copy
 from typing import Any
 from .color import *
+from warnings import deprecated
 from .fast_logic import (
     relx_helper, rely_helper, relm_helper, rel_helper
 )
@@ -65,6 +66,7 @@ class NevuObject:
         
     def clone(self):
         return NevuObject(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
+    
     def __deepcopy__(self, *args, **kwargs):
         return self.clone()
     
@@ -72,12 +74,16 @@ class NevuObject:
         self.constant_supported_classes[name] = supported_classes
         self.constant_defaults[name] = default
         self.is_constant_set[name] = False
-        
+    
+    def _block_constant(self, name: str):
+        self.excluded_constants.append(name)
+    
     def _init_constants_base(self):
         self.constant_supported_classes = {}
         self.constant_defaults = {}
         self.constant_links = {}
         self.is_constant_set = {}
+        self.excluded_constants = []
         
     def _add_constants(self):
         self._add_constant("id", (str, type(None)), None)
@@ -120,6 +126,8 @@ class NevuObject:
     
     def _process_constant(self, name, constant_name, needed_types, value):
         assert needed_types
+        if constant_name in self.excluded_constants:
+            raise ValueError(f"Constant {name} is unconfigurable")
         if not isinstance(needed_types, tuple):
             needed_types = (needed_types,)
         is_valid = False
@@ -177,7 +185,7 @@ class NevuObject:
         self.coordinates = Vector2()
         self.master_coordinates = Vector2()
         self.first_update_functions = []
-        self._events = []
+        self._events: list[NevuEvent] = []
         self._dirty_rect = []
         
     def _init_start(self):
@@ -198,8 +206,21 @@ class NevuObject:
                 self._wait_mode = True
         return number
 
-    def add_event(self, event: Event):
+    def subscribe(self, event: NevuEvent):
+        """Adds a new event listener to the object.
+
+        Args:
+            event (NevuEvent): The event to subscribe
+
+        Returns:
+            None
+        """
         self._events.append(event)
+        
+    @deprecated("use .subscribe() instead. This method will be removed in a future version.")
+    def add_event(self, event: NevuEvent):
+        """**Deprecated**: use .subscribe instead."""
+        return self.subscribe(event)
 
     @property
     def wait_mode(self):
@@ -242,9 +263,9 @@ class NevuObject:
     def active(self, value: bool):
         self._active = value
 
-    def _event_cycle(self, type: int, *args, **kwargs):
+    def _event_cycle(self, type: EventType, *args, **kwargs):
         for event in self._events:
-            if event.type == type:
+            if event._type == type:
                 event(*args, **kwargs)
 
     def resize(self, resize_ratio: Vector2):
@@ -301,15 +322,19 @@ class NevuObject:
         """Override this function to run code when a key is released"""
     def on_unhover(self):
         """Override this function to run code when the object is unhovered"""
-
+    def on_scroll(self, side: bool):
+        """Override this function to run code when the object is scrolled"""
+        
     def _on_click_system(self):
-        pass #realizes in the subclasses
+        self._event_cycle(EventType.OnKeyDown)
     def _on_hover_system(self):
-        pass #realizes in the subclasses
+        self._event_cycle(EventType.OnHover)
     def _on_keyup_system(self):
-        pass #realizes in the subclasses
+        self._event_cycle(EventType.OnKeyUp)
     def _on_unhover_system(self):
-        pass #realizes in the subclasses
+        self._event_cycle(EventType.OnUnhover)
+    def _on_scroll_system(self, side: bool):
+        self._event_cycle(EventType.OnMouseScroll, side)
 
     def get_rect_opt(self, without_animation: bool = False):
         if not without_animation:
@@ -321,6 +346,7 @@ class NevuObject:
             self.master_coordinates[1] - self.rely(anim_coords[1]),
             *self.rel(self.size)
         )
+        
     def get_rect(self):
         anim_coordinates = self.animation_manager.get_animation_value(AnimationType.POSITION)
         anim_coordinates = [0,0] if anim_coordinates is None else anim_coordinates
@@ -369,7 +395,7 @@ class NevuObject:
         events = events or []
         self.primary_update(events)
         self.secondary_update()
-        self._event_cycle(Event.UPDATE)
+        self._event_cycle(EventType.Update)
     def primary_update(self, events: list | None = None):
         events = events or []
         self.logic_update()
@@ -377,6 +403,10 @@ class NevuObject:
         self.event_update(events)
     def logic_update(self):
         self._update_hover_state()
+    def _update_scroll(self):
+        if mouse.wheel_still: return
+        self.on_scroll(mouse.wheel_up)
+        self._on_scroll_system(mouse.wheel_up)
     def animation_update(self):
         self.animation_manager.update()
     def event_update(self, events: list):
@@ -389,18 +419,25 @@ class NevuObject:
     #        primary_draw >
     #            basic draw code
     #        secondary_draw >
-    #            widget/layout draw code
+    #            secondary_draw_content
+    #            secondary_draw_end
     #--------------------------------------
 
     def draw(self):
         self.primary_draw()
-        self._event_cycle(Event.DRAW)
+        self._event_cycle(EventType.Draw)
         self.secondary_draw()
-        self._event_cycle(Event.RENDER)
+        self._event_cycle(EventType.Render)
         
     def primary_draw(self):
         pass
     def secondary_draw(self):
+        self.secondary_draw_content()
+        self.secondary_draw_end()
+        
+    def secondary_draw_content(self):
+        pass
+    def secondary_draw_end(self):
         pass
     
     def relx(self, num: int | float, min: int | None = None, max: int| None = None) -> int | float:

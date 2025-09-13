@@ -5,7 +5,11 @@ setup.py
 src/nevu_ui/__init__.py
 src/nevu_ui/animations.py
 src/nevu_ui/color.py
+src/nevu_ui/core_types.py
 src/nevu_ui/fast_logic.c
+src/nevu_ui/fast_logic.pyx
+src/nevu_ui/fast_shapes.c
+src/nevu_ui/fast_shapes.pyx
 src/nevu_ui/layouts.py
 src/nevu_ui/menu.py
 src/nevu_ui/nevuobj.py
@@ -19,4 +23,9 @@ src/nevu_ui.egg-info/SOURCES.txt
 src/nevu_ui.egg-info/dependency_links.txt
 src/nevu_ui.egg-info/requires.txt
 src/nevu_ui.egg-info/top_level.txt
+tests/test_appending_lay.py
+tests/test_basic.py
+tests/test_grid.py
 tests/test_main.py
+tests/test_scrollable.py
+tests/test_tatabebe.py

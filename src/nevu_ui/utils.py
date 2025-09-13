@@ -392,7 +392,12 @@ class EventType(Enum):
     Render = auto()
     Draw = auto()
     Update = auto()
-    OnClick = auto()
+    OnKeyUp = auto()
+    OnKeyDown = auto()
+    OnHover = auto()
+    OnUnhover = auto()
+    OnMouseScroll = auto()
+    
 
 class NevuEvent:
     def __init__(self, sender, function, type: EventType, *args, **kwargs):

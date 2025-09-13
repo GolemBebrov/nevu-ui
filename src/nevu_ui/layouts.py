@@ -262,7 +262,6 @@ class Grid(LayoutType):
         super()._add_constants()
         self._add_constant("column", (int, float), 1)
         self._add_constant("row", (int, float), 1)
-        
         self._add_constant_link("y", "row")
         self._add_constant_link("x", "column")
         #print(self.constant_defaults)
@@ -277,6 +276,7 @@ class Grid(LayoutType):
         self.cell_width = self.size[0] / self.column
         if not content:
             return
+        if type(self) != Grid: return
         for coords, item in content.items():
             self.add_item(item, coords[0], coords[1])
             
@@ -298,9 +298,9 @@ class Grid(LayoutType):
             item.coordinates = coordinates
             item.master_coordinates = self._get_item_master_coordinates(item)
             self.cached_coordinates.append(coordinates)
+            
     def secondary_update(self, *args):
         super().secondary_update()
-
         self._light_update()
         if type(self) == Grid: self._dirty_rect = self._read_dirty_rects()
         
@@ -334,99 +334,59 @@ class Grid(LayoutType):
     def clone(self):
         return Grid(self._lazy_kwargs['size'], copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
 
-class CheckBoxGrid(Grid):
-    def __init__(self, deprecated_deprecated_deprecated = float | bool | NvVector3 | list | NevuObject | str):
-        if deprecated_deprecated_deprecated == 88005553535 or deprecated_deprecated_deprecated == "bebrovgolem@gmail.com":
-            print("OH! SUPPORT THE AUTHOR PLEASE!!!!!!")
-        raise ValueError("WARNING: this class is deprecated and will be rebranded in the future, for now this class is uncompatible other code!!")
-        super().__init__(size, x, y*2 if named else y)
-        self._named = named
-        self.selected = -1
-        self.widgets_last_id = 0
-        self.multiple = multiple
+class Row(Grid):
+    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: dict[int , NevuObject] | None = None, **constant_kwargs):
+        super().__init__(size, style, None, **constant_kwargs)
+        self._lazy_kwargs = {'size': size, 'content': content}
         
-    def draw(self): 
-        super().draw()
-        for i in range(0,len(self.items)-1):
-            item = self.items[i]
-            item._changed = True
-            if i == self.selected: item.draw(True)
-            if not hasattr(item,"menu"):
-                self.surface.blit(item.surface,[int(item.coordinates[0]),int(item.coordinates[1])])
-    def apply_style_to_childs(self, style:Style):
-        for item in self.items:
-            assert isinstance(item, (Widget, LayoutType))
-            if not hasattr(item,"menu"):
-                if isinstance(item,CheckBox):
-                    item.style = style
-            else: item.apply_style_to_childs(style)
-    def add_item(self, item: Widget, x: int, y: int, name: str|None = None):
-        if not isinstance(item,CheckBox):
-            if name != "SYSTEM_NEEDS":raise Exception("Widget must be CheckBox")
-            else:name = None
-        if name:
-            if self._named:
-                self.add_item(Label((self.cell_width*self._resize_ratio[0],300*self._resize_ratio[1]),name,default_style(bgcolor=Color_Type.TRANSPARENT,bordercolor=Color_Type.TRANSPARENT)),x,y*2-1,name="SYSTEM_NEEDS")
-                y*=2
-        super().add_item(item, x, y)
-        if hasattr(item,"connect_to_dot_group"):
-            item.connect_to_dot_group(self,self.widgets_last_id)
-            self.widgets_last_id += 1
+    def _add_constants(self):
+        super()._add_constants()
+        self._block_constant("row")
+        
+    def _lazy_init(self, size: NvVector2 | list, content: dict[int , NevuObject] | None = None): # type: ignore
+        super()._lazy_init(size)
+        self.cell_height = self.size[1] / self.row
+        self.cell_width = self.size[0] / self.column
+        if not content:
+            return
+        for xcoord, item in content.items():
+            self.add_item(item, xcoord)
+    def clone(self):
+        return Row(self._lazy_kwargs['size'], copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
             
-    @property
-    def active(self):
-        m = []
-        for dot in self.items:
-            if isinstance(dot,CheckBox):
-                if dot.is_active: m.append(dot)
-        return m
-    @active.setter
-    def active(self, id: int) -> list[CheckBox]|CheckBox|None:
-        if not self.multiple:
-            for dot in self.items:
-                if isinstance(dot,CheckBox): dot.is_active = False
-        for dot in self.items:
-            if isinstance(dot,CheckBox):
-                if dot._id == id:
-                    if self.multiple:
-                        if not dot.is_active: dot.is_active = True
-                        else: dot.is_active = False
-                    else: dot.is_active = True
-    @property
-    def active_state(self) -> list[object]|object|None:
-        m = []
-        for dot in self.items:
-            if isinstance(dot,CheckBox):
-                if dot.is_active: m.append(dot.state)
-        if len(m)>1: return m
-        elif len(m) == 1: return m[0]
-        else: return None
-    @active_state.setter
-    def active_state(self,value,id:int=None):
-        for dot in self.items:
-            if isinstance(dot,CheckBox):
-                if dot.is_active:
-                    if dot._id == id or id == None: dot.state = value
-    @property
-    def inactive(self) -> list[CheckBox]|CheckBox|None:
-        m = []
-        for dot in self.items:
-            if not dot.is_active:
-                if isinstance(dot,CheckBox): m.append(dot)
-        if len(m)>1: return m
-        elif len(m) == 1: return m[0]
-        else: return None
+    def add_item(self, item: NevuObject, x: int): # type: ignore
+        return super().add_item(item, x, 1)
     
-    @property
-    def inactive_state(self) -> list[object]|object|None:
-        m = []
-        for dot in self.items:
-            if not dot.is_active:
-                if isinstance(dot,CheckBox): m.append(dot.state)
-        if len(m)>1: return m
-        elif len(m) == 1: return m[0]
-        else: return None
+    def get_item(self, x: int) -> NevuObject | None: # type: ignore
+        return super().get_item(x, 1)
 
+class Column(Grid):
+    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: dict[int , NevuObject] | None = None, **constant_kwargs):
+        super().__init__(size, style, None, **constant_kwargs)
+        self._lazy_kwargs = {'size': size, 'content': content}
+        
+    def _add_constants(self):
+        super()._add_constants()
+        self._block_constant("column")
+        
+    def _lazy_init(self, size: NvVector2 | list, content: dict[int , NevuObject] | None = None): # type: ignore
+        super()._lazy_init(size)
+        self.cell_height = self.size[1] / self.row
+        self.cell_width = self.size[0] / self.column
+        if not content:
+            return
+        for ycoord, item in content.items():
+            self.add_item(item, ycoord)
+            
+    def add_item(self, item: NevuObject, y: int): # type: ignore
+        return super().add_item(item, 1, y)
+    
+    def get_item(self, y: int) -> NevuObject | None: # type: ignore
+        return super().get_item(1, y)
+    def clone(self):
+        return Column(self._lazy_kwargs['size'], copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
+
+            
 class IntPickerGrid(Grid):
     def __init__(self, amount_of_colors: int = 3, item_size: int = 50, y_size: int = 50, margin:int = 0, title: str = "", 
                  color_widget_style: Style = default_style, title_label_style: Style = default_style, on_change_function=None):
@@ -628,7 +588,6 @@ class Scrollable(LayoutType):
         @percentage.setter
         def percentage(self, value: float | int):
             self._percentage = max(0.0, min(float(value), 100.0))
-            
             axis = 1 if self.orientation == 'vertical' else 0
             scaled_track_path = (self.track_path * self._resize_ratio) - self.rel(self.size)
 
@@ -647,6 +606,7 @@ class Scrollable(LayoutType):
             self.offset = offset
 
         def secondary_update(self, *args):
+            super().secondary_update()
             axis = 1 if self.orientation == 'vertical' else 0
 
             if mouse.left_fdown and not self.is_scrolling:
@@ -798,7 +758,8 @@ class Scrollable(LayoutType):
             drawable = self._is_widget_drawable(item) if self._test_rect_calculation else self._is_widget_drawable_optimized(item)
             if drawable or True: self._draw_widget(item)
         if self.actual_max_y > 0:
-            self.scroll_bar_y.draw()
+            self._draw_widget(self.scroll_bar_y)
+            
             
     def _set_item_x(self, item: NevuObject, align: Align):
         container_width = self.relx(self.size[0])
@@ -823,8 +784,6 @@ class Scrollable(LayoutType):
                 print(f"{name}: {data}")
         super().secondary_update()
         offset = self.get_offset()
-
-
         self._light_update(0, -offset)    
         
         if self.actual_max_y > 0:
@@ -1074,3 +1033,28 @@ class Appending_Layout_V(Appending_Layout_Type):
             self.cached_coordinates.append(item.coordinates)
     def clone(self):
         return Appending_Layout_V(copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
+    
+class CheckBoxGroup():
+    def __init__(self, checkboxes: list[RectCheckBox] | None = None):
+        self._content: list[RectCheckBox] = []
+        self._events: list[NevuEvent] = []
+        if checkboxes is None: checkboxes = []
+        for checkbox in checkboxes:
+            self.add_checkbox(checkbox)
+    def on_checkbox_added(self, checkbox: RectCheckBox):
+        pass #hook
+    def on_checkbox_toogled(self, included_checkboxes: list[RectCheckBox]):
+        pass #hook
+    def add_checkbox(self, checkbox: RectCheckBox):
+        self._content.append(checkbox)
+        self.on_checkbox_added(checkbox)
+    def get_checkbox(self, id: str) -> RectCheckBox | None:
+        return next((item for item in self._content if item.id == id), None)
+    
+    def add_event(self, event: NevuEvent):
+        self._events.append(event)
+
+    def _event_cycle(self, type: EventType, *args, **kwargs):
+        for event in self._events:
+            if event._type == type:
+                event(*args, **kwargs)

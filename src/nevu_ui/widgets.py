@@ -12,12 +12,14 @@ from .animations import *
 from .nevuobj import NevuObject
 from nevu_ui.fast_logic import logic_update_helper
 from collections.abc import Callable
-
+from .core_types import HoverState
 
 
 class Widget(NevuObject):
     _alt: bool
     will_resize: bool
+    clickable: bool
+    fancy_click_style: bool
     def __init__(self, size: Vector2 | list, style: Style = default_style, **constant_kwargs):
         super().__init__(size, style, **constant_kwargs)
         #=== Text Cache ===
@@ -29,6 +31,8 @@ class Widget(NevuObject):
         self._add_constant("_alt", bool, False)
         self._add_constant_link("alt", "_alt")
         self._add_constant("will_resize", bool, True)
+        self._add_constant("clickable", bool, False)
+        self._add_constant("fancy_click_style", bool, True)
     def _init_text_cache(self):
         self._text_baked = None
         self._text_surface = None
@@ -60,12 +64,22 @@ class Widget(NevuObject):
         self._on_style_change()
     def _on_hover_system(self):
         super()._on_hover_system()
-        self.alt = not self.alt
-        print("alt", self.alt)
+        self._on_style_change()
+    def _toogle_click_style(self):
+        if not self.clickable: return
+        if self.fancy_click_style:
+            self.alt = not self.alt
+        else:
+            self._on_style_change()
+    def _on_keyup_system(self):
+        super()._on_keyup_system()
+        self._toogle_click_style()
+    def _on_click_system(self):
+        super()._on_click_system()
+        self._toogle_click_style()
     def _on_unhover_system(self):
         super()._on_unhover_system()
-        self.alt = not self.alt
-        print("alt", self.alt)
+        self._on_style_change()
     def _init_alt(self):
         if self.alt: self._subtheme_font, self._subtheme_content = self._alt_subtheme_font, self._alt_subtheme_content
         else: self._subtheme_font, self._subtheme_content = self._main_subtheme_font, self._main_subtheme_content
@@ -124,7 +138,7 @@ class Widget(NevuObject):
     def clone(self):
         return Widget(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
     def primary_draw(self):
-        self._event_cycle(Event.DRAW)
+        super().primary_draw()
         if self._changed:
             if type(self) == Widget: self._changed = False
             self._dirty_rect.append(self.get_rect())
@@ -240,7 +254,6 @@ class Widget(NevuObject):
         self._update_image()
         
         self.surface = pygame.Surface(self._csize, flags = pygame.SRCALPHA)
-        self._event_cycle(Event.RESIZE)
 
         self._changed = True
 
@@ -272,18 +285,19 @@ class BackgroundRenderer:
         )
         cached_gradient = pygame.transform.smoothscale(cached_gradient, target_size_tuple)
         return cached_gradient
-    def _create_surf_base(renderer, size = None):
+    def _create_surf_base(renderer, size = None, alt = False, radius = None):
         self = renderer.root
         needed_size = (self.size*self._resize_ratio).xy if size is None else size
         surf = pygame.Surface((int(needed_size[0]), int(needed_size[1])), pygame.SRCALPHA)
         surf.fill((0,0,0,0))
+        color = self._subtheme_content if not alt else self._subtheme_font
         if self.will_resize:
             avg_scale_factor = _QUALITY_TO_RESOLUTION[self.quality]
         else:
             avg_scale_factor = (self._resize_ratio[0] + self._resize_ratio[1]) / 2
 
-        radius = self._style.borderradius * avg_scale_factor
-        surf.blit(RoundedRect.create_sdf([int(needed_size[0]), int(needed_size[1])], int(radius), self._subtheme_content), (0, 0))
+        radius = (self._style.borderradius * avg_scale_factor) if radius is None else radius
+        surf.blit(RoundedRect.create_sdf([int(needed_size[0]), int(needed_size[1])], int(radius), color), (0, 0))
         return surf
     
     def _create_outlined_rect(renderer, size = None):
@@ -307,7 +321,9 @@ class BackgroundRenderer:
         else: content_surf = self.cache.get(CacheType.Scaled_Gradient)
         if content_surf:
             bgsurface.blit(content_surf,(0,0))
-        else: bgsurface.fill(self._subtheme_content)
+        elif self._hover_state == HoverState.UN_HOVERED: bgsurface.fill(self._subtheme_content)
+        elif self._hover_state == HoverState.CLICKED and not self.fancy_click_style: bgsurface.fill(Color.lighten(self._subtheme_content))
+        else: bgsurface.fill(Color.darken(self._subtheme_content, 0.2))
         
         if self._style.borderwidth > 0:
             border = self.cache.get_or_exec(CacheType.Borders, lambda: renderer._create_outlined_rect(self.size * resize_factor))
@@ -338,7 +354,7 @@ class Tooltip(Widget):
         self.bake_text(self.text,False,True,self.style.text_align_x,self.style.text_align_y)
         raise NotImplementedError("Tooltip is not implemented yet, wait till 0.05")
     def draw(self):
-        pass #TODO in version 0.05
+        pass #TODO in version 0.6 :)
     
 class Label(Widget):
     words_indent: bool
@@ -359,6 +375,9 @@ class Label(Widget):
     @property
     def text(self):
         return self._text
+    def _on_style_change(self):
+        super()._on_style_change()
+        self.bake_text(self._text, False, self.words_indent, self.style.text_align_x, self.style.text_align_y)
     @text.setter
     def text(self, text: str):
         self._changed = True
@@ -383,14 +402,17 @@ class Label(Widget):
         if hasattr(self,'_text'):
             self.bake_text(self._text)
 
-    def secondary_draw(self):
-        super().secondary_draw()
+    def secondary_draw_content(self):
+        super().secondary_draw_content()
         if not self.visible: return
         if self._changed:
-            self._changed = False
             assert self._text_surface is not None and self._text_rect is not None
             self.surface.blit(self._text_surface, self._text_rect)
-        self._event_cycle(Event.RENDER)
+        
+    def secondary_draw_end(self):
+        super().secondary_draw_end()
+        if not type(self).__subclasses__():
+            self._changed = False
 
 class Button(Label):
     throw_errors: bool
@@ -398,13 +420,16 @@ class Button(Label):
     def __init__(self, function, text: str, size: Vector2 | list, style: Style = default_style, **constant_kwargs):
         super().__init__(text, size, style, **constant_kwargs)
         self.function = function
-        
+    def _init_booleans(self):
+        super()._init_booleans()
+        self.clickable = True
     def _add_constants(self):
         super()._add_constants()
         self._add_constant("is_active", bool, True)
         self._add_constant("throw_errors", bool, False)
 
     def _on_click_system(self):
+        super()._on_click_system()
         if self.function and self.is_active:
             try: self.function()
             except Exception as e:
@@ -429,14 +454,9 @@ class CheckBox(Button):
             return
         if self.is_active:
             pygame.draw.rect(self.surface,(200,50,50),[0,0,self.size[0]*self._resize_ratio[0],self.size[1]*self._resize_ratio[1]],border_radius=int(self._style.radius*(self._resize_ratio[0]+self._resize_ratio[1])/2))
-        self._event_cycle(Event.RENDER)
-        if self._changed:
-            if self.animation_manager.anim_rotation:
-                self.surface = pygame.transform.rotate(self.surface, self.animation_manager.anim_rotation)
-            self._changed = False
     def _check_for_collide(self):
         if not self.active:
-            returnTrue
+            return True
         if self.get_rect().collidepoint(mouse.pos):
             if self.function:
                 self.function()
@@ -452,14 +472,15 @@ class CheckBox(Button):
         self._check_box_group.active = self._id
 
 class ImageWidget(Widget):
-    def __init__(self,size,image,style:Style):
+    def __init__(self,size,image,style: Style):
         super().__init__(size,style)
         self.image_orig = image
         self.image = self.image_orig
-        self.resize([1,1])
-    def resize(self, _resize_ratio):
-        super().resize(_resize_ratio)
-        self.image = pygame.transform.scale(self.image_orig,(self.size[0]*self._resize_ratio[0],self.size[1]*self._resize_ratio[1]))
+        self.resize(Vector2())
+        
+    def resize(self, resize_ratio: NvVector2):
+        super().resize(resize_ratio)
+        self.image = pygame.transform.scale(self.image_orig, self._csize)
         
     def draw(self):
         super().draw()
@@ -514,8 +535,8 @@ class GifWidget(Widget):
             except Exception as e:
                 print(f"Error loading GIF: {e}")
 
-    def resize(self, _resize_ratio):
-        super().resize(_resize_ratio)
+    def resize(self, resize_ratio: NvVector2):
+        super().resize(resize_ratio)
         """Изменяет размер GIF-анимации.
         Args:
             _resize_ratio (list, optional): Коэффициент масштабирования [scale_x, scale_y]. Defaults to [1, 1].
@@ -1366,6 +1387,7 @@ class FileDialog(Button):
         
         if self.on_change_function:
             self.on_change_function(self.filepath)
+            
     def update(self,*args):
         super().update(*args)
         if not self.active: return
@@ -1373,41 +1395,58 @@ class FileDialog(Button):
                 try: self._open_filedialog()
                 except Exception as e:
                     print(e)
+                    
 class RectCheckBox(Widget):
     function: Callable | None
-    active_rect_factor: float | int
+    _active_rect_factor: float | int
     def __init__(self, size: int, style: Style = default_style, **constant_kwargs):
         super().__init__(Vector2(size, size), style, **constant_kwargs)
+        
     def _init_booleans(self):
         super()._init_booleans()
         self._toogled = False
+        
     def _add_constants(self):
         super()._add_constants()
         self._add_constant("function", (type(None), Callable), None)
         self._add_constant_link("on_toogle", "function")
         self._add_constant("toogled", bool, False)
         self._add_constant_link("active", "toogled")
-
         self._add_constant("active_rect_factor", (float, int), 0.8)
         self._add_constant_link("active_factor", "active_rect_factor")
+
+    @property
+    def active_rect_factor(self):
+        return self._active_rect_factor
+    
+    @active_rect_factor.setter
+    def active_rect_factor(self, value: float | int):
+        self._active_rect_factor = value
+        self._changed = True
+
     @property
     def toogled(self):
         return self._toogled
+    
     @toogled.setter
     def toogled(self,value: bool):
         self._toogled = value
         self._changed = True
         if self.function: self.function(value)
-    def draw(self):
-        super().draw()
+        
+    def secondary_draw_content(self):
+        super().secondary_draw_content()
         if self._changed:
             if self._toogled:
-                active_size = self._csize * self.active_rect_factor
-                offset = (self._csize - active_size)/2
-                pygame.draw.rect(self.surface, self._alt_subtheme_content, pygame.Rect(offset, active_size))
-            self._changed = False
+                active_size = (self._csize * self.active_rect_factor)
+                offset = (self._csize - active_size) / 2 + self._rsize_marg
+                self.surface.blit(self.renderer._create_surf_base(active_size, True, self.relm(self._style.borderradius)-offset.x), offset)
+                
+                #pygame.draw.rect(self.surface, self._subtheme_font, pygame.FRect(offset, active_size))
+        
     def _on_click_system(self):
         super()._on_click_system()
         self.toogled = not self.toogled
+        
     def clone(self):
         return RectCheckBox(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
