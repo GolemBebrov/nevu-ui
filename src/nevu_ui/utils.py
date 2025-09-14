@@ -397,6 +397,7 @@ class EventType(Enum):
     OnHover = auto()
     OnUnhover = auto()
     OnMouseScroll = auto()
+    OnCopy = auto()
     
 
 class NevuEvent:
@@ -414,6 +415,8 @@ class NevuEvent:
             self._function(*self._args, **self._kwargs)
         except Exception as e:
             print(f"Event function execution Error: {e}")
+    def __repr__(self) -> str:
+        return f"Event(sender={self._sender}, function={self._function}, type={self._type}, args={self._args}, kwargs={self._kwargs})"
 
 class InputType:
     NUMBERS = "0123456789"
