@@ -33,6 +33,9 @@ class TestScrollable(NevuTest):
         super().first_update()
     def draw_loop(self):
         super().draw_loop()
+        #print(self.tooglegroup._content)
+        #self.tooglegroup.on_checkbox_toggled_single(self.test_widget)
+        #print(self.test_widget.events.content[0])
         #self.scrollable.update(self.window.last_events)
         #print(self.scrollable.items[0].get_rect())
         #print(self.scrollable._hover_state)
