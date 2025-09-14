@@ -7,6 +7,7 @@ class TestScrollable(NevuTest):
     def add_to_layout(self):
         self.do_fps_test = True
         self._dirty_mode = True
+        self.fps = 99999999999
         a = self.test_inner_layout
         self.test_menu.layout = \
         ui.Scrollable([100*ui.fill, 100*ui.vh],
