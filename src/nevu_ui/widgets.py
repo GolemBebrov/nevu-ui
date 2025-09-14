@@ -33,6 +33,7 @@ class Widget(NevuObject):
         self._add_constant("will_resize", bool, True)
         self._add_constant("clickable", bool, False)
         self._add_constant("fancy_click_style", bool, True)
+        self._add_constant("resize_bg_image", bool, False)
     def _init_text_cache(self):
         self._text_baked = None
         self._text_surface = None
@@ -324,7 +325,10 @@ class BackgroundRenderer:
         elif self._hover_state == HoverState.UN_HOVERED: bgsurface.fill(self._subtheme_content)
         elif self._hover_state == HoverState.CLICKED and not self.fancy_click_style: bgsurface.fill(Color.lighten(self._subtheme_content))
         else: bgsurface.fill(Color.darken(self._subtheme_content, 0.2))
-        
+        if self._style.bgimage:
+            img = pygame.image.load(self._style.bgimage)
+            img.convert_alpha()
+            bgsurface.blit(pygame.transform.smoothscale(img, self.size * resize_factor),(0,0))
         if self._style.borderwidth > 0:
             border = self.cache.get_or_exec(CacheType.Borders, lambda: renderer._create_outlined_rect(self.size * resize_factor))
             if border:
@@ -438,43 +442,12 @@ class Button(Label):
                 
     def clone(self):
         return Button(self.function,self._lazy_kwargs['text'], self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
-    
-class CheckBox(Button):
-    def __init__(self,on_change_fuction,state,size,style:Style,active:bool = True):
-        super().__init__(lambda:on_change_fuction(state) if on_change_fuction else None,"",size,style)
-        self._id = None
-        self._check_box_group = None
-        self.is_active = False
-        self.state = state
-        self.active = active
-        self.count = 0
-    def draw(self):
-        super().draw()
-        if not self.visible:
-            return
-        if self.is_active:
-            pygame.draw.rect(self.surface,(200,50,50),[0,0,self.size[0]*self._resize_ratio[0],self.size[1]*self._resize_ratio[1]],border_radius=int(self._style.radius*(self._resize_ratio[0]+self._resize_ratio[1])/2))
-    def _check_for_collide(self):
-        if not self.active:
-            return True
-        if self.get_rect().collidepoint(mouse.pos):
-            if self.function:
-                self.function()
-                self.call_dot_group()
-            
-    def update(self,*args):
-        super().update(*args)
-        pass
-    def connect_to_dot_group(self,dot_group,id):
-        self._id = id
-        self._check_box_group = dot_group
-    def call_dot_group(self):
-        self._check_box_group.active = self._id
 
-class ImageWidget(Widget):
-    def __init__(self,size,image,style: Style):
-        super().__init__(size,style)
-        self.image_orig = image
+class Image(Widget):
+    def __init__(self, size: Vector2 | list, image_path, style: Style, **constant_kwargs):
+        super().__init__(size, style, **constant_kwargs)
+        self.image_path = image_path
+        self._image_original = self.load_image
         self.image = self.image_orig
         self.resize(Vector2())
         
@@ -1103,9 +1076,10 @@ class MusicPlayer(Widget):
         self.is_playing = False
         self.sinus_margin = 0
 
-    def resize(self, _resize_ratio):
-        super().resize(_resize_ratio)
-        self.time_label.resize(_resize_ratio)
+    def resize(self, resize_ratio: NvVector2):
+        super().resize(resize_ratio)
+        self.time_label.resize(resize_ratio)
+        
     def draw_sinusoid(self,size,frequency,margin):
         self.sinus_surf = pygame.Surface(size,pygame.SRCALPHA)
         self.sinus_surf.fill((0,0,0,0))
@@ -1194,28 +1168,29 @@ class MusicPlayer(Widget):
 
         self.time_label.draw()
         self.surface.blit(self.time_label.surface, self.time_label.coordinates)
-        self._event_cycle(Event.RENDER)
-        if self._changed:
-            if self.animation_manager.anim_rotation:
-                self.surface = pygame.transform.rotate(self.surface, self.animation_manager.anim_rotation)
 
 class ProgressBar(Widget):
-    def __init__(self, size,min_value,max_value,default_value,style: Style=default_style):
-        super().__init__(size,style)
-        self._min_value = min_value
-        self._max_value = max_value
-        self.value = default_value
+    min_value: int | float
+    max_value: int | float
+    _current_value: int | float
+    def __init__(self, size: Vector2 | list, style: Style = default_style,**constant_kwargs):
+        super().__init__(size, style, **constant_kwargs)
         self.percentage_of_value = self.value
+    def _add_constants(self):
+        super()._add_constants()
+        self._add_constant("min_value", (int, float), 0)
+        self._add_constant("max_value", (int, float), 100)
+        self._add_constant("value", (int, float), 0)
     @property
     def percentage(self):
         return self._percentage
     @percentage.setter
     def percentage(self,value):
         self._percentage = value
-        self.value = self._min_value+(self._max_value-self._min_value)*self._percentage
+        self.value = self.min_value+(self.max_value-self.min_value)*self._percentage
     @percentage.setter
     def percentage_of_value(self,value):
-        self._percentage = (value-self._min_value)/(self._max_value-self._min_value)
+        self._percentage = (value-self.min_value)/(self.max_value-self.min_value)
     @property
     def value(self):
         return self._current_value
@@ -1223,13 +1198,10 @@ class ProgressBar(Widget):
     def value(self,value):
         self._current_value = value
         self.percentage_of_value = value
-    def draw(self):
-        if not self.visible: return
-        super().draw()
-        pygame.draw.rect(self.surface,self.style.secondarycolor,[1,1,int(self.size[0]*self.percentage*self._resize_ratio[0])-2,int(self.size[1]*self._resize_ratio[1])-2],0,border_radius=int(self.style.radius))
-        if self._changed:
-            if self.animation_manager.anim_rotation:
-                self.surface = pygame.transform.rotate(self.surface, self.animation_manager.anim_rotation)
+    def secondary_draw(self):
+        super().secondary_draw()
+        surf = self.renderer._create_surf_base([int(self.relx(self.size[0]*self.percentage))-2,int(self.rely(self.size[1]))-2])
+        self.surface.blit(surf,(0,0))
 class SliderBar(Widget):
     def __init__(self, begin_val: int, end_val: int, size, style, step: int = 1, freedom=False,default=-999.999123):
         self.button = Button(lambda: None, "", [size[1]/1.2, size[1]/1.2], style, active=False, freedom=False)
@@ -1438,12 +1410,24 @@ class RectCheckBox(Widget):
         super().secondary_draw_content()
         if self._changed:
             if self._toogled:
-                active_size = (self._csize * self.active_rect_factor)
-                offset = (self._csize - active_size) / 2 + self._rsize_marg
-                self.surface.blit(self.renderer._create_surf_base(active_size, True, self.relm(self._style.borderradius)-offset.x), offset)
+                margin = (self._csize * (1 - self.active_rect_factor)) / 2
                 
-                #pygame.draw.rect(self.surface, self._subtheme_font, pygame.FRect(offset, active_size))
-        
+                offset = NvVector2(round(margin.x), round(margin.y))
+                
+                active_size = self._csize - (offset * 2)
+
+                active_size.x = max(1, int(active_size.x))
+                active_size.y = max(1, int(active_size.y))
+                
+                inner_radius = self._style.borderradius * self.active_rect_factor
+                
+                inner_surf = self.renderer._create_surf_base(
+                    active_size, 
+                    True, 
+                    self.relm(inner_radius)
+                )
+                
+                self.surface.blit(inner_surf, offset)
     def _on_click_system(self):
         self.toogled = not self.toogled
         super()._on_click_system()
