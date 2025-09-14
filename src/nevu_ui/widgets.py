@@ -1445,8 +1445,11 @@ class RectCheckBox(Widget):
                 #pygame.draw.rect(self.surface, self._subtheme_font, pygame.FRect(offset, active_size))
         
     def _on_click_system(self):
-        super()._on_click_system()
         self.toogled = not self.toogled
-        
+        super()._on_click_system()
+          
     def clone(self):
-        return RectCheckBox(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
+        self.constant_kwargs['events'] = self._events
+        selfcopy = RectCheckBox(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
+        self._event_cycle(EventType.OnCopy, selfcopy)
+        return selfcopy
