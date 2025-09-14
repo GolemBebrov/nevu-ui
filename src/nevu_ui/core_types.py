@@ -8,6 +8,7 @@ class Align(Enum):
 
 
 class SizeRule:
+    __slots__ = ('value')
     def __init__(self, value: int):
         self.value = value
 class PercentSizeRule(SizeRule):
@@ -17,6 +18,7 @@ class PercentSizeRule(SizeRule):
         self.value = value
 
 class SizeUnit:
+    __slots__ = ('_supported_types', '_size_rule')
     def __init__(self, size_rule, supported_types = None) -> None:
         self._supported_types = (int) if supported_types is None else supported_types
         self._size_rule = size_rule
@@ -63,3 +65,15 @@ class HoverState(Enum):
     UN_HOVERED = auto()
     HOVERED = auto()
     CLICKED = auto()
+
+class Events:
+    __slots__ = ('content', 'on_add')
+    def __init__(self):
+        self.content = []
+        self.on_add = self._default_on_add_hook
+
+    def add(self, event):
+        self.content.append(event)
+    
+    def _default_on_add_hook(self):
+        pass
