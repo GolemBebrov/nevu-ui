@@ -23,7 +23,7 @@ class Menu:
         self._coordinatesWindow = Vector2(0,0)
         self._init_primary(window, style)
         if not self.window:
-            print("Created empty menu!")
+            #print("Created empty menu!")
             return
         self._init_size(size)
         self._init_secondary()
@@ -47,7 +47,7 @@ class Menu:
         for i in range(len(initial_size)):
             item = initial_size[i]
             if isinstance(item, SizeRule):
-                print("Ruled", item)
+                #print("Ruled", item)
                 converted, is_ruled = self._convert_item_coord(item, i)
                 initial_size[i] = float(converted)
             else:
@@ -258,7 +258,7 @@ class Menu:
             self._layout.draw()
         if self.style.transparency:
             self.surface.set_alpha(self.style.transparency)
-        print(self._resize_ratio)
+        #print(self._resize_ratio)
         
     def _resize_with_ratio(self, ratio: NvVector2):
         self.clear_surfaces()
