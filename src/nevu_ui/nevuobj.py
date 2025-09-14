@@ -13,13 +13,15 @@ from .fast_logic import (
     relx_helper, rely_helper, relm_helper, rel_helper
 )
 from .core_types import (
-    SizeRule, Px, Vh, Vw, Fill, HoverState
+    SizeRule, Px, Vh, Vw, Fill, HoverState, Events
 )
 from collections.abc import Callable
 class NevuObject:
     id: str | None
     floating: bool
     single_instance: bool
+    _events: Events
+    actual_clone: bool
     
     #INIT STRUCTURE: ====================
     #    __init__ >
@@ -37,7 +39,7 @@ class NevuObject:
     #======================================
     
     def __init__(self, size: Vector2 | list, style: Style, **constant_kwargs):
-        self.constant_kwargs = copy.deepcopy(constant_kwargs)
+        self.constant_kwargs = constant_kwargs.copy() 
         self._lazy_kwargs = {'size': size}
 
         #=== Constants ===
@@ -84,11 +86,28 @@ class NevuObject:
         self.constant_links = {}
         self.is_constant_set = {}
         self.excluded_constants = []
-        
+    
+    @property
+    def events(self):
+        return self._events
+    
+    @events.setter
+    def events(self, value):
+        self._events = value
+        self._events.on_add = self._on_event_add
+        if self.actual_clone:
+            self.constant_kwargs['events'] = value
+    
+    def _on_event_add(self):
+        self.constant_kwargs['events'] = self._events
+    
     def _add_constants(self):
+        self._add_constant("actual_clone", bool, False)
         self._add_constant("id", (str, type(None)), None)
         self._add_constant("floating", bool, False)
         self._add_constant("single_instance", bool, False)
+        self._add_constant("events", Events, Events())
+
         
     def _add_constant_link(self, name: str, link_name: str):
         self.constant_links[name] = link_name
@@ -185,7 +204,7 @@ class NevuObject:
         self.coordinates = Vector2()
         self.master_coordinates = Vector2()
         self.first_update_functions = []
-        self._events: list[NevuEvent] = []
+        #self._events: list[NevuEvent] = []
         self._dirty_rect = []
         
     def _init_start(self):
@@ -215,7 +234,7 @@ class NevuObject:
         Returns:
             None
         """
-        self._events.append(event)
+        self._events.add(event)
         
     @deprecated("use .subscribe() instead. This method will be removed in a future version.")
     def add_event(self, event: NevuEvent):
@@ -264,8 +283,10 @@ class NevuObject:
         self._active = value
 
     def _event_cycle(self, type: EventType, *args, **kwargs):
-        for event in self._events:
+        #print(self._events.content)
+        for event in self._events.content:
             if event._type == type:
+                print(event)
                 event(*args, **kwargs)
 
     def resize(self, resize_ratio: Vector2):
@@ -306,6 +327,7 @@ class NevuObject:
         elif mouse.left_fdown:
             self._hover_state = HoverState.CLICKED
             self.on_click()
+            print("CLICKED")
             self._on_click_system()
 
     def _handle_clicked(self):
@@ -326,15 +348,15 @@ class NevuObject:
         """Override this function to run code when the object is scrolled"""
         
     def _on_click_system(self):
-        self._event_cycle(EventType.OnKeyDown)
+        self._event_cycle(EventType.OnKeyDown, self)
     def _on_hover_system(self):
-        self._event_cycle(EventType.OnHover)
+        self._event_cycle(EventType.OnHover, self)
     def _on_keyup_system(self):
-        self._event_cycle(EventType.OnKeyUp)
+        self._event_cycle(EventType.OnKeyUp, self)
     def _on_unhover_system(self):
-        self._event_cycle(EventType.OnUnhover)
+        self._event_cycle(EventType.OnUnhover, self)
     def _on_scroll_system(self, side: bool):
-        self._event_cycle(EventType.OnMouseScroll, side)
+        self._event_cycle(EventType.OnMouseScroll, self, side)
 
     def get_rect_opt(self, without_animation: bool = False):
         if not without_animation:
