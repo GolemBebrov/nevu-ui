@@ -160,8 +160,7 @@ test_main()
 *   ✅ `Label`
 *   ✅ `Input`
 *   ✅ `Empty_Widget`
-*   ❌ `Tooltip`
-*   ❌ `CheckBox` (Будет переработан)
+*   ❌ `Tooltip` (В 0.6)
 *   💾 `ImageWidget`
 *   💾 `GifWidget`
 *   ❌ `MusicPlayer` (Будет переработан)
