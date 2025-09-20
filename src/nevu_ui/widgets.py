@@ -20,12 +20,14 @@ class Widget(NevuObject):
     will_resize: bool
     clickable: bool
     fancy_click_style: bool
+    
     def __init__(self, size: Vector2 | list, style: Style = default_style, **constant_kwargs):
         super().__init__(size, style, **constant_kwargs)
         #=== Text Cache ===
         self._init_text_cache()
         #=== Alt ===
         self._init_alt()
+        
     def _add_constants(self):
         super()._add_constants()
         self._add_constant("_alt", bool, False)
@@ -34,15 +36,19 @@ class Widget(NevuObject):
         self._add_constant("clickable", bool, False)
         self._add_constant("fancy_click_style", bool, True)
         self._add_constant("resize_bg_image", bool, False)
+        self._add_constant("z", int, 1)
+        
     def _init_text_cache(self):
         self._text_baked = None
         self._text_surface = None
         self._text_rect = None
+        
     def _init_objects(self):
         super()._init_objects()
         self.quality = Quality.Decent
         self._subtheme_role = SubThemeRole.SECONDARY
         self.renderer = BackgroundRenderer(self)
+        
     def _init_lists(self):
         super()._init_lists()
         self._dr_coordinates_old = self.coordinates.copy()
@@ -51,10 +57,21 @@ class Widget(NevuObject):
     def _init_booleans(self):
         super()._init_booleans()
         self._optimized_dirty_rect_for_short_animations = True
+
+    def _init_alt(self):
+        if self.alt: self._subtheme_font, self._subtheme_content = self._alt_subtheme_font, self._alt_subtheme_content
+        else: self._subtheme_font, self._subtheme_content = self._main_subtheme_font, self._main_subtheme_content
+    
+    def _lazy_init(self, size: Vector2 | list):
+        super()._lazy_init(size)
+        self.surface = pygame.Surface(size, flags = pygame.SRCALPHA)
+        #if isinstance(self.style.gradient, Gradient): self._draw_gradient()
+
     def _on_subtheme_role_change(self):
         super()._on_subtheme_role_change()
         self._init_alt()
         self._on_style_change()
+        
     @property
     def alt(self):
         return self._alt
@@ -63,15 +80,17 @@ class Widget(NevuObject):
         self._alt = value
         self._init_alt()
         self._on_style_change()
-    def _on_hover_system(self):
-        super()._on_hover_system()
-        self._on_style_change()
+        
     def _toogle_click_style(self):
         if not self.clickable: return
         if self.fancy_click_style:
             self.alt = not self.alt
         else:
             self._on_style_change()
+            
+    def _on_hover_system(self):
+        super()._on_hover_system()
+        self._on_style_change()
     def _on_keyup_system(self):
         super()._on_keyup_system()
         self._toogle_click_style()
@@ -81,20 +100,14 @@ class Widget(NevuObject):
     def _on_unhover_system(self):
         super()._on_unhover_system()
         self._on_style_change()
-    def _init_alt(self):
-        if self.alt: self._subtheme_font, self._subtheme_content = self._alt_subtheme_font, self._alt_subtheme_content
-        else: self._subtheme_font, self._subtheme_content = self._main_subtheme_font, self._main_subtheme_content
-    def _lazy_init(self, size: Vector2 | list):
-        super()._lazy_init(size)
-        self.surface = pygame.Surface(size, flags = pygame.SRCALPHA)
-        #if isinstance(self.style.gradient, Gradient): self._draw_gradient()
-
+        
     def clear_all(self):
         """
         Clears all cached data by invoking the clear method on the cache. 
         !WARNING!: may cause bugs and errors
         """
         self.cache.clear()
+        
     def clear_surfaces(self):
         """
         Clears specific cached surface-related data by invoking the clear_selected 
@@ -103,9 +116,11 @@ class Widget(NevuObject):
         Highly recommended to use this method instead of clear_all.
         """
         self.cache.clear_selected(whitelist = [CacheType.Image, CacheType.Scaled_Gradient, CacheType.Surface, CacheType.Borders, CacheType.Scaled_Background, CacheType.Background])
+    
     def _on_style_change(self):
         self.clear_surfaces()
         self._changed = True
+        
     def _update_image(self, style: Style | None = None):
         try:
             if not style: style = self.style
@@ -136,8 +151,10 @@ class Widget(NevuObject):
     @property
     def _rsize_marg(self) -> NvVector2:
         return (self._csize - self._rsize)/2
+    
     def clone(self):
         return Widget(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
+    
     def primary_draw(self):
         super().primary_draw()
         if self._changed:
@@ -381,6 +398,7 @@ class Label(Widget):
         return self._text
     def _on_style_change(self):
         super()._on_style_change()
+        #print(f"{self} style changed")
         self.bake_text(self._text, False, self.words_indent, self.style.text_align_x, self.style.text_align_y)
     @text.setter
     def text(self, text: str):
