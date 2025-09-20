@@ -1,4 +1,4 @@
-from enum import Enum, auto
+from enum import Enum, auto, StrEnum
 class Align(Enum):
     CENTER = auto()
     LEFT = auto()
@@ -77,3 +77,29 @@ class Events:
     
     def _default_on_add_hook(self):
         pass
+
+class GradientConfig(StrEnum):
+    pass
+
+class LinearSide(GradientConfig):
+    Right = 'to right'
+    Left = 'to left'
+    Top = 'to top'
+    Bottom = 'to bottom'
+    TopRight = 'to top right'
+    TopLeft = 'to top left'
+    BottomRight = 'to bottom right'
+    BottomLeft = 'to bottom left'
+
+class RadialPosition(GradientConfig):
+    Center = 'center'
+    TopCenter = 'top center'
+    TopLeft = 'top left'
+    TopRight = 'top right'
+    BottomCenter = 'bottom center'
+    BottomLeft = 'bottom left'
+    BottomRight = 'bottom right'
+
+class GradientType(StrEnum):
+    Linear = 'linear'
+    Radial = 'radial'
