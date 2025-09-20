@@ -2,27 +2,12 @@ import pygame
 import copy
 import numpy as np
 from .color import Color_Type, Color, material3_dark_color_theme, ColorTheme, SubThemeRole
-from .core_types import Align
+from .core_types import (
+    Align, LinearSide, RadialPosition, GradientType, GradientConfig
+)
 
 class Gradient:
-    TO_RIGHT = 'to right'
-    TO_LEFT = 'to left'
-    TO_TOP = 'to top'
-    TO_BOTTOM = 'to bottom'
-    TO_TOP_RIGHT = 'to top right'
-    TO_TOP_LEFT = 'to top left'
-    TO_BOTTOM_RIGHT = 'to bottom right'
-    TO_BOTTOM_LEFT = 'to bottom left'
-
-    CENTER = 'center'
-    TOP_CENTER = 'top center'
-    TOP_LEFT = 'top left'
-    TOP_RIGHT = 'top right'
-    BOTTOM_CENTER = 'bottom center'
-    BOTTOM_LEFT = 'bottom left'
-    BOTTOM_RIGHT = 'bottom right'
-
-    def __init__(self, colors, type='linear', direction=TO_RIGHT, transparency=None):
+    def __init__(self, colors: list[tuple[int, int, int]], type: GradientType = GradientType.Linear, direction: GradientConfig = LinearSide.Right, transparency = None):
         self.colors = self._validate_colors(colors)
         if len(self.colors) < 2:
             raise ValueError("Gradient must contain at least two colors.")
@@ -33,29 +18,23 @@ class Gradient:
 
     def _validate_type_direction(self):
         self._validate_gradient_type()
-        if self.type == 'linear':
+        if self.type == GradientType.Linear:
             self._validate_linear_direction()
-        elif self.type == 'radial':
+        elif self.type == GradientType.Radial:
             self._validate_radial_direction()
+        else:
+            raise ValueError(f"Unrecognized gradient type: {self.type}")
 
     def _validate_gradient_type(self):
-        if self.type not in ['linear', 'radial']:
-            raise ValueError(f"Gradient type '{self.type}' is not supported. Choose 'linear' or 'radial'.")
+        if not isinstance(self.direction, LinearSide):
+            raise ValueError(f"Gradient type '{self.type}' is not supported. Choose linear or radial.")
 
     def _validate_linear_direction(self):
-        linear_directions = [
-            Gradient.TO_RIGHT, Gradient.TO_LEFT, Gradient.TO_TOP, Gradient.TO_BOTTOM,
-            Gradient.TO_TOP_RIGHT, Gradient.TO_TOP_LEFT, Gradient.TO_BOTTOM_RIGHT, Gradient.TO_BOTTOM_LEFT
-        ]
-        if self.direction not in linear_directions and not (isinstance(self.direction, str) and self.direction.endswith('deg')):
+        if self.direction not in LinearSide:
             raise ValueError(f"Linear gradient direction '{self.direction}' is not supported.")
 
     def _validate_radial_direction(self):
-        radial_directions = [
-            Gradient.CENTER, Gradient.TOP_CENTER, Gradient.TOP_LEFT, Gradient.TOP_RIGHT,
-            Gradient.BOTTOM_CENTER, Gradient.BOTTOM_LEFT, Gradient.BOTTOM_RIGHT
-        ]
-        if self.direction not in radial_directions:
+        if self.direction not in RadialPosition:
             raise ValueError(f"Radial gradient direction '{self.direction}' is not supported.")
 
     def with_transparency(self, transparency):
@@ -63,9 +42,10 @@ class Gradient:
 
     def apply_gradient(self, surface):
         gradient_surface = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-        if self.type == 'linear':
+        
+        if self.type == GradientType.Linear:
             self._apply_linear_gradient(gradient_surface)
-        elif self.type == 'radial':
+        elif self.type == GradientType.Radial:
             self._apply_radial_gradient(gradient_surface)
         
         if self.transparency is not None:
@@ -75,7 +55,7 @@ class Gradient:
 
     def _apply_linear_gradient(self, surface):
         width, height = surface.get_size()
-        y, x = np.indices((height, width), dtype=np.float32)
+        y, x = np.indices((height, width), dtype = np.float32)
 
         w_m = width - 1 if width > 1 else 1
         h_m = height - 1 if height > 1 else 1
@@ -85,14 +65,14 @@ class Gradient:
 
     def _get_linear_gradient_progress(self, x, y, w_m, h_m):
         dir_map = {
-            self.TO_RIGHT: x / w_m,
-            self.TO_LEFT: 1.0 - (x / w_m),
-            self.TO_BOTTOM: y / h_m,
-            self.TO_TOP: 1.0 - (y / h_m),
-            self.TO_BOTTOM_RIGHT: (x / w_m + y / h_m) / 2,
-            self.TO_TOP_LEFT: 1.0 - (x / w_m + y / h_m) / 2,
-            self.TO_TOP_RIGHT: ((x / w_m) + (1.0 - y / h_m)) / 2,
-            self.TO_BOTTOM_LEFT: ((1.0 - x / w_m) + (y / h_m)) / 2
+            LinearSide.Right: x / w_m,
+            LinearSide.Left: 1.0 - (x / w_m),
+            LinearSide.Bottom: y / h_m,
+            LinearSide.Top: 1.0 - (y / h_m),
+            LinearSide.BottomRight: (x / w_m + y / h_m) / 2,
+            LinearSide.TopLeft: 1.0 - (x / w_m + y / h_m) / 2,
+            LinearSide.TopRight: ((x / w_m) + (1.0 - y / h_m)) / 2,
+            LinearSide.BottomLeft: ((1.0 - x / w_m) + (y / h_m)) / 2
         }
         progress = dir_map.get(self.direction)
         if progress is None:
@@ -121,17 +101,16 @@ class Gradient:
         stops = np.linspace(0, 1, len(self.colors))
 
         r, g, b = self._interpolate_channels(progress, stops)
-        gradient_array = self._stack_gradient_array(r, g, b)
-        gradient_array_transposed = gradient_array.transpose(1, 0, 2)
-        pygame.surfarray.blit_array(surface, gradient_array_transposed)
+
+        gradient_array = np.stack((r.T, g.T, b.T), axis=-1)
+
+        pygame.surfarray.blit_array(surface, gradient_array)
 
     def _interpolate_channels(self, progress, stops):
-        r_stops = [c[0] for c in self.colors]
-        g_stops = [c[1] for c in self.colors]
-        b_stops = [c[2] for c in self.colors]
-        r = np.interp(progress, stops, r_stops)
-        g = np.interp(progress, stops, g_stops)
-        b = np.interp(progress, stops, b_stops)
+        colors_array = np.array(self.colors)
+        r = np.interp(progress, stops, colors_array[:, 0])
+        g = np.interp(progress, stops, colors_array[:, 1])
+        b = np.interp(progress, stops, colors_array[:, 2])
         return r, g, b
 
     def _stack_gradient_array(self, r, g, b):
@@ -140,13 +119,13 @@ class Gradient:
     def _get_radial_center(self, width, height):
         w_m, h_m = width - 1, height - 1
         center_map = {
-            self.CENTER: (w_m / 2, h_m / 2),
-            self.TOP_CENTER: (w_m / 2, 0),
-            self.TOP_LEFT: (0, 0),
-            self.TOP_RIGHT: (w_m, 0),
-            self.BOTTOM_CENTER: (w_m / 2, h_m),
-            self.BOTTOM_LEFT: (0, h_m),
-            self.BOTTOM_RIGHT: (w_m, h_m)
+            RadialPosition.Center: (w_m / 2, h_m / 2),
+            RadialPosition.TopCenter: (w_m / 2, 0),
+            RadialPosition.TopLeft: (0, 0),
+            RadialPosition.TopRight: (w_m, 0),
+            RadialPosition.BottomCenter: (w_m / 2, h_m),
+            RadialPosition.BottomLeft: (0, h_m),
+            RadialPosition.BottomRight: (w_m, h_m)
         }
         return center_map.get(self.direction, (w_m / 2, h_m / 2))
 
@@ -176,18 +155,18 @@ class Gradient:
         if new_direction is None:
             if self.type == 'linear':
                 mapping = {
-                    self.TO_RIGHT: self.TO_LEFT, self.TO_LEFT: self.TO_RIGHT,
-                    self.TO_TOP: self.TO_BOTTOM, self.TO_BOTTOM: self.TO_TOP,
-                    self.TO_TOP_RIGHT: self.TO_BOTTOM_LEFT, self.TO_BOTTOM_LEFT: self.TO_TOP_RIGHT,
-                    self.TO_TOP_LEFT: self.TO_BOTTOM_RIGHT, self.TO_BOTTOM_RIGHT: self.TO_TOP_LEFT
+                    LinearSide.Right: LinearSide.Left, LinearSide.Left: LinearSide.Right,
+                    LinearSide.Top: LinearSide.Bottom, LinearSide.Bottom: LinearSide.Top,
+                    LinearSide.TopRight: LinearSide.BottomLeft, LinearSide.BottomLeft: LinearSide.TopRight,
+                    LinearSide.TopLeft: LinearSide.BottomRight, LinearSide.BottomRight: LinearSide.TopLeft
                 }
                 new_direction = mapping.get(self.direction)
-            elif self.type == 'radial':
+            elif self.type == GradientType.Radial:
                 mapping = {
-                    self.CENTER: self.CENTER,
-                    self.TOP_CENTER: self.BOTTOM_CENTER, self.BOTTOM_CENTER: self.TOP_CENTER,
-                    self.TOP_LEFT: self.BOTTOM_RIGHT, self.BOTTOM_RIGHT: self.TOP_LEFT,
-                    self.TOP_RIGHT: self.BOTTOM_LEFT, self.BOTTOM_LEFT: self.TOP_RIGHT
+                    RadialPosition.Center: RadialPosition.Center,
+                    RadialPosition.TopCenter: RadialPosition.BottomCenter, RadialPosition.BottomCenter: RadialPosition.TopCenter,
+                    RadialPosition.TopLeft: RadialPosition.BottomRight, RadialPosition.BottomRight: RadialPosition.TopLeft,
+                    RadialPosition.TopRight: RadialPosition.BottomLeft, RadialPosition.BottomLeft: RadialPosition.TopRight
                 }
                 new_direction = mapping.get(self.direction)
 
