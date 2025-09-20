@@ -8,6 +8,57 @@ class ResizeType(Enum):
     CropToRatio = auto()
     FillAllScreen = auto()
 
+class ZRequest:
+    __slots__ = ('z', 'function', 'rect', 'strict')
+    def __init__(self, z: int, function, rect: pygame.Rect, strict: bool = False):
+        self.z = z
+        self.function = function
+        self.rect = rect
+        self.strict = strict
+
+    def is_clicked(self, pos):
+        return self.rect.collidepoint(pos)
+
+class ZSystem:
+    def __init__(self):
+        self.requests: list[ZRequest] = []
+        
+    def add(self, z_request: ZRequest):
+        self.requests.append(z_request)
+    
+    def cycle(self):
+        if len(self.requests) == 0: return
+        self.request_cycle()
+    
+    def request_cycle(self):
+        if not self.requests:
+            return
+        
+        strict_requests = []
+        clicked_requests = []
+
+        for request in self.requests:
+            if request.strict:
+                strict_requests.append(request)
+            elif request.is_clicked(mouse.pos):
+                clicked_requests.append(request)
+        
+        if clicked_requests:
+            max_z = max(request.z for request in clicked_requests)
+            for request in clicked_requests:
+                if request.z == max_z:
+                    try:
+                        request.function()
+                    except Exception as e:
+                        print(e)
+
+        for request in strict_requests:
+            try:
+                request.function()
+            except Exception as e:
+                print(e)
+        
+        self.requests.clear()
 class Window:
     @staticmethod
     def cropToRatio(width: int, height: int, ratio, default=(0, 0)):
@@ -52,6 +103,8 @@ class Window:
         self._selected_context_menu = None
         self._next_update_dirty_rects = []
         
+        self.z_system = ZSystem()
+        
     def clear(self, color = (0, 0, 0)):
         """
         Fill the entire surface with the given color
@@ -66,6 +119,9 @@ class Window:
         self._crop_width_offset, self._crop_height_offset = self.cropToRatio(current_w, current_h, target_ratio)
         self._offset = NvVector2(self._crop_width_offset // 2, self._crop_height_offset // 2)
 
+    def add_request(self, z_request: ZRequest):
+        self.z_system.add(z_request)
+    
     def update(self, events, fps: int = 60):
         """
         Updates the window state and processes events.
@@ -100,6 +156,7 @@ class Window:
 
         self._clock.tick(fps)
         self._event_cycle(EventType.Update)
+        self.z_system.cycle()
 
     @property
     def offset(self):
