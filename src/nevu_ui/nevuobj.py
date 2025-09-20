@@ -7,6 +7,7 @@ from enum import Enum, auto
 from .utils import NvVector2 as Vector2
 import copy
 from typing import Any
+from .window import ZRequest
 from .color import *
 from warnings import deprecated
 from .fast_logic import (
@@ -22,6 +23,7 @@ class NevuObject:
     single_instance: bool
     _events: Events
     actual_clone: bool
+    z: int
     
     #INIT STRUCTURE: ====================
     #    __init__ >
@@ -107,8 +109,9 @@ class NevuObject:
         self._add_constant("floating", bool, False)
         self._add_constant("single_instance", bool, False)
         self._add_constant("events", Events, Events())
+        self._add_constant("z", int, 0)
+        self._add_constant_link("depth", "z")
 
-        
     def _add_constant_link(self, name: str, link_name: str):
         self.constant_links[name] = link_name
         
@@ -190,6 +193,8 @@ class NevuObject:
         self._subtheme_role = SubThemeRole.TERTIARY
         self._hover_state = HoverState.UN_HOVERED
         self.animation_manager = AnimationManager()
+        
+        self._master_z_handler = None
         
     def _init_booleans(self):
         self._visible = True
@@ -306,36 +311,33 @@ class NevuObject:
         return self.animation_manager.get_current_value(animation_type)
 
     def _update_hover_state(self):
-        if self._hover_state == HoverState.UN_HOVERED:
-            self._handle_unhovered()
-        elif self._hover_state == HoverState.HOVERED:
-            self._handle_hovered()
-        elif self._hover_state == HoverState.CLICKED:
-            self._handle_clicked()
+        match self._hover_state:
+            case HoverState.UN_HOVERED:
+                self._handle_unhovered()
+            case HoverState.HOVERED:
+                self._handle_hovered()
+            case HoverState.CLICKED:
+                self._handle_clicked()
 
     def _handle_unhovered(self):
         if self.get_rect().collidepoint(mouse.pos):
-            self._hover_state = HoverState.HOVERED
-            self.on_hover()
-            self._on_hover_system()
+            self._send_z_request(self._group_on_hover)
 
     def _handle_hovered(self):
         if not self.get_rect().collidepoint(mouse.pos):
-            self._hover_state = HoverState.UN_HOVERED
-            self.on_unhover()
-            self._on_unhover_system()
+            self._send_z_request(self._group_on_unhover, True)
         elif mouse.left_fdown:
-            self._hover_state = HoverState.CLICKED
-            self.on_click()
-            print("CLICKED")
-            self._on_click_system()
+            self._send_z_request(self._group_on_click)
 
     def _handle_clicked(self):
         if mouse.left_up:
-            self._hover_state = HoverState.HOVERED 
-            self.on_keyup()
-            self._on_keyup_system()
-
+            self._send_z_request(self._group_on_keyup, True)
+            
+    def _send_z_request(self, function, strict: bool = False):
+        request = ZRequest(self.z, function, self.get_rect(), strict)
+        if callable(self._master_z_handler):
+            self._master_z_handler(request)
+    
     def on_click(self):
         """Override this function to run code when the object is clicked"""
     def on_hover(self):
@@ -357,6 +359,26 @@ class NevuObject:
         self._event_cycle(EventType.OnUnhover, self)
     def _on_scroll_system(self, side: bool):
         self._event_cycle(EventType.OnMouseScroll, self, side)
+    
+    def _group_on_click(self):
+        self._hover_state = HoverState.CLICKED
+        self._on_click_system()
+        self.on_click()
+    def _group_on_hover(self):
+        self._hover_state = HoverState.HOVERED
+        self._on_hover_system()
+        self.on_hover()
+    def _group_on_keyup(self):
+        self._hover_state = HoverState.HOVERED
+        self._on_keyup_system()
+        self.on_keyup()
+    def _group_on_unhover(self):
+        self._hover_state = HoverState.UN_HOVERED
+        self._on_unhover_system()
+        self.on_unhover()
+    def _group_on_scroll(self, side: bool):
+        self._on_scroll_system(side)
+        self.on_scroll(side)
 
     def get_rect_opt(self, without_animation: bool = False):
         if not without_animation:
@@ -389,9 +411,11 @@ class NevuObject:
         font_size = int(self.style.fontsize * avg_resize_ratio)
         return (pygame.font.SysFont(self.style.fontname, font_size) if self.style.fontname == "Arial" 
                 else pygame.font.Font(self.style.fontname, font_size))
+        
     @property
     def subtheme_role(self):
         return self._subtheme_role
+    
     @subtheme_role.setter
     def subtheme_role(self, value: SubThemeRole):
         self._subtheme_role = value
