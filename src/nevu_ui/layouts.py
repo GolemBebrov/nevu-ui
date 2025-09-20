@@ -167,6 +167,7 @@ class LayoutType(NevuObject):
     def add_item(self, item: NevuObject):
         #print(item)
         if item.single_instance is False: item = item.clone()
+        item._master_z_handler = self._master_z_handler
         if self.is_layout(item): 
             assert self.is_layout(item)
             item._connect_to_layout(self)
@@ -178,6 +179,7 @@ class LayoutType(NevuObject):
             else:
                 self.items.append(item)
             return
+        
         self.read_item_coords(item)
         self._start_item(item)
         self.items.append(item)
@@ -302,7 +304,7 @@ class Grid(LayoutType):
     def secondary_update(self, *args):
         super().secondary_update()
         self._light_update()
-        if type(self) == Grid: self._dirty_rect = self._read_dirty_rects()
+        if isinstance(self, Grid): self._dirty_rect = self._read_dirty_rects()
         
     def add_item(self, item: NevuObject, x: int, y: int):  # type: ignore
         range_error = ValueError("Grid index out of range x: {x}, y: {y} ".format(x=x,y=y)+f"Grid size: {self.column}x{self.row}")
@@ -875,11 +877,10 @@ class Scrollable(LayoutType):
         Returns:
             None
         """
-        
         if not self._test_debug_print:
             print(f"in {self} added widget: {item} at {alignment}.")
-        if item.single_instance is False:
-            item = item.clone()
+        if item.single_instance is False: item = item.clone()
+        item._master_z_handler = self._master_z_handler
         self.read_item_coords(item)
         self._start_item(item)
         self.items.append(item)
@@ -1059,7 +1060,7 @@ class CheckBoxGroup():
     def _on_checkbox_toggled_single_wrapper(self, checkbox: RectCheckBox):
         if checkbox.toogled == False: return self.on_checkbox_toggled_single(None)
         for item in self._content:
-            if item is not checkbox: item.toogled = False; print("Untoogled:", item)
+            if item is not checkbox: item.toogled = False; #print("Untoogled:", item)
         self.on_checkbox_toggled_single(checkbox)
     
     def on_checkbox_toggled(self, included_checkboxes: list[RectCheckBox]):
