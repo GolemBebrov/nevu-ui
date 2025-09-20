@@ -16,6 +16,6 @@ class TestGrid(NevuTest):
         self.grid = self.test_menu.layout
     def update_loop(self, events=None):
         super().update_loop(events)
-        print(self.test_hard_widget.text)
+        #print(self.test_hard_widget.text)
 ts = TestGrid()
 ts.run()

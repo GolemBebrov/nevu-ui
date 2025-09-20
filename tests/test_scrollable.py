@@ -3,6 +3,10 @@ import pygame
 from test_basic import NevuTest
 pygame.init()
 
+def printHui():
+    print("Hui")
+def printHui2():
+    print("Hui2")
 class TestScrollable(NevuTest):
     def add_to_layout(self):
         self.do_fps_test = True
@@ -26,6 +30,8 @@ class TestScrollable(NevuTest):
                 ]
                 )
         self.scrollable = self.test_menu.layout
+        self.scrollable.on_click = printHui
+        self.scrollable.items[1].on_click = printHui2
         #self.scrollable._test_always_update = True
         print(self.scrollable.get_rect())
         

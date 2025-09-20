@@ -12,14 +12,14 @@ class Mygame(ui.Manager):
         self.background = (0,0,100) #Цвет фона
         self.window = ui.window.Window((300,300), resize_type=ui.ResizeType.FillAllScreen) #Создаем окно
         main_style = ui.Style( #Гланый стиль
-            borderradius=10, borderwidth=2, colortheme=ui.synthwave_dark_color_theme,
-            fontname="vk_font.ttf", gradient=ui.style.Gradient(colors=[ui.Color.AQUA,(100,100,100)],type='radial',direction=ui.style.Gradient.TOP_CENTER))
+            borderradius=10, borderwidth=2, colortheme=ui.github_dark_color_theme,
+            fontname="vk_font.ttf", gradient=ui.style.Gradient(colors=[ui.Color.AQUA,(100,100,100)],type=ui.GradientType.Linear,direction=ui.LinearSide.Right))
         style_mini_font = main_style( #Подстиль
             fontsize=15, border_radius=15,  
-            borderwidth=4, gradient=ui.style.Gradient(colors=[ui.Color.REBECCAPURPLE,ui.Color.mix(ui.Color.AQUA,ui.Color.REBECCAPURPLE)],type='linear',direction=ui.style.Gradient.TO_TOP))
+            borderwidth=4, gradient=ui.style.Gradient(colors=[ui.Color.REBECCAPURPLE,ui.Color.mix(ui.Color.AQUA,ui.Color.REBECCAPURPLE)],type=ui.GradientType.Linear,direction=ui.LinearSide.Top))
     
         b = ui.Button(lambda: print("Button 1"), "Test Chamber", [50*ui.fill,11*ui.fill], style=style_mini_font(borderradius=15, borderwidth=2, fontsize=10), words_indent=True, alt=True, will_resize=True) #Создаем кнопку
-        i = ui.Input([100*ui.fill,66*ui.fill],style_mini_font(borderradius=30,fontname="vk_font.ttf"),"","Введите", alt=True, will_resize=True, multiple=True) #Создаем инпут
+        i = ui.Input([100*ui.fill,30*ui.fill],style_mini_font(borderradius=30,borderwidth=0,fontname="vk_font.ttf"),"","Введите", alt=True, will_resize=True, multiple=True) #Создаем инпут
         
         i.animation_manager.add_start_animation(ui.AnimationEaseOut(3,[0,-100],[0,0],ui.AnimationType.POSITION)) #Добавляем анимацию в начало
         "ss" if True else "dd"
