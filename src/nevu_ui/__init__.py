@@ -1,24 +1,66 @@
-from .color import *  # Импортируем все из colors.py (Color, Color_Type, Theme, Color.RED и т.д.)
-from .style import *   # Импортируем все из style.py (Style, Align, default_style, Theme.DARK и т.д.)
-from .widgets import *
-from .layouts import *
-from .menu import *
-from .window import *
-from .utils import *
-from .ui_manager import *
+from .menu import Menu
 from .nevuobj import NevuObject
-from .animations import *
-from .core_types import *
+from .ui_manager import Manager
+from . import rendering
+from . import animations
+from . import utils
 
-#бля это херня просто что бы пукет работал безэтой херни хуета полуается
-__all__ = [ # Определяем публичный API пакета
-    'Color', 'Color_Type',  # Из colors.py
-    'Style', 'Align', 'default_style', # Из style.py
-    'Widget', 'Label', 'Button', 'Empty_Widget','CheckBox', 'ImageWidget', 'GifWidget', 'Input', 'MusicPlayer',
-    'LayoutType', 'Grid', 'CheckBoxGrid', 'Pages', 'Gallery_Pages', 'Infinite_Scroll', 'Appending_Layout_H', 'Appending_Layout_V', # Из layouts.py
+from .color import (
+    Color, Color_Type, ColorTheme, ColorSubTheme, ColorPair, ColorThemeLibrary, SubThemeRole, PairColorRole, TupleColorRole
+)
+from .style import (
+    Style, default_style, Gradient
+)
+from .core_types import (
+    Align, SizeRule, PercentSizeRule, SizeUnit, 
+    Vh, vh, Vw, vw, Fill, fill, Px, px, 
+    Quality, HoverState, Events,
+    LinearSide, RadialPosition, GradientType
+)
+from .widgets import (
+    Widget, Label, Button, Empty_Widget, RectCheckBox, Image, GifWidget, Input, MusicPlayer
+)
+from .layouts import (
+    LayoutType, Grid, Row, Column, Scrollable, IntPickerGrid, Pages, Gallery_Pages, Appending_Layout_H, Appending_Layout_V, CheckBoxGroup
+)
+
+from .utils import (
+    time, Time, mouse, Mouse, keyboard, Keyboard,
+    Cache, CacheName, CacheType, NevuEvent, InputType, EventType, NvVector2
+)
+from .window import (
+    Window, ResizeType, ZRequest #Only request
+)
+
+__all__ = [
+    #### color.py ####
+    'Color', 'Color_Type', 'ColorTheme', 'ColorSubTheme', 'ColorPair', 'ColorThemeLibrary', 'SubThemeRole', 'PairColorRole', 'TupleColorRole', 
+    #### style.py ####
+    'Style', 'default_style', 'Gradient',
+    #### core_types.py ####
+    'Align', 'SizeRule', 'PercentSizeRule', 'SizeUnit', 'Vh', 'vh', 'Vw', 'vw', 'Fill', 'fill', 'Px', 'px', 
+    'Quality', 'HoverState', 'Events', 'LinearSide', 'RadialPosition', 'GradientType', 
+    #### widgets.py ####
+    'Widget', 'Label', 'Button', 'Empty_Widget', 'RectCheckBox', 'Image', 'GifWidget', 'Input', 'MusicPlayer',
+    #### layouts.py ####
+    'LayoutType', 'Grid', 'Row', 'Column', 'Scrollable', 'IntPickerGrid', 'Pages', 'Gallery_Pages', 'Appending_Layout_H', 'Appending_Layout_V', 'CheckBoxGroup', 
+    #### menu.py ####
     'Menu',
-    'Event',
-    'time', 'mouse', 'Time', 'Mouse', 'Keyboard',
-    'RoundedSurface',
-    'Group'
+    #### utils.py ####
+    'time', 'mouse', 'Time', 'Mouse', 'Keyboard', 'keyboard', 'Cache', 'CacheName', 'CacheType', 'NevuEvent', 'EventType','InputType', 'NvVector2', 
+    'utils', 
+    #### ui_manager.py ####
+    'Manager',
+    #### window.py ####
+    'Window', 'ZRequest', 'ResizeType',
+    #### rendering.py ####
+    'rendering', 
+    #### nevuobj.py ####
+    'NevuObject', 
+    #### animations.py ####
+    'animations', 
 ]
+
+version = "0.5.X"
+
+print(f"Nevu UI version:{version}")
