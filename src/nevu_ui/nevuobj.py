@@ -1,22 +1,38 @@
-import pygame
-from .style import Style
-from .utils import *
-from .utils import Event
-from .animations import AnimationType, AnimationManager
-from enum import Enum, auto
-from .utils import NvVector2 as Vector2
-import copy
 from typing import Any
-from .window import ZRequest
-from .color import *
+from collections.abc import Callable
 from warnings import deprecated
+import pygame
+import copy
+
+from .style import Style
+from .window import ZRequest
+
+from .animations import (
+    AnimationType, AnimationManager
+)
+from .utils import (
+    NvVector2 as Vector2, NvVector2, CacheType, Cache, mouse, NevuEvent
+)
+from .color import (
+    Color, ColorPair, ColorSubTheme, ColorTheme, SubThemeRole, PairColorRole, TupleColorRole
+)
 from .fast_logic import (
     relx_helper, rely_helper, relm_helper, rel_helper
 )
 from .core_types import (
-    SizeRule, Px, Vh, Vw, Fill, HoverState, Events
+    SizeRule, Px, Vh, Vw, Fill, HoverState, Events, EventType
 )
-from collections.abc import Callable
+
+class ConstantStorage:
+    __slots__ = ('supported_classes', 'defaults', 'links', 'properties', 'is_set', 'excluded')
+    def __init__(self):
+        self.supported_classes = {}
+        self.defaults = {}
+        self.links = {}
+        self.properties = {}
+        self.is_set = {}
+        self.excluded = []
+
 class NevuObject:
     id: str | None
     floating: bool
@@ -74,27 +90,52 @@ class NevuObject:
     def __deepcopy__(self, *args, **kwargs):
         return self.clone()
     
-    def _add_constant(self, name, supported_classes: tuple | Any, default: Any):
-        self.constant_supported_classes[name] = supported_classes
-        self.constant_defaults[name] = default
-        self.is_constant_set[name] = False
+    def _add_constant(self, name, supported_classes: tuple | Any, default: Any, 
+                      getter: Callable | None = None, setter: Callable | None = None, deleter: Callable | None = None):
+        self.constants.supported_classes[name] = supported_classes
+        self.constants.defaults[name] = default
+        self.constants.is_set[name] = False
+        if getter or setter or deleter:
+            self.constants.properties[name] = [getter, setter, deleter]
     
     def _block_constant(self, name: str):
-        self.excluded_constants.append(name)
+        self.constants.excluded.append(name)
     
     def _init_constants_base(self):
-        self.constant_supported_classes = {}
-        self.constant_defaults = {}
-        self.constant_links = {}
-        self.is_constant_set = {}
-        self.excluded_constants = []
-    
-    @property
-    def events(self):
+        self.constants = ConstantStorage()
+
+    def __getattribute__(self, name):
+        get = super().__getattribute__
+        try:
+            constants: ConstantStorage = get('constants')
+            constant_properties = constants.properties
+            if name in constant_properties:
+                return constant_properties[name][0]()
+        except AttributeError:
+            pass
+        return get(name)
+
+    def __setattr__(self, name, value):
+        try:
+            if name in self.constants.supported_classes:
+                if name in self.constants.properties:
+                    self.constants.properties[name][1](value)
+                else:
+                    if not self._is_valid_type(value, self.constants.supported_classes[name]):
+                        raise TypeError(
+                            f"Invalid type for constant '{name}'. "
+                            f"Expected {self.constants.supported_classes[name]}, but got {type(value).__name__}."
+                        )
+                    super().__setattr__(name, value)
+            else:
+                super().__setattr__(name, value)
+        except AttributeError:
+            super().__setattr__(name, value)
+            
+    def _get_events(self):
         return self._events
-    
-    @events.setter
-    def events(self, value):
+
+    def _set_events(self, value):
         self._events = value
         self._events.on_add = self._on_event_add
         if self.actual_clone:
@@ -108,18 +149,18 @@ class NevuObject:
         self._add_constant("id", (str, type(None)), None)
         self._add_constant("floating", bool, False)
         self._add_constant("single_instance", bool, False)
-        self._add_constant("events", Events, Events())
+        self._add_constant("events", Events, Events(), getter=self._get_events, setter=self._set_events)
         self._add_constant("z", int, 0)
         self._add_constant_link("depth", "z")
 
     def _add_constant_link(self, name: str, link_name: str):
-        self.constant_links[name] = link_name
-        
+        self.constants.links[name] = link_name
+
     def _preinit_constants(self):
-        for name, value in self.constant_defaults.items():
+        for name, value in self.constants.defaults.items():
             if not hasattr(self, name):
                 setattr(self, name, value)
-                
+
     def _change_constants_kwargs(self, **kwargs):
         constant_name = None
         needed_types = None
@@ -133,41 +174,42 @@ class NevuObject:
             needed_types = None
     
     def _extract_constant_data(self, name):
-        if name in self.constant_supported_classes.keys():
+        if name in self.constants.supported_classes.keys():
             constant_name = name
-            needed_types = self.constant_supported_classes[name]
-        elif name in self.constant_links.keys():
-            constant_name = self.constant_links[name]
-            if constant_name in self.constant_supported_classes.keys():
-                needed_types = self.constant_supported_classes[constant_name]
+            needed_types = self.constants.supported_classes[name]
+        elif name in self.constants.links.keys():
+            constant_name = self.constants.links[name]
+            if constant_name in self.constants.supported_classes.keys():
+                needed_types = self.constants.supported_classes[constant_name]
             else:
-                raise ValueError(f"Invalid constant link {name} -> {self.constant_links[name]}. Constant not found.")
+                raise ValueError(f"Invalid constant link {name} -> {self.constants.links[name]}. Constant not found.")
         else:
             raise ValueError(f"Constant {name} not found")
         return constant_name, needed_types
     
+    def _is_valid_type(self, value, needed_types):
+        if not isinstance(needed_types, tuple):
+            needed_types = (needed_types,)
+        for needed_type in needed_types:
+            if needed_type == Callable and callable(value):
+                return True
+            if needed_type == Any:
+                return True
+            if isinstance(value, needed_type):
+                return True
+        return False
+
     def _process_constant(self, name, constant_name, needed_types, value):
         assert needed_types
-        if constant_name in self.excluded_constants:
+        if constant_name in self.constants.excluded:
             raise ValueError(f"Constant {name} is unconfigurable")
         if not isinstance(needed_types, tuple):
             needed_types = (needed_types,)
-        is_valid = False
-        for needed_type in needed_types:
-            if needed_type == Callable:
-                is_valid = callable(value) if is_valid == False else is_valid
-            elif needed_type == Any:
-                is_valid = True
-            else:
-                is_valid = isinstance(value, needed_type) if is_valid == False else is_valid
-        if is_valid and not self.is_constant_set[constant_name]:
+        is_valid = self._is_valid_type(value, needed_types)
+        if is_valid:
             print(f"Debug: Set constant {name}({constant_name}) to {value} in {self}({type(self).__name__})")
             setattr(self, constant_name, value)
-            self.is_constant_set[constant_name] = True
-            
-        elif self.is_constant_set[constant_name]:
-            raise ValueError(f"Constant {name}({constant_name}) is already set")
-        
+            self.constants.is_set[constant_name] = True
         else:
             raise TypeError(
                 f"Invalid type for constant '{constant_name}'. "
