@@ -1,11 +1,11 @@
 from enum import Enum, auto, StrEnum
+
 class Align(Enum):
     CENTER = auto()
     LEFT = auto()
     RIGHT = auto()
     TOP = auto()
     BOTTOM = auto()
-
 
 class SizeRule:
     __slots__ = ('value')
@@ -37,7 +37,6 @@ class Px(SizeRule): pass
 class Vh(PercentSizeRule): pass
 class Vw(PercentSizeRule): pass
 #------ SizeRules ------
-
 
 #------ SizeUnits ------
 px = SizeUnit(Px)
@@ -103,3 +102,39 @@ class RadialPosition(GradientConfig):
 class GradientType(StrEnum):
     Linear = 'linear'
     Radial = 'radial'
+
+class ResizeType(Enum):
+    CropToRatio = auto()
+    FillAllScreen = auto()
+
+class RenderMode(Enum): 
+    AA = auto()
+    SDF = auto()
+
+class CacheType(Enum):
+    Coords = auto()
+    RelSize = auto()
+    Surface = auto()
+    Gradient = auto()
+    Image = auto()
+    Borders = auto()
+    Scaled_Background = auto()
+    Scaled_Gradient = auto()
+    Background = auto()
+
+class CacheName(StrEnum):
+    MAIN = "main"
+    PREVERSED = "preversed"
+    CUSTOM = "custom"
+
+class EventType(Enum):
+    Resize = auto()
+    Render = auto()
+    Draw = auto()
+    Update = auto()
+    OnKeyUp = auto()
+    OnKeyDown = auto()
+    OnHover = auto()
+    OnUnhover = auto()
+    OnMouseScroll = auto()
+    OnCopy = auto()
