@@ -1,12 +1,13 @@
-from .utils import *
 import sys
 import pygame
-from enum import Enum, auto
-_context_to_draw = None
 
-class ResizeType(Enum):
-    CropToRatio = auto()
-    FillAllScreen = auto()
+from .core_types import (
+    ResizeType, EventType
+)
+
+from .utils import (
+    mouse, keyboard, time, keyboards_list, NvVector2, NevuEvent
+)
 
 class ZRequest:
     __slots__ = ('z', 'function', 'rect', 'strict')
@@ -135,6 +136,7 @@ class Window:
         mouse.update(events)
         time.update()
         keyboard.update()
+        
         for item in keyboards_list:
             item.update()
             
