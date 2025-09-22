@@ -1,19 +1,32 @@
 import pygame
-import numpy as np
 import copy
 import math
+import numpy as np
 from PIL import Image
-from .style import *
-from .core_types import _QUALITY_TO_RESOLUTION, Quality
-from .utils import *
-from .utils import NvVector2 as Vector2
-from .color import *
-from .animations import *
+
 from .nevuobj import NevuObject
-from nevu_ui.fast_logic import logic_update_helper
+from .fast_logic import logic_update_helper
 from collections.abc import Callable
 from .core_types import HoverState
 
+from .animations import (
+    Animation, AnimationManager
+)
+from .rendering import (
+    OutlinedRoundedRect, RoundedRect, AlphaBlit
+)
+from .style import (
+    Style, default_style, Gradient
+)
+from .core_types import (
+    _QUALITY_TO_RESOLUTION, Quality, Align, EventType
+)
+from .utils import (
+    NvVector2 as Vector2, NvVector2, CacheType, Cache, mouse
+)
+from .color import (
+    Color, ColorPair, ColorSubTheme, ColorTheme, SubThemeRole, PairColorRole, TupleColorRole
+)
 
 class Widget(NevuObject):
     _alt: bool
@@ -30,8 +43,7 @@ class Widget(NevuObject):
         
     def _add_constants(self):
         super()._add_constants()
-        self._add_constant("_alt", bool, False)
-        self._add_constant_link("alt", "_alt")
+        self._add_constant("alt", bool, False, getter=self._alt_getter, setter=self._alt_setter)
         self._add_constant("will_resize", bool, True)
         self._add_constant("clickable", bool, False)
         self._add_constant("fancy_click_style", bool, True)
@@ -72,11 +84,10 @@ class Widget(NevuObject):
         self._init_alt()
         self._on_style_change()
         
-    @property
-    def alt(self):
+    def _alt_getter(self):
         return self._alt
-    @alt.setter
-    def alt(self, value):
+
+    def _alt_setter(self, value):
         self._alt = value
         self._init_alt()
         self._on_style_change()
@@ -333,7 +344,7 @@ class BackgroundRenderer:
         self = renderer.root
         resize_factor = _QUALITY_TO_RESOLUTION[self.quality] if self.will_resize else self._resize_ratio
         bgsurface = pygame.Surface(self.size * resize_factor, flags = pygame.SRCALPHA)
-        if isinstance(self.style.gradient,Gradient):
+        if isinstance(self.style.gradient, Gradient):
             content_surf = self.cache.get_or_exec(CacheType.Scaled_Gradient, lambda: renderer._scale_gradient(self.size * resize_factor))
             if self.style.transparency: bgsurface.set_alpha(self.style.transparency)
         else: content_surf = self.cache.get(CacheType.Scaled_Gradient)
@@ -477,11 +488,9 @@ class Image(Widget):
         super().draw()
         if not self.visible:
             return
-        self._event_cycle(Event.DRAW)
         self.surface.blit(self.image,[0,0])
         if self._style().radius > 0:
             self.surface = RoundedSurface.create(self.surface,int(self._style().radius))
-        self._event_cycle(Event.RENDER)
         if self._changed:
             if self.animation_manager.anim_rotation:
                 self.surface = pygame.transform.rotate(self.surface, self.animation_manager.anim_rotation)
@@ -556,7 +565,6 @@ class GifWidget(Widget):
             if self.scaled_frames:
                 frame_to_draw = self.scaled_frames[self.frame_index] if hasattr(self,"scaled_frames") else self.frames[self.frame_index]
                 self.surface.blit(frame_to_draw,(0,0))
-            self._event_cycle(Event.RENDER)
 
 class Input(Widget):
     blacklist: list | None
@@ -1069,7 +1077,6 @@ class Input(Widget):
                     if clip_rect.colliderect(cursor_draw_rect):
                         self.surface.blit(self.cursor, cursor_draw_rect.topleft)
                 except (pygame.error, AttributeError, IndexError):pass
-        self._event_cycle(Event.RENDER)
     def clone(self):
         return Input(self._lazy_kwargs['size'], copy.deepcopy(self.style), copy.copy(self._default_text), copy.copy(self.placeholder), self._on_change_fun, **self.constant_kwargs)
 class MusicPlayer(Widget):
@@ -1220,6 +1227,7 @@ class ProgressBar(Widget):
         super().secondary_draw()
         surf = self.renderer._create_surf_base([int(self.relx(self.size[0]*self.percentage))-2,int(self.rely(self.size[1]))-2])
         self.surface.blit(surf,(0,0))
+        
 class SliderBar(Widget):
     def __init__(self, begin_val: int, end_val: int, size, style, step: int = 1, freedom=False,default=-999.999123):
         self.button = Button(lambda: None, "", [size[1]/1.2, size[1]/1.2], style, active=False, freedom=False)
@@ -1289,7 +1297,6 @@ class SliderBar(Widget):
         self.surface.blit(self._text_surface, self._text_rect)
         if self._changed:
             self._changed = False
-        
 
 class ElementSwitcher(Widget):
     def __init__(self, size, elements, style: Style = default_style,on_change_function=None):
@@ -1361,10 +1368,6 @@ class ElementSwitcher(Widget):
             (right_button_center_x, button_center_y + self.arrow_width / 2)])
 
         self.surface.blit(self._text_surface, self._text_rect)
-        self._event_cycle(Event.RENDER)
-        if self._changed:
-            if self.animation_manager.anim_rotation:
-                self.surface = pygame.transform.rotate(self.surface, self.animation_manager.anim_rotation)
 
 class FileDialog(Button):
     def __init__(self, on_change_function, dialog,text, size, style = default_style, active = True, freedom=False, words_indent=False):
