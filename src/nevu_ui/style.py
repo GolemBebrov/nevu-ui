@@ -1,7 +1,10 @@
 import pygame
 import copy
 import numpy as np
-from .color import Color_Type, Color, material3_dark_color_theme, ColorTheme, SubThemeRole
+
+from .color import (
+    Color_Type, Color, ColorThemeLibrary, ColorTheme, SubThemeRole
+)
 from .core_types import (
     Align, LinearSide, RadialPosition, GradientType, GradientConfig
 )
@@ -26,7 +29,7 @@ class Gradient:
             raise ValueError(f"Unrecognized gradient type: {self.type}")
 
     def _validate_gradient_type(self):
-        if not isinstance(self.direction, LinearSide):
+        if self.type not in GradientType:
             raise ValueError(f"Gradient type '{self.type}' is not supported. Choose linear or radial.")
 
     def _validate_linear_direction(self):
@@ -176,7 +179,7 @@ class Gradient:
         return Gradient(list(reversed(self.colors)), self.type, new_direction, self.transparency)
 class Style:
     def __init__(self,**kwargs):
-        self.colortheme = copy.copy(material3_dark_color_theme)
+        self.colortheme = copy.copy(ColorThemeLibrary.material3_dark_color_theme)
         self.borderwidth = 1
         self.borderradius = 0
         self._kwargs_for_copy = kwargs
