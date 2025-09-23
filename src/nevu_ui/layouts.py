@@ -616,9 +616,8 @@ class Scrollable(LayoutType):
             super().secondary_update()
             axis = 1 if self.orientation == 'vertical' else 0
 
-            if mouse.left_fdown and not self.is_scrolling:
-                if self.get_rect().collidepoint(mouse.pos):
-                    self.is_scrolling = True
+            if mouse.left_fdown and not self.is_scrolling and self.get_rect().collidepoint(mouse.pos):
+                self.is_scrolling = True
             if mouse.left_up:
                 self.is_scrolling = False
 
@@ -784,6 +783,7 @@ class Scrollable(LayoutType):
     def get_offset(self) -> int | float:
         percentage = self.scroll_bar_y.percentage
         return self.actual_max_y / 100 * percentage
+    
     def secondary_update(self): 
         if self._test_debug_print:
             print(f"in {self} used update")
@@ -821,10 +821,15 @@ class Scrollable(LayoutType):
             self.scroll_bar_y.move_by_percents(self.arrow_scroll_power * -inverse)
         if keyboard.is_fdown(pygame.K_DOWN):
             self.scroll_bar_y.move_by_percents(self.arrow_scroll_power * inverse)
-        if mouse.wheel_up: 
-            self.scroll_bar_y.move_by_percents(self.wheel_scroll_power * -inverse)
-        if mouse.wheel_down: 
-            self.scroll_bar_y.move_by_percents(self.wheel_scroll_power * inverse)
+            
+    def _on_scroll_system(self, side: bool):
+        super()._on_scroll_system(side)
+
+        direction = 1 if side else -1
+
+        if self.inverted_scrolling:
+            direction *= -1
+        self.scroll_bar_y.move_by_percents(self.wheel_scroll_power * direction)
             
     def resize(self, resize_ratio: Vector2):
         if self._test_debug_print:
