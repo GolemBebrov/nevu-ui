@@ -7,12 +7,12 @@ pygame.init()
 class Mygame(ui.Manager):
     def __init__(self):
         super().__init__()
-        self.fps = 75 #Задаем нуженый fps
+        self.fps = 7599999999999 #Задаем нуженый fps
         self._dirty_mode = False #Для оптимизации(не рекомендуется включать)
         self.background = (0,0,100) #Цвет фона
-        self.window = ui.window.Window((300,300), resize_type=ui.ResizeType.FillAllScreen) #Создаем окно
+        self.window = ui.window.Window((300,300), resize_type=ui.ResizeType.CropToRatio) #Создаем окно
         main_style = ui.Style( #Гланый стиль
-            borderradius=10, borderwidth=2, colortheme=ui.github_dark_color_theme,
+            borderradius=10, borderwidth=2, colortheme=ui.ColorThemeLibrary.github_dark_color_theme,
             fontname="vk_font.ttf", gradient=ui.style.Gradient(colors=[ui.Color.AQUA,(100,100,100)],type=ui.GradientType.Linear,direction=ui.LinearSide.Right))
         style_mini_font = main_style( #Подстиль
             fontsize=15, border_radius=15,  
@@ -21,7 +21,7 @@ class Mygame(ui.Manager):
         b = ui.Button(lambda: print("Button 1"), "Test Chamber", [50*ui.fill,11*ui.fill], style=style_mini_font(borderradius=15, borderwidth=2, fontsize=10), words_indent=True, alt=True, will_resize=True) #Создаем кнопку
         i = ui.Input([100*ui.fill,30*ui.fill],style_mini_font(borderradius=30,borderwidth=0,fontname="vk_font.ttf"),"","Введите", alt=True, will_resize=True, multiple=True) #Создаем инпут
         
-        i.animation_manager.add_start_animation(ui.AnimationEaseOut(3,[0,-100],[0,0],ui.AnimationType.POSITION)) #Добавляем анимацию в начало
+        i.animation_manager.add_continuous_animation(ui.animations.AnimationEaseOut(3,[0,-100],[0,0],ui.animations.AnimationType.POSITION)) #Добавляем анимацию в начало
         "ss" if True else "dd"
         #создаем макет
         gridmenu = ui.Grid([66*ui.fill, 40*ui.fill], x=3,y=3, 

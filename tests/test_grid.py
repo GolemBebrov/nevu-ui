@@ -14,6 +14,8 @@ class TestGrid(NevuTest):
                     }
                 )
         self.grid = self.test_menu.layout
+        self.grid.items[2].items[0].z = -2
+        self.grid.on_click = lambda: print("Grid Clicked")
     def update_loop(self, events=None):
         super().update_loop(events)
         #print(self.test_hard_widget.text)

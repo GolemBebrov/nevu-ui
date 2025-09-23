@@ -10,8 +10,8 @@ def printHui2():
 class TestScrollable(NevuTest):
     def add_to_layout(self):
         self.do_fps_test = True
-        self._dirty_mode = True
-        self.fps = 99999999999
+        self._dirty_mode = False
+        self.fps = 999
         a = self.test_inner_layout
         self.test_menu.layout = \
         ui.Scrollable([100*ui.fill, 100*ui.vh],
@@ -31,6 +31,7 @@ class TestScrollable(NevuTest):
                 )
         self.scrollable = self.test_menu.layout
         self.scrollable.on_click = printHui
+        self.scrollable.items[0].on_click = printHui
         self.scrollable.items[1].on_click = printHui2
         #self.scrollable._test_always_update = True
         print(self.scrollable.get_rect())
@@ -40,6 +41,7 @@ class TestScrollable(NevuTest):
         super().first_update()
     def draw_loop(self):
         super().draw_loop()
+        print(ui.time.fps)
         #print(self.tooglegroup._content)
         #self.tooglegroup.on_checkbox_toggled_single(self.test_widget)
         #print(self.test_widget.events.content[0])
