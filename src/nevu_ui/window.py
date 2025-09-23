@@ -2,64 +2,16 @@ import sys
 import pygame
 
 from .core_types import (
-    ResizeType, EventType
+    ResizeType, EventType, ZRequestType
 )
 
 from .utils import (
     mouse, keyboard, time, keyboards_list, NvVector2, NevuEvent
 )
-
-class ZRequest:
-    __slots__ = ('z', 'function', 'rect', 'strict')
-    def __init__(self, z: int, function, rect: pygame.Rect, strict: bool = False):
-        self.z = z
-        self.function = function
-        self.rect = rect
-        self.strict = strict
-
-    def is_clicked(self, pos):
-        return self.rect.collidepoint(pos)
-
-class ZSystem:
-    def __init__(self):
-        self.requests: list[ZRequest] = []
-        
-    def add(self, z_request: ZRequest):
-        self.requests.append(z_request)
+from .fast_zsystem import (
+    ZSystem, ZRequest
+)
     
-    def cycle(self):
-        if len(self.requests) == 0: return
-        self.request_cycle()
-    
-    def request_cycle(self):
-        if not self.requests:
-            return
-        
-        strict_requests = []
-        clicked_requests = []
-
-        for request in self.requests:
-            if request.strict:
-                strict_requests.append(request)
-            elif request.is_clicked(mouse.pos):
-                clicked_requests.append(request)
-        
-        if clicked_requests:
-            max_z = max(request.z for request in clicked_requests)
-            for request in clicked_requests:
-                if request.z == max_z:
-                    try:
-                        request.function()
-                    except Exception as e:
-                        print(e)
-
-        for request in strict_requests:
-            try:
-                request.function()
-            except Exception as e:
-                print(e)
-        
-        self.requests.clear()
 class Window:
     @staticmethod
     def cropToRatio(width: int, height: int, ratio, default=(0, 0)):
@@ -158,7 +110,7 @@ class Window:
 
         self._clock.tick(fps)
         self._event_cycle(EventType.Update)
-        self.z_system.cycle()
+        self.z_system.cycle(mouse.pos, mouse.left_fdown, mouse.left_up, mouse.any_wheel, mouse.wheel_down)
 
     @property
     def offset(self):
@@ -198,4 +150,4 @@ class Window:
     def rel(self):
         render_width = self.size[0] - self._crop_width_offset
         render_height = self.size[1] - self._crop_height_offset
-        return [render_width / self._original_size[0], render_height / self._original_size[1]]
+        return NvVector2(render_width / self._original_size[0], render_height / self._original_size[1])
