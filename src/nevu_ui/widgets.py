@@ -19,10 +19,10 @@ from .style import (
     Style, default_style, Gradient
 )
 from .core_types import (
-    _QUALITY_TO_RESOLUTION, Quality, Align, EventType
+    _QUALITY_TO_RESOLUTION, Quality, Align, EventType, CacheType
 )
 from .utils import (
-    NvVector2 as Vector2, NvVector2, CacheType, Cache, mouse
+    NvVector2 as Vector2, NvVector2, Cache, mouse
 )
 from .color import (
     Color, ColorPair, ColorSubTheme, ColorTheme, SubThemeRole, PairColorRole, TupleColorRole
@@ -69,6 +69,7 @@ class Widget(NevuObject):
     def _init_booleans(self):
         super()._init_booleans()
         self._optimized_dirty_rect_for_short_animations = True
+        self._original_alt = self._alt
 
     def _init_alt(self):
         if self.alt: self._subtheme_font, self._subtheme_content = self._alt_subtheme_font, self._alt_subtheme_content
@@ -111,7 +112,11 @@ class Widget(NevuObject):
     def _on_unhover_system(self):
         super()._on_unhover_system()
         self._on_style_change()
-        
+    def _on_keyup_abandon_system(self):
+        super()._on_keyup_abandon_system()
+        if self.alt != self._original_alt:
+            self.alt = self._original_alt
+            
     def clear_all(self):
         """
         Clears all cached data by invoking the clear method on the cache. 
