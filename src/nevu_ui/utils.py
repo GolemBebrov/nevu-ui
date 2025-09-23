@@ -135,6 +135,7 @@ class Mouse:
         self._wheel_y = 0
         self._wheel_side = self.WHEEL_STILL # -10 = down 0 = still 10 = up
         self._states = [self.STILL, self.STILL, self.STILL]
+        self.dragging = False
 
     @property
     def pos(self):
@@ -241,6 +242,8 @@ class Mouse:
         if not wheel_event_found:
             self._wheel_side = self.WHEEL_STILL
     def update(self, events: list | None = None):
+        if self.left_fdown: self.dragging = True
+        elif self.left_up: self.dragging = False
         self._pos = pygame.mouse.get_pos()
         pressed = pygame.mouse.get_pressed(num_buttons=3)
         
