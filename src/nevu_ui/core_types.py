@@ -134,7 +134,13 @@ class EventType(Enum):
     Update = auto()
     OnKeyUp = auto()
     OnKeyDown = auto()
+    OnKeyUpAbandon = auto()
     OnHover = auto()
     OnUnhover = auto()
     OnMouseScroll = auto()
     OnCopy = auto()
+
+class ZRequestType(Enum):
+    HoverCandidate = auto()
+    Action = auto()
+    Unclick = auto()
