@@ -5,7 +5,8 @@ import pygame
 import copy
 
 from .style import Style
-from .window import ZRequest
+
+from .fast_zsystem import ZRequest
 
 from .animations import (
     AnimationType, AnimationManager
@@ -20,8 +21,9 @@ from .fast_logic import (
     relx_helper, rely_helper, relm_helper, rel_helper
 )
 from .core_types import (
-    SizeRule, Px, Vh, Vw, Fill, HoverState, Events, EventType
+    SizeRule, Px, Vh, Vw, Fill, HoverState, Events, EventType, ZRequestType
 )
+
 
 class ConstantStorage:
     __slots__ = ('supported_classes', 'defaults', 'links', 'properties', 'is_set', 'excluded')
@@ -40,6 +42,7 @@ class NevuObject:
     _events: Events
     actual_clone: bool
     z: int
+    z_request_optimization: bool
     
     #INIT STRUCTURE: ====================
     #    __init__ >
@@ -152,6 +155,7 @@ class NevuObject:
         self._add_constant("events", Events, Events(), getter=self._get_events, setter=self._set_events)
         self._add_constant("z", int, 0)
         self._add_constant_link("depth", "z")
+        self._add_constant("z_request_optimization", bool, False)
 
     def _add_constant_link(self, name: str, link_name: str):
         self.constants.links[name] = link_name
@@ -206,6 +210,7 @@ class NevuObject:
         if not isinstance(needed_types, tuple):
             needed_types = (needed_types,)
         is_valid = self._is_valid_type(value, needed_types)
+
         if is_valid:
             print(f"Debug: Set constant {name}({constant_name}) to {value} in {self}({type(self).__name__})")
             setattr(self, constant_name, value)
@@ -219,7 +224,8 @@ class NevuObject:
         pass
     
     def _init_numerical(self):
-        pass
+        self._z_request_optimization_timer = 5
+        self._z_request_optimization_max = 5
     
     def _init_constants(self, **kwargs):
         self._init_constants_base()
@@ -239,6 +245,11 @@ class NevuObject:
         self._master_z_handler = None
         
     def _init_booleans(self):
+        self._sended_z_link = False
+        self._dragging = False
+        self._kup_kostil = False
+        self._kup_abandoned = False
+        self._universal_state_kostil = False
         self._visible = True
         self._active = True
         self._changed = True
@@ -351,34 +362,6 @@ class NevuObject:
     
     def get_animation_value(self, animation_type: AnimationType):
         return self.animation_manager.get_current_value(animation_type)
-
-    def _update_hover_state(self):
-        match self._hover_state:
-            case HoverState.UN_HOVERED:
-                self._handle_unhovered()
-            case HoverState.HOVERED:
-                self._handle_hovered()
-            case HoverState.CLICKED:
-                self._handle_clicked()
-
-    def _handle_unhovered(self):
-        if self.get_rect().collidepoint(mouse.pos):
-            self._send_z_request(self._group_on_hover)
-
-    def _handle_hovered(self):
-        if not self.get_rect().collidepoint(mouse.pos):
-            self._send_z_request(self._group_on_unhover, True)
-        elif mouse.left_fdown:
-            self._send_z_request(self._group_on_click)
-
-    def _handle_clicked(self):
-        if mouse.left_up:
-            self._send_z_request(self._group_on_keyup, True)
-            
-    def _send_z_request(self, function, strict: bool = False):
-        request = ZRequest(self.z, function, self.get_rect(), strict)
-        if callable(self._master_z_handler):
-            self._master_z_handler(request)
     
     def on_click(self):
         """Override this function to run code when the object is clicked"""
@@ -386,6 +369,8 @@ class NevuObject:
         """Override this function to run code when the object is hovered"""
     def on_keyup(self):
         """Override this function to run code when a key is released"""
+    def on_keyup_abandon(self):
+        """Override this function to run code when a key is released outside of the object"""
     def on_unhover(self):
         """Override this function to run code when the object is unhovered"""
     def on_scroll(self, side: bool):
@@ -397,31 +382,75 @@ class NevuObject:
         self._event_cycle(EventType.OnHover, self)
     def _on_keyup_system(self):
         self._event_cycle(EventType.OnKeyUp, self)
+    def _on_keyup_abandon_system(self):
+        self._event_cycle(EventType.OnKeyUpAbandon, self)
     def _on_unhover_system(self):
         self._event_cycle(EventType.OnUnhover, self)
     def _on_scroll_system(self, side: bool):
         self._event_cycle(EventType.OnMouseScroll, self, side)
     
     def _group_on_click(self):
-        self._hover_state = HoverState.CLICKED
         self._on_click_system()
         self.on_click()
     def _group_on_hover(self):
-        self._hover_state = HoverState.HOVERED
         self._on_hover_system()
         self.on_hover()
     def _group_on_keyup(self):
-        self._hover_state = HoverState.HOVERED
         self._on_keyup_system()
         self.on_keyup()
+    def _group_on_keyup_abandon(self):
+        self._on_keyup_abandon_system()
+        self.on_keyup_abandon()
     def _group_on_unhover(self):
-        self._hover_state = HoverState.UN_HOVERED
         self._on_unhover_system()
         self.on_unhover()
     def _group_on_scroll(self, side: bool):
         self._on_scroll_system(side)
         self.on_scroll(side)
+    
+    def _click(self):
+        self._universal_state_kostil = True
+        self.hover_state = HoverState.CLICKED
 
+    def _unhover(self):
+        self.hover_state = HoverState.UN_HOVERED
+    def _hover(self):
+        self.hover_state = HoverState.HOVERED
+    def _kup(self):
+        self._kup_kostil = True
+        self._universal_state_kostil = True
+        self.hover_state = HoverState.HOVERED
+    def _kup_abandon(self):
+        self._kup_abandoned = True
+        self._universal_state_kostil = True
+        self.hover_state = HoverState.UN_HOVERED
+        
+    @property
+    def hover_state(self):
+        return self._hover_state
+    @hover_state.setter
+    def hover_state(self, value: HoverState):
+        if hasattr(self, "_hover_state"):
+            print(f"hover change setter called in {self}, curr_state:{self._hover_state}, new_state:{value}")
+        if self._hover_state == value and not self._universal_state_kostil: print("Same state. Exiting"); return
+        if self._universal_state_kostil: self._universal_state_kostil = False
+        self._hover_state = value
+        match self._hover_state:
+            case HoverState.CLICKED:
+                self._group_on_click()
+            case HoverState.HOVERED:
+                if self._kup_kostil:
+                    self._group_on_keyup()
+                    self._kup_kostil = False
+                else:
+                    self._group_on_hover()
+            case HoverState.UN_HOVERED:
+                if self._kup_abandoned:
+                    self._group_on_keyup_abandon()
+                    self._kup_abandoned = False
+                else:
+                    self._group_on_unhover()
+            
     def get_rect_opt(self, without_animation: bool = False):
         if not without_animation:
             return self.get_rect()
@@ -434,8 +463,11 @@ class NevuObject:
         )
         
     def get_rect(self):
-        anim_coordinates = self.animation_manager.get_animation_value(AnimationType.POSITION)
-        anim_coordinates = [0,0] if anim_coordinates is None else anim_coordinates
+        try:
+            anim_coordinates = self.animation_manager.get_animation_value(AnimationType.POSITION)
+            anim_coordinates = [0,0] if anim_coordinates is None else anim_coordinates
+        except Exception as e:
+            print(e)
         return pygame.Rect(
             self.master_coordinates[0],
             self.master_coordinates[1],
@@ -490,11 +522,20 @@ class NevuObject:
         self.animation_update()
         self.event_update(events)
     def logic_update(self):
-        self._update_hover_state()
-    def _update_scroll(self):
-        if mouse.wheel_still: return
-        self.on_scroll(mouse.wheel_up)
-        self._on_scroll_system(mouse.wheel_up)
+        if not self._active or not self._visible:
+            return
+
+        if not self._sended_z_link and self._master_z_handler:
+            self._z_request = ZRequest(
+                link=self,
+                on_hover_func=self._hover,
+                on_unhover_func=self._unhover,
+                on_scroll_func=self._group_on_scroll,
+                on_keyup_func=self._kup,
+                on_keyup_abandon_func=self._kup_abandon,
+                on_click_func=self._click
+            )
+            self._master_z_handler.add(self._z_request)
     def animation_update(self):
         self.animation_manager.update()
     def event_update(self, events: list):
