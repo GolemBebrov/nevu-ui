@@ -286,16 +286,12 @@ class Menu:
     @property
     def layout(self):
         return self._layout
-    
-    def _master_z_handler(self, request):
-        if self.window:
-            self.window.add_request(request)
-    
+
     @layout.setter
     def layout(self, layout):
         if layout._can_be_main_layout:
             self.read_item_coords(layout)
-            layout._master_z_handler = self._master_z_handler
+            layout._master_z_handler = self.window.z_system
             layout._init_start()
             layout._connect_to_menu(self)
             layout._boot_up()
