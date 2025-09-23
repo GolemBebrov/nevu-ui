@@ -8,119 +8,133 @@ np.import_array()
 
 cdef class ZRequest:
     cdef public object link
-    cdef public object on_hover_func, on_unhover_func, on_click_func, on_scroll_func, on_keyup_func
+    cdef public object on_hover_func, on_unhover_func, on_click_func, on_scroll_func, on_keyup_func, on_keyup_abandon_func
     cdef __weakref__
 
     def __init__(self, link,
-                 on_hover_func=None, on_unhover_func=None, on_click_func=None, on_keyup_func=None, on_scroll_func=None):
+                 on_hover_func=None, on_unhover_func=None, on_click_func=None, on_keyup_func=None, on_keyup_abandon_func=None, on_scroll_func=None):
         self.link = link
         self.on_hover_func = on_hover_func
         self.on_unhover_func = on_unhover_func
         self.on_click_func = on_click_func
         self.on_scroll_func = on_scroll_func
         self.on_keyup_func = on_keyup_func
+        self.on_keyup_abandon_func = on_keyup_abandon_func
 
+    
+    
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef class ZSystem:
     cdef list _registered_requests
-    cdef object last_hovered_winner_data
-    
+    cdef object last_hovered_request
+    cdef object clicked_request  
+
     cdef np.ndarray rects_data
     cdef np.ndarray z_indices
-    cdef list callbacks
 
     def __cinit__(self):
         self._registered_requests = []
-        self.last_hovered_winner_data = None
+        self.last_hovered_request = None
+        self.clicked_request = None  
         self._reset_arrays()
 
     cdef void _reset_arrays(self):
         self.rects_data = np.empty((0, 4), dtype=np.int32)
         self.z_indices = np.empty(0, dtype=np.int32)
-        self.callbacks = []
 
     cpdef add(self, ZRequest z_request):
         self._registered_requests.append(weakref.ref(z_request))
         
-    cdef void _rebuild_arrays(self):
-        cdef list live_requests = []
-        cdef object req_ref, req
+    cdef list _rebuild_arrays(self):
+        cdef list live_requests_refs = []
+        cdef list rect_list = []
+        cdef list z_list = []
+        cdef list temp_live_requests = []
+        
+        cdef object req_ref, req, current_rect
         for req_ref in self._registered_requests:
             req = req_ref()
             if req is not None and req.link is not None:
-                live_requests.append(req)
-
-        self._registered_requests = [weakref.ref(obj) for obj in live_requests]
+                live_requests_refs.append(req_ref)
+                current_rect = req.link.get_rect()
+                rect_list.append((current_rect.x, current_rect.y, current_rect.width, current_rect.height))
+                z_list.append(req.link.z)
+                temp_live_requests.append(req)
         
-        cdef int count = len(live_requests)
-        if count == 0:
+        self._registered_requests = live_requests_refs
+        
+        if not live_requests_refs:
             self._reset_arrays()
-            return
+            return []
+
+        self.rects_data = np.array(rect_list, dtype=np.int32)
+        self.z_indices = np.array(z_list, dtype=np.int32)
+        return temp_live_requests
+        
+    cpdef cycle(self, object mouse_pos, bint mouse_down, bint mouse_up, bint any_wheel, bint wheel_down):
+        cdef list live_requests = self._rebuild_arrays()
+
+        cdef object current_winner_request = self.request_cycle(mouse_pos, any_wheel, wheel_down, live_requests)
+
+        # Логика Hover/Unhover (остается без изменений)
+        if self.last_hovered_request is not current_winner_request:
+            if self.last_hovered_request is not None:
+                if self.last_hovered_request.on_unhover_func is not None:
+                    self.last_hovered_request.on_unhover_func()
             
-        self.rects_data = np.empty((count, 4), dtype=np.int32)
-        self.z_indices = np.empty(count, dtype=np.int32)
-        self.callbacks = [None] * count
-        
-        cdef int i
-        cdef object current_rect
-        for i, req in enumerate(live_requests):
-            current_rect = req.link.get_rect()
-            self.rects_data[i, 0] = current_rect.x
-            self.rects_data[i, 1] = current_rect.y
-            self.rects_data[i, 2] = current_rect.width 
-            self.rects_data[i, 3] = current_rect.height 
-            self.z_indices[i] = req.link.z
-            self.callbacks[i] = (req.on_hover_func, req.on_unhover_func, req.on_click_func, 
-                                 req.on_scroll_func, req.on_keyup_func)
-        
-    cpdef cycle(self, object mouse_pos, bint mouse_clicked, bint any_wheel, bint wheel_down):
-        self._rebuild_arrays()
+            if current_winner_request is not None:
+                if current_winner_request.on_hover_func is not None:
+                    current_winner_request.on_hover_func()
 
-        cdef object current_winner_data = self.request_cycle(mouse_pos, mouse_clicked, any_wheel, wheel_down)
+        self.last_hovered_request = current_winner_request
         
-        if self.last_hovered_winner_data is not current_winner_data:
-            if self.last_hovered_winner_data:
-                on_unhover_func = self.last_hovered_winner_data[1]
-                if callable(on_unhover_func):
-                    on_unhover_func()
-            
-            if current_winner_data:
-                on_hover_func = current_winner_data[0]
-                if callable(on_hover_func):
-                    on_hover_func()
+        if mouse_down and current_winner_request is not None:
+            self.clicked_request = current_winner_request
+            if self.clicked_request.on_click_func is not None:
+                self.clicked_request.on_click_func()
+        
+        if mouse_up:
+            if self.clicked_request is not None:
+                if self.clicked_request is current_winner_request:
+                    if self.clicked_request.on_keyup_func is not None:
+                        self.clicked_request.on_keyup_func()
+                else:
+                    if self.clicked_request.on_keyup_abandon_func is not None:
+                        self.clicked_request.on_keyup_abandon_func()
+                self.clicked_request = None
 
-        self.last_hovered_winner_data = current_winner_data
 
-    cdef object request_cycle(self, tuple mouse_pos, bint mouse_clicked, bint any_wheel, bint wheel_down):
-        if self.rects_data.shape[0] == 0:
+    cdef object request_cycle(self, tuple mouse_pos, bint any_wheel, bint wheel_down, list live_requests):
+        if not live_requests:
             return None
         
-        cdef int winner_idx = -1
+        cdef int winner_idx
         cdef np.ndarray[np.uint8_t, ndim=1] collided_mask
         cdef np.ndarray[np.intp_t, ndim=1] candidate_indices
-        cdef object on_scroll_func, on_click_func
+        cdef object winner_request
         
-        collided_mask = ((self.rects_data[:, 0] <= mouse_pos[0]) & 
-                         (mouse_pos[0] < self.rects_data[:, 0] + self.rects_data[:, 2]) &
-                         (self.rects_data[:, 1] <= mouse_pos[1]) & 
-                         (mouse_pos[1] < self.rects_data[:, 1] + self.rects_data[:, 3]))
+        cdef int mx = mouse_pos[0]
+        cdef int my = mouse_pos[1]
+        
+        cdef np.ndarray[np.int32_t, ndim=2] rects = self.rects_data
+        
+        collided_mask = ((rects[:, 0] <= mx) & 
+                         (mx < rects[:, 0] + rects[:, 2]) &
+                         (rects[:, 1] <= my) & 
+                         (my < rects[:, 1] + rects[:, 3]))
 
         candidate_indices = np.where(collided_mask)[0]
+        
         if candidate_indices.size > 0:
             winner_idx = candidate_indices[np.argmax(self.z_indices[candidate_indices])]
+            winner_request = live_requests[winner_idx]
 
-        if winner_idx != -1:
-            on_hover_func, on_unhover_func, on_click_func, on_scroll_func, on_keyup_func = self.callbacks[winner_idx]
-
-            if any_wheel and callable(on_scroll_func):
-                on_scroll_func(wheel_down)
-
-            if mouse_clicked and callable(on_click_func):
-                on_click_func()
+            if any_wheel and winner_request.on_scroll_func is not None:
+                winner_request.on_scroll_func(wheel_down)
         
-        if winner_idx != -1:
-            return self.callbacks[winner_idx]
+            return winner_request
+            
         return None
 
   
