@@ -18,6 +18,11 @@ def get_extensions():
             ["src/nevu_ui/fast_shapes.pyx"],
             include_dirs=[get_numpy_include()]
         ),
+        Extension(
+            "nevu_ui.fast_zsystem",
+            ["src/nevu_ui/fast_zsystem.pyx"],
+            include_dirs=[get_numpy_include()]
+        ),
     ]
     return cythonize(extensions, compiler_directives={'language_level': "3"})
 
