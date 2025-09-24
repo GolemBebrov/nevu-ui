@@ -12,7 +12,7 @@ from .style import (
     Style, default_style
 )
 from .core_types import (
-    SizeRule, Vh, Vw, Fill, Align, EventType
+    SizeRule, Vh, Vw, Fill, Align, EventType, ScrollBarType
 )
 from .utils import (
     NvVector2 as Vector2, NvVector2, keyboard, mouse, NevuEvent
@@ -43,12 +43,11 @@ class LayoutType(NevuObject):
         self.booted = True
         for item in self.items + self.freedom_items:
             assert isinstance(item, (Widget, LayoutType))
-            item.booted = True
             self.read_item_coords(item)
-            item._boot_up()
-
             self._start_item(item)
-
+            item.booted = True
+            
+            item._boot_up()
     @property
     def _rsize(self) -> NvVector2:
         bw = self.menu.style.borderwidth if self.menu else self.first_parent_menu.style.borderwidth
@@ -559,33 +558,43 @@ class Scrollable(LayoutType):
             #my_scroll_area.add_item(label, alignment=Align.CENTER)
     """
     class ScrollBar(Widget):
-        def __init__(self, size, style, orientation: str, master = None):
+        def __init__(self, size, style, orientation: ScrollBarType, master = None):
             super().__init__(size, style)
-
+            self.z = 100
             if not isinstance(master, Scrollable):
                 print("WARNING: this class is intended to be used in Scrollable layout.")
             
             self.master = master
             
-            if orientation not in ['vertical', 'horizontal']:
+            if orientation not in ScrollBarType:
                 raise ValueError("Orientation must be 'vertical' or 'horizontal'")
             self.orientation = orientation
             
-            self.is_scrolling = False
-            self.offset = Vector2(0, 0)
+        def _init_numerical(self):
+            super()._init_numerical()
             self._percentage = 0.0
-        
+            
+            
+        def _init_booleans(self):
+            super()._init_booleans()
+            self.scrolling = False
+            
+        def _init_lists(self):
+            super()._init_lists()
+            self.offset = Vector2(0, 0)
             self.track_start_coordinates = Vector2(0, 0)
             self.track_path = Vector2(0, 0)
-
+        
+        def _orientation_to_int(self):
+            return 1 if self.orientation == ScrollBarType.Vertical else 0
+        
         @property
         def percentage(self) -> float:
-            axis = 1 if self.orientation == 'vertical' else 0
-            scaled_track_path_val = (self.track_path[axis] * self._resize_ratio[axis]) - self.rel(self.size)[axis]
+            axis = self._orientation_to_int()
             
-            if scaled_track_path_val == 0:
-                return 0.0
-                
+            scaled_track_path_val = (self.track_path[axis] * self._resize_ratio[axis]) - self.rel(self.size)[axis]
+            if scaled_track_path_val == 0: return 0.0
+            
             start_coord = self.track_start_coordinates[axis] - self.offset[axis]
             current_path = self.coordinates[axis] - start_coord
             
@@ -594,10 +603,10 @@ class Scrollable(LayoutType):
 
         @percentage.setter
         def percentage(self, value: float | int):
+            axis = self._orientation_to_int()
+            
             self._percentage = max(0.0, min(float(value), 100.0))
-            axis = 1 if self.orientation == 'vertical' else 0
             scaled_track_path = (self.track_path * self._resize_ratio) - self.rel(self.size)
-
             start_coord = self.track_start_coordinates[axis] - self.offset[axis]
             
             if scaled_track_path[axis] == 0:
@@ -612,16 +621,21 @@ class Scrollable(LayoutType):
             self.track_start_coordinates = track_start_abs
             self.offset = offset
 
-        def secondary_update(self, *args):
+        def _on_click_system(self):
+            super()._on_click_system()
+            self.scrolling = True
+        def _on_keyup_system(self):
+            super()._on_keyup_system()
+            self.scrolling = False
+        def _on_keyup_abandon_system(self):
+            super()._on_keyup_abandon_system()
+            self.scrolling = False
+        
+        def secondary_update(self):
             super().secondary_update()
-            axis = 1 if self.orientation == 'vertical' else 0
+            axis = self._orientation_to_int()
 
-            if mouse.left_fdown and not self.is_scrolling and self.get_rect().collidepoint(mouse.pos):
-                self.is_scrolling = True
-            if mouse.left_up:
-                self.is_scrolling = False
-
-            if self.is_scrolling:
+            if self.scrolling:
                 scaled_track_path_val = (self.track_path[axis] * self._resize_ratio[axis]) - self.rel(self.size)[axis]
                 if scaled_track_path_val != 0:
                     mouse_relative_to_track = mouse.pos[axis] - self.track_start_coordinates[axis]
@@ -631,11 +645,11 @@ class Scrollable(LayoutType):
 
         def move_by_percents(self, percents: int | float):
             self.percentage += percents
-            self.is_scrolling = False
+            self.scrolling = False
 
         def set_percents(self, percents: int | float):
             self.percentage = percents
-            self.is_scrolling = False
+            self.scrolling = False
             
     def __init__(self, size: NvVector2 | list, style: Style = default_style, content: tuple[list[Align | NevuObject]] | None = None, **constant_kwargs):
         super().__init__(size, style, **constant_kwargs)
@@ -837,14 +851,14 @@ class Scrollable(LayoutType):
         prev_percentage = self.scroll_bar_y.percentage if hasattr(self, "scroll_bar_y") else 0.0
 
         if hasattr(self, "scroll_bar_y"):
-            self.scroll_bar_y.is_scrolling = False
+            self.scroll_bar_y.scrolling = False
 
         super().resize(resize_ratio)
         self.scroll_bar_y.resize(resize_ratio)
         self.scroll_bar_y.coordinates[1] = self.rely(self.scroll_bar_y.size[1])
         self.cached_coordinates = None
         self._regenerate_coordinates()
-        self.scroll_bar_y.is_scrolling = False
+        self.scroll_bar_y.scrolling = False
         self._update_scroll_bars()
         new_actual_max_y = self.actual_max_y if hasattr(self, "actual_max_y") else 1
 
@@ -972,8 +986,16 @@ class Appending_Layout_Type(LayoutType):
         self._recalculate_widget_coordinates() 
         
     def _event_on_add_item(self):
+        if not self.booted:
+            self.cached_coordinates = None
+            if self.layout:
+                self.layout.cached_coordinates = None 
+            return
+
         self._recalculate_size()
-        if self.layout: self.layout._event_on_add_item()
+        
+        if self.layout:
+            self.layout._event_on_add_item()
         
     def secondary_update(self, *args):
         super().secondary_update()
@@ -982,6 +1004,10 @@ class Appending_Layout_Type(LayoutType):
         super().secondary_draw()
         for item in self.items:
             assert isinstance(item, (Widget, LayoutType))
+            if not item.booted:
+                item.booted = True
+                item._boot_up()
+                self._start_item(item)
             self._draw_widget(item)
     @property
     def margin(self): return self._margin
