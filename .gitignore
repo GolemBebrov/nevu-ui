@@ -7,6 +7,16 @@ __pycache__/
 *.pyo
 *.pyd
 
+*.cpp
 
 *.so
 *.o
+
+.venv/
+venv/
+env/
+
+test/
+*.ttf
+
+*.egg-info /
