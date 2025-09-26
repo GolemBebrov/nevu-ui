@@ -32,9 +32,16 @@ class NevuTest(ui.Manager):
     def __init__(self):
         self.window, self.test_widget, self.test_hard_widget, self.test_inner_layout, self.test_menu, self.tooglegroup = create_test_instances()
         super().__init__(self.window)
-        self.add_to_layout()
         self.do_fps_test = False
         self._dirty_mode = False
+        self.print_debug_fps = False
+        self.max_fps = -1
+        self.min_fps = 999999
+        self.frame = 0
+        self.start_of_check = 50
+        self.middle_list = []
+        self.middle_items = 5
+        self.add_to_layout()
     def add_to_layout(self):
         pass
         #Override in test
@@ -46,6 +53,20 @@ class NevuTest(ui.Manager):
         self.test_menu.update()
         if self.do_fps_test:
             print(f"Debug: FPS-{ui.time.fps}")
+        if self.print_debug_fps:
+            if self.frame > self.start_of_check:
+                if self.frame < self.start_of_check + self.middle_items:
+                    self.middle_list.append(ui.time.fps)
+                else:
+                    self.middle_list.pop(0)
+                    self.middle_list.append(ui.time.fps)
+                if ui.time.fps > self.max_fps: self.max_fps = ui.time.fps
+                if ui.time.fps < self.min_fps: self.min_fps = ui.time.fps
+            print(f'frame: {self.frame} max fps:{self.max_fps}')
+            print(f'frame: {self.frame} min fps:{self.min_fps}')
+            if len(self.middle_list) != 0: 
+                print(f'frame: {self.frame} avg fps:{int(sum(self.middle_list)/len(self.middle_list))}')
+            self.frame += 1
 
 #to create test:
 #   1. Override add_to_layout

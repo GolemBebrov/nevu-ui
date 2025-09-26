@@ -5,8 +5,10 @@ pygame.init()
 class TestAppending(NevuTest):
     def add_to_layout(self):
         self.do_fps_test = True
+        self.print_debug_fps = True
+        self.fps = 99999999
         self.appending_layout_h = \
-            ui.Appending_Layout_H(content = 
+            ui.StackRow(spacing = 40,content = 
                                   [(ui.Align.CENTER, self.test_widget),
                                    (ui.Align.CENTER, self.test_hard_widget),
                                    (ui.Align.CENTER, self.test_inner_layout),]

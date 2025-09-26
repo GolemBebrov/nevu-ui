@@ -11,7 +11,9 @@ class TestScrollable(NevuTest):
     def add_to_layout(self):
         self.do_fps_test = True
         self._dirty_mode = False
-        self.fps = 999
+        self.print_debug_fps = True
+        self.fps = 9999999
+
         a = self.test_inner_layout
         self.test_menu.layout = \
         ui.Scrollable([100*ui.fill, 100*ui.vh],
@@ -41,7 +43,7 @@ class TestScrollable(NevuTest):
         super().first_update()
     def draw_loop(self):
         super().draw_loop()
-        print(ui.time.fps)
+
         #print(self.tooglegroup._content)
         #self.tooglegroup.on_checkbox_toggled_single(self.test_widget)
         #print(self.test_widget.events.content[0])
