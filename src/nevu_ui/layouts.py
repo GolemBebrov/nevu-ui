@@ -97,7 +97,9 @@ class LayoutType(NevuObject):
             self.first_parent_menu,
             add_x,
             add_y,
-            self._resize_ratio
+            self._resize_ratio,
+            self.cached_coordinates is None or len(self.items) != len(self.cached_coordinates)
+            
         )
 
     @property
