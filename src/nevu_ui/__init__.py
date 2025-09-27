@@ -4,7 +4,7 @@ from .ui_manager import Manager
 from . import rendering
 from . import animations
 from . import utils
-
+from . import fast_nvvector2
 from .color import (
     Color, Color_Type, ColorTheme, ColorSubTheme, ColorPair, ColorThemeLibrary, SubThemeRole, PairColorRole, TupleColorRole
 )
@@ -21,7 +21,7 @@ from .widgets import (
     Widget, Label, Button, Empty_Widget, RectCheckBox, Image, GifWidget, Input, MusicPlayer
 )
 from .layouts import (
-    LayoutType, Grid, Row, Column, Scrollable, IntPickerGrid, Pages, Gallery_Pages, Appending_Layout_H, Appending_Layout_V, CheckBoxGroup
+    LayoutType, Grid, Row, Column, Scrollable, IntPickerGrid, Pages, Gallery_Pages, StackRow, StackColumn, CheckBoxGroup
 )
 
 from .utils import (
@@ -43,7 +43,7 @@ __all__ = [
     #### widgets.py ####
     'Widget', 'Label', 'Button', 'Empty_Widget', 'RectCheckBox', 'Image', 'GifWidget', 'Input', 'MusicPlayer',
     #### layouts.py ####
-    'LayoutType', 'Grid', 'Row', 'Column', 'Scrollable', 'IntPickerGrid', 'Pages', 'Gallery_Pages', 'Appending_Layout_H', 'Appending_Layout_V', 'CheckBoxGroup', 
+    'LayoutType', 'Grid', 'Row', 'Column', 'Scrollable', 'IntPickerGrid', 'Pages', 'Gallery_Pages', 'StackRow', 'StackColumn', 'CheckBoxGroup', 
     #### menu.py ####
     'Menu',
     #### utils.py ####
