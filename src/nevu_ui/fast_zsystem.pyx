@@ -7,7 +7,10 @@
 import numpy as np
 cimport numpy as np
 cimport cython
+from .fast_logic import get_rect_helper
 import weakref
+from nevu_ui.fast_nvvector2 cimport NvVector2
+
 
 np.import_array()
 
@@ -34,6 +37,8 @@ cdef class ZSystem:
     cdef list _registered_requests
     cdef object last_hovered_request
     cdef object clicked_request  
+    cdef list live_requests
+    cdef bint is_dirty
 
     cdef np.ndarray rects_data
     cdef np.ndarray z_indices
@@ -41,7 +46,8 @@ cdef class ZSystem:
     def __cinit__(self):
         self._registered_requests = []
         self.last_hovered_request = None
-        self.clicked_request = None  
+        self.clicked_request = None
+        self.is_dirty = True  
         self._reset_arrays()
 
     cdef void _reset_arrays(self):
@@ -50,8 +56,9 @@ cdef class ZSystem:
 
     cpdef add(self, ZRequest z_request):
         self._registered_requests.append(weakref.ref(z_request))
+        self.mark_dirty()
         
-    cdef list _rebuild_arrays(self):
+    cdef void _rebuild_arrays(self):
         cdef list live_requests_refs = []
         cdef list rect_list = []
         cdef list z_list = []
@@ -68,21 +75,25 @@ cdef class ZSystem:
                 temp_live_requests.append(req)
         
         self._registered_requests = live_requests_refs
+        self.live_requests = temp_live_requests
         
         if not live_requests_refs:
             self._reset_arrays()
-            return []
+            return
 
         self.rects_data = np.array(rect_list, dtype=np.int32)
         self.z_indices = np.array(z_list, dtype=np.int32)
-        return temp_live_requests
-        
-    cpdef cycle(self, object mouse_pos, bint mouse_down, bint mouse_up, bint any_wheel, bint wheel_down):
-        cdef list live_requests = self._rebuild_arrays()
+    
+    cpdef mark_dirty(self):
+        self.is_dirty = True
 
-        cdef object current_winner_request = self.request_cycle(mouse_pos, any_wheel, wheel_down, live_requests)
+    cpdef cycle(self, NvVector2 mouse_pos, bint mouse_down, bint mouse_up, bint any_wheel, bint wheel_down):
+        if self.is_dirty:
+            self._rebuild_arrays()
+            self.is_dirty = False
 
-        # Логика Hover/Unhover (остается без изменений)
+        cdef object current_winner_request = self.request_cycle(mouse_pos, any_wheel, wheel_down, self.live_requests)
+
         if self.last_hovered_request is not current_winner_request:
             if self.last_hovered_request is not None:
                 if self.last_hovered_request.on_unhover_func is not None:
@@ -110,7 +121,7 @@ cdef class ZSystem:
                 self.clicked_request = None
 
 
-    cdef object request_cycle(self, tuple mouse_pos, bint any_wheel, bint wheel_down, list live_requests):
+    cdef object request_cycle(self, NvVector2 mouse_pos, bint any_wheel, bint wheel_down, list live_requests):
         if not live_requests:
             return None
         
@@ -119,8 +130,8 @@ cdef class ZSystem:
         cdef np.ndarray[np.intp_t, ndim=1] candidate_indices
         cdef object winner_request
         
-        cdef int mx = mouse_pos[0]
-        cdef int my = mouse_pos[1]
+        cdef int mx = int(mouse_pos.x)
+        cdef int my = int(mouse_pos.y)
         
         cdef np.ndarray[np.int32_t, ndim=2] rects = self.rects_data
         
