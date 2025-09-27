@@ -18,12 +18,18 @@ from .color import (
     Color, ColorPair, ColorSubTheme, ColorTheme, SubThemeRole, PairColorRole, TupleColorRole
 )
 from .fast_logic import (
-    relx_helper, rely_helper, relm_helper, rel_helper
+    relm_helper, rel_helper, mass_rel_helper, get_rect_helper_pygame, get_rect_helper
 )
 from .core_types import (
     SizeRule, Px, Vh, Vw, Fill, HoverState, Events, EventType, ZRequestType
 )
 
+class ZSystemPlaceholder:
+    def add(self, *args, **kwargs):
+        pass
+    def mark_dirty(self, *args, **kwargs):
+        pass
+        
 
 class ConstantStorage:
     __slots__ = ('supported_classes', 'defaults', 'links', 'properties', 'is_set', 'excluded')
@@ -243,7 +249,8 @@ class NevuObject:
         self.animation_manager = AnimationManager()
         
         self._master_z_handler = None
-        
+        self._master_z_handler_placeholder = ZSystemPlaceholder()
+
     def _init_booleans(self):
         self._sended_z_link = False
         self._dragging = False
@@ -266,6 +273,7 @@ class NevuObject:
         self._dirty_rect = []
         
     def _init_start(self):
+        if self.booted: return
         self._wait_mode = False
         for i, item in enumerate(self._lazy_kwargs["size"]):
             self._lazy_kwargs["size"][i] = self.num_handler(item) #type: ignore
@@ -463,16 +471,13 @@ class NevuObject:
         )
         
     def get_rect(self):
-        try:
-            anim_coordinates = self.animation_manager.get_animation_value(AnimationType.POSITION)
-            anim_coordinates = [0,0] if anim_coordinates is None else anim_coordinates
-        except Exception as e:
-            print(e)
-        return pygame.Rect(
-            self.master_coordinates[0],
-            self.master_coordinates[1],
-            *self.rel(self.size)
-        )
+        return get_rect_helper_pygame(self.master_coordinates, self._resize_ratio, self.size)
+    
+    def get_rect_tuple(self):
+        return get_rect_helper(self.master_coordinates, self._resize_ratio, self.size)
+
+    def get_rect_static(self):
+        return get_rect_helper(self.coordinates, self._resize_ratio, self.size)
 
     def _update_coords(self):
         return self.coordinates
@@ -526,6 +531,7 @@ class NevuObject:
             return
 
         if not self._sended_z_link and self._master_z_handler:
+            self._sended_z_link = True
             self._z_request = ZRequest(
                 link=self,
                 on_hover_func=self._hover,
@@ -570,14 +576,14 @@ class NevuObject:
         pass
     
     def relx(self, num: int | float, min: int | None = None, max: int| None = None) -> int | float:
-        return relx_helper(num, self._resize_ratio.x, min, max)
+        return rel_helper(num, self._resize_ratio.x, min, max)
 
     def rely(self, num: int | float, min: int | None = None, max: int| None = None) -> int | float:
-        return rely_helper(num, self._resize_ratio.y, min, max)
+        return rel_helper(num, self._resize_ratio.y, min, max)
 
     def relm(self, num: int | float, min: int | None = None, max: int | None = None) -> int | float:
         return relm_helper(num, self._resize_ratio.x, self._resize_ratio.y, min, max)
     
-    def rel(self, mass: list | tuple | Vector2, vector: bool = False) -> list | Vector2:  
-        return rel_helper(mass, self._resize_ratio.x, self._resize_ratio.y, vector)
+    def rel(self, mass: NvVector2, vector: bool = True) -> NvVector2:  
+        return mass_rel_helper(mass, self._resize_ratio.x, self._resize_ratio.y, vector)
     
