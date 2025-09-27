@@ -18,7 +18,7 @@ from .utils import (
     NvVector2 as Vector2, NvVector2, Cache, mouse, NevuEvent
 )
 from .fast_logic import (
-    relx_helper, rely_helper, relm_helper, rel_helper
+    rel_helper, relm_helper, mass_rel_helper
 )
 
 class Menu:
@@ -36,6 +36,14 @@ class Menu:
         if layout:
             self.layout = layout
 
+    def _update_size(self):
+        return (self.size * self._resize_ratio).to_pygame()
+
+    @property
+    def _pygame_size(self) -> list:
+        result = self.cache.get_or_exec(CacheType.RelSize, self._update_size)
+        return result or [0, 0]
+    
     def _init_primary(self, window: Window | None, style: Style):
         self.window = window
         self.window_surface = None
@@ -124,17 +132,17 @@ class Menu:
         return self._subtheme.oncontainer
     
     def relx(self, num: int | float, min: int | None = None, max: int| None = None) -> int | float:
-        return relx_helper(num, self._resize_ratio.x, min, max)
+        return rel_helper(num, self._resize_ratio.x, min, max)
 
     def rely(self, num: int | float, min: int | None = None, max: int| None = None) -> int | float:
-        return rely_helper(num, self._resize_ratio.y, min, max)
+        return rel_helper(num, self._resize_ratio.y, min, max)
 
     def relm(self, num: int | float, min: int | None = None, max: int | None = None) -> int | float:
         return relm_helper(num, self._resize_ratio.x, self._resize_ratio.y, min, max)
     
-    def rel(self, mass: list | tuple | Vector2, vector: bool = False) -> list | Vector2:  
-        return rel_helper(mass, self._resize_ratio.x, self._resize_ratio.y, vector)
-
+    def rel(self, mass: NvVector2, vector: bool = True) -> NvVector2:  
+        return mass_rel_helper(mass, self._resize_ratio.x, self._resize_ratio.y, vector)
+    
     def _draw_gradient(self, _set = False):
         if not self.style.gradient: return
         cached_gradient = pygame.Surface(self.size*_QUALITY_TO_RESOLUTION[self.quality], flags = pygame.SRCALPHA)
@@ -208,7 +216,7 @@ class Menu:
         self.cache.clear()
         
     def clear_surfaces(self):
-        self.cache.clear_selected(whitelist = [CacheType.Image, CacheType.Scaled_Gradient, CacheType.Surface, CacheType.Borders, CacheType.Scaled_Background])
+        self.cache.clear_selected(whitelist = [CacheType.Image, CacheType.Scaled_Gradient, CacheType.Surface, CacheType.Borders, CacheType.Scaled_Background, CacheType.RelSize])
     
     @property
     def coordinatesMW(self) -> Vector2:
@@ -236,8 +244,8 @@ class Menu:
         self._opened_sub_menu = None
         
     def _update_surface(self):
-        if self.style.borderradius>0:self.surface = pygame.Surface(self.size*self._resize_ratio, pygame.SRCALPHA)
-        else: self.surface = pygame.Surface(self.size*self._resize_ratio)
+        if self.style.borderradius>0:self.surface = pygame.Surface(self._pygame_size, pygame.SRCALPHA)
+        else: self.surface = pygame.Surface(self._pygame_size)
         if self.style.transparency: self.surface.set_alpha(self.style.transparency)
 
     def resize(self, size: NvVector2):
@@ -256,7 +264,7 @@ class Menu:
         
         if self._layout:
             self._layout.resize(self._resize_ratio)
-            self._layout.coordinates = Vector2(self.rel(self.size, vector=True)/2 - self.rel(self._layout.size,vector=True)/2)
+            self._layout.coordinates = Vector2(self.rel(self.size, vector=True) / 2 - self.rel(self._layout.size,vector=True) / 2)
             self._layout.update()
             self._layout.draw()
         if self.style.transparency:
@@ -296,7 +304,7 @@ class Menu:
             layout._connect_to_menu(self)
             layout._boot_up()
 
-            layout.coordinates = (self.size[0]/2 - layout.size[0]/2, self.size[1]/2 - layout.size[1]/2)
+            layout.coordinates = NvVector2(self.size[0]/2 - layout.size[0]/2, self.size[1]/2 - layout.size[1]/2)
             
             self._layout = layout
         else: raise ValueError(f"Layout {type(layout).__name__} can't be main")
