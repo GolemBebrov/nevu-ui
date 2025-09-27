@@ -3,7 +3,7 @@ import pygame
 
 def create_test_instances():
     ui.default_style = ui.default_style(colortheme=ui.ColorThemeLibrary.gruvbox_light_color_theme)
-    test_window = ui.window.Window((300,300), "Test Window", resize_type=ui.ResizeType.CropToRatio, ratio=ui.NvVector2(1,1))
+    test_window = ui.window.Window((900,900), "Test Window", resize_type=ui.ResizeType.CropToRatio, ratio=ui.NvVector2(1,1))
     test_widget = ui.RectCheckBox(50 ,ui.default_style(borderradius=999, borderwidth=0 ),single_instance=False, active_rect_factor=0.9, alt=True)#ui.Button(lambda: print("pressed"), "Nevu UI!", (100, 100), ui.default_style(borderwidth=10, borderradius = 15),single_instance=False)
     tooglegroup = ui.CheckBoxGroup([test_widget], True)
     tooglegroup.on_checkbox_toggled_single = lambda checkbox: print(checkbox.toogled or checkbox is None)
@@ -35,10 +35,11 @@ class NevuTest(ui.Manager):
         self.do_fps_test = False
         self._dirty_mode = False
         self.print_debug_fps = False
+        self.draw_cursor = True
         self.max_fps = -1
         self.min_fps = 999999
         self.frame = 0
-        self.start_of_check = 50
+        self.start_of_check = 200
         self.middle_list = []
         self.middle_items = 5
         self.add_to_layout()
@@ -67,6 +68,10 @@ class NevuTest(ui.Manager):
             if len(self.middle_list) != 0: 
                 print(f'frame: {self.frame} avg fps:{int(sum(self.middle_list)/len(self.middle_list))}')
             self.frame += 1
+    def _after_draw_loop(self):
+        super()._after_draw_loop()
+        if self.draw_cursor:
+            pygame.draw.circle(self.window.surface, (255,0,0), ui.mouse.pos, 5)
 
 #to create test:
 #   1. Override add_to_layout

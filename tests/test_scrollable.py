@@ -37,7 +37,7 @@ class TestScrollable(NevuTest):
         self.scrollable.items[1].on_click = printHui2
         #self.scrollable._test_always_update = True
         print(self.scrollable.get_rect())
-        
+        self.test_menu.quality = ui.Quality.Poor
         assert isinstance(self.scrollable, ui.Scrollable)
     def first_update(self):
         super().first_update()
@@ -53,6 +53,7 @@ class TestScrollable(NevuTest):
         #pygame.draw.rect(self.window.surface, (0,0,0), self.scrollable.scroll_bar_y.get_rect(), 5)
         #print(self.scrollable._csize)
         #print(self.window._crop_height_offset)
+        print()
         
         #self.scrollable._regenerate_coordinates()
 
