@@ -2,20 +2,18 @@ import sys
 import pygame
 
 from .core_types import (
-    ResizeType, EventType, ZRequestType
+    ResizeType, EventType
 )
-
 from .utils import (
     mouse, keyboard, time, keyboards_list, NvVector2, NevuEvent
 )
 from .fast_zsystem import (
     ZSystem, ZRequest
 )
-    
 class Window:
     @staticmethod
-    def cropToRatio(width: int, height: int, ratio, default=(0, 0)):
-        if height == 0 or ratio[1] == 0: return default
+    def cropToRatio(width: int, height: int, ratio: NvVector2, default=(0, 0)):
+        if height == 0 or ratio.y == 0: return default
         rx, ry = ratio
         aspect_ratio = width / height
         if abs(aspect_ratio - (rx / ry)) < 1e-6: return default
@@ -35,6 +33,8 @@ class Window:
         
         flags = pygame.RESIZABLE if resizable else 0
         flags |= pygame.HWSURFACE | pygame.DOUBLEBUF
+        if self.resize_type == ResizeType.ResizeFromOriginal:
+            flags |= pygame.SCALED
         
         self.surface = pygame.display.set_mode(size, flags=flags)
         
@@ -75,6 +75,9 @@ class Window:
     def add_request(self, z_request: ZRequest):
         self.z_system.add(z_request)
     
+    def mark_dirty(self):
+        self.z_system.mark_dirty()
+    
     def update(self, events, fps: int = 60):
         """
         Updates the window state and processes events.
@@ -97,8 +100,9 @@ class Window:
                 pygame.quit()
                 sys.exit()
                 
-            if event.type == pygame.VIDEORESIZE:
+            if event.type == pygame.VIDEORESIZE and not self.resize_type == ResizeType.ResizeFromOriginal:
                 self.size = [event.w, event.h]
+                self.z_system.mark_dirty()
                 if self.resize_type == ResizeType.CropToRatio:
                     self._recalculate_render_area()
                     render_width = self.size[0] - self._crop_width_offset
