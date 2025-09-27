@@ -84,7 +84,7 @@ cpdef logic_update_helper(
     NvVector2 csize,
     NvVector2 master_coordinates,
     list dirty_rect,
-    object dr_coordinates_old,
+    NvVector2 dr_coordinates_old,
     bint first_update,
     list first_update_functions,
     NvVector2 resize_ratio,
@@ -92,9 +92,10 @@ cpdef logic_update_helper(
     ):
 
     cdef bint _first_update = first_update
-    cdef object _dr_coordinates_old = dr_coordinates_old
+    cdef NvVector2 _dr_coordinates_old = dr_coordinates_old
     cdef object anim, coordinates, start, end, total_dirty_rect, start_rect, end_rect, function
-    cdef object dr_coordinates_new, rect_new, rect_old
+    cdef NvVector2 dr_coordinates_new
+    cdef object rect_new, rect_old
 
     if not optimized_dirty_rect:
         if animation_manager.state != AnimationManagerState.IDLE and animation_manager.state != AnimationManagerState.ENDED:
@@ -142,16 +143,21 @@ cpdef _light_update_helper(
     object first_parent_menu,
     float add_x,
     float add_y,
-    NvVector2 resize_ratio
+    NvVector2 resize_ratio,
+    bint not_need_to_process
     ):
 
-    cdef Py_ssize_t i
-    cdef Py_ssize_t n_items = len(items)
-    cdef object item, coords, anim_coords
+    cdef int i
+    cdef int n_items = len(items)
+    cdef object item
+    cdef NvVector2 coords, anim_coords
     cdef list last_events
-    cdef object m_coords
+    cdef NvVector2 m_coords
 
-    if cached_coordinates is None or n_items != len(cached_coordinates):
+    if not_need_to_process:
+        return
+    
+    if not_need_to_process:
         return
 
     m_coords = first_parent_menu.coordinatesMW
@@ -163,14 +169,14 @@ cpdef _light_update_helper(
 
         anim_coords = item.animation_manager.get_animation_value(AnimationType.POSITION)
         if anim_coords is None:
-            item.coordinates = Vector2(coords[0] + add_x,
-                                        coords[1] + add_y)
+            item.coordinates = NvVector2(coords.x + add_x,
+                                        coords.y + add_y)
         else:
-            item.coordinates = Vector2(coords[0] + rel_helper(anim_coords[0], resize_ratio.x, None, None) + add_x,
-                                        coords[1] + rel_helper(anim_coords[1], resize_ratio.y, None, None) + add_y)
+            item.coordinates = NvVector2(coords.x + rel_helper(anim_coords[0], resize_ratio.x, None, None) + add_x,
+                                        coords.y + rel_helper(anim_coords[1], resize_ratio.y, None, None) + add_y)
 
-        item.master_coordinates = Vector2(item.coordinates.x + m_coords[0],
-                                           item.coordinates.y + m_coords[1])
+        item.master_coordinates = NvVector2(item.coordinates.x + m_coords.x,
+                                           item.coordinates.y + m_coords.y)
         item.update(last_events)
 
 
