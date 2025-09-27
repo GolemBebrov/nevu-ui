@@ -10,9 +10,6 @@ import pygame
 from libc.math cimport sqrt
 
 cdef class NvVector2:
-    cdef public float x
-    cdef public float y
-
     def __init__(self, *args):
         cdef int nargs = len(args)
         if nargs == 0:
