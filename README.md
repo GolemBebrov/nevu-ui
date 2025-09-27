@@ -68,7 +68,7 @@
 ![Пример2](assets/test_main.png)
 
 ---
-### Продвинутая сетка
+### Продвинутая сетка(Outdated)
 ```python
 import nevu_ui as ui
 import pygame
@@ -149,8 +149,8 @@ test_main()
 *   💾 `IntPickerGrid`
 *   ✅ `Pages`
 *   💾 `Gallery_Pages`
-*   💾 `Appending_Layout_H`
-*   💾 `Appending_Layout_V`
+*   ✅ `StackColumn`
+*   ✅ `StackRow`
 *   ✅ `CheckBoxGroup`
 
 ### **Виджеты (Widget)**
