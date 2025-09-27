@@ -32,6 +32,7 @@ class Widget(NevuObject):
     _alt: bool
     will_resize: bool
     clickable: bool
+    hoverable: bool
     fancy_click_style: bool
     
     def __init__(self, size: Vector2 | list, style: Style = default_style, **constant_kwargs):
@@ -46,6 +47,7 @@ class Widget(NevuObject):
         self._add_constant("alt", bool, False, getter=self._alt_getter, setter=self._alt_setter)
         self._add_constant("will_resize", bool, True)
         self._add_constant("clickable", bool, False)
+        self._add_constant("hoverable", bool, True)
         self._add_constant("fancy_click_style", bool, True)
         self._add_constant("resize_bg_image", bool, False)
         self._add_constant("z", int, 1)
@@ -102,15 +104,19 @@ class Widget(NevuObject):
             
     def _on_hover_system(self):
         super()._on_hover_system()
+        if not self.hoverable: return
         self._on_style_change()
     def _on_keyup_system(self):
         super()._on_keyup_system()
+        if not self.clickable: return
         self._toogle_click_style()
     def _on_click_system(self):
         super()._on_click_system()
+        if not self.clickable: return
         self._toogle_click_style()
     def _on_unhover_system(self):
         super()._on_unhover_system()
+        if not self.hoverable: return
         self._on_style_change()
     def _on_keyup_abandon_system(self):
         super()._on_keyup_abandon_system()
@@ -185,14 +191,14 @@ class Widget(NevuObject):
         new_dr_old, new_first_update = logic_update_helper(
         self._optimized_dirty_rect_for_short_animations,
         self.animation_manager,
-        self.get_rect_opt, 
-        self.rel,
         self._csize,
         self.master_coordinates,
         self._dirty_rect,
         self._dr_coordinates_old,
         self._first_update,
         self.first_update_functions,
+        self._resize_ratio,
+        self._master_z_handler or self._master_z_handler_placeholder
         )
     
         self._dr_coordinates_old = new_dr_old
@@ -355,7 +361,7 @@ class BackgroundRenderer:
         else: content_surf = self.cache.get(CacheType.Scaled_Gradient)
         if content_surf:
             bgsurface.blit(content_surf,(0,0))
-        elif self._hover_state == HoverState.UN_HOVERED: bgsurface.fill(self._subtheme_content)
+        elif self._hover_state == HoverState.UN_HOVERED or not self.hoverable: bgsurface.fill(self._subtheme_content)
         elif self._hover_state == HoverState.CLICKED and not self.fancy_click_style: bgsurface.fill(Color.lighten(self._subtheme_content))
         else: bgsurface.fill(Color.darken(self._subtheme_content, 0.2))
         if self._style.bgimage:
@@ -598,7 +604,9 @@ class Input(Widget):
         self.bottom_margin = 5
         self.text = default
         self._default_text = default
-        
+    def _init_booleans(self):
+        super()._init_booleans()
+        self.hoverable = False
     def _init_text_cache(self):
         self._text_surface = None
         self._text_rect = pygame.Rect(0, 0, 0, 0)
@@ -1028,22 +1036,23 @@ class Input(Widget):
     def secondary_draw(self):
         super().secondary_draw()
         if not self.visible: return
-        try:
-            renderFont = self.get_font()
-            font_loaded = True
-            line_height = self._get_line_height()
-            cursor_height = self.cursor.get_height()
-        except (pygame.error, AttributeError):
-            font_loaded = False
-            line_height = 15 
-            cursor_height = 12 
-        if not font_loaded: return
+
         if self._changed:
             self._changed = False
-            l_margin = self.left_margin * self._resize_ratio[0]
-            r_margin = self.right_margin * self._resize_ratio[0]
-            t_margin = self.top_margin * self._resize_ratio[1]
-            b_margin = self.bottom_margin * self._resize_ratio[1]
+            try:
+                renderFont = self.get_font()
+                font_loaded = True
+                line_height = self._get_line_height()
+                cursor_height = self.cursor.get_height()
+            except (pygame.error, AttributeError):
+                font_loaded = False
+                line_height = 15 
+                cursor_height = 12 
+            if not font_loaded: return
+            l_margin = self.relx(self.left_margin)
+            r_margin = self.relx(self.right_margin)
+            t_margin = self.rely(self.top_margin)
+            b_margin =  self.rely(self.bottom_margin)
             clip_rect = self.surface.get_rect()
             clip_rect.left = l_margin
             clip_rect.top = t_margin
@@ -1398,7 +1407,7 @@ class RectCheckBox(Widget):
     function: Callable | None
     _active_rect_factor: float | int
     def __init__(self, size: int, style: Style = default_style, **constant_kwargs):
-        super().__init__(Vector2(size, size), style, **constant_kwargs)
+        super().__init__(Vector2([size, size]), style, **constant_kwargs)
         
     def _init_booleans(self):
         super()._init_booleans()
@@ -1460,6 +1469,6 @@ class RectCheckBox(Widget):
           
     def clone(self):
         self.constant_kwargs['events'] = self._events
-        selfcopy = RectCheckBox(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
+        selfcopy = RectCheckBox(self._lazy_kwargs['size'].x, copy.deepcopy(self.style), **self.constant_kwargs)
         self._event_cycle(EventType.OnCopy, selfcopy)
         return selfcopy
