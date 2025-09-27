@@ -8,6 +8,7 @@ from .fast_shapes import _create_outlined_rounded_rect_sdf, _create_rounded_rect
 from .core_types import (
     CacheName, CacheType, EventType
 )
+from .fast_nvvector2 import NvVector2
 
 class Cache:
     def __init__(self):
@@ -73,7 +74,7 @@ class Cache:
         if not isinstance(key, CacheType):
             raise TypeError("Ключ для доступа к кешу должен быть типа CacheType")
         return self.cache[self.name][key]
-    
+"""  
 class NvVector2(pygame.Vector2):
     def __mul__(self, other):
         if isinstance(other, pygame.Vector2):
@@ -118,7 +119,7 @@ class NvVector2(pygame.Vector2):
 
     def for_each(self, func):
         return NvVector2(func(self.x), func(self.y))
-
+"""
 
 class Mouse:
     STILL = 0
@@ -131,7 +132,7 @@ class Mouse:
     WHEEL_STILL = 0
 
     def __init__(self):
-        self._pos = (0, 0)
+        self._pos = NvVector2(0, 0)
         self._wheel_y = 0
         self._wheel_side = self.WHEEL_STILL # -10 = down 0 = still 10 = up
         self._states = [self.STILL, self.STILL, self.STILL]
@@ -244,7 +245,7 @@ class Mouse:
     def update(self, events: list | None = None):
         if self.left_fdown: self.dragging = True
         elif self.left_up: self.dragging = False
-        self._pos = pygame.mouse.get_pos()
+        self._pos = NvVector2(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1])
         pressed = pygame.mouse.get_pressed(num_buttons=3)
         
         if events and len(events) != 0:
