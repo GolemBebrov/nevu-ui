@@ -254,10 +254,10 @@ class Menu:
         self._resize_ratio = Vector2([size[0] / self.first_window_size[0], size[1] / self.first_window_size[1]])
         if self.window is None: raise ValueError("Window is not initialized!")
         if self.isrelativeplaced:
-            self.coordinates = Vector2([
+            self.coordinates = Vector2(
                 (self.window.size[0] - self.window._crop_width_offset) / 100 * self.relative_percent_x - self.size[0] / 2,
                 (self.window.size[1] - self.window._crop_height_offset) / 100 * self.relative_percent_y - self.size[1] / 2
-            ])
+            )
 
         self.coordinatesMW_update()
         self._update_surface()
