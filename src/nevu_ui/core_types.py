@@ -106,6 +106,7 @@ class GradientType(StrEnum):
 class ResizeType(Enum):
     CropToRatio = auto()
     FillAllScreen = auto()
+    ResizeFromOriginal = auto()
 
 class RenderMode(Enum): 
     AA = auto()
@@ -144,3 +145,7 @@ class ZRequestType(Enum):
     HoverCandidate = auto()
     Action = auto()
     Unclick = auto()
+
+class ScrollBarType(StrEnum):
+    Vertical = "vertical"
+    Horizontal = "horizontal"
