@@ -95,10 +95,9 @@ class LayoutType(NevuObject):
             self.items,
             self.cached_coordinates,
             self.first_parent_menu,
-            self.relx,
-            self.rely,
             add_x,
-            add_y
+            add_y,
+            self._resize_ratio
         )
 
     @property
@@ -615,6 +614,9 @@ class Scrollable(LayoutType):
 
             path_to_add = scaled_track_path[axis] * (self._percentage / 100)
             self.coordinates[axis] = start_coord + path_to_add
+            
+            if self.master:
+                self.master.first_parent_menu.window.mark_dirty()
         
         def set_scroll_params(self, track_start_abs, track_path, offset: Vector2):
             self.track_path = track_path
@@ -811,6 +813,7 @@ class Scrollable(LayoutType):
             self.scroll_bar_y.update()
             self.scroll_bar_y.coordinates = Vector2(self._coordinates[0] + self.relx(self.size[0] - self.scroll_bar_y.size[0]), self.scroll_bar_y.coordinates[1])
             self.scroll_bar_y.master_coordinates = self._get_item_master_coordinates(self.scroll_bar_y)
+            self.scroll_bar_y._master_z_handler = self._master_z_handler
         if type(self) == Scrollable: self._dirty_rect = self._read_dirty_rects()
             
     def _regenerate_coordinates(self):
@@ -929,7 +932,7 @@ class Scrollable(LayoutType):
     def clone(self):
         return Scrollable(self._lazy_kwargs['size'], copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
 
-class Appending_Layout_Type(LayoutType):
+class StackBase(LayoutType):
     _margin: int | float
     def __init__(self, style: Style = default_style, content: list[tuple[Align, NevuObject]] | None = None, **constant_kwargs):
         super().__init__(Vector2(0,0), style, None, **constant_kwargs)
@@ -950,7 +953,7 @@ class Appending_Layout_Type(LayoutType):
         
     def _add_constants(self):
         super()._add_constants()
-        self._add_constant("margin",(int, float), 10)
+        self._add_constant("spacing",(int, float), 10)
         
     def _init_test_flags(self):
         super()._init_test_flags()
@@ -1010,23 +1013,24 @@ class Appending_Layout_Type(LayoutType):
                 self._start_item(item)
             self._draw_widget(item)
     @property
-    def margin(self): return self._margin
-    @margin.setter
-    def margin(self, val):
-        self._margin = val
+    def spacing(self): return self._spacing
+    @spacing.setter
+    def spacing(self, val):
+        self._spacing = val
     def _regenerate_coordinates(self):
         super()._regenerate_coordinates()
         self._recalculate_size()
         self._recalculate_widget_coordinates()
-class Appending_Layout_H(Appending_Layout_Type):
+        
+class StackRow(StackBase):
     def _recalculate_size(self):
-        self.size.x = sum(item.size[0]+self._margin for item in self.items) if len(self.items) > 0 else 0
+        self.size.x = sum(item.size[0] + self.spacing for item in self.items) if len(self.items) > 0 else 0
         self.size.y = max(x.size[1] for x in self.items) if len(self.items) > 0 else 0
 
     def _recalculate_widget_coordinates(self):
         if self.booted == False: return
         self.cached_coordinates = []
-        m = self.relx(self.margin)
+        m = self.relx(self.spacing)
         current_x = 0 
         for i in range(len(self.items)):
             item = self.items[i]
@@ -1040,19 +1044,19 @@ class Appending_Layout_H(Appending_Layout_Type):
             elif alignment == Align.RIGHT:
                 item.coordinates[1] = self.coordinates[1] + self.rely(self.size[1] - item.size[1])
             item.master_coordinates = self._get_item_master_coordinates(item)
-            current_x += self.relx(item.size[0] + self.margin)
+            current_x += self.relx(item.size[0] + self.spacing)
             self.cached_coordinates.append(item.coordinates)
     def clone(self):
-        return Appending_Layout_H(copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
+        return StackRow(copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
 
-class Appending_Layout_V(Appending_Layout_Type):
+class StackColumn(StackBase):
     def _recalculate_size(self):
-        self.size[1] = sum(item.size[1]+self._margin for item in self.items) if len(self.items) > 0 else 0
+        self.size[1] = sum(item.size[1] + self.spacing for item in self.items) if len(self.items) > 0 else 0
         self.size[0] = max(x.size[0] for x in self.items) if len(self.items) > 0 else 0
     def _recalculate_widget_coordinates(self):
         if self.booted == False: return
         self.cached_coordinates = []
-        m = self.rely(self.margin)
+        m = self.rely(self.spacing)
         current_y = 0
         for i in range(len(self.items)):
             item = self.items[i]
@@ -1066,10 +1070,10 @@ class Appending_Layout_V(Appending_Layout_Type):
             elif alignment == Align.RIGHT:
                 item.coordinates[0] = self.coordinates[0] + self.relx(self.size[0] - item.size[0])
             item.master_coordinates = self._get_item_master_coordinates(item)
-            current_y += self.rely(item.size[1] + self.margin)
+            current_y += self.rely(item.size[1] + self.spacing)
             self.cached_coordinates.append(item.coordinates)
     def clone(self):
-        return Appending_Layout_V(copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
+        return StackColumn(copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
     
 class CheckBoxGroup():
     def __init__(self, checkboxes: list[RectCheckBox] | None = None, single_select: bool = False):
