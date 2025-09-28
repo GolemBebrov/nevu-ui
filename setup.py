@@ -9,23 +9,24 @@ def get_extensions():
 
     extensions = [
         Extension(
-            "nevu_ui.fast_logic",
-            ["src/nevu_ui/fast_logic.pyx"],
-            include_dirs=[get_numpy_include()]
-        ),
-        Extension(
-            "nevu_ui.fast_nvvector2",
-            ["src/nevu_ui/fast_nvvector2.pyx"],
+            "nevu_ui.fast.nvvector2.nvvector2",
+            ["src/nevu_ui/fast/nvvector2/nvvector2.pyx"],
             include_dirs=[numpy.get_include()],
         ),
         Extension(
-            "nevu_ui.fast_shapes",
-            ["src/nevu_ui/fast_shapes.pyx"],
+            "nevu_ui.fast.logic.fast_logic",
+            ["src/nevu_ui/fast/logic/fast_logic.pyx"],
+            include_dirs=[get_numpy_include()]
+        ),
+
+        Extension(
+            "nevu_ui.fast.shapes.fast_shapes",
+            ["src/nevu_ui/fast/shapes/fast_shapes.pyx"],
             include_dirs=[get_numpy_include()]
         ),
         Extension(
-            "nevu_ui.fast_zsystem",
-            ["src/nevu_ui/fast_zsystem.pyx"],
+            "nevu_ui.fast.zsystem.fast_zsystem",
+            ["src/nevu_ui/fast/zsystem/fast_zsystem.pyx"],
             include_dirs=[numpy.get_include()],
         )
 
