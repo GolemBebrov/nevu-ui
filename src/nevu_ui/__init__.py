@@ -1,34 +1,36 @@
 from .menu import Menu
 from .nevuobj import NevuObject
 from .ui_manager import Manager
-from . import rendering
+
 from . import animations
 from . import utils
-from . import fast_nvvector2
+from .fast import NvVector2
 from .color import (
-    Color, Color_Type, ColorTheme, ColorSubTheme, ColorPair, ColorThemeLibrary, SubThemeRole, PairColorRole, TupleColorRole
+    Color, ColorTheme, ColorSubTheme, ColorPair, ColorThemeLibrary, SubThemeRole, PairColorRole, TupleColorRole
 )
 from .style import (
-    Style, default_style, Gradient
+    Style, default_style
 )
 from .core_types import (
     Align, SizeRule, PercentSizeRule, SizeUnit, 
     Vh, vh, Vw, vw, Fill, fill, Px, px, 
     Quality, HoverState, Events,
-    LinearSide, RadialPosition, GradientType
+    LinearSide, RadialPosition, GradientType,CacheName, CacheType,EventType
 )
 from .widgets import (
-    Widget, Label, Button, Empty_Widget, RectCheckBox, Image, GifWidget, Input, MusicPlayer
+    Widget, Label, Button, Empty_Widget, RectCheckBox, Image, Gif, Input, MusicPlayer
 )
 from .layouts import (
     LayoutType, Grid, Row, Column, Scrollable, IntPickerGrid, Pages, Gallery_Pages, StackRow, StackColumn, CheckBoxGroup
 )
-
+from .rendering import (
+    Gradient
+)
 from .utils import (
     time, Time, mouse, Mouse, keyboard, Keyboard,
-    Cache, CacheName, CacheType, NevuEvent, InputType, EventType, NvVector2
+    Cache, NevuEvent, InputType
 )
-from .window import (
+from .window.window import (
     Window, ResizeType, ZRequest #Only request
 )
 
@@ -41,7 +43,7 @@ __all__ = [
     'Align', 'SizeRule', 'PercentSizeRule', 'SizeUnit', 'Vh', 'vh', 'Vw', 'vw', 'Fill', 'fill', 'Px', 'px', 
     'Quality', 'HoverState', 'Events', 'LinearSide', 'RadialPosition', 'GradientType', 
     #### widgets.py ####
-    'Widget', 'Label', 'Button', 'Empty_Widget', 'RectCheckBox', 'Image', 'GifWidget', 'Input', 'MusicPlayer',
+    'Widget', 'Label', 'Button', 'Empty_Widget', 'RectCheckBox', 'Image', 'Gif', 'Input', 'MusicPlayer',
     #### layouts.py ####
     'LayoutType', 'Grid', 'Row', 'Column', 'Scrollable', 'IntPickerGrid', 'Pages', 'Gallery_Pages', 'StackRow', 'StackColumn', 'CheckBoxGroup', 
     #### menu.py ####
