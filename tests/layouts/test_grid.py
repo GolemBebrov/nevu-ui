@@ -4,8 +4,8 @@ from test_basic import NevuTest
 pygame.init()
 class TestGrid(NevuTest):
     def add_to_layout(self):
-        #self.do_fps_test = True
-        #self.print_debug_fps = True
+        self.do_fps_test = True
+        self.print_debug_fps = True
         self.fps = 99999999
         self.test_menu.layout = \
         ui.Grid([ui.Fill(100), ui.Fill(100)], x=3,y=3,
