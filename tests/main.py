@@ -6,22 +6,23 @@ pygame.init()
 
 class Mygame(ui.Manager):
     def __init__(self):
-        super().__init__()
+        self.window = ui.Window((400,400), resize_type=ui.ResizeType.CropToRatio)
+        super().__init__(self.window)
         self.fps = 7599999999999 #Задаем нуженый fps
         self._dirty_mode = False #Для оптимизации(не рекомендуется включать)
         self.background = (0,0,100) #Цвет фона
-        self.window = ui.window.Window((300,300), resize_type=ui.ResizeType.CropToRatio) #Создаем окно
+         #Создаем окно
         main_style = ui.Style( #Гланый стиль
             borderradius=10, borderwidth=2, colortheme=ui.ColorThemeLibrary.github_dark_color_theme,
-            fontname="vk_font.ttf", gradient=ui.style.Gradient(colors=[ui.Color.AQUA,(100,100,100)],type=ui.GradientType.Linear,direction=ui.LinearSide.Right))
+            fontname="tests/vk_font.ttf", gradient=ui.Gradient(colors=[ui.Color.AQUA,(100,100,100)],type=ui.GradientType.Linear,direction=ui.LinearSide.Right))
         style_mini_font = main_style( #Подстиль
             fontsize=15, border_radius=15,  
-            borderwidth=4, gradient=ui.style.Gradient(colors=[ui.Color.REBECCAPURPLE,ui.Color.mix(ui.Color.AQUA,ui.Color.REBECCAPURPLE)],type=ui.GradientType.Linear,direction=ui.LinearSide.Top))
+            borderwidth=4, gradient=ui.Gradient(colors=[ui.Color.REBECCAPURPLE,ui.Color.mix(ui.Color.AQUA,ui.Color.REBECCAPURPLE)],type=ui.GradientType.Linear,direction=ui.LinearSide.Top))
     
         b = ui.Button(lambda: print("Button 1"), "Test Chamber", [50*ui.fill,11*ui.fill], style=style_mini_font(borderradius=15, borderwidth=2, fontsize=10), words_indent=True, alt=True, will_resize=True) #Создаем кнопку
-        i = ui.Input([100*ui.fill,30*ui.fill],style_mini_font(borderradius=30,borderwidth=0,fontname="vk_font.ttf"),"","Введите", alt=True, will_resize=True, multiple=True) #Создаем инпут
+        i = ui.Input([100*ui.fill,30*ui.fill],style_mini_font(borderradius=30,borderwidth=0,fontname="tests/vk_font.ttf"),"","Введите", alt=True, will_resize=True, multiple=True) #Создаем инпут
         
-        i.animation_manager.add_continuous_animation(ui.animations.AnimationEaseOut(3,[0,-100],[0,0],ui.animations.AnimationType.POSITION)) #Добавляем анимацию в начало
+        i.animation_manager.add_continuous_animation(ui.animations.EaseOut(3,[0,-100],[0,0],ui.animations.AnimationType.POSITION)) #Добавляем анимацию в начало
         "ss" if True else "dd"
         #создаем макет
         gridmenu = ui.Grid([66*ui.fill, 40*ui.fill], x=3,y=3, 
@@ -45,7 +46,7 @@ class Mygame(ui.Manager):
         self.menu.will_resize = True #Для оптимизации
 
     def draw_loop(self):
-        self.menu.surface.fill(self.background)
+        #self.menu.surface.fill(self.background)
         self.menu.draw()
         #рисуем меню
       
@@ -54,8 +55,8 @@ class Mygame(ui.Manager):
         show_fps = True
         fps_mode = "Unslowed"
         #Для показа фпс
-        if show_fps:
-            print(f"FPS {fps_mode}: ",ui.time.fps)
+        #if show_fps:
+            #print(f"FPS {fps_mode}: ",ui.time.fps)
 
 def test_main():
     #Запускаем

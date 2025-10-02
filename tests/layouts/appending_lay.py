@@ -1,11 +1,11 @@
 import nevu_ui as ui
 import pygame
-from test_basic import NevuTest
+from basic import NevuTest
 pygame.init()
 class TestAppending(NevuTest):
     def add_to_layout(self):
         self.do_fps_test = True
-        self.print_debug_fps = True
+        #self.print_debug_fps = True
         self.fps = 99999999
         self.appending_layout_h = \
             ui.StackRow(spacing = 40,content = 
@@ -23,6 +23,6 @@ class TestAppending(NevuTest):
         self.grid = self.test_menu.layout
     def update_loop(self, events=None):
         super().update_loop(events)
-        print(self.test_hard_widget.text)
+        #print(self.test_hard_widget.text)
 ts = TestAppending()
 ts.run()
