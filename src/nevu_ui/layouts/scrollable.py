@@ -7,6 +7,8 @@ from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.layouts import LayoutType
 
+from nevu_ui.color import SubThemeRole
+
 from nevu_ui.style import (
     Style, default_style
 )
@@ -103,6 +105,7 @@ class Scrollable(LayoutType):
         def _init_booleans(self):
             super()._init_booleans()
             self.scrolling = False
+            self.clickable = True
             
         def _init_lists(self):
             super()._init_lists()
@@ -251,10 +254,12 @@ class Scrollable(LayoutType):
     def __init_scroll_bars__(self):
         if self._test_debug_print:
             print(f"in {self} used init scroll bars")
-        self.scroll_bar_y = self.ScrollBar([self.size[0]/40,self.size[1]/20],default_style(bgcolor=(100,100,100)), ScrollBarType.Vertical, self)
+        self.scroll_bar_y = self.ScrollBar([self.size[0]/40,self.size[1]/20], self.style, ScrollBarType.Vertical, self)
+        self.scroll_bar_y.subtheme_role = SubThemeRole.TERTIARY
         #self.scroll_bar_x = self.ScrollBar([self.size[0]/20,self.size[1]/40],default_style(bgcolor=(100,100,100)), 'horizontal', self)
         self.scroll_bar_y._boot_up()
         self.scroll_bar_y._init_start()
+        self.scroll_bar_y.booted = True
         #self.scroll_bar_x._boot_up()
         #self.scroll_bar_x._init_start()
         
@@ -309,7 +314,6 @@ class Scrollable(LayoutType):
         if self.actual_max_y > 0:
             self._draw_widget(self.scroll_bar_y)
             
-            
     def _set_item_x(self, item: NevuObject, align: Align):
         container_width = self.relx(self.size[0])
         widget_width = self.relx(item.size[0])
@@ -338,7 +342,7 @@ class Scrollable(LayoutType):
         
         if self.actual_max_y > 0:
             self.scroll_bar_y.update()
-            self.scroll_bar_y.coordinates = NvVector2(self._coordinates[0] + self.relx(self.size[0] - self.scroll_bar_y.size[0]), self.scroll_bar_y.coordinates[1])
+            self.scroll_bar_y.coordinates = NvVector2(self._coordinates.x + self.relx(self.size.x - self.scroll_bar_y.size.x), self.scroll_bar_y.coordinates.y)
             self.scroll_bar_y.master_coordinates = self._get_item_master_coordinates(self.scroll_bar_y)
             self.scroll_bar_y._master_z_handler = self._master_z_handler
         if type(self) == Scrollable: self._dirty_rect = self._read_dirty_rects()
@@ -349,14 +353,13 @@ class Scrollable(LayoutType):
         self._regenerate_max_values()
         padding_offset = self.rely(self.padding)
         for i in range(len(self.items)):
-            item = self.items[i]
-            align = self.widgets_alignment[i]
+            item, align = self.items[i], self.widgets_alignment[i]
             
             self._set_item_x(item, align)
-            item.coordinates[1] = self._coordinates[1] + padding_offset
+            item.coordinates.y = self._coordinates.y + padding_offset
             self.cached_coordinates.append(item.coordinates)
             item.master_coordinates = self._get_item_master_coordinates(item)
-            padding_offset += item._csize[1] + self.rely(self.padding)
+            padding_offset += item._csize.y + self.rely(self.padding)
             
     def logic_update(self):
         super().logic_update()
@@ -386,8 +389,10 @@ class Scrollable(LayoutType):
         super().resize(resize_ratio)
         self.scroll_bar_y.resize(resize_ratio)
         self.scroll_bar_y.coordinates.y = self.rely(self.scroll_bar_y.size.y)
+        
         self.cached_coordinates = None
         self._regenerate_coordinates()
+        
         self.scroll_bar_y.scrolling = False
         self._update_scroll_bars()
         new_actual_max_y = self.actual_max_y if hasattr(self, "actual_max_y") else 1
