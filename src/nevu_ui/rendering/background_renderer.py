@@ -59,9 +59,9 @@ class BackgroundRenderer:
         
         color = self._subtheme_font if alt else self._subtheme_content
         
-        if self._hover_state == HoverState.CLICKED and not self.fancy_click_style: 
+        if self._hover_state == HoverState.CLICKED and not self.fancy_click_style and self.clickable: 
             color = Color.lighten(color, 0.2)
-        elif self._hover_state == HoverState.HOVERED and not self.hoverable: 
+        elif self._hover_state == HoverState.HOVERED and self.hoverable: 
             color = Color.darken(color, 0.2)
         if self.will_resize:
             avg_scale_factor = _QUALITY_TO_RESOLUTION[self.quality]
