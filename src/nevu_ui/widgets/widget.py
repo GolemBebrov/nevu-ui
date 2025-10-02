@@ -20,6 +20,9 @@ class Widget(NevuObject):
     clickable: bool
     hoverable: bool
     fancy_click_style: bool
+    resize_bg_image: bool
+    z: int
+    inline: bool
     
     def __init__(self, size: NvVector2 | list, style: Style = default_style, **constant_kwargs):
         super().__init__(size, style, **constant_kwargs)
@@ -37,6 +40,7 @@ class Widget(NevuObject):
         self._add_constant("fancy_click_style", bool, True)
         self._add_constant("resize_bg_image", bool, False)
         self._add_constant("z", int, 1)
+        self._add_constant("inline", bool, False)
         
     def _init_text_cache(self):
         self._text_baked = None
@@ -65,6 +69,7 @@ class Widget(NevuObject):
     
     def _lazy_init(self, size: NvVector2 | list):
         super()._lazy_init(size)
+        if self.inline: return
         self.surface = pygame.Surface(size, flags = pygame.SRCALPHA)
         #if isinstance(self.style.gradient, Gradient): self._draw_gradient()
 
@@ -123,11 +128,18 @@ class Widget(NevuObject):
         This includes Image, Scaled_Gradient, Surface, and Borders.
         Highly recommended to use this method instead of clear_all.
         """
-        self.cache.clear_selected(whitelist = [CacheType.Image, CacheType.Scaled_Gradient, CacheType.Surface, CacheType.Borders, CacheType.Scaled_Background, CacheType.Background])
+        self.cache.clear_selected(whitelist = [CacheType.Image, CacheType.Scaled_Gradient, CacheType.Surface, CacheType.Borders, CacheType.Scaled_Borders, CacheType.Scaled_Background, CacheType.Background])
     
     def _on_style_change(self):
+        self._on_style_change_content()
+        self._on_style_change_additional()
+        
+    def _on_style_change_content(self):
         self.clear_surfaces()
         self._changed = True
+        
+    def _on_style_change_additional(self):
+        pass
         
     def _update_image(self, style: Style | None = None):
         try:
@@ -153,12 +165,12 @@ class Widget(NevuObject):
         return self._subtheme.oncontainer
     @property
     def _rsize(self) -> NvVector2:
-        bw = self.style.borderwidth
-        return self._csize - (NvVector2(bw, bw)) /2
+        bw = self.relm(self.style.borderwidth)
+        return self._csize - (NvVector2(bw, bw)) * 2
 
     @property
     def _rsize_marg(self) -> NvVector2:
-        return (self._csize - self._rsize)/2
+        return self._csize - self._rsize 
     
     def clone(self):
         return Widget(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
@@ -169,8 +181,15 @@ class Widget(NevuObject):
             if type(self) == Widget: self._changed = False
             self._dirty_rect.append(self.get_rect())
             TRANSPARENT = (0, 0, 0, 0)
-            self.surface.fill(TRANSPARENT)
-            self.surface = self.renderer._scale_background(self._csize) if self.will_resize else self.renderer._generate_background()
+            if self.inline: 
+                
+                surf = self.renderer._scale_background(self._csize.to_round()) if self.will_resize else self.renderer._generate_background()
+                #self.surface.fill(TRANSPARENT, [self.coordinates.to_round().to_tuple(),surf.get_size()])
+                self.surface.blit(surf, self.coordinates.to_round().to_tuple())
+            else:
+                self.surface.fill(TRANSPARENT)
+                self.surface = self.renderer._scale_background(self._csize) if self.will_resize else self.renderer._generate_background()
+                
             
     def logic_update(self):
         super().logic_update()
@@ -195,11 +214,12 @@ class Widget(NevuObject):
         #print(f"booted widget: {self}")
 
     def bake_text(self, text: str, unlimited_y: bool = False, words_indent: bool = False,
-                  alignx: Align = Align.CENTER, aligny: Align = Align.CENTER, continuous: bool = False):
+                  alignx: Align = Align.CENTER, aligny: Align = Align.CENTER, continuous: bool = False, size_x = None, size_y = None):
         if continuous: self._bake_text_single_continuous(text); return
         is_popped = False
         ifnn = False
-
+        size_x = size_x or self.relx(self.size[0])
+        size_y = size_y or self.rely(self.size[1])
         words = list(text)
         marg = ""
         lines = []
@@ -228,14 +248,14 @@ class Widget(NevuObject):
 
             test_line = current_line + word + marg
             text_size = renderFont.size(test_line)
-            if text_size[0] > self.relx(self.size[0]):
+            if text_size[0] > size_x:
                 lines.append(current_line)
                 current_line = word + marg
             else: current_line = test_line
         lines.append(current_line)
 
         if not unlimited_y:
-            while len(lines) * line_height > self._csize[1]:
+            while len(lines) * line_height > size_y:
                 lines.pop(-1)
                 is_popped = True
 
@@ -249,7 +269,10 @@ class Widget(NevuObject):
         else: justify_y = False
 
         self._text_surface = renderFont.render(self._text_baked, True, self._subtheme_font)
-        container_rect = self.surface.get_rect()
+        if self.inline:
+            container_rect = pygame.Rect(self.coordinates.to_round().to_tuple(), self._csize.to_round())
+        else:
+            container_rect = self.surface.get_rect()
         text_rect = self._text_surface.get_rect()
 
         if alignx == Align.LEFT: text_rect.left = container_rect.left
