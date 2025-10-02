@@ -7,7 +7,7 @@ class Manager:
     def __init__(self, window: Window | None = None):
         if window: self.window = window
         self.running = True
-        self._dirty_mode = True
+        self._dirty_mode = False
         self._force_quit = True
         self.background = (0, 0, 0)
         self.fps = 60
