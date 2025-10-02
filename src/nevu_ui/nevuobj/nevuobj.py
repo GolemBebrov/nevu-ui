@@ -219,7 +219,7 @@ class NevuObject:
         is_valid = self._is_valid_type(value, needed_types)
 
         if is_valid:
-            print(f"Debug: Set constant {name}({constant_name}) to {value} in {self}({type(self).__name__})")
+            #print(f"Debug: Set constant {name}({constant_name}) to {value} in {self}({type(self).__name__})")
             setattr(self, constant_name, value)
             self.constants.is_set[constant_name] = True
         else:
@@ -227,6 +227,7 @@ class NevuObject:
                 f"Invalid type for constant '{constant_name}'. "
                 f"Expected {needed_types}, but got {type(value).__name__}."
             )
+
     def _init_test_flags(self):
         pass
     
@@ -353,7 +354,7 @@ class NevuObject:
         #print(self._events.content)
         for event in self._events.content:
             if event._type == type:
-                print(event)
+                #print(event)
                 event(*args, **kwargs)
 
     def resize(self, resize_ratio: Vector2):
@@ -439,8 +440,8 @@ class NevuObject:
         return self._hover_state
     @hover_state.setter
     def hover_state(self, value: HoverState):
-        if hasattr(self, "_hover_state"):
-            print(f"hover change setter called in {self}, curr_state:{self._hover_state}, new_state:{value}")
+        #if hasattr(self, "_hover_state"):
+            #print(f"hover change setter called in {self}, curr_state:{self._hover_state}, new_state:{value}")
         if self._hover_state == value and not self._universal_state_kostil: print("Same state. Exiting"); return
         if self._universal_state_kostil: self._universal_state_kostil = False
         self._hover_state = value
