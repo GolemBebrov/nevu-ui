@@ -14,9 +14,12 @@ class Button(Label):
     def __init__(self, function, text: str, size: NvVector2 | list, style: Style = default_style, **constant_kwargs):
         super().__init__(text, size, style, **constant_kwargs)
         self.function = function
+        
     def _init_booleans(self):
         super()._init_booleans()
         self.clickable = True
+        self.hoverable = True
+        
     def _add_constants(self):
         super()._add_constants()
         self._add_constant("is_active", bool, True)
@@ -31,4 +34,4 @@ class Button(Label):
                 else: print(e)
                 
     def clone(self):
-        return Button(self.function,self._lazy_kwargs['text'], self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
+        return Button(self.function, self._lazy_kwargs['text'], self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
