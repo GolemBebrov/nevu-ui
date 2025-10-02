@@ -119,6 +119,7 @@ class CacheType(Enum):
     Gradient = auto()
     Image = auto()
     Borders = auto()
+    Scaled_Borders = auto()
     Scaled_Background = auto()
     Scaled_Gradient = auto()
     Background = auto()
