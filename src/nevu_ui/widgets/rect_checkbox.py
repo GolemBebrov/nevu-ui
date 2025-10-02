@@ -73,7 +73,9 @@ class RectCheckBox(Widget):
         super()._on_click_system()
           
     def clone(self):
+        #print("cloned myself :)")
+        #print("my current events:", self._events.content)
         self.constant_kwargs['events'] = self._events
-        selfcopy = RectCheckBox(self._lazy_kwargs['size'].x, copy.deepcopy(self.style), **self.constant_kwargs)
+        selfcopy = RectCheckBox(self._lazy_kwargs['size'].x, copy.deepcopy(self.style), **self.constant_kwargs) # type: ignore
         self._event_cycle(EventType.OnCopy, selfcopy)
         return selfcopy
