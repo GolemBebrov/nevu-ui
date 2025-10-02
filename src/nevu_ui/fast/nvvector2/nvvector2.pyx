@@ -52,6 +52,9 @@ cdef class NvVector2:
     def yx(self):
         return NvVector2(self.y, self.x)
 
+    def to_tuple(self):
+        return (self.x, self.y)
+
     def __getitem__(self, int index):
         if index == 0:
             return self.x
