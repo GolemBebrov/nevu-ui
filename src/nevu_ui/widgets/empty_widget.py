@@ -1,5 +1,5 @@
 from nevu_ui.widgets import Widget
 
-class Empty_Widget(Widget):
+class EmptyWidget(Widget):
     def draw(self):
         pass
