@@ -42,7 +42,6 @@ class StackBase(LayoutType):
         pass
     
     def add_item(self, item: NevuObject, alignment: Align = Align.CENTER):
-        #print(self.first_parent_menu.window)
         super().add_item(item)
         self.widgets_alignment.append(alignment)
         self.cached_coordinates = None
@@ -79,6 +78,7 @@ class StackBase(LayoutType):
     def secondary_update(self, *args):
         super().secondary_update()
         self._light_update()
+        
     def secondary_draw(self):
         super().secondary_draw()
         for item in self.items:
@@ -88,12 +88,17 @@ class StackBase(LayoutType):
                 item._boot_up()
                 self._start_item(item)
             self._draw_widget(item)
+            
     @property
     def spacing(self): return self._spacing
     @spacing.setter
     def spacing(self, val):
         self._spacing = val
+        
     def _regenerate_coordinates(self):
         super()._regenerate_coordinates()
         self._recalculate_size()
         self._recalculate_widget_coordinates()
+    
+    def _set_align_coords(self, item, alignment):
+        pass

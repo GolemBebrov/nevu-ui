@@ -5,9 +5,17 @@ from nevu_ui.layouts import StackBase
 
 class StackRow(StackBase):
     def _recalculate_size(self):
-        self.size.x = sum(item.size[0] + self.spacing for item in self.items) if len(self.items) > 0 else 0
-        self.size.y = max(x.size[1] for x in self.items) if len(self.items) > 0 else 0
+        self.size.x = sum(item.size.x + self.spacing for item in self.items) if len(self.items) > 0 else 0
+        self.size.y = max(x.size.y for x in self.items) if len(self.items) > 0 else 0
 
+    def _set_align_coords(self, item, alignment):
+        if alignment == Align.CENTER:
+            item.coordinates.y = self.coordinates.y + self.rely((self.size.y - item.size.y)/2)
+        elif alignment == Align.LEFT:
+            item.coordinates.y = self.coordinates.y
+        elif alignment == Align.RIGHT:
+            item.coordinates.y = self.coordinates.y + self.rely(self.size.y - item.size.y)
+    
     def _recalculate_widget_coordinates(self):
         if self.booted == False: return
         self.cached_coordinates = []
@@ -17,15 +25,10 @@ class StackRow(StackBase):
             item = self.items[i]
             alignment = self.widgets_alignment[i]
             widget_local_x = current_x + m / 2
-            item.coordinates[0] = self.coordinates[0] + widget_local_x 
-            if alignment == Align.CENTER:
-                item.coordinates[1] = self.coordinates[1] + self.rely(self.size[1] / 2 - item.size[1] / 2)
-            elif alignment == Align.LEFT:
-                item.coordinates[1] = self.coordinates[1]
-            elif alignment == Align.RIGHT:
-                item.coordinates[1] = self.coordinates[1] + self.rely(self.size[1] - item.size[1])
+            item.coordinates.x = self.coordinates.x + widget_local_x 
+            self._set_align_coords(item, alignment)
             item.master_coordinates = self._get_item_master_coordinates(item)
-            current_x += self.relx(item.size[0] + self.spacing)
+            current_x += self.relx(item.size.x + self.spacing)
             self.cached_coordinates.append(item.coordinates)
             
     def clone(self):
