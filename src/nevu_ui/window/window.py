@@ -88,7 +88,7 @@ class Window:
             events (list[pygame.Event]): List of events to process.
             fps (int, optional): Desired frames per second. Defaults to 60.
         """
-        
+        self._next_update_dirty_rects.clear()
         self.last_events = events
         mouse.update(events)
         time.update()
