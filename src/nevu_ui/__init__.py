@@ -18,7 +18,7 @@ from .core_types import (
     LinearSide, RadialPosition, GradientType,CacheName, CacheType,EventType
 )
 from .widgets import (
-    Widget, Label, Button, Empty_Widget, RectCheckBox, Image, Gif, Input, MusicPlayer
+    Widget, Label, Button, EmptyWidget, RectCheckBox, Image, Gif, Input, MusicPlayer, ElementSwitcher, Element
 )
 from .layouts import (
     LayoutType, Grid, Row, Column, Scrollable, IntPickerGrid, Pages, Gallery_Pages, StackRow, StackColumn, CheckBoxGroup
@@ -40,10 +40,10 @@ __all__ = [
     #### style.py ####
     'Style', 'default_style', 'Gradient',
     #### core_types.py ####
-    'Align', 'SizeRule', 'PercentSizeRule', 'SizeUnit', 'Vh', 'vh', 'Vw', 'vw', 'Fill', 'fill', 'Px', 'px', 
+    'Align', 'SizeRule', 'PercentSizeRule', 'SizeUnit', 'Vh', 'vh', 'Vw', 'vw', 'Fill', 'fill', 'Px', 'px', 'Element',
     'Quality', 'HoverState', 'Events', 'LinearSide', 'RadialPosition', 'GradientType', 
     #### widgets.py ####
-    'Widget', 'Label', 'Button', 'Empty_Widget', 'RectCheckBox', 'Image', 'Gif', 'Input', 'MusicPlayer',
+    'Widget', 'Label', 'Button', 'EmptyWidget', 'RectCheckBox', 'Image', 'Gif', 'Input', 'MusicPlayer',
     #### layouts.py ####
     'LayoutType', 'Grid', 'Row', 'Column', 'Scrollable', 'IntPickerGrid', 'Pages', 'Gallery_Pages', 'StackRow', 'StackColumn', 'CheckBoxGroup', 
     #### menu.py ####
