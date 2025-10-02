@@ -17,7 +17,7 @@ from nevu_ui.core_types import (
 
 class LayoutType(NevuObject):
     items: list[NevuObject]
-    freedom_items: list[NevuObject]
+    floating_items: list[NevuObject]
     
     def _get_item_master_coordinates(self, item: NevuObject):
         assert isinstance(item, NevuObject), f"Can't use _get_item_master_coordinates on {type(item)}"
@@ -26,22 +26,24 @@ class LayoutType(NevuObject):
     def _draw_widget(self, item: NevuObject, multiply: NvVector2 | None = None, add: NvVector2 | None = None):
         assert isinstance(item, NevuObject), f"Cant use _draw_widget on {type(item)}"
         assert isinstance(self.surface, pygame.Surface), "Cant use _draw_widget with uninitialized surface"
+        
         if item._wait_mode:
             self.read_item_coords(item)
             self._start_item(item)
-            #("started item", item)
             return
+        
         item.draw()
-        if self.is_layout(item) or not isinstance(item.surface, pygame.Surface): return
+        if self.is_layout(item): return
+        
         coordinates = item.coordinates.copy()
         if multiply: coordinates *= multiply
         if add: coordinates += add
-        self.surface.blit(item.surface, coordinates.to_pygame())
+        self.surface.blit(item.surface, coordinates.to_tuple())
 
     def _boot_up(self):
         #print("booted layout", self)
         self.booted = True
-        for item in self.items + self.freedom_items:
+        for item in self.items + self.floating_items:
             assert isinstance(item, (Widget, LayoutType))
             self.read_item_coords(item)
             self._start_item(item)
@@ -68,7 +70,7 @@ class LayoutType(NevuObject):
         
     def _init_lists(self):
         super()._init_lists()
-        self.freedom_items = []
+        self.floating_items = []
         self.items = []
         self.cached_coordinates = None
         self.all_layouts_coords = NvVector2()
@@ -81,9 +83,9 @@ class LayoutType(NevuObject):
     def _init_objects(self):
         super()._init_objects()
         self.first_parent_menu = Menu(None, (1,1), default_style)
-        self.menu = None
-        self.layout = None
-        self.surface = None
+        self.menu: Menu | None = None
+        self.layout: LayoutType | None = None
+        self.surface: pygame.Surface | None = None
         
     def _lazy_init(self, size: NvVector2 | list, content: list | None = None):
         super()._lazy_init(size)
@@ -122,7 +124,7 @@ class LayoutType(NevuObject):
         self._border_name = name
         if self.first_parent_menu:
             try:
-                self.border_font = pygame.sysfont.SysFont("Arial", int(self.first_parent_menu._style.fontsize*self._resize_ratio.x))
+                self.border_font = pygame.sysfont.SysFont("Arial", self.relx(self.first_parent_menu._style.fontsize))
                 self.border_font_surface = self.border_font.render(self._border_name, True, (255,255,255))
             except Exception as e: print(e)
 
@@ -155,7 +157,7 @@ class LayoutType(NevuObject):
     def resize(self, resize_ratio: NvVector2):
         super().resize(resize_ratio)
         self.cached_coordinates = None
-        for item in self.items + self.freedom_items:
+        for item in self.items + self.floating_items:
             assert isinstance(item, (Widget, LayoutType))
             item.resize(self._resize_ratio)
         self.border_name = self._border_name
@@ -171,8 +173,7 @@ class LayoutType(NevuObject):
     def _event_on_add_item(self): pass
 
     def add_item(self, item: NevuObject):
-        #print(item)
-        if item.single_instance is False: item = item.clone()
+        if not item.single_instance: item = item.clone()
         item._master_z_handler = self._master_z_handler
         if self.is_layout(item): 
             assert self.is_layout(item)
@@ -180,10 +181,8 @@ class LayoutType(NevuObject):
         elif self.is_widget(item):
             self.read_item_coords(item)
             self._start_item(item)
-            if item.floating: 
-                self.freedom_items.append(item)
-            else:
-                self.items.append(item)
+            if item.floating: self.floating_items.append(item)
+            else: self.items.append(item)
             return
         
         self.read_item_coords(item)
@@ -202,40 +201,52 @@ class LayoutType(NevuObject):
 
     def primary_draw(self):
         super().primary_draw()
-        if self.borders and hasattr(self, "border_font_surface"):
-            #sschc = [1,1] if self.layout!=None else self._resize_ratio
+        if self.borders:
             assert self.surface
-            self.surface.blit(self.border_font_surface, [self.coordinates[0], self.coordinates[1]-self.border_font_surface.get_height()])
-            pygame.draw.rect(self.surface,(255,255,255),[self.coordinates[0], self.coordinates[1],int(self.size[0]*self._resize_ratio[0]),int(self.size[1]*self._resize_ratio[1])],1)
-        for item in self.freedom_items: #+ self.items:
-            self._draw_widget(item, item.coordinates * self._resize_ratio)
+            if hasattr(self, "border_font_surface"):
+                self.surface.blit(self.border_font_surface, [self.coordinates[0], self.coordinates[1] - self.border_font_surface.get_height()])
+                pygame.draw.rect(self.surface,(255,255,255),[self.coordinates[0], self.coordinates[1], self._csize.x, self._csize.y], 1)
+        
+        for item in self.floating_items:
+            self._draw_widget(item, self.rel(item.coordinates))
 
     def _read_dirty_rects(self):
         dirty_rects = []
-        for item in self.items + self.freedom_items:
+        for item in self.items + self.floating_items:
             assert isinstance(item, (Widget, LayoutType))
             if len(item._dirty_rect) > 0:
                 dirty_rects.extend(item._dirty_rect)
-                item._dirty_rect = []
+                item._dirty_rect.clear()
         return dirty_rects
 
     def secondary_update(self):
         super().secondary_update()
-        if self.menu:self.surface = self.menu.surface;self.all_layouts_coords = [0,0]
-        elif self.layout: self.surface = self.layout.surface;self.all_layouts_coords = [self.layout.all_layouts_coords[0]+self.coordinates[0],self.layout.all_layouts_coords[1]+self.coordinates[1]];self.first_parent_menu = self.layout.first_parent_menu
-        for item in self.freedom_items:
-            item.master_coordinates = NvVector2(item.coordinates[0]+self.first_parent_menu.coordinatesMW[0],item.coordinates[1]+self.first_parent_menu.coordinatesMW[1])
+        if self.menu:
+            self.surface = self.menu.surface
+            self.all_layouts_coords = NvVector2()
+            
+        elif self.layout: 
+            self.surface = self.layout.surface
+            self.all_layouts_coords = self.layout.all_layouts_coords + self.coordinates
+            self.first_parent_menu = self.layout.first_parent_menu
+        
+        for item in self.floating_items:
+            item.master_coordinates = item.coordinates + self.first_parent_menu.coordinatesMW
             item.update()
+            
         if self.cached_coordinates is None and self.booted:
             self._regenerate_coordinates()
+            
         if type(self) == LayoutType: self._dirty_rect = self._read_dirty_rects()
+        
     def _regenerate_coordinates(self):
-        for item in self.items + self.freedom_items:
+        for item in self.items + self.floating_items:
             if item._wait_mode:
                 self.read_item_coords(item)
                 self._start_item(item)
                 #print("started item", item)
                 return
+            
     def _connect_to_menu(self, menu: Menu):
         #print(f"in {self} used connect to menu: {menu}")
         self.cached_coordinates = None
@@ -253,8 +264,9 @@ class LayoutType(NevuObject):
         self.cached_coordinates = None
 
     def get_item_by_id(self, id: str) -> NevuObject | None:
-        mass = self.items + self.freedom_items
+        mass = self.items + self.floating_items
         if id is None: return None
         return next((item for item in mass if item.id == id), None)
+    
     def clone(self):
         return LayoutType(self._lazy_kwargs['size'], copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
