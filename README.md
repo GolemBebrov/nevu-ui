@@ -71,6 +71,8 @@ Examples of declarativeness:
 ![Example1](assets/test_grid.png)
 ---
 ![Example2](assets/test_main.png)
+---
+![Пример3](assets/showcase.gif)
 
 ---
 ### Basic Grid
