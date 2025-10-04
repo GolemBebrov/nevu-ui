@@ -5,77 +5,146 @@ from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.widgets import Widget, Button
 from nevu_ui.utils import mouse
 from nevu_ui.core_types import Align
+from nevu_ui.widgets.progress_bar import ProgressBar
 
 from nevu_ui.style import (
     Style, default_style
 )
 
-class SliderBar(Widget):
-    def __init__(self, begin_val: int, end_val: int, size, style, step: int = 1, freedom=False,default=-999.999123):
-        self.button = Button(lambda: None, "", [size[1]/1.2, size[1]/1.2], style, active=False, freedom=False)
-        super().__init__(size, style, freedom)
-        self.begin_val = begin_val 
-        self.end_val = end_val      
-        self.step = step          
-        self.current_value = begin_val 
-        self.is_dragging = False    
-        self.slider_pos = 0         
-        if default!= -999.999123:
-            self.current_value = default
-        self._update_slider_position()  
+class Slider(Widget):
+    progress_style: Style
+    start: float | int
+    end: float | int
+    step: float | int
+    padding_x: int
+    padding_y: int
+    def __init__(self, size: NvVector2 | list, style: Style = default_style, **constant_kwargs):
+        self._constant_current_val = None
+        super().__init__(size, style, **constant_kwargs)    
+    
+    def _lazy_init(self, size: NvVector2 | list):
+        super()._lazy_init(size)
+        self.create_progress_bar()
+    
+    def create_progress_bar(self):
+        progress_style = self.progress_style or self.style
+        self.progress_bar = ProgressBar(self.size, progress_style, min_value = self.start, max_value = self.end, value = self.current_value, inline = True)
+        self.progress_bar.surface = self.surface
+        self.progress_bar._init_start()
+        self.progress_bar.booted = True
+        self.progress_bar._boot_up()
+    
+    def _init_numerical(self):
+        super()._init_numerical()
+    
+    def _init_booleans(self):
+        super()._init_booleans()
+        self.dragging = False 
+    
+    def _on_click_system(self):
+        super()._on_click_system()
+        self.dragging = True
+    def _on_keyup_system(self):
+        super()._on_keyup_system()
+        self.dragging = False
+    def _on_keyup_abandon_system(self):
+        super()._on_keyup_abandon_system()
+        self.dragging = False
+    
+    def _add_constants(self):
+        super()._add_constants()
+        self._add_constant("start", (int, float), 0)
+        self._add_constant("end", (int, float), 100)
+        self._add_constant("step", (int, float), 1)
+        self._add_free_constant("current_value", 0)
+        self._add_constant("progress_style", (Style, type(None)), None)
+        self._add_constant("padding_x", int, 10)
+        self._add_constant("padding_y", int, 10)
+     
+    def _on_style_change_additional(self):
+        super()._on_style_change_additional()
+        self.progress_bar._changed = True
+
     @property
-    def style(self):
-        return self._style()
-    @style.setter
-    def style(self,style:Style):
-        self._update_image()
-        self.cached_gradient = None
-        self._changed = True
-        self._style = copy.deepcopy(style)
-        self.button.style = copy.deepcopy(style)
-        
-    def _update_slider_position(self):
-        """Обновляет позицию ползунка на основе текущего значения"""
-        range_val = self.end_val - self.begin_val
-        if range_val == 0:
-            self.slider_pos = 0
-        else:
-            self.slider_pos = (self.current_value - self.begin_val) / range_val * self.size[0]
+    def current_value(self) -> float | int:
+        return self.progress_bar.value if hasattr(self, "progress_bar") else 0
 
-    def _update_value_from_position(self):
-        range_val = self.end_val - self.begin_val
-        if range_val == 0:
-            self.current_value = self.begin_val
-        else:
-            self.current_value = self.begin_val + (self.slider_pos / self.size[0]) * range_val
-            self.current_value = round(self.current_value / self.step) * self.step
-            self.current_value = max(self.begin_val, min(self.end_val, self.current_value))
-
-    def secondary_update(self, *args):
-        super().secondary_update(*args)
-        if not self.active: return
-        if mouse.left_down or mouse.left_fdown:
-            if self.get_rect().collidepoint(mouse.pos): self.is_dragging = True
-        else: self.is_dragging = False
-        if self.is_dragging:
+    @current_value.setter
+    def current_value(self, new_value: float | int):
+        if hasattr(self, "progress_bar"): 
+            self.progress_bar.set_progress_by_value(new_value)
             self._changed = True
-            relative_x = mouse.pos[0] - self.master_coordinates[0]
-            self.slider_pos = max(0, min(self.size[0], relative_x))
-            self._update_value_from_position()
-            self._update_slider_position()
-        self.button.coordinates = NvVector2()
-        self.button.master_coordinates = NvVector2()
-        self.button.update()
-    def draw(self):
-        if not self.visible:return
-        super().draw()
-        #pygame.draw.line(self.surface, self.style.bordercolor,(0, self.size[1] // 2), (self.size[0], self.size[1] // 2), 6)
-        slider_rect = pygame.Rect(max(0,min(self.slider_pos - self.button.size[0]/2,self.size[0]-self.button.size[0])),(self.size[1]- self.button.size[1])/2,  self.button.size[0], self.button.size[1])
-        #pygame.draw.rect(self.surface, self.style.secondarycolor, slider_rect)
-        self.button.draw()
-        self.surface.blit(self.button.surface, slider_rect)
-        self.bake_text(str(self.current_value), alignx=Align.CENTER, aligny=Align.CENTER)
-        assert self._text_surface is not None and self._text_rect is not None
-        self.surface.blit(self._text_surface, self._text_rect)
+        else:
+            self._constant_current_val = new_value
+    
+    def secondary_update(self):
+        super().secondary_update()
+        if not self.active: return
+        if self._constant_current_val and hasattr(self, "progress_bar"):
+            self.current_value = self._constant_current_val
+            self._constant_current_val = None
+            
+        self.progress_bar.update()
+        if self.dragging:
+            self._changed = True
+            self._on_drag()
+
+    def _on_drag(self):
+        relative_x = mouse.pos.x - self.master_coordinates.x
+        
+        slider_pos = max(0, min(self._csize.x, relative_x))
+        slider_perc = (slider_pos / self._csize.x)
+        
+        value = slider_perc * (self.end - self.start) + self.start
+        if value % self.step != 0:
+            value = round(value / self.step) * self.step
+        value = max(self.start, min(self.end, value))
+        
+        if value != self.current_value:
+            self.current_value = value
+            
+    def primary_draw(self):
+        self.surface.fill((0,0,0,0))
+    
+    def secondary_draw_content(self):
+        super().secondary_draw_content()
+        if not self.visible: return
+        self.progress_bar.draw()
+        self.progress_bar.coordinates = NvVector2()
+        
         if self._changed:
-            self._changed = False
+            self.bake_text(str(round(self.progress_bar.progress*100)), alignx = self.style.text_align_x, aligny = self.style.text_align_y)
+            assert self._text_surface and self._text_rect
+            
+            self.adjust_text_rect()
+            
+            self.surface.blit(self._text_surface, self._text_rect)
+    
+    def adjust_text_rect(self):
+        assert self._text_rect
+        if self.style.text_align_x == Align.CENTER and self.style.text_align_y == Align.CENTER: return
+        
+        padx = 0
+        pady = 0
+        
+        match self.style.text_align_x:
+            case Align.LEFT:
+                padx = self.padding_x
+            case Align.RIGHT: 
+                padx = -self.padding_x
+        
+        match self.style.text_align_y:
+            case Align.TOP:
+                pady = self.padding_y
+            case Align.BOTTOM: 
+                pady = -self.padding_y
+            
+        self._text_rect.move_ip(padx, pady)
+    
+    def resize(self, resize_ratio: NvVector2):
+        super().resize(resize_ratio)
+        self.progress_bar.resize(resize_ratio)
+        self.progress_bar.surface = self.surface
+    
+    def clone(self):
+        return Slider(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
