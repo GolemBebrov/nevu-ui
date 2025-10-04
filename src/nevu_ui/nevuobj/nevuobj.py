@@ -1,12 +1,14 @@
-from typing import Any
+from typing import Any, TypedDict, NotRequired
 from collections.abc import Callable
 from warnings import deprecated
 import pygame
 import copy
+import contextlib
 
 from nevu_ui.style import Style
-
+from nevu_ui.color import SubThemeRole
 from nevu_ui.fast.zsystem import ZRequest
+from typing import Unpack
 
 from nevu_ui.animations import (
     AnimationType, AnimationManager
@@ -14,16 +16,15 @@ from nevu_ui.animations import (
 from nevu_ui.utils import (
     Cache, mouse, NevuEvent
 )
-from nevu_ui.color import (
-    Color, ColorPair, ColorSubTheme, ColorTheme, SubThemeRole
-)
 from nevu_ui.fast.logic import (
     relm_helper, rel_helper, mass_rel_helper, get_rect_helper_pygame, get_rect_helper
 )
 from nevu_ui.core_types import (
     SizeRule, Px, Vh, Vw, Fill, HoverState, Events, EventType, ZRequestType, CacheType
 )
-from nevu_ui.fast.nvvector2 import (NvVector2 as Vector2, NvVector2)
+from nevu_ui.fast.nvvector2 import (
+    NvVector2 as Vector2, NvVector2
+)
 
 class ZSystemPlaceholder:
     def add(self, *args, **kwargs):
@@ -33,14 +34,25 @@ class ZSystemPlaceholder:
         
 
 class ConstantStorage:
-    __slots__ = ('supported_classes', 'defaults', 'links', 'properties', 'is_set', 'excluded')
+    __slots__ = ('supported_classes', 'defaults', 'links', 'properties', 'is_set', 'excluded', 'external')
     def __init__(self):
         self.supported_classes = {}
         self.defaults = {}
         self.links = {}
         self.properties = {}
         self.is_set = {}
+        self.external = {}
         self.excluded = []
+
+class NevuObjectKwargs(TypedDict):
+    actual_clone: NotRequired[bool] 
+    id: NotRequired[str | None]
+    floating: NotRequired[bool]
+    single_instance: NotRequired[bool]
+    events: NotRequired[Events]
+    z: NotRequired[int]
+    depth: NotRequired[int]
+    z_request_optimization: NotRequired[bool]
 
 class NevuObject:
     id: str | None
@@ -53,7 +65,8 @@ class NevuObject:
     
     #INIT STRUCTURE: ====================
     #    __init__ >
-    #        constants 
+    #        preinit >
+    #            constants 
     #        basic_variables >
     #            test_flags
     #            booleans
@@ -66,10 +79,12 @@ class NevuObject:
     #        size dependent code
     #======================================
     
-    def __init__(self, size: Vector2 | list, style: Style, **constant_kwargs):
+    def __init__(self, size: Vector2 | list, style: Style, **constant_kwargs: Unpack[NevuObjectKwargs]):
         self.constant_kwargs = constant_kwargs.copy() 
         self._lazy_kwargs = {'size': size}
-
+        
+    #=== Pre Init ===
+    
         #=== Constants ===
         self._init_constants(**constant_kwargs)
         
@@ -88,6 +103,7 @@ class NevuObject:
         self._init_lists()
         
     #=== Complicated Variables ===
+    
         #=== Objects ===
         self._init_objects()
         
@@ -108,6 +124,12 @@ class NevuObject:
         if getter or setter or deleter:
             self.constants.properties[name] = [getter, setter, deleter]
     
+    def _add_free_constant(self, name, default: Any):
+        self.constants.supported_classes[name] = Any
+        self.constants.defaults[name] = default
+        self.constants.is_set[name] = None
+        self.constants.external[name] = True
+    
     def _block_constant(self, name: str):
         self.constants.excluded.append(name)
     
@@ -116,27 +138,25 @@ class NevuObject:
 
     def __getattribute__(self, name):
         get = super().__getattribute__
-        try:
+        with contextlib.suppress(AttributeError):
             constants: ConstantStorage = get('constants')
             constant_properties = constants.properties
             if name in constant_properties:
                 return constant_properties[name][0]()
-        except AttributeError:
-            pass
         return get(name)
 
     def __setattr__(self, name, value):
         try:
             if name in self.constants.supported_classes:
-                if name in self.constants.properties:
-                    self.constants.properties[name][1](value)
-                else:
-                    if not self._is_valid_type(value, self.constants.supported_classes[name]):
-                        raise TypeError(
-                            f"Invalid type for constant '{name}'. "
-                            f"Expected {self.constants.supported_classes[name]}, but got {type(value).__name__}."
-                        )
+                if name in self.constants.external:
                     super().__setattr__(name, value)
+                elif name in self.constants.properties:
+                    self.constants.properties[name][1](value)
+                elif not self._is_valid_type(value, self.constants.supported_classes[name]):
+                        raise TypeError(
+                            f"Invalid type for constant '{name}'. ",
+                            f"Expected {self.constants.supported_classes[name]}, but got {type(value).__name__}.")
+                else: super().__setattr__(name, value)
             else:
                 super().__setattr__(name, value)
         except AttributeError:
@@ -169,7 +189,7 @@ class NevuObject:
 
     def _preinit_constants(self):
         for name, value in self.constants.defaults.items():
-            if not hasattr(self, name):
+            if not hasattr(self, name) or self.constants.external.get(name, False):
                 setattr(self, name, value)
 
     def _change_constants_kwargs(self, **kwargs):
@@ -212,21 +232,19 @@ class NevuObject:
 
     def _process_constant(self, name, constant_name, needed_types, value):
         assert needed_types
-        if constant_name in self.constants.excluded:
-            raise ValueError(f"Constant {name} is unconfigurable")
-        if not isinstance(needed_types, tuple):
-            needed_types = (needed_types,)
-        is_valid = self._is_valid_type(value, needed_types)
-
-        if is_valid:
-            #print(f"Debug: Set constant {name}({constant_name}) to {value} in {self}({type(self).__name__})")
-            setattr(self, constant_name, value)
-            self.constants.is_set[constant_name] = True
-        else:
-            raise TypeError(
-                f"Invalid type for constant '{constant_name}'. "
-                f"Expected {needed_types}, but got {type(value).__name__}."
-            )
+        if constant_name not in self.constants.external.keys():
+            if constant_name in self.constants.excluded:
+                raise ValueError(f"Constant {name} is unconfigurable")
+            
+            if not isinstance(needed_types, tuple):
+                needed_types = (needed_types,)
+        
+            if not(is_valid := self._is_valid_type(value, needed_types)):
+                raise TypeError(f"Invalid type for constant '{constant_name}'. ",
+                                f"Expected {needed_types}, but got {type(value).__name__}.")
+        
+        setattr(self, constant_name, value)
+        self.constants.is_set[constant_name] = True
 
     def _init_test_flags(self):
         pass
@@ -277,7 +295,7 @@ class NevuObject:
     def _init_start(self):
         if self.booted: return
         self._wait_mode = False
-        for i, item in enumerate(self._lazy_kwargs["size"]):
+        for i, item in enumerate(self._lazy_kwargs["size"]): #type: ignore
             self._lazy_kwargs["size"][i] = self.num_handler(item) #type: ignore
         if not self._wait_mode:
             self._lazy_init(**self._lazy_kwargs)
@@ -467,8 +485,8 @@ class NevuObject:
         anim_coords = self.animation_manager.get_animation_value(AnimationType.POSITION)
         anim_coords = anim_coords or [0,0]
         return pygame.Rect(
-            self.master_coordinates[0] - self.relx(anim_coords[0]),
-            self.master_coordinates[1] - self.rely(anim_coords[1]),
+            self.master_coordinates.x - self.relx(anim_coords[0]), # type: ignore
+            self.master_coordinates.y - self.rely(anim_coords[1]), # type: ignore
             *self.rel(self.size)
         )
         
@@ -587,5 +605,4 @@ class NevuObject:
         return relm_helper(num, self._resize_ratio.x, self._resize_ratio.y, min, max)
     
     def rel(self, mass: NvVector2, vector: bool = True) -> NvVector2:  
-        return mass_rel_helper(mass, self._resize_ratio.x, self._resize_ratio.y, vector)
-    
+        return mass_rel_helper(mass, self._resize_ratio.x, self._resize_ratio.y, vector) # type: ignore
