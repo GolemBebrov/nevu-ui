@@ -5,7 +5,7 @@ pygame.init()
 
 class TestScrollable(NevuTest):
     def add_to_layout(self):
-        self.do_fps_test = True
+        #self.do_fps_test = True
         self._dirty_mode = False
         self.fps = 999999999
         self.test_menu.layout = \
@@ -22,6 +22,7 @@ class TestScrollable(NevuTest):
         super().first_update()
     def draw_loop(self):
         super().draw_loop()
+
     #self.test_widget.surface = self.window.surface
     #a = self.test_widget.renderer._create_surf_base((500,500), radius = 20)
         #self.window.surface.fill(ui.default_style.colortheme.get_subtheme(ui.SubThemeRole.SECONDARY).color)

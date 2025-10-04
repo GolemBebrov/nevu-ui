@@ -21,6 +21,7 @@ def create_test_instances():
     widgets_style = ui.default_style(borderradius=10)
     
     widgets_size = [75*ui.vw, 35*ui.vh]
+    widgets_size_small = [75*ui.vw, 15*ui.vh]
     
     widget_kwargs = {"style": widgets_style, "size": widgets_size}
     
@@ -45,9 +46,12 @@ def create_test_instances():
         checkbox_group.add_checkbox(item)
     
     
-    element_swither = ui.ElementSwitcher(**widget_kwargs, elements = ["Apple", "Banana", "Cherry", "Date", "Banana"])
+    element_swither = ui.ElementSwitcher(**widget_kwargs, elements = [("Apple", "fruit_1"), "Banana", "Cherry", "Date", "Banana"])
+    progress_bar = ui.ProgressBar(**widget_kwargs, value = 50, role = ui.PairColorRole.SURFACE_VARIANT)
     
-    showcase_widgets = [widget, label, input_box, rect_checkbox_row, element_swither]
+    slider_bar = ui.Slider(widgets_size_small, widgets_style(text_align_x = ui.Align.LEFT), start = 0, end = 100, step = 1, current_value = 50)
+    #element = element_swither.find("fruit_1")
+    showcase_widgets = [widget, label, input_box, rect_checkbox_row, element_swither, progress_bar, slider_bar]
     
     return test_window, test_menu, showcase_widgets#, showcase_layouts
 
