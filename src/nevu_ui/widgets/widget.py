@@ -1,5 +1,6 @@
 import pygame
 import copy
+import contextlib
 
 from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.logic import logic_update_helper
@@ -180,13 +181,12 @@ class Widget(NevuObject):
         if self._changed:
             if type(self) == Widget: self._changed = False
             self._dirty_rect.append(self.get_rect())
-            TRANSPARENT = (0, 0, 0, 0)
+            
             if self.inline: 
-                
                 surf = self.renderer._scale_background(self._csize.to_round()) if self.will_resize else self.renderer._generate_background()
-                #self.surface.fill(TRANSPARENT, [self.coordinates.to_round().to_tuple(),surf.get_size()])
                 self.surface.blit(surf, self.coordinates.to_round().to_tuple())
             else:
+                TRANSPARENT = (0, 0, 0, 0)
                 self.surface.fill(TRANSPARENT)
                 self.surface = self.renderer._scale_background(self._csize) if self.will_resize else self.renderer._generate_background()
                 
@@ -215,15 +215,19 @@ class Widget(NevuObject):
 
     def bake_text(self, text: str, unlimited_y: bool = False, words_indent: bool = False,
                   alignx: Align = Align.CENTER, aligny: Align = Align.CENTER, continuous: bool = False, size_x = None, size_y = None):
-        if continuous: self._bake_text_single_continuous(text); return
+        if continuous: 
+            self._bake_text_single_continuous(text)
+            return
+        
+        size_x = size_x or self.relx(self.size.x)
+        size_y = size_y or self.rely(self.size.y)
         is_popped = False
         ifnn = False
-        size_x = size_x or self.relx(self.size[0])
-        size_y = size_y or self.rely(self.size[1])
-        words = list(text)
-        marg = ""
-        lines = []
+
         current_line = ""
+        marg = ""
+        words = list(text)
+        lines = []
 
         renderFont = self.get_font() 
         line_height = renderFont.size("a")[1]
@@ -234,10 +238,9 @@ class Widget(NevuObject):
 
         for word in words:
             if word == '\n': ifnn = True
-            try:
+            with contextlib.suppress(Exception):
                 w = word[0] + word[1]
                 if w == '\ '.strip()+"n": ifnn = True # type: ignore
-            except: pass
             if ifnn:
                 lines.append(current_line)
                 current_line = ""
@@ -261,18 +264,13 @@ class Widget(NevuObject):
 
         self._text_baked = "\n".join(lines)
 
-        if is_popped:
-            if not unlimited_y:
-                self._text_baked = self._text_baked[:-3] + "..."
-                justify_y = False
-            else: justify_y = True
-        else: justify_y = False
+        if is_popped and not unlimited_y:
+                 self._text_baked = f"{self._text_baked[:-3]}..."
 
         self._text_surface = renderFont.render(self._text_baked, True, self._subtheme_font)
-        if self.inline:
-            container_rect = pygame.Rect(self.coordinates.to_round().to_tuple(), self._csize.to_round())
-        else:
-            container_rect = self.surface.get_rect()
+        
+        container_rect = pygame.Rect(self.coordinates.to_round().to_tuple(), self._csize.to_round()) if self.inline else self.surface.get_rect()
+            
         text_rect = self._text_surface.get_rect()
 
         if alignx == Align.LEFT: text_rect.left = container_rect.left
@@ -287,18 +285,20 @@ class Widget(NevuObject):
 
     def _bake_text_single_continuous(self, text: str):
         assert hasattr(self, "_entered_text")
+        
         renderFont = self.get_font()
         self.font_size = renderFont.size(text)
-        self._text_surface = renderFont.render(self._entered_text, True, self._subtheme.oncontainer) #type: ignore
+        self._text_surface = renderFont.render(self._entered_text, True, self._subtheme_font) #type: ignore
+        
         if not self.font_size[0] + self.relx(10) >= self._csize[0]: 
-            self._text_rect = self._text_surface.get_rect(left = self.relx(10), centery = self._csize[1] / 2)
-        else: self._text_rect = self._text_surface.get_rect(right = self.relx(self._csize[0] - 10), centery = self._csize[1] / 2)
+            self._text_rect = self._text_surface.get_rect(left = self.relx(10), centery = self._csize.y / 2)
+        else: self._text_rect = self._text_surface.get_rect(right = self.relx(self._csize.x - 10), centery = self._csize.y / 2)
 
     def resize(self, resize_ratio: NvVector2):
         super().resize(resize_ratio)
         self._resize_ratio = resize_ratio
 
-        self.cache.clear_selected(whitelist=[CacheType.RelSize])
+        self.cache.clear_selected(whitelist = [CacheType.RelSize])
         self.clear_surfaces()
         self._update_image()
         
