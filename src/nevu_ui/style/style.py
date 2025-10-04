@@ -24,14 +24,12 @@ class Style:
         self.gradient = None
 
         self.kwargs_dict = {}
-        self.add_style_parameter("textcolor", "fontcolor", lambda value:self.parse_color(value, can_be_gradient=False, can_be_trasparent=False))
-        self.add_style_parameter("fontcolor", "fontcolor", lambda value:self.parse_color(value, can_be_gradient=False, can_be_trasparent=False))
         self.add_style_parameter("borderradius", "borderradius", lambda value:self.parse_int(value, min_restriction=0))
         self.add_style_parameter("borderwidth", "borderwidth", lambda value:self.parse_int(value, min_restriction=-1))
         self.add_style_parameter("fontsize", "fontsize", lambda value:self.parse_int(value, min_restriction=1))
         self.add_style_parameter("fontname", "fontname", lambda value:self.parse_str(value))
-        self.add_style_parameter("text_align_x", "text_align_x", lambda value:self.parse_int(value))
-        self.add_style_parameter("text_align_y", "text_align_y", lambda value:self.parse_int(value))
+        self.add_style_parameter("text_align_x", "text_align_x", lambda value:self.parse_class_type(value, Align))
+        self.add_style_parameter("text_align_y", "text_align_y", lambda value:self.parse_class_type(value, Align))
         self.add_style_parameter("transparency", "transparency", lambda value:self.parse_int(value, max_restriction=255, min_restriction=0))
         self.add_style_parameter("bgimage", "bgimage", lambda value:self.parse_str(value))
         self.add_style_parameter("colortheme", "colortheme", lambda value:self.parse_class_type(value, ColorTheme))
