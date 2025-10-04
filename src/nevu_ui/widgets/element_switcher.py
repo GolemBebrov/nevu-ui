@@ -5,14 +5,26 @@ import contextlib
 from typing import Callable, AnyStr, Any
 
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.widgets import Widget, Button
+from nevu_ui.widgets import Widget, Button, WidgetKwargs
 from nevu_ui.utils import mouse, keyboard
+
+from typing import Any, TypedDict, NotRequired, Unpack
 
 from nevu_ui.style import (
     Style, default_style
 )
 
 from nevu_ui.core_types import CacheType, HoverState
+
+class ElementSwitcherKwargs(WidgetKwargs):
+    on_change: NotRequired[Callable | None]
+    current_index: NotRequired[int]
+    button_padding: NotRequired[int]
+    arrow_width: NotRequired[int]
+    left_text: NotRequired[str]
+    left_key: NotRequired[Any]
+    right_text: NotRequired[str]
+    right_key: NotRequired[Any]
 
 class Element:
     __slots__ = ["text", "id"]
@@ -52,7 +64,7 @@ class ElementSwitcher(Widget):
     arrow_width: int
     left_text: str
     right_text: str
-    def __init__(self, size: NvVector2 | list, elements: list[Element | Any | list] | None = None, style: Style = default_style, **constant_kwargs):
+    def __init__(self, size: NvVector2 | list, elements: list[Element | Any | list] | None = None, style: Style = default_style, **constant_kwargs: Unpack[ElementSwitcherKwargs]):
         super().__init__(size, style, **constant_kwargs)
         self._lazy_kwargs = {'size': size, 'elements': elements}
 

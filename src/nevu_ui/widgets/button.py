@@ -1,17 +1,23 @@
 import copy
 
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.widgets import Label
+from nevu_ui.widgets import Label, LabelKwargs
+
+from typing import Any, TypedDict, NotRequired, Unpack
 
 from nevu_ui.style import (
     Style, default_style
 )
 
+class ButtonKwargs(LabelKwargs):
+    is_active: NotRequired[bool]
+    throw_errors: NotRequired[bool]
+
 class Button(Label):
     throw_errors: bool
     is_active: bool
     
-    def __init__(self, function, text: str, size: NvVector2 | list, style: Style = default_style, **constant_kwargs):
+    def __init__(self, function, text: str, size: NvVector2 | list, style: Style = default_style, **constant_kwargs: Unpack[ButtonKwargs]):
         super().__init__(text, size, style, **constant_kwargs)
         self.function = function
         

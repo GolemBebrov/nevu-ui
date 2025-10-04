@@ -2,11 +2,13 @@ import pygame
 import copy
 import contextlib
 
-from nevu_ui.nevuobj import NevuObject
+from nevu_ui.nevuobj import NevuObject, NevuObjectKwargs
 from nevu_ui.fast.logic import logic_update_helper
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.color import SubThemeRole
 from nevu_ui.rendering.background_renderer import BackgroundRenderer
+
+from typing import Any, TypedDict, NotRequired, Unpack
 
 from nevu_ui.style import (
     Style, default_style
@@ -14,6 +16,16 @@ from nevu_ui.style import (
 from nevu_ui.core_types import (
     Quality, Align, CacheType
 )
+
+class WidgetKwargs(NevuObjectKwargs):
+    alt: NotRequired[bool]
+    will_resize: NotRequired[bool]
+    clickable: NotRequired[bool]
+    hoverable: NotRequired[bool]
+    fancy_click_style: NotRequired[bool]
+    resize_bg_image: NotRequired[bool]
+    z: NotRequired[int]
+    inline: NotRequired[bool]
 
 class Widget(NevuObject):
     _alt: bool
@@ -25,7 +37,7 @@ class Widget(NevuObject):
     z: int
     inline: bool
     
-    def __init__(self, size: NvVector2 | list, style: Style = default_style, **constant_kwargs):
+    def __init__(self, size: NvVector2 | list, style: Style = default_style, **constant_kwargs: Unpack[WidgetKwargs]):
         super().__init__(size, style, **constant_kwargs)
         #=== Text Cache ===
         self._init_text_cache()

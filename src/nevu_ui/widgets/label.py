@@ -1,15 +1,20 @@
 import copy
 
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.widgets import Widget
+from nevu_ui.widgets import Widget, WidgetKwargs
+
+from typing import Any, TypedDict, NotRequired, Unpack
 
 from nevu_ui.style import (
     Style, default_style
 )
 
+class LabelKwargs(WidgetKwargs):
+    words_indent: NotRequired[bool]
+
 class Label(Widget):
     words_indent: bool
-    def __init__(self, text: str, size: NvVector2 | list, style: Style = default_style, **constant_kwargs):
+    def __init__(self, text: str, size: NvVector2 | list, style: Style = default_style, **constant_kwargs: Unpack[LabelKwargs]):
         super().__init__(size, style, **constant_kwargs)
         self._lazy_kwargs = {'size': size, 'text': text}
         self._changed = True

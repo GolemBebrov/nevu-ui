@@ -2,14 +2,25 @@ import copy
 import pygame
 
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.widgets import Widget, Button
+from nevu_ui.widgets import Widget, Button, WidgetKwargs
 from nevu_ui.utils import mouse
 from nevu_ui.core_types import Align
 from nevu_ui.widgets.progress_bar import ProgressBar
 
+from typing import Any, TypedDict, NotRequired, Unpack, Union
+
 from nevu_ui.style import (
     Style, default_style
 )
+
+class SliderKwargs(WidgetKwargs):
+    start: NotRequired[Union[int, float]]
+    end: NotRequired[Union[int, float]]
+    step: NotRequired[Union[int, float]]
+    current_value: NotRequired[Any]
+    progress_style: NotRequired[Style | None]
+    padding_x: NotRequired[int]
+    padding_y: NotRequired[int]
 
 class Slider(Widget):
     progress_style: Style
@@ -18,7 +29,7 @@ class Slider(Widget):
     step: float | int
     padding_x: int
     padding_y: int
-    def __init__(self, size: NvVector2 | list, style: Style = default_style, **constant_kwargs):
+    def __init__(self, size: NvVector2 | list, style: Style = default_style, **constant_kwargs: Unpack[SliderKwargs]):
         self._constant_current_val = None
         super().__init__(size, style, **constant_kwargs)    
     
@@ -28,7 +39,7 @@ class Slider(Widget):
     
     def create_progress_bar(self):
         progress_style = self.progress_style or self.style
-        self.progress_bar = ProgressBar(self.size, progress_style, min_value = self.start, max_value = self.end, value = self.current_value, inline = True)
+        self.progress_bar = ProgressBar(self.size, progress_style, min_value = self.start, max_value = self.end, value = self.current_value, inline=True)
         self.progress_bar.surface = self.surface
         self.progress_bar._init_start()
         self.progress_bar.booted = True

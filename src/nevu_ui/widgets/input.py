@@ -3,7 +3,9 @@ import copy
 
 from nevu_ui.core_types import Align
 from nevu_ui.utils import mouse
-from nevu_ui.widgets import Widget
+from nevu_ui.widgets import Widget, WidgetKwargs
+
+from typing import Any, TypedDict, NotRequired, Unpack
 
 from nevu_ui.fast.nvvector2 import (
     NvVector2 as Vector2, NvVector2
@@ -11,6 +13,15 @@ from nevu_ui.fast.nvvector2 import (
 from nevu_ui.style import (
     Style, default_style
 )
+
+class InputKwargs(WidgetKwargs):
+    is_active: NotRequired[bool]
+    multiple: NotRequired[bool]
+    allow_paste: NotRequired[bool]
+    words_indent: NotRequired[bool]
+    max_characters: NotRequired[int | None]
+    blacklist: NotRequired[list | None]
+    whitelist: NotRequired[list | None]
 
 class Input(Widget):
     blacklist: list | None
@@ -21,7 +32,7 @@ class Input(Widget):
     words_indent: bool
     is_active: bool
     
-    def __init__(self, size: Vector2 | list, style: Style = default_style, default: str = "", placeholder: str = "", on_change_function = None, **constant_kwargs):
+    def __init__(self, size: Vector2 | list, style: Style = default_style, default: str = "", placeholder: str = "", on_change_function = None, **constant_kwargs: Unpack[InputKwargs]):
         super().__init__(size, style, **constant_kwargs)
         self._lazy_kwargs = {'size': size}
         self._entered_text = ""

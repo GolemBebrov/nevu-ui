@@ -1,19 +1,30 @@
 import copy
 
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.widgets import Widget
+from nevu_ui.widgets import Widget, WidgetKwargs
 from nevu_ui.color import PairColorRole
+
+from typing import Any, TypedDict, NotRequired, Unpack, Union
 
 from nevu_ui.style import (
     Style, default_style
 )
+
+class ProgressBarKwargs(WidgetKwargs):
+    min_value: NotRequired[Union[int, float]]
+    min: NotRequired[Union[int, float]]
+    max_value: NotRequired[Union[int, float]]
+    max: NotRequired[Union[int, float]]
+    value: NotRequired[Union[int, float]]
+    color_pair_role: NotRequired[PairColorRole]
+    role: NotRequired[PairColorRole]
 
 class ProgressBar(Widget):
     min_value: int | float
     max_value: int | float
     _current_value: int | float
     color_pair_role: PairColorRole
-    def __init__(self, size: NvVector2 | list, style: Style = default_style, **constant_kwargs):
+    def __init__(self, size: NvVector2 | list, style: Style = default_style, **constant_kwargs: Unpack[ProgressBarKwargs]):
         """Initializes a new ProgressBar widget.
 
         A visual widget that indicates the progress of an operation or a value

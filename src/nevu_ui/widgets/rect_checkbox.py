@@ -1,18 +1,29 @@
 import copy
 
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.widgets import Widget
+from nevu_ui.widgets import WidgetKwargs, Widget
 from collections.abc import Callable
 from nevu_ui.core_types import EventType
+
+from typing import Any, TypedDict, NotRequired, Unpack, Union
+
 
 from nevu_ui.style import (
     Style, default_style
 )
 
+class RectCheckBoxKwargs(WidgetKwargs):
+    function: NotRequired[Callable | None]
+    on_toogle: NotRequired[Callable | None]
+    toogled: NotRequired[bool]
+    active: NotRequired[bool]
+    active_rect_factor: NotRequired[Union[float, int]]
+    active_factor: NotRequired[Union[float, int]]
+
 class RectCheckBox(Widget):
     function: Callable | None
     _active_rect_factor: float | int
-    def __init__(self, size: int, style: Style = default_style, **constant_kwargs):
+    def __init__(self, size: int, style: Style = default_style, **constant_kwargs: Unpack[RectCheckBoxKwargs]):
         super().__init__(NvVector2([size, size]), style, **constant_kwargs)
         
     def _init_booleans(self):
