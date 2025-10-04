@@ -1,1 +1,1 @@
-from .nevuobj import NevuObject
+from .nevuobj import NevuObject, NevuObjectKwargs
