@@ -7,7 +7,7 @@ class Tooltip(Widget):
         self.style = style
         self.size = (200,400)
         self.bake_text(self.text,False,True,self.style.text_align_x,self.style.text_align_y)
-        raise NotImplementedError("Tooltip is not implemented yet, wait till 0.05")
+        raise NotImplementedError("Tooltip is not implemented yet, wait till 0.6.X")
     def draw(self):
         pass #TODO in version 0.6 :)
     
