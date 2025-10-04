@@ -48,7 +48,7 @@ class BackgroundRenderer:
         cached_gradient = pygame.transform.smoothscale(cached_gradient, target_size_tuple)
         return cached_gradient
     
-    def _create_surf_base(renderer, size = None, alt = False, radius = None): # type: ignore
+    def _create_surf_base(renderer, size = None, alt = False, radius = None, standstill = False, override_color = None): # type: ignore
         self = renderer.root
         
         needed_size = size or self._csize
@@ -59,10 +59,15 @@ class BackgroundRenderer:
         
         color = self._subtheme_font if alt else self._subtheme_content
         
-        if self._hover_state == HoverState.CLICKED and not self.fancy_click_style and self.clickable: 
-            color = Color.lighten(color, 0.2)
-        elif self._hover_state == HoverState.HOVERED and self.hoverable: 
-            color = Color.darken(color, 0.2)
+        if not standstill:
+            if self._hover_state == HoverState.CLICKED and not self.fancy_click_style and self.clickable: 
+                color = Color.lighten(color, 0.2)
+            elif self._hover_state == HoverState.HOVERED and self.hoverable: 
+                color = Color.darken(color, 0.2)
+        
+        if override_color:
+            color = override_color
+        
         if self.will_resize:
             avg_scale_factor = _QUALITY_TO_RESOLUTION[self.quality]
         else:
