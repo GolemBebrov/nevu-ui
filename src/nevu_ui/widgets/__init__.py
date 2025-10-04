@@ -8,6 +8,8 @@ from .gif import Gif
 from .input import Input
 from .music_player import MusicPlayer
 from .element_switcher import ElementSwitcher, Element
+from .progress_bar import ProgressBar
+from .slider_bar import Slider
 __all__ = [
-    'Widget', 'Label', 'Button', 'EmptyWidget', 'RectCheckBox', 'Image', 'Gif', 'Input', 'MusicPlayer', 'ElementSwitcher', 'Element'
+    'Widget', 'Label', 'Button', 'EmptyWidget', 'RectCheckBox', 'Image', 'Gif', 'Input', 'MusicPlayer', 'ElementSwitcher', 'Element', 'ProgressBar', 'Slider'
 ]
