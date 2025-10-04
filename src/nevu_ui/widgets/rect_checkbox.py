@@ -14,6 +14,7 @@ class RectCheckBox(Widget):
     _active_rect_factor: float | int
     def __init__(self, size: int, style: Style = default_style, **constant_kwargs):
         super().__init__(NvVector2([size, size]), style, **constant_kwargs)
+        
     def _init_booleans(self):
         super()._init_booleans()
         self._toogled = False
@@ -48,33 +49,31 @@ class RectCheckBox(Widget):
         
     def secondary_draw_content(self):
         super().secondary_draw_content()
-        if self._changed:
-            if self._toogled:
-                margin = (self._csize * (1 - self.active_rect_factor)) / 2
-                
-                offset = NvVector2(round(margin.x), round(margin.y))
-                
-                active_size = self._csize - (offset * 2)
-
-                active_size.x = max(1, int(active_size.x))
-                active_size.y = max(1, int(active_size.y))
-                
-                inner_radius = self._style.borderradius * self.active_rect_factor
-                
-                inner_surf = self.renderer._create_surf_base(
-                    active_size, 
-                    True, 
-                    self.relm(inner_radius)
-                )
-                
-                self.surface.blit(inner_surf, offset)
+        if self._changed and self._toogled:
+            margin = (self._csize * (1 - self.active_rect_factor)) / 2
+            
+            offset = NvVector2(round(margin.x), round(margin.y))
+            
+            active_size = self._csize - (offset * 2)
+            
+            active_size.x = max(1, int(active_size.x))
+            active_size.y = max(1, int(active_size.y))
+            
+            inner_radius = self._style.borderradius * self.active_rect_factor
+            
+            inner_surf = self.renderer._create_surf_base(
+                active_size, 
+                True, 
+                self.relm(inner_radius)
+            )
+            
+            self.surface.blit(inner_surf, offset)
+            
     def _on_click_system(self):
         self.toogled = not self.toogled
         super()._on_click_system()
           
     def clone(self):
-        #print("cloned myself :)")
-        #print("my current events:", self._events.content)
         self.constant_kwargs['events'] = self._events
         selfcopy = RectCheckBox(self._lazy_kwargs['size'].x, copy.deepcopy(self.style), **self.constant_kwargs) # type: ignore
         self._event_cycle(EventType.OnCopy, selfcopy)
