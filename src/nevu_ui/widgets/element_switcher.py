@@ -113,8 +113,8 @@ class ElementSwitcher(Widget):
                 self.next()
     
     def _create_buttons(self):
-        self.button_left = Button(self.previous, self.left_text, NvVector2(self._get_arrow_width(), self._rsize.y).to_round(), self.style(borderwidth = 0), z = self.z + 1, inline = True, fancy_click_style = False)
-        self.button_right = Button(self.next, self.right_text, NvVector2(self._get_arrow_width(), self._rsize.y).to_round(), self.style(borderwidth = 0), z = self.z + 1, inline = True, fancy_click_style = False)
+        self.button_left = Button(self.previous, self.left_text, NvVector2(self._get_arrow_width(), self._rsize.y).to_round(), self.style(borderwidth = 0, borderradius = self.style.borderradius - self._rsize_marg.x / 2), z = self.z + 1, inline = True, fancy_click_style = False, alt = self.alt)
+        self.button_right = Button(self.next, self.right_text, NvVector2(self._get_arrow_width(), self._rsize.y).to_round(), self.style(borderwidth = 0), z = self.z + 1, inline = True, fancy_click_style = False, alt = self.alt)
         self._start_button(self.button_left)
         self._start_button(self.button_right)
         self._delayed_button_update = True
