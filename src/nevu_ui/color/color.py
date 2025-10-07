@@ -1,8 +1,12 @@
 import colorsys
-
 import random
 
+class ColorAnnotation():
+    RGBColor = tuple[int, int, int]
+    HSLColor = tuple[float, float, float]
+    
 class Color:
+
     ALICEBLUE = (240, 248, 255)
     ANTIQUEWHITE = (250, 235, 215)
     AQUA = (0, 255, 255)
@@ -145,12 +149,14 @@ class Color:
     YELLOW = (255, 255, 0)
     YELLOWGREEN = (154, 205, 50)
     Ukraine = "POOP" #Joke >W<
+    
     @classmethod
-    def __getitem__(cls, key: str) -> tuple:
-        return getattr(cls, key.upper())
+    def __getitem__(cls, key: str) -> ColorAnnotation.RGBColor | None:
+        assert key.upper() != "UKRAINE", "its a joke >W<!!!"
+        return getattr(cls, key.upper(), None)
 
     @staticmethod
-    def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
+    def hex_to_rgb(hex_color: str) -> ColorAnnotation.RGBColor:
         """Converts HEX string to RGB tuple."""
         hex_color = hex_color.lstrip('#')
         if len(hex_color) != 6:
@@ -158,66 +164,66 @@ class Color:
         return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4)) # type: ignore
 
     @staticmethod
-    def hsl_to_rgb(hsl: tuple[float, float, float]) -> tuple[int, int, int]:
+    def hsl_to_rgb(color: ColorAnnotation.HSLColor) -> ColorAnnotation.RGBColor:
         """Converts HSL (0-1) to RGB (0-255)."""
-        h, l, s = hsl
+        h, l, s = color
         r, g, b = colorsys.hls_to_rgb(h, l, s)
         return (round(r * 255), round(g * 255), round(b * 255))
 
     @staticmethod
-    def rgb_to_hsl(rgb: tuple[int, int, int]) -> tuple[float, float, float]:
+    def rgb_to_hsl(color: ColorAnnotation.RGBColor) -> ColorAnnotation.HSLColor:
         """Converts RGB (0-255) to HSL (0-1)."""
-        r, g, b = rgb
+        r, g, b = color
         h, l, s = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
         return (h, l, s)
 
     @staticmethod
-    def invert(rgb: tuple[int, int, int]) -> tuple[int, int, int]:
+    def invert(color: ColorAnnotation.RGBColor) -> ColorAnnotation.RGBColor:
         """Inverts the color (makes negative)."""
-        assert len(rgb) == 3
-        return tuple(255 - c for c in rgb) # type: ignore
+        assert len(color) == 3
+        return tuple(255 - c for c in color) # type: ignore
 
     @staticmethod
-    def lighten(rgb: tuple[int, int, int], amount: float = 0.2) -> tuple[int, int, int]:
+    def lighten(color: ColorAnnotation.RGBColor, amount: float = 0.2) -> ColorAnnotation.RGBColor:
         """
         Lightens the color.
         amount: from 0.0 (no change) to 1.0 (completely white).
         """
         if not (0.0 <= amount <= 1.0):
             raise ValueError("The 'amount' value should be between 0.0 and 1.0.")
-        h, l, s = Color.rgb_to_hsl(rgb)
+        h, l, s = Color.rgb_to_hsl(color)
         l = l + (1 - l) * amount
         return Color.hsl_to_rgb((h, l, s))
 
     @staticmethod
-    def darken(rgb: tuple[int, int, int], amount: float = 0.2) -> tuple[int, int, int]:
+    def darken(color: ColorAnnotation.RGBColor, amount: float = 0.2) -> ColorAnnotation.RGBColor:
         """
         Makes the color darker.
         amount: from 0.0 (no change) to 1.0 (completely black).
         """
         if not (0.0 <= amount <= 1.0):
             raise ValueError("The 'amount' value should be between 0.0 and 1.0.")
-        h, l, s = Color.rgb_to_hsl(rgb)
+        h, l, s = Color.rgb_to_hsl(color)
         l = l * (1 - amount)
         return Color.hsl_to_rgb((h, l, s))
 
     @staticmethod
-    def random() -> tuple[int, int, int]:
+    def random() -> ColorAnnotation.RGBColor:
         """Returns a random RGB color."""
         return (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
     @staticmethod
-    def text_color_for_bg(bg_rgb: tuple[int, int, int]) -> tuple[int, int, int]:
+    def text_color_for_bg(bg_color: ColorAnnotation.RGBColor) -> ColorAnnotation.RGBColor:
         """
         Determines which text color (black or white) will be better readable
         on a given background color.
         """
-        r, g, b = bg_rgb
+        r, g, b = bg_color
         luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
         return Color.BLACK if luminance > 0.5 else Color.WHITE
 
     @staticmethod
-    def mix(*colors) -> tuple[int, int, int]:
+    def mix(*colors) -> ColorAnnotation.RGBColor:
         """
         Mixes several colors together.
         Takes colors in RGB-tuple, HEX-string or color name from the Color class.
@@ -230,9 +236,9 @@ class Color:
                 else:
                     try:
                         color = getattr(Color, color.upper())
-                    except AttributeError:
-                        raise ValueError(f"Unknown color name: {color}")
-            
+                    except AttributeError as e:
+                        raise ValueError(f"Unknown color name: {color}") from e
+
             if not isinstance(color, tuple):
                  raise TypeError(f"Invalid color format for: {color}")
 
