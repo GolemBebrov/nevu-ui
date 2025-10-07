@@ -19,6 +19,7 @@ class PairColorRole(_RoleAncestor):
 class TupleColorRole(_RoleAncestor):
     OUTLINE = "outline"
     INVERSE_PRIMARY = "inverse_primary"
+    
 @dataclass
 class ColorPair:
     """Представляет пару цветов (основной цвет и цвет контента на нем)."""
@@ -51,17 +52,17 @@ class ColorTheme:
     inverse_primary: tuple
 
     def get_subtheme(self, role: SubThemeRole) -> ColorSubTheme:
-        assert isinstance(role, SubThemeRole)
+        assert isinstance(role, SubThemeRole), f"role must be SubThemeRole, {role} given"
         return getattr(self, role.value)
     
     def get_pair(self, role: PairColorRole) -> ColorPair:
-        assert isinstance(role, PairColorRole)
+        assert isinstance(role, PairColorRole), f"role must be PairColorRole, {role} given"
         return getattr(self, role.value)
 
     def get_tuple(self, role: TupleColorRole) -> tuple:
-        assert isinstance(role, TupleColorRole)
+        assert isinstance(role, TupleColorRole), f"role must be TupleColorRole, {role} given"
         return getattr(self, role.value)
     
     def get(self, any_role) -> ColorSubTheme | ColorPair | tuple:
-        assert isinstance(any_role, _RoleAncestor)
+        assert isinstance(any_role, _RoleAncestor), f"role must be _RoleAncestor, {any_role} given"
         return getattr(self, any_role.value)
