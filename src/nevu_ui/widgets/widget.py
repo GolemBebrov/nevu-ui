@@ -5,7 +5,7 @@ import contextlib
 from nevu_ui.nevuobj import NevuObject, NevuObjectKwargs
 from nevu_ui.fast.logic import logic_update_helper
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.color import SubThemeRole
+from nevu_ui.color import SubThemeRole, PairColorRole
 from nevu_ui.rendering.background_renderer import BackgroundRenderer
 
 from typing import Any, TypedDict, NotRequired, Unpack
@@ -26,6 +26,8 @@ class WidgetKwargs(NevuObjectKwargs):
     resize_bg_image: NotRequired[bool]
     z: NotRequired[int]
     inline: NotRequired[bool]
+    font_role: NotRequired[PairColorRole]
+    quality: NotRequired[Quality]
 
 class Widget(NevuObject):
     _alt: bool
@@ -36,6 +38,8 @@ class Widget(NevuObject):
     resize_bg_image: bool
     z: int
     inline: bool
+    font_role: PairColorRole
+    quality: Quality
     
     def __init__(self, size: NvVector2 | list, style: Style = default_style, **constant_kwargs: Unpack[WidgetKwargs]):
         super().__init__(size, style, **constant_kwargs)
@@ -54,6 +58,8 @@ class Widget(NevuObject):
         self._add_constant("resize_bg_image", bool, False)
         self._add_constant("z", int, 1)
         self._add_constant("inline", bool, False)
+        self._add_constant("font_role", PairColorRole, PairColorRole.SURFACE_VARIANT)
+        self._add_constant("quality", Quality, Quality.Decent)
         
     def _init_text_cache(self):
         self._text_baked = None
@@ -62,7 +68,6 @@ class Widget(NevuObject):
         
     def _init_objects(self):
         super()._init_objects()
-        self.quality = Quality.Decent
         self._subtheme_role = SubThemeRole.SECONDARY
         self.renderer = BackgroundRenderer(self)
         
@@ -77,9 +82,14 @@ class Widget(NevuObject):
         self._original_alt = self._alt
 
     def _init_alt(self):
-        if self.alt: self._subtheme_font, self._subtheme_content = self._alt_subtheme_font, self._alt_subtheme_content
-        else: self._subtheme_font, self._subtheme_content = self._main_subtheme_font, self._main_subtheme_content
-    
+        if self.alt: 
+            self._subtheme_border = self._alt_subtheme_border
+            self._subtheme_content =  self._alt_subtheme_content
+            self._subtheme_font = self._alt_subtheme_font
+        else:
+            self._subtheme_border = self._main_subtheme_border
+            self._subtheme_content = self._main_subtheme_content
+            self._subtheme_font = self._main_subtheme_font
     def _lazy_init(self, size: NvVector2 | list):
         super()._lazy_init(size)
         if self.inline: return
@@ -167,15 +177,23 @@ class Widget(NevuObject):
     def _main_subtheme_content(self):
         return self._subtheme.color
     @property
-    def _main_subtheme_font(self):
+    def _main_subtheme_border(self):
         return self._subtheme.oncolor
 
     @property
     def _alt_subtheme_content(self):
         return self._subtheme.container
     @property
-    def _alt_subtheme_font(self):
+    def _alt_subtheme_border(self):
         return self._subtheme.oncontainer
+    @property
+    def _main_subtheme_font(self):
+        return self.style.colortheme.get_pair(self.font_role).color
+
+    @property
+    def _alt_subtheme_font(self):
+        return self.style.colortheme.get_pair(self.font_role).oncolor
+    
     @property
     def _rsize(self) -> NvVector2:
         bw = self.relm(self.style.borderwidth)
@@ -226,11 +244,12 @@ class Widget(NevuObject):
         #print(f"booted widget: {self}")
 
     def bake_text(self, text: str, unlimited_y: bool = False, words_indent: bool = False,
-                  alignx: Align = Align.CENTER, aligny: Align = Align.CENTER, continuous: bool = False, size_x = None, size_y = None):
+                  alignx: Align = Align.CENTER, aligny: Align = Align.CENTER, continuous: bool = False, size_x = None, size_y = None, color = None):
         if continuous: 
             self._bake_text_single_continuous(text)
             return
-        
+        color = color or self._subtheme_font
+        print(color)
         size_x = size_x or self.relx(self.size.x)
         size_y = size_y or self.rely(self.size.y)
         is_popped = False
@@ -279,7 +298,7 @@ class Widget(NevuObject):
         if is_popped and not unlimited_y:
                  self._text_baked = f"{self._text_baked[:-3]}..."
 
-        self._text_surface = renderFont.render(self._text_baked, True, self._subtheme_font)
+        self._text_surface = renderFont.render(self._text_baked, True, color)
         
         container_rect = pygame.Rect(self.coordinates.to_round().to_tuple(), self._csize.to_round()) if self.inline else self.surface.get_rect()
             
