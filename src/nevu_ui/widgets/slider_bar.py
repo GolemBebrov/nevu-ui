@@ -6,6 +6,7 @@ from nevu_ui.widgets import Widget, Button, WidgetKwargs
 from nevu_ui.utils import mouse
 from nevu_ui.core_types import Align
 from nevu_ui.widgets.progress_bar import ProgressBar
+from nevu_ui.color import TupleColorRole
 
 from typing import Any, TypedDict, NotRequired, Unpack, Union
 
@@ -21,6 +22,7 @@ class SliderKwargs(WidgetKwargs):
     progress_style: NotRequired[Style | None]
     padding_x: NotRequired[int]
     padding_y: NotRequired[int]
+    tuple_role: NotRequired[TupleColorRole]
 
 class Slider(Widget):
     progress_style: Style
@@ -29,6 +31,7 @@ class Slider(Widget):
     step: float | int
     padding_x: int
     padding_y: int
+    tuple_role: TupleColorRole
     def __init__(self, size: NvVector2 | list, style: Style = default_style, **constant_kwargs: Unpack[SliderKwargs]):
         self._constant_current_val = None
         super().__init__(size, style, **constant_kwargs)    
@@ -39,7 +42,7 @@ class Slider(Widget):
     
     def create_progress_bar(self):
         progress_style = self.progress_style or self.style
-        self.progress_bar = ProgressBar(self.size, progress_style, min_value = self.start, max_value = self.end, value = self.current_value, inline=True)
+        self.progress_bar = ProgressBar(self.size, progress_style, min_value = self.start, max_value = self.end, value = self.current_value, inline=True, alt = self.alt)
         self.progress_bar.surface = self.surface
         self.progress_bar._init_start()
         self.progress_bar.booted = True
@@ -71,6 +74,7 @@ class Slider(Widget):
         self._add_constant("progress_style", (Style, type(None)), None)
         self._add_constant("padding_x", int, 10)
         self._add_constant("padding_y", int, 10)
+        self._add_constant("tuple_role", TupleColorRole, TupleColorRole.INVERSE_PRIMARY)
      
     def _on_style_change_additional(self):
         super()._on_style_change_additional()
@@ -103,8 +107,8 @@ class Slider(Widget):
     def _on_drag(self):
         relative_x = mouse.pos.x - self.master_coordinates.x
         
-        slider_pos = max(0, min(self._csize.x, relative_x))
-        slider_perc = (slider_pos / self._csize.x)
+        slider_pos = max(self._rsize_marg.x / 2, min(self._rsize.x, relative_x))
+        slider_perc = ((slider_pos - self._rsize_marg.x/2) / (self._rsize.x - self._rsize_marg.x/2))
         
         value = slider_perc * (self.end - self.start) + self.start
         if value % self.step != 0:
@@ -124,7 +128,7 @@ class Slider(Widget):
         self.progress_bar.coordinates = NvVector2()
         
         if self._changed:
-            self.bake_text(str(round(self.progress_bar.progress*100)), alignx = self.style.text_align_x, aligny = self.style.text_align_y)
+            self.bake_text(str(round(self.progress_bar.progress*100)), alignx = self.style.text_align_x, aligny = self.style.text_align_y, color=self.style.colortheme.get_tuple(self.tuple_role))
             assert self._text_surface and self._text_rect
             
             self.adjust_text_rect()
@@ -138,18 +142,21 @@ class Slider(Widget):
         padx = 0
         pady = 0
         
+        border_size = self._rsize_marg.x / 2
+        
         match self.style.text_align_x:
             case Align.LEFT:
-                padx = self.padding_x
+                padx = self.padding_x + border_size
             case Align.RIGHT: 
-                padx = -self.padding_x
+                padx = -self.padding_x - border_size
         
         match self.style.text_align_y:
             case Align.TOP:
-                pady = self.padding_y
+                pady = self.padding_y + border_size
             case Align.BOTTOM: 
-                pady = -self.padding_y
-            
+                pady = -self.padding_y - border_size
+        
+        
         self._text_rect.move_ip(padx, pady)
     
     def resize(self, resize_ratio: NvVector2):
