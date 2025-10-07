@@ -57,7 +57,7 @@ class BackgroundRenderer:
         surf = pygame.Surface(needed_size.to_tuple(), pygame.SRCALPHA)
         surf.fill((0,0,0,0))
         
-        color = self._subtheme_font if alt else self._subtheme_content
+        color = self._subtheme_border if alt else self._subtheme_content
         
         if not standstill:
             if self._hover_state == HoverState.CLICKED and not self.fancy_click_style and self.clickable: 
@@ -92,7 +92,7 @@ class BackgroundRenderer:
         radius = radius or self._style.borderradius * avg_scale_factor
         width = width or self._style.borderwidth * avg_scale_factor
         
-        return OutlinedRoundedRect.create_sdf(needed_size.to_tuple(), round(radius), round(width), self._subtheme_font)
+        return OutlinedRoundedRect.create_sdf(needed_size.to_tuple(), round(radius), round(width), self._subtheme_border)
     
     def _generate_background(renderer): # type: ignore
         self = renderer.root
