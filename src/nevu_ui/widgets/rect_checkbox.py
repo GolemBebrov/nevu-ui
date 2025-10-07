@@ -62,15 +62,15 @@ class RectCheckBox(Widget):
         super().secondary_draw_content()
         if self._changed and self._toogled:
             margin = (self._csize * (1 - self.active_rect_factor)) / 2
-            
-            offset = NvVector2(round(margin.x), round(margin.y))
+            margin.to_round()
+            offset = NvVector2(margin.x, margin.y)
             
             active_size = self._csize - (offset * 2)
             
             active_size.x = max(1, int(active_size.x))
             active_size.y = max(1, int(active_size.y))
             
-            inner_radius = self._style.borderradius * self.active_rect_factor
+            inner_radius = (self.style.borderradius - self.relm(self.style.borderwidth / 2))
             
             inner_surf = self.renderer._create_surf_base(
                 active_size, 
