@@ -2,6 +2,7 @@ import copy
 
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.widgets import Widget, WidgetKwargs
+from nevu_ui.color import PairColorRole
 
 from typing import Any, TypedDict, NotRequired, Unpack
 
@@ -22,7 +23,7 @@ class Label(Widget):
     def _add_constants(self):
         super()._add_constants()
         self._add_constant("words_indent", bool, False)
-    
+
     def _init_booleans(self):
         super()._init_booleans()
         self.hoverable = False
@@ -37,21 +38,21 @@ class Label(Widget):
     def text(self):
         return self._text
     
+    def _fast_bake_text(self):
+        self.bake_text(self._text, False, self.words_indent, self.style.text_align_x, self.style.text_align_y, color = self._subtheme_font)
+    
     def _on_style_change(self):
         super()._on_style_change()
         #print(f"{self} style changed")
-        self.bake_text(self._text, False, self.words_indent, self.style.text_align_x, self.style.text_align_y)
         
     @text.setter
     def text(self, text: str):
         self._changed = True
         self._text = text
-        self.bake_text(text, False, self.words_indent, self.style.text_align_x, self.style.text_align_y)
 
     def resize(self, resize_ratio: NvVector2):
         super().resize(resize_ratio)
         self._changed = True
-        self.bake_text(self._text, False, self.words_indent, self.style.text_align_x, self.style.text_align_y)
 
     @property
     def style(self):
@@ -60,16 +61,13 @@ class Label(Widget):
     def style(self,style: Style):
         self._changed = True
         self._style = copy.deepcopy(style)
-        
         self._update_image()
-
-        if hasattr(self,'_text'):
-            self.bake_text(self._text)
 
     def secondary_draw_content(self):
         super().secondary_draw_content()
         if not self.visible: return
         if self._changed:
+            self._fast_bake_text()
             assert self._text_surface is not None and self._text_rect is not None
             self.surface.blit(self._text_surface, self._text_rect)
         
