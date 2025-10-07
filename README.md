@@ -157,8 +157,8 @@ while True: #Main loop
 *   💾 `ImageWidget`
 *   💾 `GifWidget`
 *   ❌ `MusicPlayer` (Will be reworked)
-*   💾 `ProgressBar`
-*   💾 `SliderBar`
+*   ✅ `ProgressBar`
+*   ✅ `SliderBar`
 *   ✅ `ElementSwitcher`
 *   💾 `FileDialog`
 *   ✅ `RectCheckBox`

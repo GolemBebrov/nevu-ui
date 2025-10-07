@@ -158,8 +158,8 @@ while True: #Главный цикл
 *   💾 `ImageWidget`
 *   💾 `GifWidget`
 *   ❌ `MusicPlayer` (Будет переработан)
-*   💾 `ProgressBar`
-*   💾 `SliderBar`
+*   ✅ `ProgressBar`
+*   ✅ `SliderBar`
 *   ✅ `ElementSwitcher`
 *   💾 `FileDialog`
 *   ✅ `RectCheckBox`
