@@ -1,4 +1,5 @@
 import copy
+import math
 
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.widgets import Widget, WidgetKwargs
@@ -78,7 +79,7 @@ class ProgressBar(Widget):
         self.value = self.min_value + (self.max_value - self.min_value) * self._progress
         
     def set_progress_by_value(self, value: int | float):
-        self._progress = (value - self.min_value) / (self.max_value - self.min_value)
+        self.progress = (value - self.min_value) / (self.max_value - self.min_value)
         
     def value_getter(self): return self._current_value
     def value_setter(self, value): 
@@ -102,9 +103,23 @@ class ProgressBar(Widget):
     def secondary_draw_content(self):
         super().secondary_draw_content()
         if self._changed:
-            surf = self.renderer._create_surf_base(NvVector2(self._rsize.x * self.progress, self._rsize.y), override_color = self._subtheme_progress, radius = round(self.relm(self.style.borderradius)))
+            if self.progress == 0:
+                return
+            size_x = math.ceil((self._rsize.x - self._rsize_marg.y / 2)* self.progress)
+            size_y = math.ceil(self._rsize.y - self._rsize_marg.y / 2)
+            radius = self.relm(self.style.borderradius)
+            bw = math.ceil(self.relm(self.style.borderwidth))
+            radius -= bw
+            y_decrease = 0
+            if size_x / 2 < radius:
+                y_decrease = math.ceil(radius - (size_x / 2))
+                size_y -= y_decrease
+            surf = self.renderer._create_surf_base(NvVector2(size_x + bw + 2, size_y + bw + 2), override_color = self._subtheme_progress, radius = radius)
             coords = self.coordinates if self.inline else NvVector2(0, 0)
-            coords += (self._rsize_marg / 2).to_round()
+            coords -= NvVector2(bw, bw)
+            coords -= NvVector2(1,1)
+            coords += (self._rsize_marg)
+            coords.y += y_decrease / 2
             self.surface.blit(surf, coords)
     
     def clone(self):
