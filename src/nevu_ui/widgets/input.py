@@ -95,8 +95,6 @@ class Input(Widget):
             return self.get_font().get_height()
         except (pygame.error, AttributeError) as e:
             raise e
-            fallback_height = self.size[1] * self._resize_ratio[1] - self.top_margin - self.bottom_margin
-            return max(5, int(fallback_height * 0.8))
         
     def _get_cursor_line_col(self):
         if not self._entered_text: return 0, 0
@@ -478,9 +476,11 @@ class Input(Widget):
 
     @property
     def text(self): return self._entered_text
+    
     @text.setter
-    def text(self,text:str):
-        if not isinstance(text, str): text = str(text)
+    def text(self,text: str):
+        if not isinstance(text, str): 
+            text = str(text)
 
         original_text = self._entered_text
         if not self.multiple:
@@ -498,12 +498,11 @@ class Input(Widget):
             try: self._on_change_fun(self._entered_text)
             except Exception as e: print(f"Error in Input on_change_function (setter): {e}")
             
-    def secondary_draw(self):
-        super().secondary_draw()
+    def secondary_draw_content(self):
+        super().secondary_draw_content()
         if not self.visible: return
 
         if self._changed:
-            self._changed = False
             try:
                 renderFont = self.get_font()
                 font_loaded = True
