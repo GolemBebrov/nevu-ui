@@ -118,6 +118,7 @@ class CacheType(Enum):
     Surface = auto()
     Gradient = auto()
     Image = auto()
+    Scaled_Image = auto()
     Borders = auto()
     Scaled_Borders = auto()
     Scaled_Background = auto()
@@ -150,3 +151,8 @@ class ZRequestType(Enum):
 class ScrollBarType(StrEnum):
     Vertical = "vertical"
     Horizontal = "horizontal"
+
+class TooltipType(StrEnum):
+    Small = "small"
+    Medium = "medium"
+    Large = "large"
