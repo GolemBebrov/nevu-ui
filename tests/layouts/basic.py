@@ -14,11 +14,11 @@ def checkboxgroup_wrapper(checkbox: ui.RectCheckBox | None):
 lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
 
 def create_test_instances():
-    ui.default_style = ui.default_style(colortheme=ui.ColorThemeLibrary.material3_dark_color_theme)
+    ui.default_style = ui.default_style(colortheme=ui.ColorThemeLibrary.pastel_rose_light)
     test_window = ui.Window((300,300), "Test Window", resize_type=ui.ResizeType.CropToRatio, ratio=ui.NvVector2(1,1))
     test_menu = ui.Menu(test_window,[100*ui.vw, 100*ui.vh],ui.default_style(borderradius=10))
     
-    widgets_style = ui.default_style(borderradius=10)
+    widgets_style = ui.default_style(borderradius=25, borderwidth=3)
     
     widgets_size = [75*ui.vw, 35*ui.vh]
     widgets_size_small = [75*ui.vw, 15*ui.vh]
@@ -29,9 +29,9 @@ def create_test_instances():
     checkbox_group.on_checkbox_toggled_single = checkboxgroup_wrapper
     
     #widgets
-    widget = ui.Widget(**widget_kwargs)
-    label = ui.Label(lorem_ipsum, **widget_kwargs)
-    input_box = ui.Input(**widget_kwargs, placeholder = "Input!")
+    widget = ui.Widget(widget_kwargs["size"], ui.default_style(bgimage = "tests/test1.png"))
+    label = ui.Label(lorem_ipsum, widget_kwargs["size"], widgets_style(bgimage = "tests/test1.png"))
+    input_box = ui.Input(widget_kwargs["size"], widgets_style(bgimage = "tests/test1.png"), placeholder = "Input!", multiple=True)
     
     #composable | checkboxgroup example
     rect_checkbox_row = ui.Row([90*ui.fill, 35*ui.fill], x = 3, content = 
@@ -46,10 +46,10 @@ def create_test_instances():
         checkbox_group.add_checkbox(item)
     
     
-    element_swither = ui.ElementSwitcher(**widget_kwargs, elements = [("Apple", "fruit_1"), "Banana", "Cherry", "Date", "Banana"])
-    progress_bar = ui.ProgressBar(**widget_kwargs, value = 50, role = ui.PairColorRole.SURFACE_VARIANT)
+    element_swither = ui.ElementSwitcher(**widget_kwargs, elements = ["putin", "zelenka", "zov", "peremoga"])
+    progress_bar = ui.ProgressBar(**widget_kwargs, value = 50)
     
-    slider_bar = ui.Slider(widgets_size_small, widgets_style(text_align_x = ui.Align.LEFT), start = 0, end = 100, step = 1, current_value = 50)
+    slider_bar = ui.Slider(widgets_size_small, widgets_style(text_align_x = ui.Align.CENTER, borderradius = 20), start = 0, end = 100, step = 1, current_value = 50, tuple_role = ui.TupleColorRole.OUTLINE, bar_pair_role=ui.PairColorRole.SURFACE)# alt = True)
     #element = element_swither.find("fruit_1")
     showcase_widgets = [widget, label, input_box, rect_checkbox_row, element_swither, progress_bar, slider_bar]
     

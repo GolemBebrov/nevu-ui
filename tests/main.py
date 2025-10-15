@@ -6,14 +6,14 @@ pygame.init()
 
 class Mygame(ui.Manager):
     def __init__(self):
-        self.window = ui.Window((400,400), resize_type=ui.ResizeType.CropToRatio)
+        self.window = ui.Window((400,400), resize_type=ui.ResizeType.CropToRatio ,ratio=ui.NvVector2(1,1))
         super().__init__(self.window)
         self.fps = 7599999999999 #Задаем нуженый fps
         self._dirty_mode = False #Для оптимизации(не рекомендуется включать)
         self.background = (0,0,100) #Цвет фона
          #Создаем окно
         main_style = ui.Style( #Гланый стиль
-            borderradius=10, borderwidth=2, colortheme=ui.ColorThemeLibrary.github_dark_color_theme,
+            borderradius=10, borderwidth=2, colortheme=ui.ColorThemeLibrary.github_dark,
             fontname="tests/vk_font.ttf", gradient=ui.Gradient(colors=[ui.Color.AQUA,(100,100,100)],type=ui.GradientType.Linear,direction=ui.LinearSide.Right))
         style_mini_font = main_style( #Подстиль
             fontsize=15, border_radius=15,  

@@ -5,19 +5,20 @@ pygame.init()
 
 class TestScrollable(NevuTest):
     def add_to_layout(self):
-        #self.do_fps_test = True
+        self.do_fps_test = True
         self._dirty_mode = False
         self.fps = 999999999
+        a = zip([ui.Align.CENTER] * len(self.showcase_widgets), self.showcase_widgets)
+        a = list(a)
+        a.append((ui.Align.CENTER, ui.ScrollableColumn([100*ui.fill, 100*ui.vh], content = a.copy())))
         self.test_menu.layout = \
-        ui.Scrollable([100*ui.fill, 100*ui.vh],
+        ui.ScrollableRow([100*ui.fill, 100*ui.vh],
                 z = -1,
-                content = zip([ui.Align.CENTER] * len(self.showcase_widgets), self.showcase_widgets)
+                content = a
                 )
         self.scrollable = self.test_menu.layout
-        self.element: ui.ElementSwitcher = self.scrollable.items[-1]#.button_right
-        
-        assert isinstance(self.scrollable, ui.Scrollable)
-        self.test_widget = ui.Widget([0,0], inline = True)
+        #self.scrollable._test_debug_print = True
+        self.test_widget = ui.Widget([0,0],)
     def first_update(self):
         super().first_update()
     def draw_loop(self):
@@ -30,4 +31,4 @@ class TestScrollable(NevuTest):
 
 ts = TestScrollable()
 
-ts.run()
+ts.run() 
