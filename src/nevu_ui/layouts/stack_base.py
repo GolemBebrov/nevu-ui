@@ -77,7 +77,7 @@ class StackBase(LayoutType):
         
     def secondary_update(self, *args):
         super().secondary_update()
-        self._light_update()
+        self.base_light_update()
         
     def secondary_draw(self):
         super().secondary_draw()
