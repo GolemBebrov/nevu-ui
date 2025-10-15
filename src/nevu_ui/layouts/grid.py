@@ -12,7 +12,7 @@ from nevu_ui.style import (
 class Grid(LayoutType):
     row: int | float
     column: int | float
-    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: dict[tuple[int] , NevuObject] | None = None, **constant_kwargs):
+    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: dict[tuple[int, int] , NevuObject] | None = None, **constant_kwargs):
         super().__init__(size, style, **constant_kwargs)
         self._lazy_kwargs = {'size': size, 'content': content}
         
@@ -59,7 +59,7 @@ class Grid(LayoutType):
             
     def secondary_update(self, *args):
         super().secondary_update()
-        self._light_update()
+        self.base_light_update()
         if isinstance(self, Grid): self._dirty_rect = self._read_dirty_rects()
         
     def add_item(self, item: NevuObject, x: int, y: int):  # type: ignore
@@ -71,8 +71,8 @@ class Grid(LayoutType):
         super().add_item(item)
         if self.layout: self.layout._event_on_add_item()
 
-    def secondary_draw(self):
-        super().secondary_draw()
+    def secondary_draw_content(self):
+        super().secondary_draw_content()
         for item in self.items: 
             assert isinstance(item, (Widget, LayoutType))
             self._draw_widget(item)
