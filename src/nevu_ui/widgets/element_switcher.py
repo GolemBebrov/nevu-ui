@@ -64,6 +64,8 @@ class ElementSwitcher(Widget):
     arrow_width: int
     left_text: str
     right_text: str
+    left_key: Any
+    right_key: Any
     def __init__(self, size: NvVector2 | list, elements: list[Element | Any | list] | None = None, style: Style = default_style, **constant_kwargs: Unpack[ElementSwitcherKwargs]):
         super().__init__(size, style, **constant_kwargs)
         self._lazy_kwargs = {'size': size, 'elements': elements}
@@ -210,12 +212,14 @@ class ElementSwitcher(Widget):
     def secondary_update(self):
         super().secondary_update()
         if not self.active: return
+        
         self._light_update_button(self.button_left)
         self._light_update_button(self.button_right)
+        
         if self._delayed_button_update:
-            self._delayed_button_update = False
             self._position_buttons()
             self._style_update_buttons()
+            self._delayed_button_update = False
     
     def _light_update_button(self, button: Button):
         button._master_z_handler = self._master_z_handler
@@ -236,15 +240,10 @@ class ElementSwitcher(Widget):
         if not self.visible: return
         
         if self._changed:
-            self.bake_text(self.current_element_text, size_x = self._csize.x - self.button_left._csize.x * 2)
+            self.renderer.bake_text(self.current_element_text, size_x = self._csize.x - self.button_left._csize.x * 2)
             self._draw_buttons()
             assert self._text_surface is not None and self._text_rect is not None, "Text surface or rect is None"
             self.surface.blit(self._text_surface, self._text_rect)
-        
-    def secondary_draw_end(self):
-        super().secondary_draw_end()
-        if type(self) == ElementSwitcher:
-            self._changed = False
             
     def _mark_dirty(self):
         self._changed = True
@@ -253,11 +252,15 @@ class ElementSwitcher(Widget):
         self._delayed_button_update = True
         
     def _draw_buttons(self):
+        self.button_left._master_mask = self.renderer._get_correct_mask()
         self.button_left.draw()
+        
+        self.button_right._master_mask = self.renderer._get_correct_mask()
         self.button_right.draw()
 
-        if borders := self.cache.get_or_exec(CacheType.Borders, lambda: self.renderer._create_outlined_rect(self._csize, self.relm(self.style.borderradius),self.relm(self.style.borderwidth))):
-            self.surface.blit(borders, (0, 0))
+        if self.style.borderwidth > 0:
+            if borders := self.cache.get_or_exec(CacheType.Borders, lambda: self.renderer._create_outlined_rect(self._csize, self.relm(self.style.borderradius),self.relm(self.style.borderwidth))):
+                self.surface.blit(borders, (0, 0))
 
     def clone(self):
         return ElementSwitcher(self._lazy_kwargs['size'], copy.deepcopy(self._lazy_kwargs['elements']), copy.deepcopy(self.style), **self.constant_kwargs)
