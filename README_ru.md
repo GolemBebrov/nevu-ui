@@ -139,7 +139,8 @@ while True: #Главный цикл
 *   ✅ `Grid`
 *   ✅ `Row`
 *   ✅ `Column`
-*   ✅ `Scrollable`
+*   ✅ `ScrollableRow`
+*   ✅ `ScrollableColumn`
 *   💾 `IntPickerGrid`
 *   ✅ `Pages`
 *   💾 `Gallery_Pages`

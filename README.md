@@ -138,7 +138,8 @@ while True: #Main loop
 *   ✅ `Grid`
 *   ✅ `Row`
 *   ✅ `Column`
-*   ✅ `Scrollable`
+*   ✅ `ScrollableRow`
+*   ✅ `ScrollableColumn`
 *   💾 `IntPickerGrid`
 *   ✅ `Pages`
 *   💾 `Gallery_Pages`
