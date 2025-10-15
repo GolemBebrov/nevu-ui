@@ -2,7 +2,7 @@ from .color_theme import ColorTheme, ColorSubTheme, ColorPair
 from .color import Color
 
 class ColorThemeLibrary:
-    material3_light_color_theme = ColorTheme(
+    material3_light = ColorTheme(
         primary=ColorSubTheme(color=(103, 80, 164), oncolor=(255, 255, 255), container=(234, 221, 255), oncontainer=(33, 0, 93)),
         secondary=ColorSubTheme(color=(98, 91, 113), oncolor=(255, 255, 255), container=(232, 222, 248), oncontainer=(29, 25, 43)),
         tertiary=ColorSubTheme(color=(125, 82, 96), oncolor=(255, 255, 255), container=(255, 216, 228), oncontainer=(49, 17, 29)),
@@ -15,7 +15,7 @@ class ColorThemeLibrary:
         inverse_primary=(208, 188, 255)
     )
 
-    material3_dark_color_theme = ColorTheme(
+    material3_dark = ColorTheme(
         primary=ColorSubTheme(color=(208, 188, 255), oncolor=(56, 30, 114), container=(79, 55, 139), oncontainer=(234, 221, 255)),
         secondary=ColorSubTheme(color=(204, 194, 220), oncolor=(51, 45, 65), container=(74, 68, 88), oncontainer=(232, 222, 248)),
         tertiary=ColorSubTheme(color=(239, 184, 200), oncolor=(75, 34, 52), container=(100, 57, 72), oncontainer=(255, 216, 228)),
@@ -28,7 +28,7 @@ class ColorThemeLibrary:
         inverse_primary=(103, 80, 164)
     )
 
-    ocean_light_color_theme = ColorTheme(
+    ocean_light = ColorTheme(
         primary=ColorSubTheme(color=Color.STEELBLUE, oncolor=Color.WHITE, container=Color.LIGHTBLUE, oncontainer=Color.DARKSLATEBLUE),
         secondary=ColorSubTheme(color=Color.MEDIUMAQUAMARINE, oncolor=Color.BLACK, container=Color.PALEGREEN, oncontainer=Color.DARKGREEN),
         tertiary=ColorSubTheme(color=Color.SADDLEBROWN, oncolor=Color.BLACK, container=Color.WHEAT, oncontainer=Color.SADDLEBROWN),
@@ -41,7 +41,7 @@ class ColorThemeLibrary:
         inverse_primary=Color.SKYBLUE
     )
 
-    synthwave_dark_color_theme = ColorTheme(
+    synthwave_dark = ColorTheme(
         primary=ColorSubTheme(color=Color.DEEPPINK, oncolor=Color.WHITE, container=(99, 0, 57), oncontainer=Color.PINK),
         secondary=ColorSubTheme(color=Color.CYAN, oncolor=Color.BLACK, container=(0, 77, 77), oncontainer=Color.AQUAMARINE),
         tertiary=ColorSubTheme(color=Color.YELLOW, oncolor=Color.BLACK, container=(102, 91, 0), oncontainer=Color.LIGHTYELLOW),
@@ -54,7 +54,7 @@ class ColorThemeLibrary:
         inverse_primary=Color.MAGENTA
     )
 
-    catppuccin_latte_color_theme = ColorTheme(
+    catppuccin_latte = ColorTheme(
         primary=ColorSubTheme(color=(136, 57, 239), oncolor=(255, 255, 255), container=(234, 221, 255), oncontainer=(28, 0, 80)),
         secondary=ColorSubTheme(color=(125, 95, 102), oncolor=(255, 255, 255), container=(255, 216, 221), oncontainer=(49, 25, 31)),
         tertiary=ColorSubTheme(color=(255, 125, 112), oncolor=(255, 255, 255), container=(255, 218, 185), oncontainer=(68, 25, 0)),
@@ -67,7 +67,7 @@ class ColorThemeLibrary:
         inverse_primary=(186, 187, 241)
     )
 
-    catppuccin_mocha_color_theme = ColorTheme(
+    catppuccin_mocha = ColorTheme(
         primary=ColorSubTheme(color=(203, 166, 247), oncolor=(49, 50, 68), container=(70, 48, 119), oncontainer=(234, 221, 255)),
         secondary=ColorSubTheme(color=(245, 194, 231), oncolor=(49, 50, 68), container=(72, 64, 88), oncontainer=(232, 222, 248)),
         tertiary=ColorSubTheme(color=(243, 139, 168), oncolor=(49, 50, 68), container=(95, 61, 73), oncontainer=(255, 216, 228)),
@@ -80,7 +80,7 @@ class ColorThemeLibrary:
         inverse_primary=(137, 180, 250)
     )
 
-    github_light_color_theme = ColorTheme(
+    github_light= ColorTheme(
         primary=ColorSubTheme(color=(9, 105, 218), oncolor=(255, 255, 255), container=(221, 235, 252), oncontainer=(0, 28, 58)),
         secondary=ColorSubTheme(color=(110, 118, 129), oncolor=(255, 255, 255), container=(232, 234, 237), oncontainer=(36, 41, 47)),
         tertiary=ColorSubTheme(color=(47, 129, 34), oncolor=(255, 255, 255), container=(216, 243, 212), oncontainer=(0, 33, 4)),
@@ -93,7 +93,7 @@ class ColorThemeLibrary:
         inverse_primary=(136, 189, 255)
     )
 
-    github_dark_color_theme = ColorTheme(
+    github_dark = ColorTheme(
         primary=ColorSubTheme(color=(88, 166, 255), oncolor=(13, 17, 23), container=(21, 53, 94), oncontainer=(221, 235, 252)),
         secondary=ColorSubTheme(color=(139, 148, 158), oncolor=(13, 17, 23), container=(52, 58, 67), oncontainer=(232, 234, 237)),
         tertiary=ColorSubTheme(color=(63, 185, 80), oncolor=(13, 17, 23), container=(15, 61, 23), oncontainer=(216, 243, 212)),
@@ -106,7 +106,7 @@ class ColorThemeLibrary:
         inverse_primary=(9, 105, 218)
     )
 
-    gruvbox_light_color_theme = ColorTheme(
+    gruvbox_light = ColorTheme(
         primary=ColorSubTheme(color=(69, 133, 136), oncolor=(251, 241, 199), container=(211, 222, 194), oncontainer=(40, 40, 40)),
         secondary=ColorSubTheme(color=(215, 153, 33), oncolor=(40, 40, 40), container=(254, 225, 168), oncontainer=(40, 40, 40)),
         tertiary=ColorSubTheme(color=(177, 98, 134), oncolor=(251, 241, 199), container=(241, 203, 216), oncontainer=(40, 40, 40)),
@@ -119,7 +119,7 @@ class ColorThemeLibrary:
         inverse_primary=(131, 165, 152)
     )
 
-    gruvbox_dark_color_theme = ColorTheme(
+    gruvbox_dark = ColorTheme(
         primary=ColorSubTheme(color=(131, 165, 152), oncolor=(40, 40, 40), container=(69, 133, 136), oncontainer=(235, 219, 178)),
         secondary=ColorSubTheme(color=(250, 189, 47), oncolor=(40, 40, 40), container=(215, 153, 33), oncontainer=(40, 40, 40)),
         tertiary=ColorSubTheme(color=(211, 134, 155), oncolor=(40, 40, 40), container=(177, 98, 134), oncontainer=(235, 219, 178)),
@@ -130,4 +130,30 @@ class ColorThemeLibrary:
         outline=(124, 111, 100),
         inverse_surface=ColorPair(color=(235, 219, 178), oncolor=(40, 40, 40)),
         inverse_primary=(69, 133, 136)
+    )
+
+    pastel_rose_light = ColorTheme(
+        primary=ColorSubTheme(color=Color.ROYALBLUE, oncolor=Color.WHITE, container=Color.LIGHTSTEELBLUE, oncontainer=Color.DARKBLUE),
+        secondary=ColorSubTheme(color=Color.MEDIUMPURPLE, oncolor=Color.WHITE, container=Color.PLUM, oncontainer=Color.DARKVIOLET),
+        tertiary=ColorSubTheme(color=Color.SEAGREEN, oncolor=Color.WHITE, container=Color.MEDIUMSEAGREEN, oncontainer=Color.DARKGREEN),
+        error=ColorSubTheme(color=Color.CRIMSON, oncolor=Color.WHITE, container=Color.LIGHTPINK, oncontainer=Color.DARKRED),
+        background=ColorPair(color=Color.WHITESMOKE, oncolor=Color.BLACK),
+        surface=ColorPair(color=Color.GHOSTWHITE, oncolor=Color.BLACK),
+        surface_variant=ColorPair(color=Color.LIGHTGRAY, oncolor=Color.DARKSLATEGRAY),
+        outline=Color.SLATEGRAY,
+        inverse_surface=ColorPair(color=Color.DARKSLATEGRAY, oncolor=Color.WHITESMOKE),
+        inverse_primary=Color.CORNFLOWERBLUE,
+    )
+    
+    neon_cyber_dark = ColorTheme(
+        primary=ColorSubTheme(color=(191, 0, 255), oncolor=(255, 255, 255), container=(138, 0, 255), oncontainer=(223, 0, 255)),
+        secondary=ColorSubTheme(color=(0, 255, 255), oncolor=(0, 0, 0), container=(0, 204, 255), oncontainer=(0, 0, 0)),
+        tertiary=ColorSubTheme(color=(255, 0, 204), oncolor=(0, 0, 0), container=(255, 61, 148), oncontainer=(0, 0, 0)),
+        error=ColorSubTheme(color=(255, 0, 0), oncolor=(255, 255, 255), container=(207, 34, 46), oncontainer=(255, 255, 255)),
+        background=ColorPair(color=(12, 12, 12), oncolor=(230, 230, 250)),
+        surface=ColorPair(color=(28, 28, 28), oncolor=(230, 230, 250)),
+        surface_variant=ColorPair(color=(40, 40, 40), oncolor=(216, 191, 216)),
+        outline=(106, 90, 205),
+        inverse_surface=ColorPair(color=(230, 230, 250), oncolor=(12, 12, 12)),
+        inverse_primary=(138, 43, 226)
     )
