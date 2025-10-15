@@ -6,7 +6,7 @@ from nevu_ui.widgets import Widget, Button, WidgetKwargs
 from nevu_ui.utils import mouse
 from nevu_ui.core_types import Align
 from nevu_ui.widgets.progress_bar import ProgressBar
-from nevu_ui.color import TupleColorRole
+from nevu_ui.color import TupleColorRole, PairColorRole
 
 from typing import Any, TypedDict, NotRequired, Unpack, Union
 
@@ -23,6 +23,7 @@ class SliderKwargs(WidgetKwargs):
     padding_x: NotRequired[int]
     padding_y: NotRequired[int]
     tuple_role: NotRequired[TupleColorRole]
+    bar_pair_role: NotRequired[PairColorRole]
 
 class Slider(Widget):
     progress_style: Style
@@ -32,6 +33,7 @@ class Slider(Widget):
     padding_x: int
     padding_y: int
     tuple_role: TupleColorRole
+    bar_pair_role: PairColorRole
     def __init__(self, size: NvVector2 | list, style: Style = default_style, **constant_kwargs: Unpack[SliderKwargs]):
         self._constant_current_val = None
         super().__init__(size, style, **constant_kwargs)    
@@ -42,7 +44,7 @@ class Slider(Widget):
     
     def create_progress_bar(self):
         progress_style = self.progress_style or self.style
-        self.progress_bar = ProgressBar(self.size, progress_style, min_value = self.start, max_value = self.end, value = self.current_value, inline=True, alt = self.alt)
+        self.progress_bar = ProgressBar(self.size, progress_style, min_value = self.start, max_value = self.end, value = self.current_value, inline=True, alt = self.alt, color_pair_role=self.bar_pair_role, role=self.bar_pair_role)
         self.progress_bar.surface = self.surface
         self.progress_bar._init_start()
         self.progress_bar.booted = True
@@ -75,6 +77,7 @@ class Slider(Widget):
         self._add_constant("padding_x", int, 10)
         self._add_constant("padding_y", int, 10)
         self._add_constant("tuple_role", TupleColorRole, TupleColorRole.INVERSE_PRIMARY)
+        self._add_constant("bar_pair_role", PairColorRole, PairColorRole.BACKGROUND)
      
     def _on_style_change_additional(self):
         super()._on_style_change_additional()
@@ -101,7 +104,6 @@ class Slider(Widget):
             
         self.progress_bar.update()
         if self.dragging:
-            self._changed = True
             self._on_drag()
 
     def _on_drag(self):
@@ -119,7 +121,8 @@ class Slider(Widget):
             self.current_value = value
             
     def primary_draw(self):
-        self.surface.fill((0,0,0,0))
+        if self._changed:
+            self.surface.fill((0,0,0,0))
     
     def secondary_draw_content(self):
         super().secondary_draw_content()
