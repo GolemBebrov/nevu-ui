@@ -1,13 +1,12 @@
-from nevu_ui.widgets.widget import Widget
 from nevu_ui.style import Style, default_style
-
-class Tooltip(Widget):
-    def __init__(self, text, style: Style = default_style):
+from nevu_ui.core_types import TooltipType
+class Tooltip():
+    def __init__(self, type: TooltipType, text, style: Style = default_style):
         self.text = text
         self.style = style
-        self.size = (200,400)
-        self.bake_text(self.text,False,True,self.style.text_align_x,self.style.text_align_y)
+        self.type = type.lower()
+        
         raise NotImplementedError("Tooltip is not implemented yet, wait till 0.6.X")
     def draw(self):
-        pass #TODO in version 0.6 :)
+        pass #TODO in version 0.6 
     
