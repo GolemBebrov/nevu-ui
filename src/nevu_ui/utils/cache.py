@@ -15,7 +15,8 @@ class Cache:
             CacheType.Scaled_Borders: None,
             CacheType.Scaled_Background: None,
             CacheType.Background: None,
-            CacheType.Scaled_Gradient: None
+            CacheType.Scaled_Gradient: None,
+            CacheType.Scaled_Image: None
             
         }
         self.cache = {
@@ -40,6 +41,7 @@ class Cache:
                      CacheType.Surface,
                      CacheType.Gradient,
                      CacheType.Image,
+                     CacheType.Scaled_Image,
                      CacheType.Borders,
                      CacheType.Scaled_Borders,
                      CacheType.Scaled_Background,
