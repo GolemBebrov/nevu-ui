@@ -1,6 +1,6 @@
 import pygame
 import copy
-import typing
+from typing import TypeGuard
 
 from nevu_ui.widgets import Widget
 from nevu_ui.menu import Menu
@@ -93,7 +93,7 @@ class LayoutType(NevuObject):
             for i in content:
                 self.add_item(i)
 
-    def _light_update(self, add_x: int | float = 0, add_y: int | float = 0 ):
+    def base_light_update(self, add_x: int | float = 0, add_y: int | float = 0 ):
         _light_update_helper(
             self.items,
             self.cached_coordinates or [],
@@ -163,11 +163,11 @@ class LayoutType(NevuObject):
         self.border_name = self._border_name
 
     @staticmethod
-    def is_layout(item: NevuObject) -> typing.TypeGuard['LayoutType']:
+    def is_layout(item: NevuObject) -> TypeGuard['LayoutType']:
         return isinstance(item, LayoutType)
     
     @staticmethod
-    def is_widget(item: NevuObject) -> typing.TypeGuard['Widget']:
+    def is_widget(item: NevuObject) -> TypeGuard['Widget']:
         return isinstance(item, Widget)
     
     def _event_on_add_item(self): pass
