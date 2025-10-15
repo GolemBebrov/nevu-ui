@@ -21,7 +21,7 @@ from .widgets import (
     Widget, Label, Button, EmptyWidget, RectCheckBox, Image, Gif, Input, MusicPlayer, ElementSwitcher, Element, ProgressBar, Slider
 )
 from .layouts import (
-    LayoutType, Grid, Row, Column, Scrollable, IntPickerGrid, Pages, Gallery_Pages, StackRow, StackColumn, CheckBoxGroup
+    LayoutType, Grid, Row, Column, ScrollableColumn, ScrollableRow, IntPickerGrid, Pages, Gallery_Pages, StackRow, StackColumn, CheckBoxGroup
 )
 from .rendering import (
     Gradient
@@ -45,7 +45,7 @@ __all__ = [
     #### widgets.py ####
     'Widget', 'Label', 'Button', 'EmptyWidget', 'RectCheckBox', 'ElementSwitcher', 'ProgressBar', 'Image', 'Gif', 'Input', 'MusicPlayer', 'Slider',
     #### layouts.py ####
-    'LayoutType', 'Grid', 'Row', 'Column', 'Scrollable', 'IntPickerGrid', 'Pages', 'Gallery_Pages', 'StackRow', 'StackColumn', 'CheckBoxGroup', 
+    'LayoutType', 'Grid', 'Row', 'Column', 'ScrollableColumn', 'ScrollableRow', 'IntPickerGrid', 'Pages', 'Gallery_Pages', 'StackRow', 'StackColumn', 'CheckBoxGroup', 
     #### menu.py ####
     'Menu',
     #### utils.py ####
@@ -63,6 +63,6 @@ __all__ = [
     'animations', 
 ]
 
-version = "0.5.X"
+version = "0.6.x"
 
-print(f"Nevu UI version:{version}")
+print(f"nevu-UI version: {version}")
