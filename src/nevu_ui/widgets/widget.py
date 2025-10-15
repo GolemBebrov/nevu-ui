@@ -1,14 +1,15 @@
 import pygame
 import copy
 import contextlib
+from warnings import deprecated
+from typing import Any, TypedDict, NotRequired, Unpack
 
 from nevu_ui.nevuobj import NevuObject, NevuObjectKwargs
 from nevu_ui.fast.logic import logic_update_helper
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.color import SubThemeRole, PairColorRole
 from nevu_ui.rendering.background_renderer import BackgroundRenderer
-
-from typing import Any, TypedDict, NotRequired, Unpack
+from nevu_ui.rendering.blit import ReverseAlphaBlit
 
 from nevu_ui.style import (
     Style, default_style
@@ -28,6 +29,7 @@ class WidgetKwargs(NevuObjectKwargs):
     inline: NotRequired[bool]
     font_role: NotRequired[PairColorRole]
     quality: NotRequired[Quality]
+    _draw_borders: NotRequired[bool]
 
 class Widget(NevuObject):
     _alt: bool
@@ -40,6 +42,9 @@ class Widget(NevuObject):
     inline: bool
     font_role: PairColorRole
     quality: Quality
+    _draw_borders: bool
+    _master_mask: Any
+    _inline_add_coords: NvVector2
     
     def __init__(self, size: NvVector2 | list, style: Style = default_style, **constant_kwargs: Unpack[WidgetKwargs]):
         super().__init__(size, style, **constant_kwargs)
@@ -60,6 +65,7 @@ class Widget(NevuObject):
         self._add_constant("inline", bool, False)
         self._add_constant("font_role", PairColorRole, PairColorRole.SURFACE_VARIANT)
         self._add_constant("quality", Quality, Quality.Decent)
+        self._add_constant("_draw_borders", bool, True)
         
     def _init_text_cache(self):
         self._text_baked = None
@@ -70,11 +76,13 @@ class Widget(NevuObject):
         super()._init_objects()
         self._subtheme_role = SubThemeRole.SECONDARY
         self.renderer = BackgroundRenderer(self)
+        self._master_mask = None
         
     def _init_lists(self):
         super()._init_lists()
         self._dr_coordinates_old = self.coordinates.copy()
         self._dr_coordinates_new = self.coordinates.copy()
+        self._inline_add_coords = NvVector2()
 
     def _init_booleans(self):
         super()._init_booleans()
@@ -151,7 +159,7 @@ class Widget(NevuObject):
         This includes Image, Scaled_Gradient, Surface, and Borders.
         Highly recommended to use this method instead of clear_all.
         """
-        self.cache.clear_selected(whitelist = [CacheType.Image, CacheType.Scaled_Gradient, CacheType.Surface, CacheType.Borders, CacheType.Scaled_Borders, CacheType.Scaled_Background, CacheType.Background])
+        self.cache.clear_selected(whitelist = [CacheType.Scaled_Image, CacheType.Scaled_Gradient, CacheType.Surface, CacheType.Borders, CacheType.Scaled_Borders, CacheType.Scaled_Background, CacheType.Background])
     
     def _on_style_change(self):
         self._on_style_change_content()
@@ -214,6 +222,8 @@ class Widget(NevuObject):
             
             if self.inline: 
                 surf = self.renderer._scale_background(self._csize.to_round()) if self.will_resize else self.renderer._generate_background()
+                if self._master_mask:
+                    ReverseAlphaBlit.blit(surf, self._master_mask, (self.coordinates.to_round() - self._inline_add_coords.to_round()).to_tuple()) # type: ignore
                 self.surface.blit(surf, self.coordinates.to_round().to_tuple())
             else:
                 TRANSPARENT = (0, 0, 0, 0)
@@ -243,87 +253,14 @@ class Widget(NevuObject):
         pass
         #print(f"booted widget: {self}")
 
+    @deprecated("Use renderer.bake_text() instead. This method will be removed in a future version.")
     def bake_text(self, text: str, unlimited_y: bool = False, words_indent: bool = False,
                   alignx: Align = Align.CENTER, aligny: Align = Align.CENTER, continuous: bool = False, size_x = None, size_y = None, color = None):
-        if continuous: 
-            self._bake_text_single_continuous(text)
-            return
-        color = color or self._subtheme_font
-        print(color)
-        size_x = size_x or self.relx(self.size.x)
-        size_y = size_y or self.rely(self.size.y)
-        is_popped = False
-        ifnn = False
+        self.renderer.bake_text(text, unlimited_y, words_indent, alignx, aligny, continuous, size_x, size_y, color)
 
-        current_line = ""
-        marg = ""
-        words = list(text)
-        lines = []
-
-        renderFont = self.get_font() 
-        line_height = renderFont.size("a")[1]
-
-        if words_indent:
-            words = text.strip().split()
-            marg = " "
-
-        for word in words:
-            if word == '\n': ifnn = True
-            with contextlib.suppress(Exception):
-                w = word[0] + word[1]
-                if w == '\ '.strip()+"n": ifnn = True # type: ignore
-            if ifnn:
-                lines.append(current_line)
-                current_line = ""
-                test_line = ""
-                text_size = 0
-                ifnn = False
-                continue
-
-            test_line = current_line + word + marg
-            text_size = renderFont.size(test_line)
-            if text_size[0] > size_x:
-                lines.append(current_line)
-                current_line = word + marg
-            else: current_line = test_line
-        lines.append(current_line)
-
-        if not unlimited_y:
-            while len(lines) * line_height > size_y:
-                lines.pop(-1)
-                is_popped = True
-
-        self._text_baked = "\n".join(lines)
-
-        if is_popped and not unlimited_y:
-                 self._text_baked = f"{self._text_baked[:-3]}..."
-
-        self._text_surface = renderFont.render(self._text_baked, True, color)
-        
-        container_rect = pygame.Rect(self.coordinates.to_round().to_tuple(), self._csize.to_round()) if self.inline else self.surface.get_rect()
-            
-        text_rect = self._text_surface.get_rect()
-
-        if alignx == Align.LEFT: text_rect.left = container_rect.left
-        elif alignx == Align.CENTER: text_rect.centerx = container_rect.centerx
-        elif alignx == Align.RIGHT: text_rect.right = container_rect.right
-
-        if aligny == Align.TOP: text_rect.top = container_rect.top
-        elif aligny == Align.CENTER: text_rect.centery = container_rect.centery
-        elif aligny == Align.BOTTOM: text_rect.bottom = container_rect.bottom
-
-        self._text_rect = text_rect
-
+    @deprecated("Use renderer.bake_text() instead. This method will be removed in a future version.")
     def _bake_text_single_continuous(self, text: str):
-        assert hasattr(self, "_entered_text")
-        
-        renderFont = self.get_font()
-        self.font_size = renderFont.size(text)
-        self._text_surface = renderFont.render(self._entered_text, True, self._subtheme_font) #type: ignore
-        
-        if not self.font_size[0] + self.relx(10) >= self._csize[0]: 
-            self._text_rect = self._text_surface.get_rect(left = self.relx(10), centery = self._csize.y / 2)
-        else: self._text_rect = self._text_surface.get_rect(right = self.relx(self._csize.x - 10), centery = self._csize.y / 2)
+        self.renderer._bake_text_single_continuous(text)
 
     def resize(self, resize_ratio: NvVector2):
         super().resize(resize_ratio)
