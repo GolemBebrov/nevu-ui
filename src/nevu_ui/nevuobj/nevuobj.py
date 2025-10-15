@@ -593,7 +593,8 @@ class NevuObject:
     def secondary_draw_content(self):
         pass
     def secondary_draw_end(self):
-        pass
+        if self._changed:
+            self._changed = False
     
     def relx(self, num: int | float, min: int | None = None, max: int| None = None) -> int | float:
         return rel_helper(num, self._resize_ratio.x, min, max)
