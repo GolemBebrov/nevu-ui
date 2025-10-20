@@ -8,6 +8,7 @@ from .fast import NvVector2
 from .color import (
     Color, ColorTheme, ColorSubTheme, ColorPair, ColorThemeLibrary, SubThemeRole, PairColorRole, TupleColorRole
 )
+from .state import nevu_state
 from .style import (
     Style, default_style
 )
@@ -17,6 +18,7 @@ from .core_types import (
     Quality, HoverState, Events,
     LinearSide, RadialPosition, GradientType,CacheName, CacheType,EventType
 )
+from .nevusurf import NevuSurface
 from .widgets import (
     Widget, Label, Button, EmptyWidget, RectCheckBox, Image, Gif, Input, MusicPlayer, ElementSwitcher, Element, ProgressBar, Slider
 )
