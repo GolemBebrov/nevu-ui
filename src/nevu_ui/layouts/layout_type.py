@@ -7,13 +7,14 @@ from nevu_ui.menu import Menu
 from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.logic import _light_update_helper
 from nevu_ui.fast.nvvector2 import NvVector2
-
+from nevu_ui.rendering.blit import FastBlit
 from nevu_ui.style import (
     Style, default_style
 )
 from nevu_ui.core_types import (
     SizeRule, Vh, Vw, Fill
 )
+from nevu_ui.state import nevu_state
 
 class LayoutType(NevuObject):
     items: list[NevuObject]
@@ -38,7 +39,12 @@ class LayoutType(NevuObject):
         coordinates = item.coordinates.copy()
         if multiply: coordinates *= multiply
         if add: coordinates += add
-        self.surface.blit(item.surface, coordinates.to_tuple())
+        
+        if nevu_state.renderer and isinstance(item, Widget):
+            assert item.texture
+            nevu_state.renderer.blit(item.texture, pygame.Rect(coordinates.to_tuple(), item._csize.to_tuple()))
+        else:
+            self.surface.blit(item.surface, coordinates.to_tuple())
 
     def _boot_up(self):
         #print("booted layout", self)
@@ -98,6 +104,7 @@ class LayoutType(NevuObject):
             self.items,
             self.cached_coordinates or [],
             self.first_parent_menu,
+            nevu_state,
             add_x,
             add_y,
             self._resize_ratio,
@@ -109,6 +116,7 @@ class LayoutType(NevuObject):
     def coordinates(self): return self._coordinates
     @coordinates.setter
     def coordinates(self, value):
+        if not self._first_update and self._coordinates == value: return
         self._coordinates = value
         self.cached_coordinates = None
 
