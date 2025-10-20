@@ -8,7 +8,8 @@ from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.layouts import LayoutType
 from nevu_ui.layouts.scrollable_base import ScrollableBase
 from nevu_ui.color import SubThemeRole
-
+from nevu_ui.fast.logic.fast_logic import collide_horizontal
+from nevu_ui.state import nevu_state
 from nevu_ui.style import (
     Style, default_style
 )
@@ -47,7 +48,11 @@ class ScrollableRow(ScrollableBase):
 
     def _resize_scrollbar(self):
         self.scroll_bar.coordinates.x = self.relx(self.scroll_bar.size.x)
-
+        
+    @property
+    def _collide_function(self):
+        return collide_horizontal
+        
     def _set_item_main(self, item: NevuObject, align: Align):
         container_height = self.rely(self.size[1])
         widget_height = self.rely(item.size[1])
@@ -60,32 +65,39 @@ class ScrollableRow(ScrollableBase):
         elif align == Align.CENTER:
             item.coordinates.y = self._coordinates.y + (container_height / 2 - widget_height / 2)
     
-    def base_light_update(self): # type: ignore
+    def base_light_update(self, items = None): # type: ignore
         offset = self.get_offset()
-        super().base_light_update(-offset, 0)
+        super().base_light_update(-offset, 0, items = items)
 
     def _regenerate_coordinates(self):
         self.cached_coordinates = []
         self._regenerate_max_values()
-        padding_offset = self.relx(self.padding)
+        padding_offset = self.padding
         for i, item in enumerate(self.items):
+            
             align = self.widgets_alignment[i]
             
             self._set_item_main(item, align)
             item.coordinates.x = self._coordinates.x + padding_offset
-            self.cached_coordinates.append(item.coordinates)
+            self.cached_coordinates.append(item.coordinates.copy())
             item.master_coordinates = self._get_item_master_coordinates(item)
-            padding_offset += item._csize.x + self.relx(self.padding)
-
-    def _regenerate_max_values(self):
-        total_content_width = self.relx(self.padding)
-        for item in self.items:
-            total_content_width += self.relx(item.size[0]) + self.relx(self.padding)
-            
-        visible_width = self.relx(self.size[0])
+            padding_offset += item._csize.x + self.padding
+        super()._regenerate_coordinates()
         
-        self.actual_max_main = max(0, total_content_width - visible_width)
+    def _regenerate_max_values(self):
+        total_content_width = self.padding
+        for item in self.items:
+            total_content_width += item._csize.x + self.padding
+            
+        visible_width = self._csize.x
 
+        antirel = nevu_state.window.rel
+        
+        self.actual_max_main = max(0, (total_content_width - visible_width) / antirel.x)
+        
+    def get_relative_vector_offset(self) -> NvVector2:
+        return NvVector2(self.relx(self.get_offset()), 0)
+    
     def _restart_coordinates(self):
         self.max_main = self.padding
         self.actual_max_main = 0

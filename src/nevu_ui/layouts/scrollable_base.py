@@ -2,15 +2,16 @@ import pygame
 import copy
 from typing import Any
 import contextlib
-
+from nevu_ui.fast.logic import _light_update_helper
 from nevu_ui.widgets import Widget
 from nevu_ui.menu import Menu
 from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.layouts import LayoutType
-
+from nevu_ui.fast.logic.fast_logic import collide_vector, collide_vertical, collide_horizontal
 from nevu_ui.color import SubThemeRole
-
+from nevu_ui.state import nevu_state
+from nevu_ui.fast.logic.fast_logic import _very_light_update_helper
 from nevu_ui.style import (
     Style, default_style
 )
@@ -54,6 +55,7 @@ class ScrollableBase(LayoutType):
             self.offset = NvVector2(0, 0)
             self.track_start_coordinates = NvVector2(0, 0)
             self.track_path = NvVector2(0, 0)
+            self.collided_items = []
 
         def _orientation_to_int(self):
             return 1 if self.orientation == ScrollBarType.Vertical else 0
@@ -134,7 +136,11 @@ class ScrollableBase(LayoutType):
         self._test_debug_print = False
         self._test_rect_calculation = True
         self._test_always_update = False
-        
+    
+    def _init_booleans(self):
+        super()._init_booleans()
+        self._scroll_needs_update = False
+    
     def _init_numerical(self):
         super()._init_numerical()
         self.max_secondary = 0
@@ -146,6 +152,7 @@ class ScrollableBase(LayoutType):
         super()._init_lists()
         self.widgets_alignment = []
         self._coordinates = NvVector2()
+        self.collided_items = []
         
     @property
     def coordinates(self):
@@ -220,22 +227,34 @@ class ScrollableBase(LayoutType):
     def _is_widget_drawable(self, item: NevuObject):
         if self._test_debug_print:
             print(f"in {self} used is drawable for", item)
-            
-        item_rect = item.get_rect()
-        self_rect = self.get_rect()
-        return bool(item_rect.colliderect(self_rect))
+        
+        offset = self.get_relative_vector_offset()
+        #if item.master_coordinates.y < offset.y: return False
+        coords_1 = item.master_coordinates 
+        coords_2 = coords_1 + item._csize
+        
+        viewport_tl = self.master_coordinates
+        viewport_br = self.master_coordinates + self._csize
+        
+        c = collide_vector(viewport_tl, viewport_br, coords_1, coords_2)
+        return c
+    @property
+    def _collide_function(self):
+        return collide_vector
     
     def _is_widget_drawable_optimized(self, item: NevuObject):
-        raise DeprecationWarning("Not supported anymore, use _is_widget_drawable instead")
+        rect1 = item.get_rect()
+        rect2 = self.get_rect()
+        c = rect1.colliderect(rect2)
+        return c
     
     def secondary_draw(self):
         if self._test_debug_print: print(f"Used secondary_draw in {self}")
             
         super().secondary_draw()
-        for item in self.items:
+        for item in self.collided_items:
             assert isinstance(item, (Widget, LayoutType))
-            if drawable := self._is_widget_drawable(item):
-                self._draw_widget(item)
+            self._draw_widget(item)
             
         if self.actual_max_main > 0:
             self._draw_widget(self.scroll_bar)
@@ -243,30 +262,72 @@ class ScrollableBase(LayoutType):
     def _set_item_main(self, item: NevuObject, align: Align):
         pass
     
+    def get_relative_vector_offset(self) -> NvVector2:
+        return NvVector2()
+    
     def get_offset(self) -> int | float:
         percentage = self.scroll_bar.percentage
         return self.actual_max_main / 100 * percentage
     
+    def base_light_update(self, add_x: int | float = 0, add_y: int | float = 0, items = None):
+        _light_update_helper(
+            items or self.collided_items,
+            self.cached_coordinates or [],
+            self.first_parent_menu,
+            nevu_state,
+            add_x,
+            add_y,
+            self._resize_ratio,
+            self.cached_coordinates is None or len(self.items) != len(self.cached_coordinates)
+            
+        )
     def secondary_update(self): 
         if self._test_debug_print:
             print(f"in {self} used update")
             for name, data in self.__dict__.items(): print(f"{name}: {data}")
             
         super().secondary_update()
-        self.base_light_update()    
-        
         if self.actual_max_main > 0:
+            old_percentage = self.scroll_bar.percentage
             self.scroll_bar.update()
+            new_percentage = self.scroll_bar.percentage
+            if old_percentage != new_percentage:
+                self._scroll_needs_update = True
+        self.very_light_update()
+        #print(self.collided_items)
+        for item in self.collided_items:
+            item.update() 
+        if self._scroll_needs_update:
+            self._regenerate_coordinates()
+            self._scroll_needs_update = False 
+        if self.actual_max_main > 0:
             self.scroll_bar.coordinates = self._get_scrollbar_coordinates() # type: ignore
             self.scroll_bar.master_coordinates = self._get_item_master_coordinates(self.scroll_bar)
             self.scroll_bar._master_z_handler = self._master_z_handler
-        if type(self) == ScrollableBase: self._dirty_rect = self._read_dirty_rects()
+        #self.base_light_update() 
+        #if type(self) == ScrollableBase: self._dirty_rect = self._read_dirty_rects()
     
     def _get_scrollbar_coordinates(self): 
         return
     
+    def _recollide_items(self):
+        self.collided_items.clear()
+        drawable = self._is_widget_drawable if self._test_rect_calculation else self._is_widget_drawable_optimized
+        self.collided_items = [item for item in self.items if drawable(item)]
+    
     def _regenerate_coordinates(self):
-        pass
+        self.very_light_update()
+        self._recollide_items()
+    
+    def very_light_update(self):
+        _very_light_update_helper(
+            self.items,
+            self.cached_coordinates,
+            self.get_relative_vector_offset(),
+            self._get_item_master_coordinates
+        )
+    def _fast_regen(self):
+        self._recollide_items()
             
     def logic_update(self):
         super().logic_update()
@@ -274,8 +335,10 @@ class ScrollableBase(LayoutType):
         with contextlib.suppress(Exception):
             if keyboard.is_fdown(self.append_key):
                 self.scroll_bar.move_by_percents(self.arrow_scroll_power * -inverse)
+                self._scroll_needs_update = True
             if keyboard.is_fdown(self.descend_key):
                 self.scroll_bar.move_by_percents(self.arrow_scroll_power * inverse)
+                self._scroll_needs_update = True
             
     def _on_scroll_system(self, side: bool):
         super()._on_scroll_system(side)
@@ -285,6 +348,7 @@ class ScrollableBase(LayoutType):
         if self.inverted_scrolling:
             direction *= -1
         self.scroll_bar.move_by_percents(self.wheel_scroll_power * direction)
+        self._scroll_needs_update = True
             
     def resize(self, resize_ratio: NvVector2):
         if self._test_debug_print:
@@ -311,9 +375,6 @@ class ScrollableBase(LayoutType):
         self.scroll_bar.set_percents(new_percentage)
         self.base_light_update()
 
-    def base_light_update(self, add_x: int | float = 0, add_y: int | float = 0): # type: ignore
-        super().base_light_update(add_x, add_y)
-    
     def _resize_scrollbar(self):
         pass
     

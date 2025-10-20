@@ -1,22 +1,15 @@
 import pygame
 import copy
 
-from nevu_ui.widgets import Widget
-from nevu_ui.menu import Menu
 from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.layouts import LayoutType
 from nevu_ui.layouts.scrollable_base import ScrollableBase
-from nevu_ui.color import SubThemeRole
+from nevu_ui.fast.logic.fast_logic import collide_vertical
+from nevu_ui.state import nevu_state
+from nevu_ui.style import Style
 
-from nevu_ui.style import (
-    Style, default_style
-)
 from nevu_ui.core_types import (
     Align, ScrollBarType
-)
-from nevu_ui.utils import (
-    keyboard, mouse
 )
 
 class ScrollableColumn(ScrollableBase):
@@ -60,31 +53,37 @@ class ScrollableColumn(ScrollableBase):
         elif align == Align.CENTER:
             item.coordinates.x = self._coordinates.x + (container_width / 2 - widget_width / 2)
     
-    def base_light_update(self): # type: ignore
+    def base_light_update(self, items = None): # type: ignore
         offset = self.get_offset()
-        super().base_light_update(0, -offset)
+        super().base_light_update(0, -offset, items = items)
 
     def _regenerate_coordinates(self):
         self.cached_coordinates = []
         self._regenerate_max_values()
-        padding_offset = self.rely(self.padding)
+        padding_offset = self.padding
         for i, item in enumerate(self.items):
             align = self.widgets_alignment[i]
             
             self._set_item_main(item, align)
             item.coordinates.y = self._coordinates.y + padding_offset
-            self.cached_coordinates.append(item.coordinates)
+            self.cached_coordinates.append(item.coordinates.copy())
             item.master_coordinates = self._get_item_master_coordinates(item)
-            padding_offset += item._csize.y + self.rely(self.padding)
-
-    def _regenerate_max_values(self):
-        total_content_height = self.rely(self.padding)
-        for item in self.items:
-            total_content_height += self.rely(item.size[1]) + self.rely(self.padding)
-            
-        visible_height = self.rely(self.size[1])
+            padding_offset += item._csize.y + self.padding
+        super()._regenerate_coordinates()
         
-        self.actual_max_main = max(0, total_content_height - visible_height)
+    @property
+    def _collide_function(self):
+        return collide_vertical
+        
+    def _regenerate_max_values(self):
+        total_content_height = self.padding
+        for item in self.items:
+            total_content_height += item._csize.y + self.padding
+        visible_height = self._csize.y
+        
+        antirel = nevu_state.window.rel
+        
+        self.actual_max_main = max(0, (total_content_height - visible_height) / antirel.y)
 
     def _restart_coordinates(self):
         self.max_main = self.padding
@@ -93,7 +92,10 @@ class ScrollableColumn(ScrollableBase):
     def _apply_style_to_scroll_bar(self, style: Style):
         if hasattr(self, 'scroll_bar'):
             self.scroll_bar.style = style
-
+            
+    def get_relative_vector_offset(self) -> NvVector2:
+        return NvVector2(0, self.rely(self.get_offset()))
+    
     def add_item(self, item: NevuObject, alignment: Align = Align.LEFT):
         super().add_item(item, alignment)
 
