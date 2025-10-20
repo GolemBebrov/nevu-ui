@@ -131,6 +131,7 @@ class Slider(Widget):
         self.progress_bar.coordinates = NvVector2()
         
         if self._changed:
+            self.clear_texture()
             self.bake_text(str(round(self.progress_bar.progress*100)), alignx = self.style.text_align_x, aligny = self.style.text_align_y, color=self.style.colortheme.get_tuple(self.tuple_role))
             assert self._text_surface and self._text_rect
             
