@@ -70,11 +70,6 @@ class Label(Widget):
             self._fast_bake_text()
             assert self._text_surface is not None and self._text_rect is not None
             self.surface.blit(self._text_surface, self._text_rect)
-        
-    def secondary_draw_end(self):
-        super().secondary_draw_end()
-        if not type(self).__subclasses__():
-            self._changed = False
 
     def clone(self):
         return Label(self._lazy_kwargs['text'], self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
