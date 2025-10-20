@@ -1,6 +1,6 @@
 import pygame
 import copy
-
+from pygame._sdl2 import Texture
 from nevu_ui.nevuobj import NevuObject
 from nevu_ui.window import Window
 from nevu_ui.color import SubThemeRole
@@ -23,7 +23,7 @@ from nevu_ui.fast.logic import (
 from nevu_ui.fast.nvvector2 import (
     NvVector2 as Vector2, NvVector2
 )
-
+from nevu_ui.state import nevu_state
 class Menu:
     def __init__(self, window: Window | None, size: list | tuple | Vector2, style: Style = default_style, alt: bool = False, layout = None): 
         self._coordinatesWindow = Vector2(0,0)
@@ -38,7 +38,22 @@ class Menu:
         self._init_dirty_rects()
         if layout:
             self.layout = layout
-
+    
+    @property
+    def _texture(self):
+        return self.cache.get_or_exec(CacheType.Texture, self.convert_texture)
+    
+    def convert_texture(self, surf = None):
+        if nevu_state.renderer is None:
+            raise ValueError("Window not initialized!")
+        surface = surf or self.surface
+        print("converted texture in MENU(very slow)")
+        texture = Texture(nevu_state.renderer, (self.size*self._resize_ratio).to_tuple(), target=True)
+        nevu_state.renderer.target = texture
+        ntext = Texture.from_surface(nevu_state.renderer, surface)
+        nevu_state.renderer.blit(ntext, pygame.Rect(0,0, *(self.size*self._resize_ratio).to_tuple()))
+        nevu_state.renderer.target = None
+        return texture
     def _update_size(self):
         return (self.size * self._resize_ratio).to_pygame()
 
@@ -170,9 +185,14 @@ class Menu:
     @property
     def _background(self):
         if self.will_resize:
-            return lambda: self._scale_background(self.size*self._resize_ratio)
+            result1 =  lambda: self._scale_background(self.size*self._resize_ratio)
         else:
-            return lambda: self._generate_background()
+            result1 = lambda: self._generate_background()
+        if nevu_state.renderer:
+            result = lambda: self.convert_texture(result1())
+        else:
+            result = result1
+        return result
         #return lambda: self._scale_background(self.size*_QUALITY_TO_RESOLUTION[self.quality]) if self.will_resize else self._generate_background
 
     def _generate_background(self):
@@ -219,7 +239,7 @@ class Menu:
         self.cache.clear()
         
     def clear_surfaces(self):
-        self.cache.clear_selected(whitelist = [CacheType.Image, CacheType.Scaled_Gradient, CacheType.Surface, CacheType.Borders, CacheType.Scaled_Background, CacheType.RelSize])
+        self.cache.clear_selected(whitelist = [CacheType.Image, CacheType.Scaled_Gradient, CacheType.Surface, CacheType.Borders, CacheType.Scaled_Background, CacheType.RelSize, CacheType.Texture])
     
     @property
     def coordinatesMW(self) -> Vector2:
@@ -358,23 +378,36 @@ class Menu:
         return OutlinedRoundedRect.create_sdf([int(ss[0]), int(ss[1])], int(radius), int(width), self._subtheme_border)
     
     def draw(self):
-        if not self.enabled: return
-        if self.window is None: return
-        assert isinstance(self.window, Window)
+        if not self.enabled or not self.window:
+            return
         scaled_bg = self.cache.get_or_exec(CacheType.Scaled_Background, self._background)
-        if scaled_bg:
-            self.surface.blit(scaled_bg,(0,0))
-        if self._layout is not None:
-            if len(self._layout._dirty_rect)>0:
-                self._dirty_rects.extend(self._layout._dirty_rect)
-            self._layout.draw()
-        self.window.surface.blit(self.surface, self.coordinatesMW)
+        if nevu_state.renderer:
+            assert isinstance(scaled_bg, Texture)
+           
+
+            if self._layout is not None:
+                nevu_state.renderer.target = self._texture
+                nevu_state.renderer.blit(scaled_bg, self.get_rect())
+                self._layout.draw()
+                nevu_state.renderer.target = None
+            if self._opened_sub_menu:
+                for item in self._args_menus_to_draw: item.draw()
+                self._opened_sub_menu.draw()
+            self.window._display.blit(self._texture, self.coordinatesMW.to_int().to_tuple())
+            return 
+
         
-        assert isinstance(self._opened_sub_menu, (Menu, type(None)))
+        if scaled_bg:
+            self.surface.blit(scaled_bg, (0, 0))
+        
+        if self._layout is not None:
+            self._layout.draw() 
+        self.window._display.blit(self.surface, self.coordinatesMW.to_int().to_tuple())
+        
         if self._opened_sub_menu:
             for item in self._args_menus_to_draw: item.draw()
             self._opened_sub_menu.draw()
-            
+
     def update(self):
         if not self.enabled: return
         if self.window is None: return
@@ -390,10 +423,10 @@ class Menu:
             return
         if self._layout: 
             self._layout.master_coordinates = self._layout.coordinates + self.window.offset
-            self._layout.update(self.window.last_events)
+            self._layout.update(nevu_state.current_events)#self.window.last_events)
         
     def get_rect(self) -> pygame.Rect:
-        return pygame.Rect(self.coordinatesMW, self.size * self._resize_ratio)
+        return pygame.Rect((0,0), self.size * self._resize_ratio)
 
 
 # ------ ALL OF CODE AFTER THIS LINE IS DEPRECATED! ------ #
