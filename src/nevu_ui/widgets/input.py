@@ -4,7 +4,7 @@ import copy
 from nevu_ui.core_types import Align
 from nevu_ui.utils import mouse
 from nevu_ui.widgets import Widget, WidgetKwargs
-
+from nevu_ui.state import nevu_state
 from typing import Any, TypedDict, NotRequired, Unpack
 
 from nevu_ui.fast.nvvector2 import (
@@ -49,7 +49,7 @@ class Input(Widget):
         self._text_scroll_offset = 0
         self._text_scroll_offset_y = 0
         self.max_scroll_y = 0
-        self._cursor_place = 0
+        self.cursor_place = 0
         self.left_margin = 10
         self.right_margin = 10
         self.top_margin = 5
@@ -99,7 +99,7 @@ class Input(Widget):
     def _get_cursor_line_col(self):
         if not self._entered_text: return 0, 0
         lines = self._entered_text.split('\n')
-        abs_pos = self._cursor_place
+        abs_pos = self.cursor_place
         current_pos = 0
         for i, line in enumerate(lines):
             line_len = len(line)
@@ -234,6 +234,7 @@ class Input(Widget):
              self._text_rect = pygame.Rect(0,0,0,0)
              
     def _right_bake_text(self):
+        self.clear_surfaces()
         if not hasattr(self, 'style'): return
         text_to_render = self._entered_text if len(self._entered_text) > 0 else self.placeholder
         if self.multiple:
@@ -265,8 +266,17 @@ class Input(Widget):
         #self._init_cursor()
         if hasattr(self,'_entered_text'):
              self._right_bake_text()
-             
+    @property
+    def cursor_place(self):
+        return self._cursor_place
+    @cursor_place.setter
+    def cursor_place(self, cursor_place: int):
+        self._cursor_place = cursor_place
+        if hasattr(self, 'cache'):
+            self.clear_texture()
+    
     def event_update(self, events: list | None = None):
+        events = nevu_state.current_events
         if events is None: events = []
         super().event_update(events)
         if not self.is_active:
@@ -287,58 +297,58 @@ class Input(Widget):
             cursor_moved = False
             for event in events:
                 if event.type == pygame.KEYDOWN:
-                    initial_cursor_place = self._cursor_place
+                    initial_cursor_place = self.cursor_place
                     initial_text = self._entered_text
                     if event.key == pygame.K_RETURN or event.key == pygame.K_KP_ENTER:
                         if self.multiple:
                              if self.max_characters is None or len(self._entered_text) < self.max_characters:
-                                self._entered_text = self._entered_text[:self._cursor_place] + '\n' + self._entered_text[self._cursor_place:]
-                                self._cursor_place += 1
+                                self._entered_text = self._entered_text[:self.cursor_place] + '\n' + self._entered_text[self.cursor_place:]
+                                self.cursor_place += 1
                     elif event.key == pygame.K_UP:
                         if self.multiple:
                             current_line, current_col = self._get_cursor_line_col()
                             if current_line > 0:
-                                self._cursor_place = self._get_abs_pos_from_line_col(current_line - 1, current_col)
+                                self.cursor_place = self._get_abs_pos_from_line_col(current_line - 1, current_col)
                     elif event.key == pygame.K_DOWN:
                          if self.multiple:
                              lines = self._entered_text.split('\n')
                              current_line, current_col = self._get_cursor_line_col()
                              if current_line < len(lines) - 1:
-                                 self._cursor_place = self._get_abs_pos_from_line_col(current_line + 1, current_col)
+                                 self.cursor_place = self._get_abs_pos_from_line_col(current_line + 1, current_col)
                     elif event.key == pygame.K_RIGHT:
-                        self._cursor_place = min(len(self._entered_text),self._cursor_place+1)
+                        self.cursor_place = min(len(self._entered_text),self.cursor_place+1)
                         self._changed = True
                     elif event.key == pygame.K_LEFT:
-                        self._cursor_place = max(0,self._cursor_place-1)
+                        self.cursor_place = max(0,self.cursor_place-1)
                         self._changed = True
                     elif event.key == pygame.K_BACKSPACE:
-                        if self._cursor_place > 0:
-                            self._entered_text = self._entered_text[:self._cursor_place-1] + self._entered_text[self._cursor_place:]
-                            self._cursor_place = max(0,self._cursor_place-1)
+                        if self.cursor_place > 0:
+                            self._entered_text = self._entered_text[:self.cursor_place-1] + self._entered_text[self.cursor_place:]
+                            self.cursor_place = max(0,self.cursor_place-1)
                     elif event.key == pygame.K_DELETE:
-                         if self._cursor_place < len(self._entered_text):
-                              self._entered_text = self._entered_text[:self._cursor_place] + self._entered_text[self._cursor_place+1:]
+                         if self.cursor_place < len(self._entered_text):
+                              self._entered_text = self._entered_text[:self.cursor_place] + self._entered_text[self.cursor_place+1:]
                     elif event.key == pygame.K_HOME:
                          if self.multiple:
                               line_idx, _ = self._get_cursor_line_col()
-                              self._cursor_place = self._get_abs_pos_from_line_col(line_idx, 0)
+                              self.cursor_place = self._get_abs_pos_from_line_col(line_idx, 0)
                          else:
-                              self._cursor_place = 0
+                              self.cursor_place = 0
                     elif event.key == pygame.K_END:
                          if self.multiple:
                               line_idx, _ = self._get_cursor_line_col()
                               lines = self._entered_text.split('\n')
                               line_len = len(lines[line_idx]) if line_idx < len(lines) else 0
-                              self._cursor_place = self._get_abs_pos_from_line_col(line_idx, line_len)
+                              self.cursor_place = self._get_abs_pos_from_line_col(line_idx, line_len)
                          else:
-                              self._cursor_place = len(self._entered_text)
+                              self.cursor_place = len(self._entered_text)
                     elif event.key == pygame.K_v and event.mod & pygame.KMOD_CTRL:
                         if self.allow_paste:
                             pasted_text = ""
                             try:
-                                pasted_text = pygame.scrap.get(pygame.SCRAP_TEXT)
-                                if pasted_text:
-                                    pasted_text = pasted_text.decode('utf-8').replace('\x00', '')
+                                pasted_text = pygame.scrap.get_text()
+                                #if pasted_text:
+                                #   pasted_text = pasted_text.decode('utf-8').replace('\x00', '')
                             except (pygame.error, UnicodeDecodeError, TypeError):
                                 pasted_text = ""
 
@@ -356,8 +366,8 @@ class Input(Widget):
                                     filtered_text = filtered_text[:max(0, available_space)]
 
                                 if filtered_text:
-                                    self._entered_text = self._entered_text[:self._cursor_place] + filtered_text + self._entered_text[self._cursor_place:]
-                                    self._cursor_place += len(filtered_text)
+                                    self._entered_text = self._entered_text[:self.cursor_place] + filtered_text + self._entered_text[self.cursor_place:]
+                                    self.cursor_place += len(filtered_text)
 
                     elif event.unicode:
                         unicode = event.unicode
@@ -371,26 +381,12 @@ class Input(Widget):
                                 if self.whitelist and unicode not in self.whitelist: valid_char = False
 
                                 if valid_char:
-                                    self._entered_text = self._entered_text[:self._cursor_place] + unicode + self._entered_text[self._cursor_place:]
-                                    self._cursor_place += len(unicode)
+                                    self._entered_text = self._entered_text[:self.cursor_place] + unicode + self._entered_text[self.cursor_place:]
+                                    self.cursor_place += len(unicode)
 
-                    if self._cursor_place != initial_cursor_place: cursor_moved = True
+                    if self.cursor_place != initial_cursor_place: cursor_moved = True
                     if self._entered_text != initial_text: text_changed = True
                     if text_changed or cursor_moved: self._changed = True
-
-                elif event.type == pygame.MOUSEWHEEL:
-                    if self.multiple and self.selected and mouse_collided:
-                         scroll_multiplier = 3
-                         line_h = 1
-                         try:
-                             line_h = self._get_line_height()
-                         except: pass
-                         scroll_amount = event.y * line_h * scroll_multiplier
-                         if not hasattr(self, 'max_scroll_y'): self._update_scroll_offset_y()
-
-                         self._text_scroll_offset_y -= scroll_amount
-                         self._text_scroll_offset_y = max(0, min(self._text_scroll_offset_y, getattr(self, 'max_scroll_y', 0)))
-                         self._changed = True
             if text_changed:
                  self._right_bake_text()
                  if self._on_change_fun:
@@ -401,7 +397,24 @@ class Input(Widget):
             elif cursor_moved:
                  self._update_scroll_offset()
                  self._update_scroll_offset_y()
-                 
+    
+    
+    def _on_scroll_system(self, side: bool):
+        super()._on_scroll_system(side)
+        self.clear_texture()
+        direction = -1 if side else 1
+
+        scroll_multiplier = 3
+        line_h = 1
+        
+        line_h = self._get_line_height()
+        
+        scroll_amount = direction * line_h * scroll_multiplier
+        if not hasattr(self, 'max_scroll_y'): self._update_scroll_offset_y()
+        self._text_scroll_offset_y -= scroll_amount
+        self._text_scroll_offset_y = max(0, min(self._text_scroll_offset_y, getattr(self, 'max_scroll_y', 0)))
+        self._changed = True
+    
     def check_selected(self, collided):
         if collided and mouse.left_fdown:
             if not self.selected:
@@ -439,7 +452,7 @@ class Input(Widget):
                                     best_col_index = i + 1
                             current_w += char_w
                         best_col_index = max(0, min(best_col_index, len(target_line_text)))
-                        self._cursor_place = self._get_abs_pos_from_line_col(target_line_index, best_col_index)
+                        self.cursor_place = self._get_abs_pos_from_line_col(target_line_index, best_col_index)
                     else:
                         target_x_in_full_text = relative_x - l_margin + self._text_scroll_offset
                         best_index = 0
@@ -461,7 +474,7 @@ class Input(Widget):
                             current_w += char_w
 
                         best_index = max(0, min(best_index, len(self._entered_text)))
-                        self._cursor_place = best_index
+                        self.cursor_place = best_index
 
                     self._update_scroll_offset()
                     self._update_scroll_offset_y()
@@ -490,7 +503,7 @@ class Input(Widget):
             text = text[:self.max_characters]
 
         self._entered_text = text
-        self._cursor_place = min(len(self._entered_text), self._cursor_place)
+        self.cursor_place = min(len(self._entered_text), self.cursor_place)
         self._changed = True
         self._right_bake_text()
 
@@ -503,6 +516,7 @@ class Input(Widget):
         if not self.visible: return
 
         if self._changed:
+            print("CHHHHHHHAAAAAANGEEEEEEEEEED")
             try:
                 renderFont = self.get_font()
                 font_loaded = True
@@ -546,7 +560,7 @@ class Input(Widget):
                         cursor_visual_x = l_margin + cursor_x_offset - self._text_scroll_offset
                         cursor_visual_y = t_margin + (cursor_line * line_height) - self._text_scroll_offset_y
                     else:
-                        text_before_cursor = self._entered_text[:self._cursor_place]
+                        text_before_cursor = self._entered_text[:self.cursor_place]
                         cursor_x_offset = renderFont.size(text_before_cursor)[0]
                         cursor_visual_x = l_margin + cursor_x_offset - self._text_scroll_offset
                         cursor_visual_y = (self.surface.get_height() - cursor_height) / 2
