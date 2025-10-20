@@ -3,6 +3,7 @@ from nevu_ui.core_types import (
 )
 
 class Cache:
+    __slots__ = ("name", "cache", "cache_default")
     def __init__(self):
         self.name = CacheName.MAIN
         self.cache_default = {
@@ -16,7 +17,8 @@ class Cache:
             CacheType.Scaled_Background: None,
             CacheType.Background: None,
             CacheType.Scaled_Gradient: None,
-            CacheType.Scaled_Image: None
+            CacheType.Scaled_Image: None,
+            CacheType.Texture: None
             
         }
         self.cache = {
@@ -46,7 +48,8 @@ class Cache:
                      CacheType.Scaled_Borders,
                      CacheType.Scaled_Background,
                      CacheType.Scaled_Gradient,
-                     CacheType.Background
+                     CacheType.Background,
+                     CacheType.Texture,
                     ] if whitelist is None else whitelist
         for item, value in cachename.items():
             if item not in blacklist and item in whitelist:
