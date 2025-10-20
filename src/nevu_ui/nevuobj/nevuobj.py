@@ -4,11 +4,12 @@ from warnings import deprecated
 import pygame
 import copy
 import contextlib
+from typing import Unpack
 
 from nevu_ui.style import Style
 from nevu_ui.color import SubThemeRole
 from nevu_ui.fast.zsystem import ZRequest
-from typing import Unpack
+from nevu_ui.state import nevu_state
 
 from nevu_ui.animations import (
     AnimationType, AnimationManager
@@ -510,7 +511,20 @@ class NevuObject:
         font_size = int(self.style.fontsize * avg_resize_ratio)
         return (pygame.font.SysFont(self.style.fontname, font_size) if self.style.fontname == "Arial" 
                 else pygame.font.Font(self.style.fontname, font_size))
-        
+    
+    @property
+    def max_borderradius(self):
+        return min(self._rsize.x, self._rsize.y) / 2
+
+    @property
+    def _rsize(self) -> NvVector2:
+        bw = self.relm(self.style.borderwidth)
+        return self._csize - (NvVector2(bw, bw)) * 2
+
+    @property
+    def _rsize_marg(self) -> NvVector2:
+        return self._csize - self._rsize 
+
     @property
     def subtheme_role(self):
         return self._subtheme_role
@@ -550,7 +564,7 @@ class NevuObject:
         if not self._active or not self._visible:
             return
 
-        if not self._sended_z_link and self._master_z_handler:
+        if not self._sended_z_link and nevu_state.window != None:
             self._sended_z_link = True
             self._z_request = ZRequest(
                 link=self,
@@ -561,11 +575,14 @@ class NevuObject:
                 on_keyup_abandon_func=self._kup_abandon,
                 on_click_func=self._click
             )
-            self._master_z_handler.add(self._z_request)
+            nevu_state.window.add_request(self._z_request)
+            
     def animation_update(self):
         self.animation_manager.update()
+        
     def event_update(self, events: list):
         pass
+    
     def secondary_update(self):
         pass
 
@@ -586,12 +603,14 @@ class NevuObject:
         
     def primary_draw(self):
         pass
+    
     def secondary_draw(self):
         self.secondary_draw_content()
         self.secondary_draw_end()
         
     def secondary_draw_content(self):
         pass
+    
     def secondary_draw_end(self):
         if self._changed:
             self._changed = False
