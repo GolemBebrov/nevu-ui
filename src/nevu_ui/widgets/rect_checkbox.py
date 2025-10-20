@@ -33,9 +33,9 @@ class RectCheckBox(Widget):
     def _add_constants(self):
         super()._add_constants()
         self._add_constant("function", (type(None), Callable), None)
-        self._add_constant_link("on_toogle", "function")
-        self._add_constant("toogled", bool, False)
-        self._add_constant_link("active", "toogled")
+        self._add_constant_link("on_toggle", "function")
+        self._add_constant("toggled", bool, False)
+        self._add_constant_link("active", "toggled")
         self._add_constant("active_rect_factor", (float, int), 0.8)
         self._add_constant_link("active_factor", "active_rect_factor")
 
@@ -57,6 +57,8 @@ class RectCheckBox(Widget):
         self._toogled = value
         self._changed = True
         if self.function: self.function(value)
+        if hasattr(self, "cache"):
+            self.clear_texture()
         
     def secondary_draw_content(self):
         super().secondary_draw_content()
@@ -64,7 +66,7 @@ class RectCheckBox(Widget):
             margin = (self._csize * (1 - self.active_rect_factor)) / 2
             margin.to_round()
             offset = NvVector2(margin.x, margin.y)
-            
+            self.clear_texture()
             active_size = self._csize - (offset * 2)
             
             active_size.x = max(1, int(active_size.x))
@@ -83,9 +85,9 @@ class RectCheckBox(Widget):
     def _on_click_system(self):
         self.toogled = not self.toogled
         super()._on_click_system()
-          
+        
     def clone(self):
-        self.constant_kwargs['events'] = self._events
+        self.constant_kwargs['events'] = self._events.copy()
         selfcopy = RectCheckBox(self._lazy_kwargs['size'].x, copy.deepcopy(self.style), **self.constant_kwargs) # type: ignore
         self._event_cycle(EventType.OnCopy, selfcopy)
         return selfcopy
