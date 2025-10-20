@@ -3,14 +3,14 @@ import copy
 import contextlib
 from warnings import deprecated
 from typing import Any, TypedDict, NotRequired, Unpack
-
+from pygame._sdl2 import Texture
 from nevu_ui.nevuobj import NevuObject, NevuObjectKwargs
 from nevu_ui.fast.logic import logic_update_helper
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.color import SubThemeRole, PairColorRole
 from nevu_ui.rendering.background_renderer import BackgroundRenderer
 from nevu_ui.rendering.blit import ReverseAlphaBlit
-
+from nevu_ui.state import nevu_state
 from nevu_ui.style import (
     Style, default_style
 )
@@ -52,7 +52,13 @@ class Widget(NevuObject):
         self._init_text_cache()
         #=== Alt ===
         self._init_alt()
-        
+    
+    def convert_texture(self):
+        if nevu_state.renderer is None:
+            raise ValueError("Window not initialized!")
+        print(f"converted texture in {self}")
+        return Texture.from_surface(nevu_state.renderer, self.surface)
+    
     def _add_constants(self):
         super()._add_constants()
         self._add_constant("alt", bool, False, getter=self._alt_getter, setter=self._alt_setter)
@@ -159,7 +165,7 @@ class Widget(NevuObject):
         This includes Image, Scaled_Gradient, Surface, and Borders.
         Highly recommended to use this method instead of clear_all.
         """
-        self.cache.clear_selected(whitelist = [CacheType.Scaled_Image, CacheType.Scaled_Gradient, CacheType.Surface, CacheType.Borders, CacheType.Scaled_Borders, CacheType.Scaled_Background, CacheType.Background])
+        self.cache.clear_selected(whitelist = [CacheType.Scaled_Image, CacheType.Scaled_Gradient, CacheType.Surface, CacheType.Borders, CacheType.Scaled_Borders, CacheType.Scaled_Background, CacheType.Background, CacheType.Texture])
     
     def _on_style_change(self):
         self._on_style_change_content()
@@ -202,22 +208,12 @@ class Widget(NevuObject):
     def _alt_subtheme_font(self):
         return self.style.colortheme.get_pair(self.font_role).oncolor
     
-    @property
-    def _rsize(self) -> NvVector2:
-        bw = self.relm(self.style.borderwidth)
-        return self._csize - (NvVector2(bw, bw)) * 2
-
-    @property
-    def _rsize_marg(self) -> NvVector2:
-        return self._csize - self._rsize 
-    
     def clone(self):
         return Widget(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
     
     def primary_draw(self):
         super().primary_draw()
         if self._changed:
-            if type(self) == Widget: self._changed = False
             self._dirty_rect.append(self.get_rect())
             
             if self.inline: 
@@ -229,8 +225,17 @@ class Widget(NevuObject):
                 TRANSPARENT = (0, 0, 0, 0)
                 self.surface.fill(TRANSPARENT)
                 self.surface = self.renderer._scale_background(self._csize) if self.will_resize else self.renderer._generate_background()
-                
-            
+    
+    def secondary_draw_end(self):
+        if self._changed:
+            if nevu_state.renderer:
+                print("CHANGED WIDGET:", self)
+                self.texture = self.cache.get_or_exec(CacheType.Texture, self.convert_texture)
+        super().secondary_draw_end()
+    
+    def clear_texture(self):
+        self.cache.clear_selected(whitelist = [CacheType.Texture])
+    
     def logic_update(self):
         super().logic_update()
         new_dr_old, new_first_update = logic_update_helper(
