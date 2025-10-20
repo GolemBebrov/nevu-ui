@@ -9,7 +9,8 @@ import pygame
 
 import cython
 cimport cython
-
+import numpy as np
+cimport numpy as np
 from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2
 
 from nevu_ui.animations import (
@@ -140,6 +141,7 @@ cpdef _light_update_helper(
     list items,
     list cached_coordinates,
     object first_parent_menu,
+    object nevustate,
     float add_x,
     float add_y,
     NvVector2 resize_ratio,
@@ -160,7 +162,7 @@ cpdef _light_update_helper(
         return
 
     m_coords = first_parent_menu.coordinatesMW
-    last_events = first_parent_menu.window.last_events if first_parent_menu.window else []
+    last_events = nevustate.current_events
 
     for i in range(n_items):
         item = items[i]
@@ -179,3 +181,24 @@ cpdef _light_update_helper(
         item.update(last_events)
 
 
+cpdef bint collide_horizontal(NvVector2 r1_tl, NvVector2 r1_br, NvVector2 r2_tl, NvVector2 r2_br):
+    return r1_tl.x < r2_br.x and r1_br.x > r2_tl.x
+
+cpdef bint collide_vertical(NvVector2 r1_tl, NvVector2 r1_br, NvVector2 r2_tl, NvVector2 r2_br):
+    return r1_tl.y < r2_br.y and r1_br.y > r2_tl.y
+
+cpdef bint collide_vector(NvVector2 r1_tl, NvVector2 r1_br, NvVector2 r2_tl, NvVector2 r2_br):
+    return collide_horizontal(r1_tl, r1_br, r2_tl, r2_br) and collide_vertical(r1_tl, r1_br, r2_tl, r2_br)
+
+cpdef _very_light_update_helper(
+    list items,
+    list cached_coordinates,
+    NvVector2 add_vector,
+    object _get_item_master_coordinates
+    ):
+
+    for i in range(len(items)):
+        item = items[i]
+        coords = cached_coordinates[i]
+        item.coordinates = coords - add_vector
+        item.master_coordinates = _get_item_master_coordinates(item)

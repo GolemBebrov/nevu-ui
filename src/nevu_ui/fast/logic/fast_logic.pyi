@@ -64,8 +64,37 @@ def _light_update_helper(
     items: List[Any],
     cached_coordinates: List[NvVector2],
     first_parent_menu: Any,
+    nevu_state: Any,
     add_x: float,
     add_y: float,
     resize_ratio: NvVector2,
     not_need_to_process: bool
+) -> None: ...
+
+def collide_vector(
+    r1_tl: NvVector2,
+    r1_br: NvVector2,
+    r2_tl: NvVector2,
+    r2_br: NvVector2
+) -> bool: ...
+
+def collide_horizontal(
+    r1_tl: NvVector2,
+    r1_br: NvVector2,
+    r2_tl: NvVector2,
+    r2_br: NvVector2
+) -> bool: ...
+
+def collide_vertical(
+    r1_tl: NvVector2,
+    r1_br: NvVector2,
+    r2_tl: NvVector2,
+    r2_br: NvVector2
+) -> bool: ...
+
+def _very_light_update_helper(
+    items: List[Any],
+    cached_coordinates: List[NvVector2],
+    add_vector: NvVector2,
+    _get_item_master_coordinates: Callable[[Any], NvVector2]
 ) -> None: ...
