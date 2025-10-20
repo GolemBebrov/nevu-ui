@@ -91,7 +91,7 @@ class ElementSwitcher(Widget):
         elements = elements or []
         self.elements = Elements.create(*elements)
         self.bake_text(self.current_element_text)
-        self.add_first_update_action(self._create_buttons)
+        self._create_buttons()
     
     def _init_numerical(self):
         super()._init_numerical()
@@ -138,7 +138,7 @@ class ElementSwitcher(Widget):
         self.button_right.coordinates = NvVector2(self._rsize.x + self._rsize_marg.x / 2 - self.button_right._csize.x, self._rsize_marg.y / 2)
     
     def _get_arrow_width(self):
-        return round(self.relx(self.size.x / 100 * self.arrow_width))
+        return round(self.relx((self.size.x - self.style.borderwidth*2) / 100 * self.arrow_width))
     
     def _resize_buttons(self):
         self.button_left.resize(self._resize_ratio)
@@ -250,6 +250,7 @@ class ElementSwitcher(Widget):
         self.button_left._changed = True
         self.button_right._changed = True
         self._delayed_button_update = True
+        self.clear_texture()
         
     def _draw_buttons(self):
         self.button_left._master_mask = self.renderer._get_correct_mask()
