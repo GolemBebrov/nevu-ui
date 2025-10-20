@@ -15,13 +15,14 @@ lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do e
 
 def create_test_instances():
     ui.default_style = ui.default_style(colortheme=ui.ColorThemeLibrary.pastel_rose_light)
-    test_window = ui.Window((300,300), "Test Window", resize_type=ui.ResizeType.CropToRatio, ratio=ui.NvVector2(1,1))
+    test_window = ui.Window((300,300), title="Test Window", resize_type=ui.ResizeType.CropToRatio, ratio=ui.NvVector2(1,1), _gpu_mode=True)
     test_menu = ui.Menu(test_window,[100*ui.vw, 100*ui.vh],ui.default_style(borderradius=10))
     
-    widgets_style = ui.default_style(borderradius=25, borderwidth=3)
+    widgets_style = ui.default_style(borderradius=50, borderwidth=3)
     
     widgets_size = [75*ui.vw, 35*ui.vh]
     widgets_size_small = [75*ui.vw, 15*ui.vh]
+    widgets_size_fixed = [300, 100]
     
     widget_kwargs = {"style": widgets_style, "size": widgets_size}
     
@@ -29,9 +30,9 @@ def create_test_instances():
     checkbox_group.on_checkbox_toggled_single = checkboxgroup_wrapper
     
     #widgets
-    widget = ui.Widget(widget_kwargs["size"], ui.default_style(bgimage = "tests/test1.png"))
-    label = ui.Label(lorem_ipsum, widget_kwargs["size"], widgets_style(bgimage = "tests/test1.png"))
-    input_box = ui.Input(widget_kwargs["size"], widgets_style(bgimage = "tests/test1.png"), placeholder = "Input!", multiple=True)
+    widget = ui.Widget(widget_kwargs["size"], ui.default_style)
+    label = ui.Label(lorem_ipsum, widget_kwargs["size"], widgets_style)
+    input_box = ui.Input(widget_kwargs["size"], widgets_style, placeholder = "Input!", multiple=True)
     
     #composable | checkboxgroup example
     rect_checkbox_row = ui.Row([90*ui.fill, 35*ui.fill], x = 3, content = 
@@ -46,10 +47,10 @@ def create_test_instances():
         checkbox_group.add_checkbox(item)
     
     
-    element_swither = ui.ElementSwitcher(**widget_kwargs, elements = ["putin", "zelenka", "zov", "peremoga"])
+    element_swither = ui.ElementSwitcher(**widget_kwargs, elements = ["putin", "zelenka", "zov", "peremoga"], arrow_width=30)
     progress_bar = ui.ProgressBar(**widget_kwargs, value = 50)
     
-    slider_bar = ui.Slider(widgets_size_small, widgets_style(text_align_x = ui.Align.CENTER, borderradius = 20), start = 0, end = 100, step = 1, current_value = 50, tuple_role = ui.TupleColorRole.OUTLINE, bar_pair_role=ui.PairColorRole.SURFACE)# alt = True)
+    slider_bar = ui.Slider(widgets_size_fixed, widgets_style(text_align_x = ui.Align.CENTER, borderradius = 50), start = 0, end = 100, step = 1, current_value = 50, tuple_role = ui.TupleColorRole.OUTLINE, bar_pair_role=ui.PairColorRole.SURFACE)# alt = True)
     #element = element_swither.find("fruit_1")
     showcase_widgets = [widget, label, input_box, rect_checkbox_row, element_swither, progress_bar, slider_bar]
     
@@ -98,7 +99,9 @@ class NevuTest(ui.Manager):
     def _after_draw_loop(self):
         super()._after_draw_loop()
         if self.draw_cursor:
-            pygame.draw.circle(self.window.surface, (255,0,0), ui.mouse.pos, 5)
+            surf = pygame.Surface((10,10))
+            pygame.draw.circle(surf, (255,0,0), (0,0), 5)
+            self.window._display.blit(surf, pygame.rect.Rect(*pygame.mouse.get_pos(), 10, 10))
 
 #to create test:
 #   1. Override add_to_layout

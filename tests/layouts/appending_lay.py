@@ -9,9 +9,9 @@ class TestAppending(NevuTest):
         self.fps = 99999999
         self.appending_layout_h = \
             ui.StackRow(spacing = 40,content = 
-                                  [(ui.Align.CENTER, self.test_widget),
-                                   (ui.Align.CENTER, self.test_hard_widget),
-                                   (ui.Align.CENTER, self.test_inner_layout),]
+                                  [(ui.Align.CENTER, self.showcase_widgets[0]),
+                                   (ui.Align.CENTER, self.showcase_widgets[1]),
+                                   (ui.Align.CENTER, self.showcase_widgets[2]),]
                                   )
         print("STARTED APPENDING", self.appending_layout_h._lazy_kwargs)
         self.test_menu.layout = \

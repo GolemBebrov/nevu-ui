@@ -6,7 +6,7 @@ pygame.init()
 
 class Mygame(ui.Manager):
     def __init__(self):
-        self.window = ui.Window((400,400), resize_type=ui.ResizeType.CropToRatio ,ratio=ui.NvVector2(1,1))
+        self.window = ui.Window((400,400), resize_type=ui.ResizeType.CropToRatio ,ratio=ui.NvVector2(1,1), _gpu_mode=True)
         super().__init__(self.window)
         self.fps = 7599999999999 #Задаем нуженый fps
         self._dirty_mode = False #Для оптимизации(не рекомендуется включать)
@@ -55,8 +55,8 @@ class Mygame(ui.Manager):
         show_fps = True
         fps_mode = "Unslowed"
         #Для показа фпс
-        #if show_fps:
-            #print(f"FPS {fps_mode}: ",ui.time.fps)
+        if show_fps:
+            print(f"FPS {fps_mode}: ",ui.time.fps)
 
 def test_main():
     #Запускаем
