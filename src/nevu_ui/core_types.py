@@ -74,8 +74,18 @@ class Events:
     def add(self, event):
         self.content.append(event)
     
-    def _default_on_add_hook(self):
+    @staticmethod
+    def _default_on_add_hook(event):
         pass
+    
+    def copy(self):
+        new = self.__new__(self.__class__)
+        new.content = self.content.copy()
+        new.on_add = self.on_add
+        return new
+
+    def __copy__(self):
+        return self.copy()
 
 class GradientConfig(StrEnum):
     pass
@@ -124,6 +134,7 @@ class CacheType(Enum):
     Scaled_Background = auto()
     Scaled_Gradient = auto()
     Background = auto()
+    Texture = auto()
 
 class CacheName(StrEnum):
     MAIN = "main"
