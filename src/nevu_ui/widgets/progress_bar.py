@@ -115,7 +115,8 @@ class ProgressBar(Widget):
         size_y = inner_height + 2
         
         radius = self.relm(self.style.borderradius) - bw
-        radius = max(radius, 0)
+        min_side = min(self._rsize.x, self._rsize.y) / 2
+        radius = min(min_side,max(radius, 0))
         
         y_decrease = 0
         if size_x / 2 < radius:
