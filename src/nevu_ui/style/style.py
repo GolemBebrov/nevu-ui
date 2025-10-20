@@ -114,7 +114,7 @@ class Style:
             elif raise_errors:
                 raise ValueError(f"Некорректное значение {item_name}")
 
-    def __call__(self ,**kwargs):
+    def __call__(self ,**kwargs: Unpack[StyleKwargs]):
         style = copy.copy(self)
         style._handle_kwargs(**kwargs)
         return style
