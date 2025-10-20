@@ -75,9 +75,10 @@ class Manager:
             self.__main_update_loop()
             self.__main_draw_loop()
             if self._dirty_mode:
-                pygame.display.update(self.window._next_update_dirty_rects)
+                self.window.display.update()
+                #pygame.display.update(self.window._next_update_dirty_rects)
             else:
-                pygame.display.update()
+                self.window.display.update()
             self.window._next_update_dirty_rects = []
         self._on_exit()
         
