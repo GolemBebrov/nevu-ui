@@ -18,7 +18,6 @@ from .core_types import (
     Quality, HoverState, Events,
     LinearSide, RadialPosition, GradientType,CacheName, CacheType,EventType
 )
-from .nevusurf import NevuSurface
 from .widgets import (
     Widget, Label, Button, EmptyWidget, RectCheckBox, Image, Gif, Input, MusicPlayer, ElementSwitcher, Element, ProgressBar, Slider
 )
