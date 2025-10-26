@@ -107,7 +107,7 @@ class Slider(Widget):
             self._on_drag()
 
     def _on_drag(self):
-        relative_x = mouse.pos.x - self.master_coordinates.x
+        relative_x = mouse.pos.x - self.absolute_coordinates.x
         
         slider_pos = max(self._rsize_marg.x / 2, min(self._rsize.x, relative_x))
         slider_perc = ((slider_pos - self._rsize_marg.x/2) / (self._rsize.x - self._rsize_marg.x/2))
@@ -132,7 +132,7 @@ class Slider(Widget):
         
         if self._changed:
             self.clear_texture()
-            self.bake_text(str(round(self.progress_bar.progress*100)), alignx = self.style.text_align_x, aligny = self.style.text_align_y, color=self.style.colortheme.get_tuple(self.tuple_role))
+            self.renderer.bake_text(str(round(self.progress_bar.progress*100)), alignx = self.style.text_align_x, aligny = self.style.text_align_y, color=self.style.colortheme.get_tuple(self.tuple_role))
             assert self._text_surface and self._text_rect
             
             self.adjust_text_rect()
@@ -160,7 +160,7 @@ class Slider(Widget):
             case Align.BOTTOM: 
                 pady = -self.padding_y - border_size
         
-        
+        assert isinstance(self._text_rect, pygame.Rect)
         self._text_rect.move_ip(padx, pady)
     
     def resize(self, resize_ratio: NvVector2):
