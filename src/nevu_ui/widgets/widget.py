@@ -1,21 +1,31 @@
 import pygame
 import copy
-import contextlib
 from warnings import deprecated
-from typing import Any, TypedDict, NotRequired, Unpack
-from pygame._sdl2 import Texture
-from nevu_ui.nevuobj import NevuObject, NevuObjectKwargs
+from pygame._sdl2 import Texture, Image
+
+from typing import (
+    Any, NotRequired, Unpack
+)
+
 from nevu_ui.fast.logic import logic_update_helper
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.color import SubThemeRole, PairColorRole
 from nevu_ui.rendering.background_renderer import BackgroundRenderer
 from nevu_ui.rendering.blit import ReverseAlphaBlit
 from nevu_ui.state import nevu_state
+from nevu_ui.rendering import Shader
+from nevu_ui.window.display import DisplayGL
+
 from nevu_ui.style import (
     Style, default_style
 )
 from nevu_ui.core_types import (
     Quality, Align, CacheType
+)
+from nevu_ui.nevuobj import (
+    NevuObject, NevuObjectKwargs
+)
+from nevu_ui.color import (
+    SubThemeRole, PairColorRole
 )
 
 class WidgetKwargs(NevuObjectKwargs):
@@ -45,6 +55,7 @@ class Widget(NevuObject):
     _draw_borders: bool
     _master_mask: Any
     _inline_add_coords: NvVector2
+    shader: Shader
     
     def __init__(self, size: NvVector2 | list, style: Style = default_style, **constant_kwargs: Unpack[WidgetKwargs]):
         super().__init__(size, style, **constant_kwargs)
@@ -56,8 +67,18 @@ class Widget(NevuObject):
     def convert_texture(self):
         if nevu_state.renderer is None:
             raise ValueError("Window not initialized!")
-        print(f"converted texture in {self}")
-        return Texture.from_surface(nevu_state.renderer, self.surface)
+        assert nevu_state.window, "Window not initialized!"
+
+        if nevu_state.window._gpu_mode:
+            texture = Texture.from_surface(nevu_state.renderer, self.surface)
+            texture = Image(texture)
+            
+        elif nevu_state.window._open_gl_mode:
+            assert isinstance(nevu_state.window.display, DisplayGL)
+            raise NotImplementedError("GL texture conversion is not implemented yet.")
+            #texture = convert_surface_to_gl_texture(nevu_state.window.display.renderer, self.surface)
+            
+        return texture #type: ignore
     
     def _add_constants(self):
         super()._add_constants()
@@ -72,6 +93,7 @@ class Widget(NevuObject):
         self._add_constant("font_role", PairColorRole, PairColorRole.SURFACE_VARIANT)
         self._add_constant("quality", Quality, Quality.Decent)
         self._add_constant("_draw_borders", bool, True)
+        self._add_constant("shader", (Shader, type(None)), None)
         
     def _init_text_cache(self):
         self._text_baked = None
@@ -104,11 +126,11 @@ class Widget(NevuObject):
             self._subtheme_border = self._main_subtheme_border
             self._subtheme_content = self._main_subtheme_content
             self._subtheme_font = self._main_subtheme_font
+            
     def _lazy_init(self, size: NvVector2 | list):
         super()._lazy_init(size)
         if self.inline: return
         self.surface = pygame.Surface(size, flags = pygame.SRCALPHA)
-        #if isinstance(self.style.gradient, Gradient): self._draw_gradient()
 
     def _on_subtheme_role_change(self):
         super()._on_subtheme_role_change()
@@ -208,9 +230,6 @@ class Widget(NevuObject):
     def _alt_subtheme_font(self):
         return self.style.colortheme.get_pair(self.font_role).oncolor
     
-    def clone(self):
-        return Widget(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
-    
     def primary_draw(self):
         super().primary_draw()
         if self._changed:
@@ -227,10 +246,8 @@ class Widget(NevuObject):
                 self.surface = self.renderer._scale_background(self._csize) if self.will_resize else self.renderer._generate_background()
     
     def secondary_draw_end(self):
-        if self._changed:
-            if nevu_state.renderer:
-                print("CHANGED WIDGET:", self)
-                self.texture = self.cache.get_or_exec(CacheType.Texture, self.convert_texture)
+        if self._changed and nevu_state.renderer:
+            self.texture = self.cache.get_or_exec(CacheType.Texture, self.convert_texture)
         super().secondary_draw_end()
     
     def clear_texture(self):
@@ -242,7 +259,7 @@ class Widget(NevuObject):
         self._optimized_dirty_rect_for_short_animations,
         self.animation_manager,
         self._csize,
-        self.master_coordinates,
+        self.absolute_coordinates,
         self._dirty_rect,
         self._dr_coordinates_old,
         self._first_update,
@@ -256,16 +273,14 @@ class Widget(NevuObject):
 
     def _boot_up(self):
         pass
-        #print(f"booted widget: {self}")
 
     @deprecated("Use renderer.bake_text() instead. This method will be removed in a future version.")
     def bake_text(self, text: str, unlimited_y: bool = False, words_indent: bool = False,
                   alignx: Align = Align.CENTER, aligny: Align = Align.CENTER, continuous: bool = False, size_x = None, size_y = None, color = None):
-        self.renderer.bake_text(text, unlimited_y, words_indent, alignx, aligny, continuous, size_x, size_y, color)
-
-    @deprecated("Use renderer.bake_text() instead. This method will be removed in a future version.")
-    def _bake_text_single_continuous(self, text: str):
-        self.renderer._bake_text_single_continuous(text)
+        size_x = size_x or self._csize.x
+        size_y = size_y or self._csize.y
+        size = NvVector2(size_x, size_y)
+        self.renderer.bake_text(text, unlimited_y, words_indent, alignx, aligny, size, color)
 
     def resize(self, resize_ratio: NvVector2):
         super().resize(resize_ratio)
@@ -278,3 +293,6 @@ class Widget(NevuObject):
         self.surface = pygame.Surface(self._csize, flags = pygame.SRCALPHA)
 
         self._changed = True
+
+    def clone(self):
+        return Widget(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
