@@ -422,8 +422,8 @@ class Input(Widget):
                 self._changed = True
                 try:
                     renderFont = self.get_font()
-                    relative_x = mouse.pos[0] - self.master_coordinates[0]
-                    relative_y = mouse.pos[1] - self.master_coordinates[1]
+                    relative_x = mouse.pos[0] - self.absolute_coordinates[0]
+                    relative_y = mouse.pos[1] - self.absolute_coordinates[1]
                     l_margin = self.left_margin * self._resize_ratio[0]
                     t_margin = self.top_margin * self._resize_ratio[1]
                     if self.multiple:
