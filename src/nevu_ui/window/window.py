@@ -1,12 +1,13 @@
 import sys
 import pygame
 from pygame._sdl2 import Renderer
+
 from nevu_ui.fast.nvvector2 import NvVector2
 from warnings import deprecated
 
 from nevu_ui.state import nevu_state
 from nevu_ui.window.display import (
-    DisplayClassic, DisplaySdl, DisplayBase
+    DisplayClassic, DisplaySdl, DisplayBase, DisplayGL
 )
 from nevu_ui.core_types import (
     ResizeType, EventType
@@ -17,7 +18,6 @@ from nevu_ui.utils import (
 from nevu_ui.fast.zsystem import (
     ZSystem, ZRequest
 )
-
 
 class Window:
     _display: DisplayBase
@@ -35,8 +35,13 @@ class Window:
             crop_height = height - (width * ry / rx)
             return default[0], crop_height
     
-    def __init__(self, size, minsize=(10, 10), title="pygame window", resizable = True, ratio: NvVector2 | None = None, resize_type: ResizeType = ResizeType.CropToRatio, _gpu_mode = False):
+    def __init__(self, size, minsize=(10, 10), title="pygame window", resizable = True, ratio: NvVector2 | None = None, resize_type: ResizeType = ResizeType.CropToRatio, _gpu_mode = False, open_gl_mode  = False):
         self._gpu_mode = _gpu_mode
+        self._open_gl_mode = open_gl_mode
+        if _gpu_mode and self._open_gl_mode:
+            self._gpu_mode = False
+        self._debouncing_limit = 0.1
+        self._debouncing_limit_counter = 0
 
         self.resize_type = resize_type
         
@@ -62,9 +67,9 @@ class Window:
 
     def _set_nevu_state(self):
         nevu_state.window = self
-        if self._gpu_mode:
-            assert isinstance(self._display, DisplaySdl)
-            nevu_state.renderer = self._display.renderer
+        if self._gpu_mode or self._open_gl_mode:
+            assert isinstance(self._display, (DisplaySdl, DisplayGL))
+            nevu_state.renderer = self._display.renderer #type: ignore
         nevu_state.z_system = self.z_system
         
     def _init_lists(self, ratio, size, minsize):
@@ -77,15 +82,20 @@ class Window:
         self._crop_height_offset = 0
         self._offset = NvVector2(0, 0)
     def _init_graphics(self):
-        if not self._gpu_mode:
+        if not self._gpu_mode and not self._open_gl_mode:
             flags = pygame.RESIZABLE if self.resizable else 0
             flags |= pygame.HWSURFACE | pygame.DOUBLEBUF
             self._display = DisplayClassic(self.title, self.size.to_tuple(), flags)
+        elif not self._open_gl_mode:
+            kwargs = {}
+            if self.resizable:
+                kwargs['resizable'] = True
+            self._display = DisplaySdl(self.title, [int(self.size[0]), int(self.size[1])], **kwargs)
         else:
             kwargs = {}
             if self.resizable:
                 kwargs['resizable'] = True
-            self._display = DisplaySdl(self.title, self.size.to_tuple(), **kwargs)
+            self._display = DisplayGL(self.title, [int(self.size[0]), int(self.size[1])], **kwargs)
         
     @property
     @deprecated("Please use 'window.display' instead")
@@ -137,20 +147,24 @@ class Window:
             if event.type == pygame.VIDEORESIZE and self.resize_type != ResizeType.ResizeFromOriginal:
                 w, h = event.w, event.h
                 self.size = NvVector2(w, h)
-                self.z_system.mark_dirty()
-                if self.resize_type == ResizeType.CropToRatio:
-                    self._recalculate_render_area()
-                    render_width = self.size[0] - self._crop_width_offset
-                    render_height = self.size[1] - self._crop_height_offset
-                    self._event_cycle(EventType.Resize, [render_width, render_height])
-                else:
-                    self._event_cycle(EventType.Resize, self.size)
-                self._next_update_dirty_rects.append(pygame.Rect(0, 0, *self.size))
+                self._debouncing_limit_counter = 0
+        if 0 <= self._debouncing_limit_counter < self._debouncing_limit:
+            self._debouncing_limit_counter += 1 * time.dt
+        if self._debouncing_limit_counter >= self._debouncing_limit:
+            self._resize()
+            self._debouncing_limit_counter = -1
 
         self._clock.tick(fps)
         self.z_system.cycle(mouse.pos, mouse.left_fdown, mouse.left_up, mouse.any_wheel, mouse.wheel_down)
         self._event_cycle(EventType.Update)
-        
+    def _resize(self):
+        if self.resize_type == ResizeType.CropToRatio:
+            self._recalculate_render_area()
+            render_width = self.size[0] - self._crop_width_offset
+            render_height = self.size[1] - self._crop_height_offset
+            self._event_cycle(EventType.Resize, [render_width, render_height])
+        else:
+            self._event_cycle(EventType.Resize, self.size)
     def _update_utils(self, events):
         mouse.update(events)
         time.update()
