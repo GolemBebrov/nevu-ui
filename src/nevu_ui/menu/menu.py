@@ -23,6 +23,7 @@ from nevu_ui.fast.logic import (
 from nevu_ui.fast.nvvector2 import (
     NvVector2 as Vector2, NvVector2
 )
+from nevu_ui.rendering.shader import convert_surface_to_gl_texture
 from nevu_ui.state import nevu_state
 class Menu:
     def __init__(self, window: Window | None, size: list | tuple | Vector2, style: Style = default_style, alt: bool = False, layout = None): 
@@ -47,13 +48,17 @@ class Menu:
         if nevu_state.renderer is None:
             raise ValueError("Window not initialized!")
         surface = surf or self.surface
-        print("converted texture in MENU(very slow)")
-        texture = Texture(nevu_state.renderer, (self.size*self._resize_ratio).to_tuple(), target=True)
-        nevu_state.renderer.target = texture
-        ntext = Texture.from_surface(nevu_state.renderer, surface)
-        nevu_state.renderer.blit(ntext, pygame.Rect(0,0, *(self.size*self._resize_ratio).to_tuple()))
-        nevu_state.renderer.target = None
+        assert self.window, "Window not initialized!"
+        if self.window._gpu_mode and not self.window._open_gl_mode:
+            texture = Texture(nevu_state.renderer, (self.size*self._resize_ratio).to_tuple(), target=True) #type: ignore
+            nevu_state.renderer.target = texture
+            ntext = Texture.from_surface(nevu_state.renderer, surface)
+            nevu_state.renderer.blit(ntext, pygame.Rect(0,0, *(self.size*self._resize_ratio).to_tuple()))
+            nevu_state.renderer.target = None
+        elif self.window._open_gl_mode:
+            texture = convert_surface_to_gl_texture(self.window._display.renderer, surface)
         return texture
+    
     def _update_size(self):
         return (self.size * self._resize_ratio).to_pygame()
 
@@ -72,7 +77,7 @@ class Menu:
             self.window.add_event(NevuEvent(self, self.resize, EventType.Resize))
 
     def _init_size(self, size: list | tuple | Vector2):
-        initial_size = list(size)
+        initial_size = list(size) #type: ignore
         for i in range(len(initial_size)):
             item = initial_size[i]
             if isinstance(item, SizeRule):
@@ -277,6 +282,7 @@ class Menu:
         self._resize_ratio = Vector2([size[0] / self.first_window_size[0], size[1] / self.first_window_size[1]])
         if self.window is None: raise ValueError("Window is not initialized!")
         if self.isrelativeplaced:
+            assert self.relative_percent_x and self.relative_percent_y
             self.coordinates = Vector2(
                 (self.window.size[0] - self.window._crop_width_offset) / 100 * self.relative_percent_x - self.size[0] / 2,
                 (self.window.size[1] - self.window._crop_height_offset) / 100 * self.relative_percent_y - self.size[1] / 2
@@ -320,6 +326,7 @@ class Menu:
 
     @layout.setter
     def layout(self, layout):
+        assert self.window, "Window is not set!"
         if layout._can_be_main_layout:
             self.read_item_coords(layout)
             layout._master_z_handler = self.window.z_system
@@ -382,20 +389,34 @@ class Menu:
             return
         scaled_bg = self.cache.get_or_exec(CacheType.Scaled_Background, self._background)
         if nevu_state.renderer:
-            assert isinstance(scaled_bg, Texture)
-           
+            if self.window._gpu_mode:
+                assert isinstance(scaled_bg, Texture)
+            
 
-            if self._layout is not None:
-                nevu_state.renderer.target = self._texture
-                nevu_state.renderer.blit(scaled_bg, self.get_rect())
-                self._layout.draw()
-                nevu_state.renderer.target = None
-            if self._opened_sub_menu:
-                for item in self._args_menus_to_draw: item.draw()
-                self._opened_sub_menu.draw()
-            self.window._display.blit(self._texture, self.coordinatesMW.to_int().to_tuple())
-            return 
+                if self._layout is not None:
+                    nevu_state.renderer.target = self._texture
+                    nevu_state.renderer.blit(scaled_bg, self.get_rect())
+                    self._layout.draw()
+                    nevu_state.renderer.target = None
+                if self._opened_sub_menu:
+                    for item in self._args_menus_to_draw: item.draw()
+                    self._opened_sub_menu.draw()
+                self.window._display.blit(self._texture, self.coordinatesMW.to_int().to_tuple())
+                return 
+            elif self.window._open_gl_mode:
+                if self._layout is not None:
+                    self.window._display.set_target(self._texture)
+                    self.window._display.blit(scaled_bg, self.get_rect())
+                    self._layout.draw()
+                    self.window._display.set_target(None)
+                
+                self.window._display.blit(self._texture, self.coordinatesMW.to_int().to_tuple())
 
+                if self._opened_sub_menu:
+                    for item in self._args_menus_to_draw: item.draw()
+                    self._opened_sub_menu.draw()
+                
+                return
         
         if scaled_bg:
             self.surface.blit(scaled_bg, (0, 0))
