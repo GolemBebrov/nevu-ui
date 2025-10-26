@@ -118,13 +118,13 @@ class LayoutType(NevuObject):
         if not self._first_update and self._coordinates == value: return
         self._coordinates = value
         self.cached_coordinates = None
-        
-    @deprecated("borders is deprecated and incompatible with sdl2 or gl renderers")
+
     @property
-    def borders(self):return self._borders
-    
     @deprecated("borders is deprecated and incompatible with sdl2 or gl renderers")
+    def borders(self):return self._borders
+
     @borders.setter
+    @deprecated("borders is deprecated and incompatible with sdl2 or gl renderers")
     def borders(self, bool: bool): 
         self._borders = bool
         print("Warning: borders is deprecated and incompatible with sdl2 or gl renderers")
