@@ -1,20 +1,21 @@
 import pygame
 import copy
 from typing import TypeGuard
+from warnings import deprecated
 
 from nevu_ui.widgets import Widget
 from nevu_ui.menu import Menu
 from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.logic import _light_update_helper
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.rendering.blit import FastBlit
+from nevu_ui.state import nevu_state
+
 from nevu_ui.style import (
     Style, default_style
 )
 from nevu_ui.core_types import (
     SizeRule, Vh, Vw, Fill
 )
-from nevu_ui.state import nevu_state
 
 class LayoutType(NevuObject):
     items: list[NevuObject]
@@ -47,14 +48,12 @@ class LayoutType(NevuObject):
             self.surface.blit(item.surface, coordinates.to_tuple())
 
     def _boot_up(self):
-        #print("booted layout", self)
         self.booted = True
         for item in self.items + self.floating_items:
             assert isinstance(item, (Widget, LayoutType))
             self.read_item_coords(item)
             self._start_item(item)
             item.booted = True
-            
             item._boot_up()
             
     @property
@@ -103,8 +102,8 @@ class LayoutType(NevuObject):
         _light_update_helper(
             self.items,
             self.cached_coordinates or [],
-            self.first_parent_menu,
-            nevu_state,
+            self.first_parent_menu.coordinatesMW,
+            nevu_state.current_events,
             add_x,
             add_y,
             self._resize_ratio,
@@ -119,11 +118,16 @@ class LayoutType(NevuObject):
         if not self._first_update and self._coordinates == value: return
         self._coordinates = value
         self.cached_coordinates = None
-
+        
+    @deprecated("borders is deprecated and incompatible with sdl2 or gl renderers")
     @property
     def borders(self):return self._borders
+    
+    @deprecated("borders is deprecated and incompatible with sdl2 or gl renderers")
     @borders.setter
-    def borders(self,bool: bool): self._borders = bool
+    def borders(self, bool: bool): 
+        self._borders = bool
+        print("Warning: borders is deprecated and incompatible with sdl2 or gl renderers")
 
     @property
     def border_name(self) -> str: return self.border_name
@@ -239,7 +243,7 @@ class LayoutType(NevuObject):
             self.first_parent_menu = self.layout.first_parent_menu
         
         for item in self.floating_items:
-            item.master_coordinates = item.coordinates + self.first_parent_menu.coordinatesMW
+            item.absolute_coordinates = item.coordinates + self.first_parent_menu.coordinatesMW
             item.update()
             
         if self.cached_coordinates is None and self.booted:
@@ -252,19 +256,16 @@ class LayoutType(NevuObject):
             if item._wait_mode:
                 self.read_item_coords(item)
                 self._start_item(item)
-                #print("started item", item)
                 return
             
     def _connect_to_menu(self, menu: Menu):
-        #print(f"in {self} used connect to menu: {menu}")
         self.cached_coordinates = None
         self.menu = menu
         self.surface = self.menu.surface
         self.first_parent_menu = menu
         self.border_name = self._border_name
 
-    def _connect_to_layout(self, layout):
-        #print(f"in {self} used connect to layout: {layout}")
+    def _connect_to_layout(self, layout: "LayoutType"):
         self.surface = layout.surface
         self.layout = layout
         self.first_parent_menu = layout.first_parent_menu
