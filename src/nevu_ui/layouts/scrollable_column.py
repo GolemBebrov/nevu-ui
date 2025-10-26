@@ -26,7 +26,7 @@ class ScrollableColumn(ScrollableBase):
         return self.ScrollBar([self.size[0]/40,self.size[1]/20], self.style, ScrollBarType.Vertical, self)
 
     def _update_scroll_bar(self):
-        track_start_y = self.master_coordinates[1]
+        track_start_y = self.absolute_coordinates[1]
         track_path_y = self.size[1]
         offset = NvVector2(self.first_parent_menu.window._crop_width_offset, self.first_parent_menu.window._crop_height_offset) if self.first_parent_menu.window else NvVector2(0,0)
         
@@ -60,15 +60,16 @@ class ScrollableColumn(ScrollableBase):
     def _regenerate_coordinates(self):
         self.cached_coordinates = []
         self._regenerate_max_values()
-        padding_offset = self.padding
+        pad = self.rely(self.padding)
+        padding_offset = pad
         for i, item in enumerate(self.items):
             align = self.widgets_alignment[i]
             
             self._set_item_main(item, align)
             item.coordinates.y = self._coordinates.y + padding_offset
             self.cached_coordinates.append(item.coordinates.copy())
-            item.master_coordinates = self._get_item_master_coordinates(item)
-            padding_offset += item._csize.y + self.padding
+            item.absolute_coordinates = self._get_item_master_coordinates(item)
+            padding_offset += item._csize.y + pad
         super()._regenerate_coordinates()
         
     @property
@@ -76,9 +77,10 @@ class ScrollableColumn(ScrollableBase):
         return collide_vertical
         
     def _regenerate_max_values(self):
-        total_content_height = self.padding
+        pad = self.rely(self.padding)
+        total_content_height = pad
         for item in self.items:
-            total_content_height += item._csize.y + self.padding
+            total_content_height += item._csize.y + pad
         visible_height = self._csize.y
         
         antirel = nevu_state.window.rel

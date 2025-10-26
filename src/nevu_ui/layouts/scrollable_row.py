@@ -34,7 +34,7 @@ class ScrollableRow(ScrollableBase):
         return self.ScrollBar([self.size[0]/20,self.size[1]/40], self.style, ScrollBarType.Horizontal, self)
 
     def _update_scroll_bar(self):
-        track_start_x = self.master_coordinates[0]
+        track_start_x = self.absolute_coordinates[0]
         track_path_x = self.size[0]
         offset = NvVector2(self.first_parent_menu.window._crop_width_offset, self.first_parent_menu.window._crop_height_offset) if self.first_parent_menu.window else NvVector2(0,0)
         
@@ -72,7 +72,8 @@ class ScrollableRow(ScrollableBase):
     def _regenerate_coordinates(self):
         self.cached_coordinates = []
         self._regenerate_max_values()
-        padding_offset = self.padding
+        pad = self.relx(self.padding)
+        padding_offset = pad
         for i, item in enumerate(self.items):
             
             align = self.widgets_alignment[i]
@@ -80,14 +81,15 @@ class ScrollableRow(ScrollableBase):
             self._set_item_main(item, align)
             item.coordinates.x = self._coordinates.x + padding_offset
             self.cached_coordinates.append(item.coordinates.copy())
-            item.master_coordinates = self._get_item_master_coordinates(item)
-            padding_offset += item._csize.x + self.padding
+            item.absolute_coordinates = self._get_item_master_coordinates(item)
+            padding_offset += item._csize.x + pad
         super()._regenerate_coordinates()
         
     def _regenerate_max_values(self):
-        total_content_width = self.padding
+        pad = self.relx(self.padding)
+        total_content_width = pad
         for item in self.items:
-            total_content_width += item._csize.x + self.padding
+            total_content_width += item._csize.x + pad
             
         visible_width = self._csize.x
 

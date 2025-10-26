@@ -230,11 +230,11 @@ class ScrollableBase(LayoutType):
         
         offset = self.get_relative_vector_offset()
         #if item.master_coordinates.y < offset.y: return False
-        coords_1 = item.master_coordinates 
+        coords_1 = item.absolute_coordinates 
         coords_2 = coords_1 + item._csize
         
-        viewport_tl = self.master_coordinates
-        viewport_br = self.master_coordinates + self._csize
+        viewport_tl = self.absolute_coordinates
+        viewport_br = self.absolute_coordinates + self._csize
         
         c = collide_vector(viewport_tl, viewport_br, coords_1, coords_2)
         return c
@@ -273,8 +273,8 @@ class ScrollableBase(LayoutType):
         _light_update_helper(
             items or self.collided_items,
             self.cached_coordinates or [],
-            self.first_parent_menu,
-            nevu_state,
+            self.first_parent_menu.coordinatesMW,
+            nevu_state.current_events,
             add_x,
             add_y,
             self._resize_ratio,
@@ -302,7 +302,7 @@ class ScrollableBase(LayoutType):
             self._scroll_needs_update = False 
         if self.actual_max_main > 0:
             self.scroll_bar.coordinates = self._get_scrollbar_coordinates() # type: ignore
-            self.scroll_bar.master_coordinates = self._get_item_master_coordinates(self.scroll_bar)
+            self.scroll_bar.absolute_coordinates = self._get_item_master_coordinates(self.scroll_bar)
             self.scroll_bar._master_z_handler = self._master_z_handler
         #self.base_light_update() 
         #if type(self) == ScrollableBase: self._dirty_rect = self._read_dirty_rects()
