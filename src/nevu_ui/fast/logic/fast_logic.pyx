@@ -140,34 +140,27 @@ cpdef logic_update_helper(
 cpdef _light_update_helper(
     list items,
     list cached_coordinates,
-    object first_parent_menu,
-    object nevustate,
+    NvVector2 coordinatesMW,
+    list current_events,
     float add_x,
     float add_y,
     NvVector2 resize_ratio,
     bint not_need_to_process
     ):
-
+    if not_need_to_process:
+        return
     cdef int i
     cdef int n_items = len(items)
     cdef object item
     cdef NvVector2 coords, anim_coords
-    cdef list last_events
     cdef NvVector2 m_coords
 
-    if not_need_to_process:
-        return
-    
-    if not_need_to_process:
-        return
-
-    m_coords = first_parent_menu.coordinatesMW
-    last_events = nevustate.current_events
+    m_coords = coordinatesMW
+    cdef list last_events = current_events
 
     for i in range(n_items):
         item = items[i]
         coords = cached_coordinates[i]
-
         anim_coords = item.animation_manager.get_animation_value(AnimationType.POSITION)
         if anim_coords is None:
             item.coordinates = NvVector2(coords.x + add_x,
@@ -176,8 +169,7 @@ cpdef _light_update_helper(
             item.coordinates = NvVector2(coords.x + rel_helper(anim_coords[0], resize_ratio.x, None, None) + add_x,
                                         coords.y + rel_helper(anim_coords[1], resize_ratio.y, None, None) + add_y)
 
-        item.master_coordinates = NvVector2(item.coordinates.x + m_coords.x,
-                                           item.coordinates.y + m_coords.y)
+        item.master_coordinates = item.coordinates + m_coords
         item.update(last_events)
 
 
@@ -190,6 +182,8 @@ cpdef bint collide_vertical(NvVector2 r1_tl, NvVector2 r1_br, NvVector2 r2_tl, N
 cpdef bint collide_vector(NvVector2 r1_tl, NvVector2 r1_br, NvVector2 r2_tl, NvVector2 r2_br):
     return collide_horizontal(r1_tl, r1_br, r2_tl, r2_br) and collide_vertical(r1_tl, r1_br, r2_tl, r2_br)
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cpdef _very_light_update_helper(
     list items,
     list cached_coordinates,
