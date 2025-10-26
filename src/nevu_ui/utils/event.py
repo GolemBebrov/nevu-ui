@@ -1,10 +1,12 @@
 from nevu_ui.core_types import EventType
-
+from warnings import deprecated
+@deprecated("Use NevuEvent instead. This class will be removed in a future version.")
 class Event:
     DRAW = 0
     UPDATE = 1
     RESIZE = 2
     RENDER = 3
+    
     def __init__(self,type,function,*args, **kwargs):
         """
         Initializes an Event object with a type, function, and optional arguments.
