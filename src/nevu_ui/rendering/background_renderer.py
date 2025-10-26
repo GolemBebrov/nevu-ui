@@ -4,6 +4,7 @@ import contextlib
 from nevu_ui.color import Color
 from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.style import Style
 
 from nevu_ui.core_types import (
     _QUALITY_TO_RESOLUTION, CacheType, HoverState, Align
@@ -11,119 +12,140 @@ from nevu_ui.core_types import (
 from nevu_ui.rendering import (
     OutlinedRoundedRect, RoundedRect, AlphaBlit, Gradient
 )
+
+class _DrawNamespace:
+    __slots__ = ["_renderer"]
+    def __init__(self, renderer: "BackgroundRenderer"):
+        self._renderer = renderer
+        
+    @property
+    def root(self):
+        return self._renderer.root
+    
+    @property
+    def style(self):
+        return self.root.style
+    
+    def gradient(self, surface: pygame.Surface, transparency = None, style: Style | None = None) -> Gradient:
+        style = style or self.style
+        assert isinstance(style.gradient, Gradient), "Gradient not set"
+        if transparency is None or transparency >= 255:
+            gr = style.gradient
+        else:
+            gr = style.gradient.with_transparency(transparency)
+        return gr.apply_gradient(surface)
+
+    def create_clear(self, size, flags) -> pygame.Surface:
+        surf = pygame.Surface(size, flags = flags)
+        surf.fill((0,0,0,0))
+        return surf
+    
+    def load_image(self, path) -> pygame.Surface:
+        img = pygame.image.load(path)
+        img.convert_alpha()
+        return img
+    
+    def scale(self, surface: pygame.Surface | None, size: list | tuple) -> pygame.Surface | None:
+        if surface is None: return
+        return pygame.transform.smoothscale(surface, size)
+    
 class BackgroundRenderer:
+    __slots__ = ["_root", "draw"]
     def __init__(self, root: NevuObject):
-        assert isinstance(root, NevuObject)
-        self.root = root
-        
-    def _draw_gradient(renderer): # type: ignore
-        self = renderer.root
-        
-        if not self.style.gradient: return
-        
-        cached_gradient = pygame.Surface(self.size * _QUALITY_TO_RESOLUTION[self.quality], flags = pygame.SRCALPHA)
-        cached_gradient.fill((0,0,0,0))
-        
-        if self.style.transparency: cached_gradient = self.style.gradient.with_transparency(self.style.transparency).apply_gradient(cached_gradient)
-        else: cached_gradient =  self.style.gradient.apply_gradient(cached_gradient)
-        
-        return cached_gradient
+        assert isinstance(root, NevuObject), "Root must be NevuObject"
+        self._root = root
+        self.draw = _DrawNamespace(self)
     
-    def _scale_gradient(renderer, size = None): # type: ignore
-        self = renderer.root
-        
-        if not self.style.gradient: return
-        
-        size = size or self._csize
-        cached_gradient = self.cache.get_or_exec(CacheType.Gradient, renderer._draw_gradient)
-        if cached_gradient is None: return
-        
-        target_size_vector = size
-        target_size_tuple = (
-            max(1, int(target_size_vector.x)), 
-            max(1, int(target_size_vector.y))
-        )
-        
-        cached_gradient = pygame.transform.smoothscale(cached_gradient, target_size_tuple)
-        return cached_gradient
+    @property
+    def root(self):
+        return self._root
     
-    def _create_surf_base(renderer, size = None, alt = False, radius = None, standstill = False, override_color = None): # type: ignore
-        self = renderer.root
+    def _draw_gradient(self):
+        root = self.root
         
-        needed_size = size or self._csize
+        if not root.style.gradient: return
+        
+        gradient = self.draw.create_clear(root.size * _QUALITY_TO_RESOLUTION[root.quality], flags = pygame.SRCALPHA)
+        self.draw.gradient(gradient, transparency = root.style.transparency)
+        
+        return gradient
+    
+    def _create_surf_base(self, size = None, alt = False, radius = None, standstill = False, override_color = None): 
+        root = self.root
+        
+        needed_size = size or root._csize
         needed_size.to_round()
         
-        surf = pygame.Surface(needed_size.to_tuple(), pygame.SRCALPHA)
-        surf.fill((0,0,0,0))
+        surf = self.draw.create_clear(needed_size.to_tuple(), flags = pygame.SRCALPHA)
         
-        color = self._subtheme_border if alt else self._subtheme_content
+        color = root._subtheme_border if alt else root._subtheme_content
         
         if not standstill:
-            if self._hover_state == HoverState.CLICKED and not self.fancy_click_style and self.clickable: 
+            if root._hover_state == HoverState.CLICKED and not root.fancy_click_style and root.clickable: 
                 color = Color.lighten(color, 0.2)
-            elif self._hover_state == HoverState.HOVERED and self.hoverable: 
+            elif root._hover_state == HoverState.HOVERED and root.hoverable: 
                 color = Color.darken(color, 0.2)
         
         if override_color:
             color = override_color
         
-        if self.will_resize:
-            avg_scale_factor = _QUALITY_TO_RESOLUTION[self.quality]
+        if root.will_resize:
+            avg_scale_factor = _QUALITY_TO_RESOLUTION[root.quality]
         else:
-            avg_scale_factor = (self._resize_ratio.x + self._resize_ratio.y) / 2
+            avg_scale_factor = (root._resize_ratio.x + root._resize_ratio.y) / 2
         
-        radius = (self._style.borderradius * avg_scale_factor) if radius is None else radius
+        radius = (root._style.borderradius * avg_scale_factor) if radius is None else radius
         surf.blit(RoundedRect.create_sdf(needed_size.to_tuple(), round(radius), color), (0, 0))
         
         return surf
     
-    def _create_outlined_rect(renderer, size = None, radius = None, width = None): # type: ignore
-        self = renderer.root
+    def _create_outlined_rect(self, size = None, radius = None, width = None): 
+        root = self.root
         
-        needed_size = size or self._csize
+        needed_size = size or root._csize
         needed_size.to_round()
         
-        if self.will_resize:
-            avg_scale_factor = _QUALITY_TO_RESOLUTION[self.quality]
+        if root.will_resize:
+            avg_scale_factor = _QUALITY_TO_RESOLUTION[root.quality]
         else:
-            avg_scale_factor = (self._resize_ratio[0] + self._resize_ratio[1]) / 2
+            avg_scale_factor = (root._resize_ratio[0] + root._resize_ratio[1]) / 2
             
-        radius = radius or self._style.borderradius * avg_scale_factor
-        width = width or self._style.borderwidth * avg_scale_factor
+        radius = radius or root._style.borderradius * avg_scale_factor
+        width = width or root._style.borderwidth * avg_scale_factor
         
-        return OutlinedRoundedRect.create_sdf(needed_size.to_tuple(), round(radius), round(width), self._subtheme_border)
+        return OutlinedRoundedRect.create_sdf(needed_size.to_tuple(), round(radius), round(width), root._subtheme_border)
     
-    def _get_correct_mask(renderer): # type: ignore
-        self = renderer.root
-        size = self._csize.to_round().copy()
-        if self.style.borderwidth > 0:
+    def _get_correct_mask(self): 
+        root = self.root
+        size = root._csize.to_round().copy()
+        if root.style.borderwidth > 0:
             size -= NvVector2(2,2)
         
-        return renderer._create_surf_base(size, self.alt, self.relm(self.style.borderradius))
+        return self._create_surf_base(size, root.alt, root.relm(root.style.borderradius))
     
-    def _generate_background(renderer): # type: ignore
-        self = renderer.root
-        resize_factor = _QUALITY_TO_RESOLUTION[self.quality] if self.will_resize else self._resize_ratio
+    def _generate_background(self): 
+        root = self.root
+        resize_factor = _QUALITY_TO_RESOLUTION[root.quality] if root.will_resize else root._resize_ratio
         
-        rounded_size = (self.size * resize_factor).to_round()
+        rounded_size = (root.size * resize_factor).to_round()
         tuple_size = rounded_size.to_tuple()
         
-        coords = (0,0) if self.style.borderwidth <= 0 else (1,1)
+        coords = (0,0) if root.style.borderwidth <= 0 else (1,1)
         
-        if self.style.borderwidth > 0:
-            correct_mask: pygame.Surface = renderer._create_surf_base(rounded_size)
-            mask_surf: pygame.Surface = self.cache.get_or_exec(CacheType.Surface, lambda: renderer._create_surf_base(rounded_size - NvVector2(2,2))) # type: ignore
+        if root.style.borderwidth > 0:
+            correct_mask: pygame.Surface = self._create_surf_base(rounded_size)
+            mask_surf: pygame.Surface = root.cache.get_or_exec(CacheType.Surface, lambda: self._create_surf_base(rounded_size - NvVector2(2,2))) # type: ignore
             offset = NvVector2(2,2)
         else:
-            mask_surf = correct_mask = renderer._create_surf_base(rounded_size)
+            mask_surf = correct_mask = self._create_surf_base(rounded_size)
             offset = NvVector2(0,0)
         final_surf = pygame.Surface(tuple_size, flags = pygame.SRCALPHA)
         final_surf.fill((0,0,0,0))
         
-        if isinstance(self.style.gradient, Gradient):
-            content_surf = self.cache.get_or_exec(CacheType.Scaled_Gradient, lambda: renderer._scale_gradient(rounded_size - offset))
-        elif self.style.bgimage:
-            content_surf = self.cache.get_or_exec(CacheType.Scaled_Image, lambda: renderer._scale_image(rounded_size - offset))
+        if isinstance(root.style.gradient, Gradient):
+            content_surf = root.cache.get_or_exec(CacheType.Scaled_Gradient, lambda: self._scale_gradient(rounded_size - offset))
+        elif root.style.bgimage:
+            content_surf = root.cache.get_or_exec(CacheType.Scaled_Image, lambda: self._scale_image(rounded_size - offset))
         else: content_surf = None
         
         if content_surf:
@@ -132,100 +154,104 @@ class BackgroundRenderer:
         else:
             final_surf.blit(mask_surf, coords)
         
-        if self._style.borderwidth > 0:
-            cache_type = CacheType.Scaled_Borders if self.will_resize else CacheType.Borders
-            if border := self.cache.get_or_exec(cache_type, lambda: renderer._create_outlined_rect(rounded_size)):
-                if self._draw_borders:
+        if root._style.borderwidth > 0:
+            cache_type = CacheType.Scaled_Borders if root.will_resize else CacheType.Borders
+            if border := root.cache.get_or_exec(cache_type, lambda: self._create_outlined_rect(rounded_size)):
+                if root._draw_borders:
                     final_surf.blit(border, (0, 0))
                 
-        if self.style.transparency: final_surf.set_alpha(self.style.transparency)
+        if root.style.transparency: final_surf.set_alpha(root.style.transparency)
         return final_surf
     
-    def _generate_image(renderer): # type: ignore
-        self = renderer.root
-        assert self.style.bgimage, "Bgimage not set"
-        img = pygame.image.load(self.style.bgimage)
-        img.convert_alpha()
-        return img
-    
-    def _scale_image(renderer, size = None): # type: ignore
-        self = renderer.root
-        size = size or self._csize
-        
-        img = self.cache.get_or_exec(CacheType.Image, renderer._generate_image)
-        assert img
-        
-        return pygame.transform.smoothscale(img, (max(1, int(size.x)), max(1, int(size.y))))
-    
-    def _scale_background(renderer, size = None): # type: ignore
-        self = renderer.root
-        size = size or self._csize
-        
-        surf = self.cache.get_or_exec(CacheType.Background, renderer._generate_background)
-        assert surf
-        
-        return pygame.transform.smoothscale(surf, (max(1, int(size.x)), max(1, int(size.y))))
-    
-    def bake_text(renderer, text: str, unlimited_y: bool = False, words_indent: bool = False,
-                  alignx: Align = Align.CENTER, aligny: Align = Align.CENTER, continuous: bool = False, size_x = None, size_y = None, color = None):
-        self = renderer.root
-        if continuous: 
-            self._bake_text_single_continuous(text)
-            return
-        color = color or self._subtheme_font
-        size_x = size_x or self.relx(self.size.x)
-        size_y = size_y or self.rely(self.size.y)
-        is_popped = False
-        ifnn = False
+    def _generate_image(self):
+        root = self.root
+        assert root.style.bgimage, "Bgimage not set"
+        return self.draw.load_image(root.style.bgimage)
 
+    def min_size(self, size: NvVector2): 
+        return (max(1, int(size.x)), max(1, int(size.y)))
+    
+    def _scale_image(self, size = None): 
+        root = self.root
+        
+        size = size or root._csize
+        return self.draw.scale(root.cache.get_or_exec(CacheType.Image, self._generate_image), self.min_size(size))
+    
+    def _scale_gradient(self, size = None): 
+        root = self.root
+        
+        size = size or root._csize
+        return self.draw.scale(root.cache.get_or_exec(CacheType.Gradient, self._draw_gradient), self.min_size(size))
+
+    def _scale_background(self, size = None): 
+        root = self.root
+        
+        size = size or root._csize
+        return self.draw.scale(root.cache.get_or_exec(CacheType.Background, self._generate_background), self.min_size(size))
+    
+    @staticmethod
+    def _split_words(words: list, font: pygame.font.Font, x, marg = " "):
         current_line = ""
-        marg = ""
-        words = list(text)
+        force_next_line = False
         lines = []
 
-        renderFont = self.get_font() 
-        line_height = renderFont.size("a")[1]
-
-        if words_indent:
-            words = text.strip().split()
-            marg = " "
-
         for word in words:
-            if word == '\n': ifnn = True
+            if word == '\n': force_next_line = True
             with contextlib.suppress(Exception):
                 w = word[0] + word[1]
-                if w == '\ '.strip()+"n": ifnn = True # type: ignore
-            if ifnn:
+                if w == '\\' + "n": force_next_line = True
+            if force_next_line:
                 lines.append(current_line)
                 current_line = ""
                 test_line = ""
                 text_size = 0
-                ifnn = False
+                force_next_line = False
                 continue
 
             test_line = current_line + word + marg
-            text_size = renderFont.size(test_line)
-            if text_size[0] > size_x:
+            text_size = font.size(test_line)
+            if text_size[0] > x:
                 lines.append(current_line)
                 current_line = word + marg
             else: current_line = test_line
         lines.append(current_line)
-
-        if not unlimited_y:
-            while len(lines) * line_height > size_y:
-                lines.pop(-1)
-                is_popped = True
-
-        self._text_baked = "\n".join(lines)
-
-        if is_popped and not unlimited_y:
-                 self._text_baked = f"{self._text_baked[:-3]}..."
-
-        self._text_surface = renderFont.render(self._text_baked, True, color)
+        return lines
+    
+    def bake_text(self, text: str, unlimited_y: bool = False, words_indent: bool = False,
+                  alignx: Align = Align.CENTER, aligny: Align = Align.CENTER, size: NvVector2 | None = None, color = None):
+        root = self.root
         
-        container_rect = pygame.Rect(self.coordinates.to_round().to_tuple(), self._csize.to_round()) if self.inline else self.surface.get_rect()
+        color = color or root._subtheme_font
+        size = size or root._csize
+
+        renderFont = root.get_font() 
+        line_height = renderFont.get_linesize()
+
+        if words_indent:
+            words = text.strip().split()
+            marg = " "
+        else:
+            words = list(text)
+            marg = ""
             
-        text_rect = self._text_surface.get_rect()
+        is_cropped = False
+        lines = self._split_words(words, renderFont, size.x, marg)
+        
+        if not unlimited_y:
+            while len(lines) * line_height > size.y:
+                lines.pop(-1)
+                is_cropped = True
+
+        root._text_baked = "\n".join(lines)
+
+        if is_cropped and not unlimited_y:
+            root._text_baked = f"{root._text_baked[:-3]}..."
+
+        root._text_surface = renderFont.render(root._text_baked, True, color)
+        
+        container_rect = pygame.Rect(root.coordinates.to_round().to_tuple(), root._csize.to_round()) if root.inline else root.surface.get_rect()
+            
+        text_rect = root._text_surface.get_rect()
 
         if alignx == Align.LEFT: text_rect.left = container_rect.left
         elif alignx == Align.CENTER: text_rect.centerx = container_rect.centerx
@@ -235,16 +261,4 @@ class BackgroundRenderer:
         elif aligny == Align.CENTER: text_rect.centery = container_rect.centery
         elif aligny == Align.BOTTOM: text_rect.bottom = container_rect.bottom
 
-        self._text_rect = text_rect
-
-    def _bake_text_single_continuous(renderer, text: str): # type: ignore
-        self = renderer.root  
-        assert hasattr(self, "_entered_text")
-              
-        renderFont = self.get_font()
-        self.font_size = renderFont.size(text)
-        self._text_surface = renderFont.render(self._entered_text, True, self._subtheme_font) #type: ignore
-        
-        if not self.font_size[0] + self.relx(10) >= self._csize[0]: 
-            self._text_rect = self._text_surface.get_rect(left = self.relx(10), centery = self._csize.y / 2)
-        else: self._text_rect = self._text_surface.get_rect(right = self.relx(self._csize.x - 10), centery = self._csize.y / 2)
+        root._text_rect = text_rect
