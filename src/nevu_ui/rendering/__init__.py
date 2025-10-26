@@ -5,5 +5,5 @@ from .triangle import Triangle
 from .rect import Rect, RoundedRect
 from .outlined_rect import OutlinedRect, OutlinedRoundedRect
 from .gradient import Gradient
-
-__all__ = ["FastBlit", "AlphaBlit", "Circle", "Line", "Triangle", "Rect", "RoundedRect", "OutlinedRect", "OutlinedRoundedRect", "Gradient"]
+from .shader import Shader
+__all__ = ["FastBlit", "AlphaBlit", "Circle", "Line", "Triangle", "Rect", "RoundedRect", "OutlinedRect", "OutlinedRoundedRect", "Gradient", "Shader"]
