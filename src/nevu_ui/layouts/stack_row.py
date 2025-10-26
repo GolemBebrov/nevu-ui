@@ -27,7 +27,7 @@ class StackRow(StackBase):
             widget_local_x = current_x + m / 2
             item.coordinates.x = self.coordinates.x + widget_local_x 
             self._set_align_coords(item, alignment)
-            item.master_coordinates = self._get_item_master_coordinates(item)
+            item.absolute_coordinates = self._get_item_master_coordinates(item)
             current_x += self.relx(item.size.x + self.spacing)
             self.cached_coordinates.append(item.coordinates)
             

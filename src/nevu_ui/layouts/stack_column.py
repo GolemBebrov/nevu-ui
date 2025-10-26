@@ -27,7 +27,7 @@ class StackColumn(StackBase):
             widget_local_y = current_y + m / 2
             item.coordinates.y = self.coordinates.y + widget_local_y 
             self._set_align_coords(item, alignment)
-            item.master_coordinates = self._get_item_master_coordinates(item)
+            item.absolute_coordinates = self._get_item_master_coordinates(item)
             current_y += self.rely(item.size.y + self.spacing)
             self.cached_coordinates.append(item.coordinates)
             
