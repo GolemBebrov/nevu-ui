@@ -1,20 +1,22 @@
 import copy
-import pygame
-import numpy as np
 import contextlib
-from typing import Callable, AnyStr, Any
+
+from typing import (
+    Callable, Any, NotRequired, Unpack
+)
 
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.widgets import Widget, Button, WidgetKwargs
-from nevu_ui.utils import mouse, keyboard
+from nevu_ui.utils import keyboard
 
-from typing import Any, TypedDict, NotRequired, Unpack
-
+from nevu_ui.widgets import (
+    Widget, Button, WidgetKwargs
+)
 from nevu_ui.style import (
     Style, default_style
 )
-
-from nevu_ui.core_types import CacheType, HoverState
+from nevu_ui.core_types import (
+    CacheType, HoverState
+)
 
 class ElementSwitcherKwargs(WidgetKwargs):
     on_change: NotRequired[Callable | None]
@@ -52,7 +54,7 @@ class Elements:
                     element_pair = [item, None]
                 final_list.append(element_pair)
         except Exception as e:
-            raise ValueError("Some objects cannot be converted into str", e)
+            raise ValueError("Some objects cannot be converted into str", e) from e
         
         element_list.extend(Element(pair[0], pair[1]) for pair in final_list)
         return element_list
@@ -90,7 +92,7 @@ class ElementSwitcher(Widget):
         super()._lazy_init(size)
         elements = elements or []
         self.elements = Elements.create(*elements)
-        self.bake_text(self.current_element_text)
+        self.renderer.bake_text(self.current_element_text)
         self._create_buttons()
     
     def _init_numerical(self):
@@ -115,7 +117,7 @@ class ElementSwitcher(Widget):
                 self.next()
     
     def _create_buttons(self):
-        self.button_left = Button(self.previous, self.left_text, NvVector2(self._get_arrow_width(), self._rsize.y).to_round(), self.style(borderwidth = 0, borderradius = self.style.borderradius - self._rsize_marg.x / 2), z = self.z + 1, inline = True, fancy_click_style = False, alt = self.alt)
+        self.button_left = Button(self.previous, self.left_text, NvVector2(self._get_arrow_width(), self._rsize.y).to_round(), self.style(borderwidth = 0, borderradius = self.style.borderradius - self._rsize_marg.x / 2), z = self.z + 1, inline = True, fancy_click_style = False, alt = self.alt) #type: ignore
         self.button_right = Button(self.next, self.right_text, NvVector2(self._get_arrow_width(), self._rsize.y).to_round(), self.style(borderwidth = 0), z = self.z + 1, inline = True, fancy_click_style = False, alt = self.alt)
         self._start_button(self.button_left)
         self._start_button(self.button_right)
@@ -227,7 +229,7 @@ class ElementSwitcher(Widget):
         button.update()
     
     def _set_master_coordinates(self, button: Button):
-        button.master_coordinates = self.master_coordinates + button.coordinates
+        button.absolute_coordinates = self.absolute_coordinates + button.coordinates
     
     def primary_draw(self):
         super().primary_draw()
@@ -240,7 +242,7 @@ class ElementSwitcher(Widget):
         if not self.visible: return
         
         if self._changed:
-            self.renderer.bake_text(self.current_element_text, size_x = self._csize.x - self.button_left._csize.x * 2)
+            self.bake_text(self.current_element_text, size_x = self._csize.x - self.button_left._csize.x * 2)
             self._draw_buttons()
             assert self._text_surface is not None and self._text_rect is not None, "Text surface or rect is None"
             self.surface.blit(self._text_surface, self._text_rect)
