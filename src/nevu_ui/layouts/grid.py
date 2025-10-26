@@ -54,7 +54,7 @@ class Grid(LayoutType):
             coordinates = NvVector2(self.coordinates[0] + self._rsize_marg[0] + x * cw + (cw - self.relx(item.size[0])) / 2 ,
                            self.coordinates[1] + self._rsize_marg[1] +y * ch + (ch -  self.rely(item.size[1])) / 2)
             item.coordinates = coordinates
-            item.master_coordinates = self._get_item_master_coordinates(item)
+            item.absolute_coordinates = self._get_item_master_coordinates(item)
             self.cached_coordinates.append(coordinates)
             
     def secondary_update(self, *args):
