@@ -110,13 +110,8 @@ class NevuObject:
         
         #=== Style ===
         self._init_style(style)
-        
-    def clone(self):
-        return NevuObject(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
     
-    def __deepcopy__(self, *args, **kwargs):
-        return self.clone()
-    
+#=== ConstantEngine functions ===
     def _add_constant(self, name, supported_classes: tuple | Any, default: Any, 
                       getter: Callable | None = None, setter: Callable | None = None, deleter: Callable | None = None):
         self.constants.supported_classes[name] = supported_classes
@@ -162,18 +157,6 @@ class NevuObject:
                 super().__setattr__(name, value)
         except AttributeError:
             super().__setattr__(name, value)
-            
-    def _get_events(self):
-        return self._events
-
-    def _set_events(self, value):
-        self._events = value
-        self._events.on_add = self._on_event_add
-        if self.actual_clone:
-            self.constant_kwargs['events'] = value
-    
-    def _on_event_add(self):
-        self.constant_kwargs['events'] = self._events
     
     def _add_constants(self):
         self._add_constant("actual_clone", bool, False)
@@ -241,12 +224,13 @@ class NevuObject:
                 needed_types = (needed_types,)
         
             if not(is_valid := self._is_valid_type(value, needed_types)):
-                raise TypeError(f"Invalid type for constant '{constant_name}'. ",
+                raise TypeError(f"Invalid type for constant '{constant_name}' in {self.__class__.__name__} instance. ",
                                 f"Expected {needed_types}, but got {type(value).__name__}.")
         
         setattr(self, constant_name, value)
         self.constants.is_set[constant_name] = True
 
+#=== Initialization ===
     def _init_test_flags(self):
         pass
     
@@ -288,9 +272,8 @@ class NevuObject:
     def _init_lists(self):
         self._resize_ratio = Vector2(1, 1)
         self.coordinates = Vector2()
-        self.master_coordinates = Vector2()
+        self.absolute_coordinates = Vector2()
         self.first_update_functions = []
-        #self._events: list[NevuEvent] = []
         self._dirty_rect = []
         
     def _init_start(self):
@@ -312,22 +295,7 @@ class NevuObject:
                 self._wait_mode = True
         return number
 
-    def subscribe(self, event: NevuEvent):
-        """Adds a new event listener to the object.
-
-        Args:
-            event (NevuEvent): The event to subscribe
-
-        Returns:
-            None
-        """
-        self._events.add(event)
-        
-    @deprecated("use .subscribe() instead. This method will be removed in a future version.")
-    def add_event(self, event: NevuEvent):
-        """**Deprecated**: use .subscribe instead."""
-        return self.subscribe(event)
-
+#=== Utils ===
     @property
     def wait_mode(self):
         return self._wait_mode
@@ -335,8 +303,17 @@ class NevuObject:
     def wait_mode(self, value: bool):
         if self._wait_mode == True and not value:
             self._lazy_init(**self._lazy_kwargs)
-            #print("WAIT MODE DISABLED")
         self._wait_mode = value
+
+    @property
+    @deprecated("Use absolute_coordinates instead")
+    def master_coordinates(self):
+        return self.absolute_coordinates
+    
+    @master_coordinates.setter
+    @deprecated("Use absolute_coordinates instead")
+    def master_coordinates(self, value):
+        self.absolute_coordinates = value
 
     @property
     def _csize(self):
@@ -345,166 +322,8 @@ class NevuObject:
     def add_first_update_action(self, function):
         self.first_update_functions.append(function)
 
-    def show(self):
-        self._visible = True
-    def hide(self):
-        self._visible = False
-
-    @property
-    def visible(self):
-        return self._visible
-    @visible.setter
-    def visible(self, value: bool):
-        self._visible = value
-
-    def activate(self):
-        self._active = True
-    def disactivate(self):
-        self._active = False
-
-    @property
-    def active(self):
-        return self._active
-    @active.setter
-    def active(self, value: bool):
-        self._active = value
-
-    def _event_cycle(self, type: EventType, *args, **kwargs):
-        #print(self._events.content)
-        for event in self._events.content:
-            if event._type == type:
-                #print(event)
-                event(*args, **kwargs)
-
-    def resize(self, resize_ratio: Vector2):
-        self._changed = True
-        self._resize_ratio = resize_ratio
-        self.cache.clear_selected(whitelist=[CacheType.RelSize])
-
-    @property
-    def style(self):
-        return self._style
-    @style.setter
-    def style(self, style: Style):
-        self._changed = True
-        self._style = copy.copy(style)
-    
     def get_animation_value(self, animation_type: AnimationType):
         return self.animation_manager.get_current_value(animation_type)
-    
-    def on_click(self):
-        """Override this function to run code when the object is clicked"""
-    def on_hover(self):
-        """Override this function to run code when the object is hovered"""
-    def on_keyup(self):
-        """Override this function to run code when a key is released"""
-    def on_keyup_abandon(self):
-        """Override this function to run code when a key is released outside of the object"""
-    def on_unhover(self):
-        """Override this function to run code when the object is unhovered"""
-    def on_scroll(self, side: bool):
-        """Override this function to run code when the object is scrolled"""
-        
-    def _on_click_system(self):
-        self._event_cycle(EventType.OnKeyDown, self)
-    def _on_hover_system(self):
-        self._event_cycle(EventType.OnHover, self)
-    def _on_keyup_system(self):
-        self._event_cycle(EventType.OnKeyUp, self)
-    def _on_keyup_abandon_system(self):
-        self._event_cycle(EventType.OnKeyUpAbandon, self)
-    def _on_unhover_system(self):
-        self._event_cycle(EventType.OnUnhover, self)
-    def _on_scroll_system(self, side: bool):
-        self._event_cycle(EventType.OnMouseScroll, self, side)
-    
-    def _group_on_click(self):
-        self._on_click_system()
-        self.on_click()
-    def _group_on_hover(self):
-        self._on_hover_system()
-        self.on_hover()
-    def _group_on_keyup(self):
-        self._on_keyup_system()
-        self.on_keyup()
-    def _group_on_keyup_abandon(self):
-        self._on_keyup_abandon_system()
-        self.on_keyup_abandon()
-    def _group_on_unhover(self):
-        self._on_unhover_system()
-        self.on_unhover()
-    def _group_on_scroll(self, side: bool):
-        self._on_scroll_system(side)
-        self.on_scroll(side)
-    
-    def _click(self):
-        self._universal_state_kostil = True
-        self.hover_state = HoverState.CLICKED
-
-    def _unhover(self):
-        self.hover_state = HoverState.UN_HOVERED
-    def _hover(self):
-        self.hover_state = HoverState.HOVERED
-    def _kup(self):
-        self._kup_kostil = True
-        self._universal_state_kostil = True
-        self.hover_state = HoverState.HOVERED
-    def _kup_abandon(self):
-        self._kup_abandoned = True
-        self._universal_state_kostil = True
-        self.hover_state = HoverState.UN_HOVERED
-        
-    @property
-    def hover_state(self):
-        return self._hover_state
-    @hover_state.setter
-    def hover_state(self, value: HoverState):
-        #if hasattr(self, "_hover_state"):
-            #print(f"hover change setter called in {self}, curr_state:{self._hover_state}, new_state:{value}")
-        if self._hover_state == value and not self._universal_state_kostil: print("Same state. Exiting"); return
-        if self._universal_state_kostil: self._universal_state_kostil = False
-        self._hover_state = value
-        match self._hover_state:
-            case HoverState.CLICKED:
-                self._group_on_click()
-            case HoverState.HOVERED:
-                if self._kup_kostil:
-                    self._group_on_keyup()
-                    self._kup_kostil = False
-                else:
-                    self._group_on_hover()
-            case HoverState.UN_HOVERED:
-                if self._kup_abandoned:
-                    self._group_on_keyup_abandon()
-                    self._kup_abandoned = False
-                else:
-                    self._group_on_unhover()
-            
-    def get_rect_opt(self, without_animation: bool = False):
-        if not without_animation:
-            return self.get_rect()
-        anim_coords = self.animation_manager.get_animation_value(AnimationType.POSITION)
-        anim_coords = anim_coords or [0,0]
-        return pygame.Rect(
-            self.master_coordinates.x - self.relx(anim_coords[0]), # type: ignore
-            self.master_coordinates.y - self.rely(anim_coords[1]), # type: ignore
-            *self.rel(self.size)
-        )
-        
-    def get_rect(self):
-        return get_rect_helper_pygame(self.master_coordinates, self._resize_ratio, self.size)
-    
-    def get_rect_tuple(self):
-        return get_rect_helper(self.master_coordinates, self._resize_ratio, self.size)
-
-    def get_rect_static(self):
-        return get_rect_helper(self.coordinates, self._resize_ratio, self.size)
-
-    def _update_coords(self):
-        return self.coordinates
-
-    def _update_size(self):
-        return Vector2(self.rel(self.size))
 
     def get_font(self):
         avg_resize_ratio = (self._resize_ratio[0] + self._resize_ratio[1]) / 2
@@ -534,20 +353,223 @@ class NevuObject:
         self._subtheme_role = value
         self.cache.clear()
         self._on_subtheme_role_change()
+        
     def _on_subtheme_role_change(self):
         pass
+    
     @property
     def _subtheme(self):
         return self.style.colortheme.get_subtheme(self._subtheme_role)
 
-    #UPDATE STRUCTURE: ====================
+#=== Action functions ===
+    def show(self):
+        self._visible = True
+    def hide(self):
+        self._visible = False
+
+    @property
+    def visible(self):
+        return self._visible
+    @visible.setter
+    def visible(self, value: bool):
+        self._visible = value
+
+    def activate(self):
+        self._active = True
+    def disactivate(self):
+        self._active = False
+
+    @property
+    def active(self):
+        return self._active
+    @active.setter
+    def active(self, value: bool):
+        self._active = value
+
+#=== Event functions ===
+    def _event_cycle(self, type: EventType, *args, **kwargs):
+        for event in self._events.content:
+            if event._type == type:
+                event(*args, **kwargs)
+
+    def subscribe(self, event: NevuEvent):
+        """Adds a new event listener to the object.
+
+        Args:
+            event (NevuEvent): The event to subscribe
+
+        Returns:
+            None
+        """
+        self._events.add(event)
+        
+    @deprecated("use .subscribe() instead. This method will be removed in a future version.")
+    def add_event(self, event: NevuEvent):
+        """**Deprecated**: use .subscribe instead."""
+        return self.subscribe(event)
+
+    def _get_events(self):
+        return self._events
+
+    def _set_events(self, value):
+        self._events = value
+        self._events.on_add = self._on_event_add
+        if self.actual_clone:
+            self.constant_kwargs['events'] = value
+    
+    def _on_event_add(self):
+        self.constant_kwargs['events'] = self._events
+        
+    def resize(self, resize_ratio: Vector2):
+        self._changed = True
+        self._resize_ratio = resize_ratio
+        self.cache.clear_selected(whitelist=[CacheType.RelSize])
+
+    @property
+    def style(self):
+        return self._style
+    @style.setter
+    def style(self, style: Style):
+        self._changed = True
+        self._style = copy.copy(style)
+
+#=== Zsystem functions ===
+
+    #=== User hooks ===
+    def on_click(self):
+        """Override this function to run code when the object is clicked"""
+    def on_hover(self):
+        """Override this function to run code when the object is hovered"""
+    def on_keyup(self):
+        """Override this function to run code when a key is released"""
+    def on_keyup_abandon(self):
+        """Override this function to run code when a key is released outside of the object"""
+    def on_unhover(self):
+        """Override this function to run code when the object is unhovered"""
+    def on_scroll(self, side: bool):
+        """Override this function to run code when the object is scrolled"""
+    
+    #=== System hooks ===
+    def _on_click_system(self):
+        self._event_cycle(EventType.OnKeyDown, self)
+    def _on_hover_system(self):
+        self._event_cycle(EventType.OnHover, self)
+    def _on_keyup_system(self):
+        self._event_cycle(EventType.OnKeyUp, self)
+    def _on_keyup_abandon_system(self):
+        self._event_cycle(EventType.OnKeyUpAbandon, self)
+    def _on_unhover_system(self):
+        self._event_cycle(EventType.OnUnhover, self)
+    def _on_scroll_system(self, side: bool):
+        self._event_cycle(EventType.OnMouseScroll, self, side)
+    
+    #=== Group functions ===
+    def _group_on_click(self):
+        self._on_click_system()
+        self.on_click()
+    def _group_on_hover(self):
+        self._on_hover_system()
+        self.on_hover()
+    def _group_on_keyup(self):
+        self._on_keyup_system()
+        self.on_keyup()
+    def _group_on_keyup_abandon(self):
+        self._on_keyup_abandon_system()
+        self.on_keyup_abandon()
+    def _group_on_unhover(self):
+        self._on_unhover_system()
+        self.on_unhover()
+    def _group_on_scroll(self, side: bool):
+        self._on_scroll_system(side)
+        self.on_scroll(side)
+    
+    #=== Selection functions ===
+    def _click(self):
+        self._universal_state_kostil = True
+        self.hover_state = HoverState.CLICKED
+    def _unhover(self):
+        self.hover_state = HoverState.UN_HOVERED
+    def _hover(self):
+        self.hover_state = HoverState.HOVERED
+    def _kup(self):
+        self._kup_kostil = True
+        self._universal_state_kostil = True
+        self.hover_state = HoverState.HOVERED
+    def _kup_abandon(self):
+        self._kup_abandoned = True
+        self._universal_state_kostil = True
+        self.hover_state = HoverState.UN_HOVERED
+
+#=== Hover state ===
+    @property
+    def hover_state(self):
+        return self._hover_state
+    
+    @hover_state.setter
+    def hover_state(self, value: HoverState):
+        if self._hover_state == value and not self._universal_state_kostil: print("Same state. Exiting"); return
+        if self._universal_state_kostil: self._universal_state_kostil = False
+        self._hover_state = value
+        match self._hover_state:
+            case HoverState.CLICKED:
+                self._group_on_click()
+            case HoverState.HOVERED:
+                if self._kup_kostil:
+                    self._group_on_keyup()
+                    self._kup_kostil = False
+                else:
+                    self._group_on_hover()
+            case HoverState.UN_HOVERED:
+                if self._kup_abandoned:
+                    self._group_on_keyup_abandon()
+                    self._kup_abandoned = False
+                else:
+                    self._group_on_unhover()
+
+#=== Rect functions ===
+    def get_rect_opt(self, without_animation: bool = False):
+        if not without_animation:
+            return self.get_rect()
+        anim_coords = self.animation_manager.get_animation_value(AnimationType.POSITION)
+        anim_coords = anim_coords or [0,0]
+        return pygame.Rect(
+            self.absolute_coordinates.x - self.relx(anim_coords[0]), # type: ignore
+            self.absolute_coordinates.y - self.rely(anim_coords[1]), # type: ignore
+            *self.rel(self.size)
+        )
+        
+    def get_rect(self):
+        return get_rect_helper_pygame(self.absolute_coordinates, self._resize_ratio, self.size)
+    
+    def get_rect_tuple(self):
+        return get_rect_helper(self.absolute_coordinates, self._resize_ratio, self.size)
+
+    def get_rect_static(self):
+        return get_rect_helper(self.coordinates, self._resize_ratio, self.size)
+
+#=== Cache update functions ===
+    def _update_coords(self):
+        return self.coordinates
+
+    def _update_size(self):
+        return Vector2(self.rel(self.size))
+
+#=== Update functions ===
+    #========= UPDATE STRUCTURE: ==========
     #    update >
+    #
     #        primary_update >
-    #            logic_update
-    #            animation_update
-    #            event_update
+    #            logic_update >
+    #                all math and logic code
+    #            animation_update >
+    #                system animation code
+    #            event_update >
+    #                all pygame.event dependent code
+    #
     #        secondary_update >
     #            widget/layout update code
+    #
+    #        Update event cycle
     #======================================
 
     def update(self, events: list | None = None):
@@ -555,11 +577,13 @@ class NevuObject:
         self.primary_update(events)
         self.secondary_update()
         self._event_cycle(EventType.Update)
+        
     def primary_update(self, events: list | None = None):
         events = events or []
         self.logic_update()
         self.animation_update()
         self.event_update(events)
+        
     def logic_update(self):
         if not self._active or not self._visible:
             return
@@ -586,14 +610,22 @@ class NevuObject:
     def secondary_update(self):
         pass
 
-    #DRAW STRUCTURE: ----------------------
+#=== Draw functions ===
+    #========== DRAW STRUCTURE: ===========
     #    draw >
     #        primary_draw >
     #            basic draw code
+    #
+    #        Draw event cycle
+    #
     #        secondary_draw >
-    #            secondary_draw_content
-    #            secondary_draw_end
-    #--------------------------------------
+    #            secondary_draw_content >
+    #                all additional draw | on change code
+    #            secondary_draw_end >
+    #                all after change code
+    #
+    #        Render event cycle
+    #======================================
 
     def draw(self):
         self.primary_draw()
@@ -614,7 +646,8 @@ class NevuObject:
     def secondary_draw_end(self):
         if self._changed:
             self._changed = False
-    
+
+#=== Relative functions ===
     def relx(self, num: int | float, min: int | None = None, max: int| None = None) -> int | float:
         return rel_helper(num, self._resize_ratio.x, min, max)
 
@@ -626,3 +659,10 @@ class NevuObject:
     
     def rel(self, mass: NvVector2, vector: bool = True) -> NvVector2:  
         return mass_rel_helper(mass, self._resize_ratio.x, self._resize_ratio.y, vector) # type: ignore
+
+#=== Clone functions ===
+    def clone(self):
+        return NevuObject(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
+    
+    def __deepcopy__(self, *args, **kwargs):
+        return self.clone()
