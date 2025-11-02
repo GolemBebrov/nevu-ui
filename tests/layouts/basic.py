@@ -14,23 +14,25 @@ def checkboxgroup_wrapper(checkbox: ui.RectCheckBox | None):
 lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
 
 def create_test_instances():
-    ui.default_style = ui.default_style(colortheme=ui.ColorThemeLibrary.pastel_rose_light)
-    test_window = ui.Window((300,300), title="Test Window", resize_type=ui.ResizeType.CropToRatio, ratio=ui.NvVector2(1,1), _gpu_mode=True)
+    ui.default_style = ui.default_style(colortheme=ui.StateVariable(ui.ColorThemeLibrary.pastel_rose_light, ui.ColorThemeLibrary.material3_dark, ui.ColorThemeLibrary.pastel_rose_light))
+    ui.apply_config("structure_test.json")
+    test_window = ui.ConfiguredWindow()
+    #test_window = ui.Window((300,300), title="Test Window", resize_type=ui.ResizeType.CropToRatio, ratio=ui.NvVector2(1,1), _gpu_mode=True)
     test_menu = ui.Menu(test_window,[100*ui.vw, 100*ui.vh],ui.default_style(borderradius=10))
     
-    widgets_style = ui.default_style(borderradius=50, borderwidth=3)
+    widgets_style = ui.default_style(borderradius=ui.StateVariable(20,20,10), borderwidth=ui.StateVariable(2,3,1))
     
     widgets_size = [75*ui.vw, 35*ui.vh]
     widgets_size_small = [75*ui.vw, 15*ui.vh]
     widgets_size_fixed = [300, 100]
     
-    widget_kwargs = {"style": widgets_style, "size": widgets_size}
+    widget_kwargs = {"style": widgets_style, "size": widgets_size,  "will_resize": False}
     
     checkbox_group = ui.CheckBoxGroup(single_select=True)
     checkbox_group.on_checkbox_toggled_single = checkboxgroup_wrapper
     
     #widgets
-    widget = ui.Widget(widget_kwargs["size"], ui.default_style)
+    widget = ui.Widget(widget_kwargs["size"], widgets_style, clickable=True)
     label = ui.Label(lorem_ipsum, widget_kwargs["size"], widgets_style)
     input_box = ui.Input(widget_kwargs["size"], widgets_style, placeholder = "Input!", multiple=True)
     
@@ -50,7 +52,7 @@ def create_test_instances():
     element_swither = ui.ElementSwitcher(**widget_kwargs, elements = ["putin", "zelenka", "zov", "peremoga"], arrow_width=30)
     progress_bar = ui.ProgressBar(**widget_kwargs, value = 50)
     
-    slider_bar = ui.Slider(widgets_size_fixed, widgets_style(text_align_x = ui.Align.CENTER, borderradius = 50), start = 0, end = 100, step = 1, current_value = 50, tuple_role = ui.TupleColorRole.OUTLINE, bar_pair_role=ui.PairColorRole.SURFACE)# alt = True)
+    slider_bar = ui.Slider(widgets_size_fixed, widgets_style(text_align_x = ui.StateVariable(ui.Align.CENTER, ui.Align.RIGHT, ui.Align.LEFT), borderwidth=2,borderradius=50), start = 0, end = 100, step = 1, current_value = 50, tuple_role = ui.TupleColorRole.OUTLINE, bar_pair_role=ui.PairColorRole.SURFACE, will_resize=False)# alt = True)
     #element = element_swither.find("fruit_1")
     showcase_widgets = [widget, label, input_box, rect_checkbox_row, element_swither, progress_bar, slider_bar]
     

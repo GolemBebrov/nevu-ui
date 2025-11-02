@@ -21,6 +21,7 @@ class TestScrollable(NevuTest):
         self.scrollable = self.test_menu.layout
         #self.scrollable._test_debug_print = True
         self.test_widget = ui.Widget([0,0],)
+        #gradient_shader = ui.rendering.Shader(ui.nevu_state.window.display.renderer, None, open("tests/shaders/gradient_dark.frag", "r").read())
     def first_update(self):
         super().first_update()
         
