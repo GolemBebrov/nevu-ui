@@ -1,0 +1,31 @@
+{
+    "window": {
+        "title": "Nevu UI",
+        "size": [1600, 900],
+        "display": "sdl",
+        "utils": ["keyboard", "mouse", "time"],
+        "fps": 60,
+        "resizable": true,
+        "ratio": [16, 9]
+    },
+
+    "styles": {
+        "default_style": "new"
+    },
+
+    "animations": {
+        "previev_animation": {
+            "type": "position",
+            "class": "linear",
+            "duration": 1000,
+            "from": [0, 0],
+            "to": [100, 100]
+        }
+    },
+
+    "colors": {
+        "MyColor": "255, 1, 2"
+    },
+
+    "generated": true
+}
