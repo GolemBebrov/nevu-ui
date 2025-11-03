@@ -5,7 +5,7 @@ from nevu_ui.core_types import Align
 from nevu_ui.utils import mouse
 from nevu_ui.widgets import Widget, WidgetKwargs
 from nevu_ui.state import nevu_state
-from typing import Any, TypedDict, NotRequired, Unpack
+from typing import Any, TypedDict, NotRequired, Unpack, override
 
 from nevu_ui.fast.nvvector2 import (
     NvVector2 as Vector2, NvVector2
@@ -74,7 +74,7 @@ class Input(Widget):
         self._add_constant("blacklist", (list, type(None)), None)
         self._add_constant("whitelist", (list, type(None)), None)
         
-    def _lazy_init(self, size: Vector2|list):
+    def _lazy_init(self, size: Vector2 | list):
         super()._lazy_init(size)
         self._init_cursor()
         self._right_bake_text()
@@ -137,7 +137,7 @@ class Input(Widget):
         r_margin = self.right_margin * self._resize_ratio[0]
         visible_width = self.surface.get_width() - l_margin - r_margin
         
-        if visible_width < 1: visible_width = 1
+        visible_width = max(visible_width, 1)
         cursor_pos_relative_to_visible_start = ideal_cursor_x_offset - self._text_scroll_offset
         if cursor_pos_relative_to_visible_start < 0: self._text_scroll_offset = ideal_cursor_x_offset
         elif cursor_pos_relative_to_visible_start > visible_width: self._text_scroll_offset = ideal_cursor_x_offset - visible_width
@@ -156,33 +156,39 @@ class Input(Widget):
         except (pygame.error, AttributeError, IndexError): return
         t_margin = self.top_margin * self._resize_ratio[1]
         b_margin = self.bottom_margin * self._resize_ratio[1]
-        visible_height = self.surface.get_height() - t_margin - b_margin
-        if visible_height < 1 : visible_height = 1
+        visible_height = self._csize.y - t_margin - b_margin
+        visible_height = max(visible_height, 1)
         self.max_scroll_y = max(0, total_text_height - visible_height)
         if ideal_cursor_y_offset < self._text_scroll_offset_y: self._text_scroll_offset_y = ideal_cursor_y_offset
         elif ideal_cursor_y_offset + line_height > self._text_scroll_offset_y + visible_height: self._text_scroll_offset_y = ideal_cursor_y_offset + line_height - visible_height
         self._text_scroll_offset_y = max(0, min(self._text_scroll_offset_y, self.max_scroll_y))
 
-    def bake_text(self, text, unlimited_y=False, words_indent=False, 
-                    alignx=Align.LEFT, aligny=Align.TOP, continuous=False, multiline_mode=False):
-        if not hasattr(self, 'style') or not hasattr(self, 'surface'): return
+    @override
+    def bake_text(self, text: str, words_indent = False, continuous = False, multiline_mode = False): # type: ignore
         renderFont = self.get_font()
         line_height = self._get_line_height()
+        
         if continuous:
-            try: self._text_surface = renderFont.render(text, True, self._subtheme_font)
+            try: self._text_surface = renderFont.render(text, True, self.subtheme_font)
             except (pygame.error, AttributeError): self._text_surface = None
             return
+        
         if multiline_mode:
             lines = text.split('\n')
-            if not lines: self._text_surface = pygame.Surface((1, line_height), pygame.SRCALPHA); self._text_surface.fill((0,0,0,0)); return
+            
+            if not lines: 
+                self._text_surface = pygame.Surface((1, line_height), pygame.SRCALPHA)
+                self._text_surface.fill((0,0,0,0))
+                return
+            
             max_width = 0
             rendered_lines = []
-            try:
-                for line in lines:
-                        line_surface = renderFont.render(line, True, self._subtheme_font)
-                        rendered_lines.append(line_surface)
-                        max_width = max(max_width, line_surface.get_width())
-            except (pygame.error, AttributeError): self._text_surface = None; return
+            
+            for line in lines:
+                    line_surface = renderFont.render(line, True, self.subtheme_font)
+                    rendered_lines.append(line_surface)
+                    max_width = max(max_width, line_surface.get_width())
+                    
             total_height = len(lines) * line_height
             self._text_surface = pygame.Surface((max(1, max_width), max(line_height, total_height)), pygame.SRCALPHA)
             self._text_surface.fill((0,0,0,0))
@@ -192,19 +198,23 @@ class Input(Widget):
                 self._text_surface.blit(line_surface, (0, current_y))
                 current_y += line_height
             return
+        
         lines = []
         current_line = ""
-        max_line_width = self.size[0] * self._resize_ratio[0] - self.left_margin*self._resize_ratio[0] - self.right_margin*self._resize_ratio[0]
+        max_line_width = self._csize[0] - self.relx(self.left_margin + self.right_margin)
+        
         processed_text = text.replace('\r\n', '\n').replace('\r', '\n')
         paragraphs = processed_text.split('\n')
+        
         try:
             for para in paragraphs:
-                words = para.split(' ') if words_indent else list(para)
+                words = para.split() if words_indent else list(para)
                 current_line = ""
                 sep = " " if words_indent else ""
                 for word in words:
                     test_line = current_line + word + sep
-                    if renderFont.size(test_line)[0] <= max_line_width:current_line = test_line
+                    if renderFont.size(test_line)[0] <= max_line_width: 
+                        current_line = test_line
                     else:
                         if current_line: lines.append(current_line.rstrip())
                         current_line = word + sep
@@ -217,13 +227,15 @@ class Input(Widget):
                 self._text_surface = pygame.Surface((1, 1), pygame.SRCALPHA); self._text_surface.fill((0,0,0,0))
                 self._text_rect = self._text_surface.get_rect(topleft=(self.left_margin*self._resize_ratio[0], self.top_margin*self._resize_ratio[1]))
                 return
+            
             max_w = max(renderFont.size(line)[0] for line in visible_lines) if visible_lines else 1
             total_h = len(visible_lines) * line_height
-            self._text_surface = pygame.Surface((max(1,max_w), max(1,total_h)), pygame.SRCALPHA)
+            self._text_surface = pygame.Surface((max(1, max_w), max(1, total_h)), pygame.SRCALPHA)
             self._text_surface.fill((0,0,0,0))
+            
             cury = 0
             for line in visible_lines:
-                line_surf = renderFont.render(line, True, self._subtheme_font)
+                line_surf = renderFont.render(line, True, self.subtheme_font)
                 self._text_surface.blit(line_surf, (0, cury))
                 cury += line_height
 
@@ -491,9 +503,8 @@ class Input(Widget):
     def text(self): return self._entered_text
     
     @text.setter
-    def text(self,text: str):
-        if not isinstance(text, str): 
-            text = str(text)
+    def text(self,text: str | int):
+        text = str(text)
 
         original_text = self._entered_text
         if not self.multiple:
@@ -505,18 +516,22 @@ class Input(Widget):
         self._entered_text = text
         self.cursor_place = min(len(self._entered_text), self.cursor_place)
         self._changed = True
+        
+        if not self.booted: return
         self._right_bake_text()
 
         if self._on_change_fun and original_text != self._entered_text:
-            try: self._on_change_fun(self._entered_text)
-            except Exception as e: print(f"Error in Input on_change_function (setter): {e}")
+            try: 
+                self._on_change_fun(self._entered_text)
+            except Exception as e: 
+                print(f"Error in Input on_change_function (setter): {e}")
             
     def secondary_draw_content(self):
         super().secondary_draw_content()
         if not self.visible: return
+        assert self.surface
 
         if self._changed:
-            print("CHHHHHHHAAAAAANGEEEEEEEEEED")
             try:
                 renderFont = self.get_font()
                 font_loaded = True
@@ -524,20 +539,20 @@ class Input(Widget):
                 cursor_height = self.cursor.get_height()
             except (pygame.error, AttributeError):
                 font_loaded = False
-                line_height = 15 
-                cursor_height = 12 
-            if not font_loaded: return
+            if not font_loaded: 
+                return
+            
             l_margin = self.relx(self.left_margin)
             r_margin = self.relx(self.right_margin)
             t_margin = self.rely(self.top_margin)
             b_margin =  self.rely(self.bottom_margin)
+            
             clip_rect = self.surface.get_rect()
             clip_rect.left = l_margin
             clip_rect.top = t_margin
-            clip_rect.width = self.surface.get_width() - l_margin - r_margin
-            clip_rect.height = self.surface.get_height() - t_margin - b_margin
-            if clip_rect.width < 0: clip_rect.width = 0
-            if clip_rect.height < 0: clip_rect.height = 0
+            clip_rect.width = max(self._csize.x - l_margin - r_margin, 0)
+            clip_rect.height = max(self._csize.y - t_margin - b_margin, 0)
+            
             if self._text_surface:
                 if self.multiple:
                     self._text_rect = self._text_surface.get_rect(topleft=(l_margin - self._text_scroll_offset, t_margin - self._text_scroll_offset_y))
@@ -547,6 +562,7 @@ class Input(Widget):
                 self.surface.set_clip(clip_rect)
                 self.surface.blit(self._text_surface, self._text_rect)
                 self.surface.set_clip(original_clip)
+                
             if self.selected:
                 cursor_visual_x = 0
                 cursor_visual_y = 0
@@ -568,7 +584,8 @@ class Input(Widget):
                     cursor_draw_rect = self.cursor.get_rect(topleft=(cursor_visual_x, cursor_visual_y))
                     if clip_rect.colliderect(cursor_draw_rect):
                         self.surface.blit(self.cursor, cursor_draw_rect.topleft)
-                except (pygame.error, AttributeError, IndexError):pass
+                except (pygame.error, AttributeError, IndexError):
+                    print("Error drawing cursor")
     
     def clone(self):
         return Input(self._lazy_kwargs['size'], copy.deepcopy(self.style), copy.copy(self._default_text), copy.copy(self.placeholder), self._on_change_fun, **self.constant_kwargs)
