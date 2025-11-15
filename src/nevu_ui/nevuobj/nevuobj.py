@@ -507,9 +507,11 @@ class NevuObject:
     
     @hover_state.setter
     def hover_state(self, value: HoverState):
+        self.style.mark_state(value)
         if self._hover_state == value and not self._universal_state_kostil: print("Same state. Exiting"); return
         if self._universal_state_kostil: self._universal_state_kostil = False
         self._hover_state = value
+        
         match self._hover_state:
             case HoverState.CLICKED:
                 self._group_on_click()
