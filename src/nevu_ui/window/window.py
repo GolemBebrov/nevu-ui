@@ -18,6 +18,9 @@ from nevu_ui.utils import (
 from nevu_ui.fast.zsystem import (
     ZSystem, ZRequest
 )
+from nevu_ui.struct.base import standart_config
+from nevu_ui.core_types import ConfigType
+from typing import TypeGuard
 
 class Window:
     _display: DisplayBase
@@ -70,10 +73,16 @@ class Window:
         if self._gpu_mode or self._open_gl_mode:
             assert isinstance(self._display, (DisplaySdl, DisplayGL))
             nevu_state.renderer = self._display.renderer #type: ignore
+            if isinstance(self._display, DisplayGL):
+                nevu_state._renderer_type = "opengl"
+            else:
+                nevu_state._renderer_type = "sdl"
+        else:
+            nevu_state._renderer_type = "classic"
         nevu_state.z_system = self.z_system
         
     def _init_lists(self, ratio, size, minsize):
-        self._ratio = ratio or NvVector2(0, 0)
+        self._ratio = NvVector2(ratio) or NvVector2(0, 0)
         self._original_size = NvVector2(size)
         self.size = NvVector2(size)
         self.minsize = NvVector2(minsize)
@@ -85,17 +94,17 @@ class Window:
         if not self._gpu_mode and not self._open_gl_mode:
             flags = pygame.RESIZABLE if self.resizable else 0
             flags |= pygame.HWSURFACE | pygame.DOUBLEBUF
-            self._display = DisplayClassic(self.title, self.size.to_tuple(), flags)
+            self._display = DisplayClassic(self.title, self.size.to_tuple(), root = self, flags = flags)
         elif not self._open_gl_mode:
             kwargs = {}
             if self.resizable:
                 kwargs['resizable'] = True
-            self._display = DisplaySdl(self.title, [int(self.size[0]), int(self.size[1])], **kwargs)
+            self._display = DisplaySdl(self.title, [int(self.size[0]), int(self.size[1])], root = self, **kwargs)
         else:
             kwargs = {}
             if self.resizable:
                 kwargs['resizable'] = True
-            self._display = DisplayGL(self.title, [int(self.size[0]), int(self.size[1])], **kwargs)
+            self._display = DisplayGL(self.title, [int(self.size[0]), int(self.size[1])], root = self, **kwargs)
         
     @property
     @deprecated("Please use 'window.display' instead")
@@ -105,6 +114,9 @@ class Window:
     @property
     def display(self) -> DisplayBase:
         return self._display
+    
+    def is_gl(self, display) -> TypeGuard[DisplayGL]:
+        return isinstance(self._display, DisplayGL) 
     
     def clear(self, color = (0, 0, 0)):
         """
@@ -208,3 +220,27 @@ class Window:
         render_width = self.size[0] - self._crop_width_offset
         render_height = self.size[1] - self._crop_height_offset
         return NvVector2(render_width / self._original_size[0], render_height / self._original_size[1])
+
+class ConfiguredWindow(Window):
+    def __init__(self):
+        size = standart_config.win_config["size"]
+        display_type = standart_config.win_config["display"]
+        if display_type == ConfigType.Window.Display.Sdl:
+            gpu_mode = True
+            gl_mode = False
+        elif display_type == ConfigType.Window.Display.Opengl:
+            gpu_mode = False
+            gl_mode = True
+        else:
+            gpu_mode = False
+            gl_mode = False
+        #print("gpu mode:", gpu_mode, "gl mode:", gl_mode)
+        ratio = standart_config.win_config["ratio"]
+        title = standart_config.win_config["title"]
+        resizeable = standart_config.win_config["resizable"]
+        fps = standart_config.win_config["fps"]
+        #print(
+        #    f"title: {title}\nsize: {size}\ndisplay: {display_type}\nutils: {standart_config.win_config['utils']}\nfps: {fps}\nresizable: {resizeable}\nratio: {ratio}"
+        #)
+        super().__init__(title=title, size=size, _gpu_mode = gpu_mode, open_gl_mode = gl_mode, resize_type=ResizeType.CropToRatio, ratio = ratio, resizable = resizeable)
+        
