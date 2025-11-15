@@ -9,10 +9,14 @@ import moderngl
 from sdl2 import SDL_WINDOW_OPENGL
 from sdl2.video import SDL_GL_GetDrawableSize
 import numpy as np
-
+from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.nevusurface.nevusurf import NevuSurface
 import pygame_shaders
+from nevu_ui.state import nevu_state
 
 class DisplayBase:
+    def __init__(self, root):
+        self.root = root
     def get_rect(self):
         raise NotImplementedError
     
@@ -25,7 +29,7 @@ class DisplayBase:
     def get_height(self):
         raise NotImplementedError
     
-    def blit(self, source, dest_rect: pygame.Rect | tuple[int, int]):
+    def blit(self, source, dest: pygame.Rect | tuple[int, int]):
         raise NotImplementedError
     
     def clear(self, color: ColorAnnotation.RGBLikeColor = (0, 0, 0)):
@@ -39,7 +43,8 @@ class DisplayBase:
 
 
 class DisplaySdl(DisplayBase):
-    def __init__(self, title, size, **kwargs):
+    def __init__(self, title, size, root, **kwargs):
+        super().__init__(root)
         resizable = kwargs.get('resizable', False)
         self.window = SDL2Window(title, size, resizable=resizable)
         self.renderer = Renderer(self.window, accelerated=True, target_texture=True)
@@ -83,8 +88,8 @@ class DisplaySdl(DisplayBase):
     
 
 class DisplayGL(DisplayBase):
-    #WARNING: not stable, use at your own risk, fps can be very low and graphics can be strange
-    def __init__(self, title, size, **kwargs):
+    def __init__(self, title, size, root, **kwargs):
+        super().__init__(root)
         flags = pygame.OPENGL | pygame.DOUBLEBUF
         if kwargs.get('resizable', False):
             flags |= pygame.RESIZABLE
@@ -97,123 +102,147 @@ class DisplayGL(DisplayBase):
         self.surface = pygame.display.set_mode(size, flags)
         
         self.renderer = moderngl.create_context()
-        self.main_fbo = self.renderer.screen
+        
+        self.last_used = None
 
-        quad_vertices = np.array([-1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0], dtype='f4')
-        quad_indices = np.array([0, 1, 2, 0, 2, 3], dtype='i4')
-
-        self.prog = self.renderer.program(
+        self.program = self.renderer.program(
             vertex_shader='''
                 #version 330
-                uniform bool flip_y = false;
                 in vec2 in_vert;
                 out vec2 v_text;
+                uniform vec2 u_pos;
+                uniform vec2 u_size;
+                uniform vec2 u_resolution;
                 void main() {
-                    gl_Position = vec4(in_vert, 0.0, 1.0);
-                    float y = flip_y ? -in_vert.y : in_vert.y;
-                    v_text = vec2(in_vert.x, y) * 0.5 + 0.5;
+                    vec2 pos = in_vert * u_size + u_pos;
+                    vec2 ndc = pos / u_resolution * 2.0 - 1.0;
+                    gl_Position = vec4(ndc.x, -ndc.y, 0.0, 1.0);
+                    v_text = in_vert;
                 }
             ''',
             fragment_shader='''
                 #version 330
-                uniform sampler2D Texture;
                 in vec2 v_text;
                 out vec4 f_color;
+                uniform sampler2D u_texture;
+                uniform vec2 u_tex_pos;
+                uniform vec2 u_tex_size;
                 void main() {
-                    f_color = texture(Texture, v_text);
+                    f_color = texture(u_texture, u_tex_pos + v_text * u_tex_size);
                 }
             '''
         )
-        
-        self.vbo = self.renderer.buffer(quad_vertices)
-        self.ibo = self.renderer.buffer(quad_indices)
-        
-        self.vao = self.renderer.vertex_array(
-            self.prog,
-            [(self.vbo, '2f', 'in_vert')],
-            self.ibo
-        )
-        
-        size_int = tuple(map(int, size))
-        self.screen_texture = self.renderer.texture(size_int, 4)
-        self.fbo = self.renderer.framebuffer(color_attachments=[self.screen_texture])
-        
-        self.texture_fbos = {}
-        self.current_fbo = self.fbo
+        prog = self.program
 
+        self.u_resolution = prog['u_resolution']
+        self.u_pos = prog['u_pos']
+        self.u_size = prog['u_size']
+        self.u_texture = prog['u_texture']
+        self.u_tex_pos = prog['u_tex_pos']
+        self.u_tex_size = prog['u_tex_size']
+        
+        self.u_texture.value = 0
+        self.u_resolution.value = self.get_size()
+        quad_buffer = np.array([
+            0.0, 0.0,
+            1.0, 0.0,
+            0.0, 1.0,
+            1.0, 1.0,
+        ], dtype='f4')
+
+        self.vbo = self.renderer.buffer(quad_buffer)
+
+        self.vao = self.renderer.vertex_array(
+            prog, [(self.vbo, '2f', 'in_vert')]
+            )
+
+        
+    def create_vao(self, vbo):
+        return self.renderer.vertex_array(
+            self.program, [(self.vbo, '2f', 'in_vert')]
+            )
     def get_rect(self):
         return pygame.Rect(0, 0, *self.get_size())
 
     def get_size(self):
-        return pygame.display.get_window_size()
+        if nevu_state.window:
+            return nevu_state.window.size
+        return self.surface.get_size()
 
     def get_width(self):
         return self.get_size()[0]
 
     def get_height(self):
         return self.get_size()[1]
+
+    def use(self, fbo: moderngl.Framebuffer | NevuSurface):
+        if isinstance(fbo, NevuSurface):
+            fbo = fbo.fbo
+        self.last_used = fbo
+        fbo.use()
     
-    def set_target(self, texture=None):
-        if texture is None:
-            self.current_fbo = self.fbo
-        elif isinstance(texture, moderngl.Texture):
-            if texture not in self.texture_fbos:
-                raise ValueError("Target texture was not created with create_texture_target")
-            self.current_fbo = self.texture_fbos[texture]
-        else:
-            raise TypeError(f"Target must be a moderngl.Texture or None, not {type(texture)}")
-        
-        self.current_fbo.use()
+    #def blit(self, source: NevuSurface, dest: pygame.Rect | tuple[int, int] | NvVector2):
+    #    if isinstance(dest, NvVector2):
+    #        dest = dest.to_int()
+    #    elif isinstance(dest, tuple):
+    #        dest = NvVector2(dest)
+    #    size = dest.size if isinstance(dest, pygame.Rect) else source.size  
+    #    self.u_resolution.value = self.get_size()
+    #    self.u_tex_pos.value = dest.xy
+    #    self.u_tex_size.value = size
+    #    
+    #    source.texture.use(location=0)
+    #    self.u_texture.value = 0
+    #    self.vao.render(mode=moderngl.TRIANGLES)
 
-    def blit(self, source, dest_rect):
-        self.current_fbo.use()
-        
-        is_surface = isinstance(source, pygame.Surface)
-        
-        if is_surface:
-            texture_data = source.get_view('1')
-            tex = self.renderer.texture(source.get_size(), 4, texture_data)
-            tex.swizzle = 'BGRA'
-            self.prog['flip_y'].value = True
-        else:
-            tex = source
-            self.prog['flip_y'].value = False
-        
-        self.prog['Texture'].value = 0
-        tex.use(location=0)
-        self.vao.render(moderngl.TRIANGLES)
-        
-        if is_surface:
-            tex.release()
+    def blit_selected_texture(self, x, y, width, height, tex_x=0.0, tex_y=0.0, tex_width=1.0, tex_height=1.0):
+        self.u_pos.value = (x, y)
+        self.u_size.value = (width, height)
+        self.u_tex_pos.value = (tex_x, 1 - tex_y)
+        self.u_tex_size.value = (tex_width, -tex_height)
+        self.u_resolution.value = self.get_size()
+        self.renderer.screen.use()
+        self.vao.render(moderngl.TRIANGLE_STRIP)
 
-    def clear(self, color=None):
-        self.current_fbo.use()
+    def blit(self, nevu_surface: NevuSurface, dest):
+        texture = nevu_surface.texture
+        if not isinstance(dest, pygame.Rect):
+            if len(dest) == 4:
+                dest = pygame.Rect(dest)
+            elif len(dest) == 2:
+                dest = pygame.Rect(dest, (0, 0))
+        if dest.size == (0, 0):
+            dest.size = texture.size
+        texture.use(0)
+        self.blit_selected_texture(dest.x, dest.y, dest.w, dest.h, 0.0, 0.0, 1.0, 1.0)
+
+    def clear_normalized(self, color = (0, 0, 0)):
         if color:
             normalized_color = (color[0] / 255.0, color[1] / 255.0, color[2] / 255.0)
             self.renderer.clear(*normalized_color)
         else:
             self.renderer.clear()
+    
+    def clear(self, color: tuple[int, int, int] | tuple[int, int, int, int] = (0, 0, 0)): #type: ignore
+        if len(color) == 4: r, g, b, a = color
+        elif len(color) == 3: 
+            r, g, b = color
+            a = 1
+        else:
+            raise ValueError("Invalid color format")
+        self.renderer.clear(r, g, b, a)
+    
+    def fill(self, color = None):
+        self.clear_normalized(color)
 
     def update(self):
-        self.main_fbo.use()
-        self.renderer.clear()
-        
-        self.prog['Texture'].value = 0
-        self.prog['flip_y'].value = False
-        self.screen_texture.use(location=0)
-        self.vao.render(moderngl.TRIANGLES)
-        
+        self.u_resolution.value = self.get_size()
+        self.renderer.viewport = (0, 0, *self.get_size())
         pygame.display.flip()
-
-    def create_texture_target(self, width, height):
-        width, height = int(width), int(height)
-        texture = self.renderer.texture((width, height), 4)
-        fbo = self.renderer.framebuffer(color_attachments=[texture])
-        self.texture_fbos[texture] = fbo
-        return texture
     
 class DisplayClassic(DisplayBase):
-    def __init__(self, title, size, flags = 0, **kwargs):
+    def __init__(self, title, size, root, flags = 0, **kwargs):
+        super().__init__(root)
         self.window = pygame.display.set_mode(size, flags, **kwargs)
         pygame.display.set_caption(title)
         
@@ -229,8 +258,8 @@ class DisplayClassic(DisplayBase):
     def get_height(self):
         return self.window.get_height()
     
-    def blit(self, source, dest_rect: pygame.Rect): #type: ignore
-        self.window.blit(source, dest_rect)
+    def blit(self, source, dest: pygame.Rect): #type: ignore
+        self.window.blit(source, dest)
 
     def clear(self, color: ColorAnnotation.RGBLikeColor = (0, 0, 0)):
         self.window.fill(color)
