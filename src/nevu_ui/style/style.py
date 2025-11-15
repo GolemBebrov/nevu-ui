@@ -1,7 +1,7 @@
 import copy
 from typing import TypedDict, NotRequired, Unpack
 
-from nevu_ui.core_types import Align
+from nevu_ui.core_types import Align, HoverState
 from nevu_ui.rendering import Gradient
 
 from nevu_ui.color import (
@@ -28,6 +28,7 @@ class Style:
     def __init__(self,**kwargs: Unpack[StyleKwargs]):
         self._kwargs_for_copy = copy.copy(kwargs)
         self.kwargs_dict = {}
+        self._curr_state = HoverState.UN_HOVERED
         
         self._init_basic()
         
@@ -95,10 +96,13 @@ class Style:
             return True, None
         return False, None
     
+    def mark_state(self, state: HoverState):
+        self._curr_state = state
+    
     def parse_str(self, value: str) -> tuple[bool, None]:
         return self.parse_type(value, str)
     
-    def parse_type(self, value: str, type: type|tuple) -> tuple[bool, None]:
+    def parse_type(self, value: str, type: type | tuple) -> tuple[bool, None]:
         return (True, None) if isinstance(value, type) else (False, None)
     
     def _handle_kwargs(self, raise_errors: bool = False, **kwargs):
@@ -107,20 +111,78 @@ class Style:
             if dict_value is None:
                 continue
             attribute_name, checker = dict_value
-            checker_result, checker_value = checker(item_value)
-            if checker_result:
-                end_value = checker_value if checker_value is not None else item_value
+            if isinstance(item_value, StateVariable):
+                validated_values = {}
+                for state_name in ["static", "hover", "active"]:
+                    value_to_check = item_value[state_name]
+                    is_valid, new_value = checker(value_to_check)
+                    if not is_valid and raise_errors:
+                        raise ValueError(f"Invalid value for state '{state_name}' in attribute '{item_name}'")
+                    validated_values[state_name] = new_value if new_value is not None else value_to_check
+                end_value = StateVariable(**validated_values)
                 setattr(self, attribute_name, end_value)
-            elif raise_errors:
-                raise ValueError(f"Некорректное значение {item_name}")
+            else:
+                checker_result, checker_value = checker(item_value)
+                if checker_result:
+                    end_value = checker_value if checker_value is not None else item_value
+                    setattr(self, attribute_name, end_value)
+                elif raise_errors:
+                    raise ValueError(f"Incorrect value {item_name}")
+
+    def __getattribute__(self, name: str):
+        try:
+            item = super().__getattribute__(name)
+        except AttributeError as e:
+            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'") from e
+
+        if not isinstance(item, StateVariable):
+            return item
+        
+        current_state_name = hstate_to_state[super().__getattribute__('_curr_state')]
+        return item[current_state_name]
 
     def __call__(self ,**kwargs: Unpack[StyleKwargs]):
         style = copy.copy(self)
         style._handle_kwargs(**kwargs)
+        style._curr_state = HoverState.UN_HOVERED
         return style
     
     def clone(self):
         return Style(**self._kwargs_for_copy)
-    
-default_style = Style()
 
+hstate_to_state = {
+    HoverState.CLICKED: "active",
+    HoverState.HOVERED: "hover",
+    HoverState.UN_HOVERED: "static"
+}
+
+class StateVariable:
+    def __init__(self, static, hover, active):
+        if len({type(static), type(hover), type(active)}) != 1:
+            raise ValueError("static, hover and active must be of the same type")
+        self.type = type(static)
+        self.static = static
+        self.hover = hover
+        self.active = active
+        
+    def __getitem__(self, name: str | int):
+        if name == 0:
+            return self.static
+        elif name == 1:
+            return self.hover
+        elif name == 2:
+            return self.active
+        elif name in {"static", "hover", "active"}:
+            return getattr(self, name)
+        raise KeyError
+    
+    def __setitem__(self, name: int, value):
+        #Only for style for now
+        if name == 0:
+            self.static = value
+        elif name == 1:
+            self.hover = value
+        elif name == 2:
+            self.active = value
+
+default_style = Style()
