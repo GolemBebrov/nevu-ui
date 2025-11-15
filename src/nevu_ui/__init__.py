@@ -10,8 +10,9 @@ from .color import (
 )
 from .state import nevu_state
 from .style import (
-    Style, default_style
+    Style, default_style, StateVariable
 )
+from .struct import apply_config
 from .core_types import (
     Align, SizeRule, PercentSizeRule, SizeUnit, 
     Vh, vh, Vw, vw, Fill, fill, Px, px, 
@@ -32,9 +33,9 @@ from .utils import (
     Cache, NevuEvent, InputType
 )
 from .window.window import (
-    Window, ResizeType, ZRequest #Only request
+    Window, ResizeType, ZRequest, ConfiguredWindow #Only request
 )
-
+from .nevusurface import NevuSurface
 __all__ = [
     #### color.py ####
     'Color', 'Color_Type', 'ColorTheme', 'ColorSubTheme', 'ColorPair', 'ColorThemeLibrary', 'SubThemeRole', 'PairColorRole', 'TupleColorRole', 
