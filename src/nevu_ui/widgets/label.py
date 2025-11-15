@@ -39,7 +39,7 @@ class Label(Widget):
         return self._text
     
     def _fast_bake_text(self):
-        self.bake_text(self._text, False, self.words_indent, self.style.text_align_x, self.style.text_align_y, color = self._subtheme_font)
+        self.bake_text(self._text, False, self.words_indent, self.style.text_align_x, self.style.text_align_y, color = self.subtheme_font)
     
     def _on_style_change(self):
         super()._on_style_change()
