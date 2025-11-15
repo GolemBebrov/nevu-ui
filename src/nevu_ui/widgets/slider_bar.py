@@ -44,7 +44,7 @@ class Slider(Widget):
     
     def create_progress_bar(self):
         progress_style = self.progress_style or self.style
-        self.progress_bar = ProgressBar(self.size, progress_style, min_value = self.start, max_value = self.end, value = self.current_value, inline=True, alt = self.alt, color_pair_role=self.bar_pair_role, role=self.bar_pair_role)
+        self.progress_bar = ProgressBar(self.size, progress_style, min_value = self.start, max_value = self.end, value = self.current_value, inline=True, alt = self.alt, color_pair_role=self.bar_pair_role, will_resize=self.will_resize, role=self.bar_pair_role, z=-999)
         self.progress_bar.surface = self.surface
         self.progress_bar._init_start()
         self.progress_bar.booted = True
@@ -60,13 +60,16 @@ class Slider(Widget):
     def _on_click_system(self):
         super()._on_click_system()
         self.dragging = True
+        self.progress_bar._click()
     def _on_keyup_system(self):
         super()._on_keyup_system()
         self.dragging = False
+        self.progress_bar._kup()
     def _on_keyup_abandon_system(self):
         super()._on_keyup_abandon_system()
         self.dragging = False
-    
+        self.progress_bar._kup_abandon()
+        
     def _add_constants(self):
         super()._add_constants()
         self._add_constant("start", (int, float), 0)
