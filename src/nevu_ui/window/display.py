@@ -1,18 +1,18 @@
+from pygame._sdl2 import Renderer, Texture
+import pygame 
+import moderngl
+import numpy as np
+
+from nevu_ui.color.color import ColorAnnotation
+from nevu_ui.nevusurface.nevusurf import NevuSurface
+from nevu_ui.state import nevu_state
+
 from pygame._sdl2.video import (
     Window as SDL2Window, Renderer,
 )
-from nevu_ui.rendering.shader import Shader, DEFAULT_VERTEX_SHADER, DEFAULT_FRAGMENT_SHADER
-from pygame._sdl2 import Renderer, Texture
-import pygame 
-from nevu_ui.color.color import ColorAnnotation
-import moderngl
-from sdl2 import SDL_WINDOW_OPENGL
-from sdl2.video import SDL_GL_GetDrawableSize
-import numpy as np
-from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.nevusurface.nevusurf import NevuSurface
-import pygame_shaders
-from nevu_ui.state import nevu_state
+from nevu_ui.rendering.shader import (
+    Shader, DEFAULT_VERTEX_SHADER, DEFAULT_FRAGMENT_SHADER
+)
 
 class DisplayBase:
     def __init__(self, root):
@@ -40,7 +40,6 @@ class DisplayBase:
     
     def update(self):
         raise NotImplementedError
-
 
 class DisplaySdl(DisplayBase):
     def __init__(self, title, size, root, **kwargs):
