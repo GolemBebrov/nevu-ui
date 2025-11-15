@@ -70,7 +70,7 @@ class BackgroundRenderer:
         
         return gradient
     
-    def _create_surf_base(self, size = None, alt = False, radius = None, standstill = False, override_color = None): 
+    def _create_surf_base(self, size = None, alt = False, radius = None, standstill = False, override_color = None, sdf = True): 
         root = self.root
         
         needed_size = size or root._csize
@@ -78,7 +78,7 @@ class BackgroundRenderer:
         
         surf = self.draw.create_clear(needed_size.to_tuple(), flags = pygame.SRCALPHA)
         
-        color = root._subtheme_border if alt else root._subtheme_content
+        color = root.subtheme_border if alt else root.subtheme_content
         
         if not standstill:
             if root._hover_state == HoverState.CLICKED and not root.fancy_click_style and root.clickable: 
@@ -95,11 +95,14 @@ class BackgroundRenderer:
             avg_scale_factor = (root._resize_ratio.x + root._resize_ratio.y) / 2
         
         radius = (root._style.borderradius * avg_scale_factor) if radius is None else radius
-        surf.blit(RoundedRect.create_sdf(needed_size.to_tuple(), round(radius), color), (0, 0))
+        if sdf:
+            surf.blit(RoundedRect.create_sdf(needed_size.to_tuple(), round(radius), color), (0, 0))
+        else:
+            pygame.draw.rect(surf, color, pygame.rect.Rect(0, 0, *needed_size.to_tuple()), 0, round(radius))
         
         return surf
     
-    def _create_outlined_rect(self, size = None, radius = None, width = None): 
+    def _create_outlined_rect(self, size = None, radius = None, width = None, sdf = False): 
         root = self.root
         
         needed_size = size or root._csize
@@ -113,7 +116,12 @@ class BackgroundRenderer:
         radius = radius or root._style.borderradius * avg_scale_factor
         width = width or root._style.borderwidth * avg_scale_factor
         
-        return OutlinedRoundedRect.create_sdf(needed_size.to_tuple(), round(radius), round(width), root._subtheme_border)
+        if sdf:
+            result = OutlinedRoundedRect.create_sdf(needed_size.to_tuple(), round(radius), round(width), root.subtheme_border)
+        else:
+            result = self.draw.create_clear(needed_size.to_tuple(), flags = pygame.SRCALPHA)
+            pygame.draw.rect(result, root.subtheme_border, pygame.rect.Rect(0, 0, *needed_size.to_tuple()), round(width), round(radius))
+        return result
     
     def _get_correct_mask(self): 
         root = self.root
@@ -123,7 +131,7 @@ class BackgroundRenderer:
         
         return self._create_surf_base(size, root.alt, root.relm(root.style.borderradius))
     
-    def _generate_background(self): 
+    def _generate_background(self, sdf = True): 
         root = self.root
         resize_factor = _QUALITY_TO_RESOLUTION[root.quality] if root.will_resize else root._resize_ratio
         
@@ -133,14 +141,14 @@ class BackgroundRenderer:
         coords = (0,0) if root.style.borderwidth <= 0 else (1,1)
         
         if root.style.borderwidth > 0:
-            correct_mask: pygame.Surface = self._create_surf_base(rounded_size)
-            mask_surf: pygame.Surface = root.cache.get_or_exec(CacheType.Surface, lambda: self._create_surf_base(rounded_size - NvVector2(2,2))) # type: ignore
-            offset = NvVector2(2,2)
+            correct_mask: pygame.Surface = self._create_surf_base(rounded_size, sdf = sdf)
+            offset = NvVector2(2,2) if sdf else  NvVector2(4,4) 
+            mask_surf: pygame.Surface = root.cache.get_or_exec(CacheType.Surface, lambda: self._create_surf_base(rounded_size - offset, sdf = sdf)) # type: ignore
+            
         else:
-            mask_surf = correct_mask = self._create_surf_base(rounded_size)
+            mask_surf = correct_mask = self._create_surf_base(rounded_size, sdf = sdf)
             offset = NvVector2(0,0)
-        final_surf = pygame.Surface(tuple_size, flags = pygame.SRCALPHA)
-        final_surf.fill((0,0,0,0))
+        final_surf = self.draw.create_clear(tuple_size, flags = pygame.SRCALPHA)
         
         if isinstance(root.style.gradient, Gradient):
             content_surf = root.cache.get_or_exec(CacheType.Scaled_Gradient, lambda: self._scale_gradient(rounded_size - offset))
@@ -156,7 +164,7 @@ class BackgroundRenderer:
         
         if root._style.borderwidth > 0:
             cache_type = CacheType.Scaled_Borders if root.will_resize else CacheType.Borders
-            if border := root.cache.get_or_exec(cache_type, lambda: self._create_outlined_rect(rounded_size)):
+            if border := root.cache.get_or_exec(cache_type, lambda: self._create_outlined_rect(rounded_size, sdf = sdf)):
                 if root._draw_borders:
                     final_surf.blit(border, (0, 0))
                 
@@ -221,7 +229,7 @@ class BackgroundRenderer:
                   alignx: Align = Align.CENTER, aligny: Align = Align.CENTER, size: NvVector2 | None = None, color = None):
         root = self.root
         
-        color = color or root._subtheme_font
+        color = color or root.subtheme_font
         size = size or root._csize
 
         renderFont = root.get_font() 
