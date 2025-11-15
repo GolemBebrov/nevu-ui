@@ -126,7 +126,19 @@ class Widget(NevuObject):
             self._subtheme_border = self._main_subtheme_border
             self._subtheme_content = self._main_subtheme_content
             self._subtheme_font = self._main_subtheme_font
-            
+    
+    @property
+    def subtheme_border(self):
+        return self._subtheme_border()
+    
+    @property
+    def subtheme_content(self):
+        return self._subtheme_content()
+    
+    @property
+    def subtheme_font(self):
+        return self._subtheme_font()
+    
     def _lazy_init(self, size: NvVector2 | list):
         super()._lazy_init(size)
         if self.inline: return
@@ -209,24 +221,21 @@ class Widget(NevuObject):
             self.cache.set(CacheType.Image, pygame.transform.scale(img, self._csize))
         except Exception: self.cache.clear_selected(whitelist = [CacheType.Image])
 
-    @property
     def _main_subtheme_content(self):
         return self._subtheme.color
-    @property
+
     def _main_subtheme_border(self):
         return self._subtheme.oncolor
 
-    @property
     def _alt_subtheme_content(self):
         return self._subtheme.container
-    @property
+
     def _alt_subtheme_border(self):
         return self._subtheme.oncontainer
-    @property
+
     def _main_subtheme_font(self):
         return self.style.colortheme.get_pair(self.font_role).color
 
-    @property
     def _alt_subtheme_font(self):
         return self.style.colortheme.get_pair(self.font_role).oncolor
     
