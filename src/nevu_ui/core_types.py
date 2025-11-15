@@ -118,7 +118,7 @@ class ResizeType(Enum):
     FillAllScreen = auto()
     ResizeFromOriginal = auto()
 
-class RenderMode(Enum): 
+class RenderMode(Enum): # TODO: make use for this
     AA = auto()
     SDF = auto()
 
@@ -167,3 +167,20 @@ class TooltipType(StrEnum):
     Small = "small"
     Medium = "medium"
     Large = "large"
+
+class ConfigType():
+    class Window():
+        class Size():
+            Small = (600, 300)
+            Medium = (800, 600)
+            Big = (1600, 800)
+        class Display(StrEnum):
+            Classic = "classic"
+            Sdl = "sdl"
+            Opengl = "opengl"
+
+        class Utils:
+            All = ["keyboard", "mouse", "time"]
+            Keyboard = ["keyboard"]
+            Mouse = ["mouse"]
+            Time = ["time"]
