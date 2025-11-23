@@ -35,7 +35,7 @@ from .utils import (
 from .window.window import (
     Window, ResizeType, ZRequest, ConfiguredWindow #Only request
 )
-from .nevusurface import NevuSurface
+
 __all__ = [
     #### color.py ####
     'Color', 'Color_Type', 'ColorTheme', 'ColorSubTheme', 'ColorPair', 'ColorThemeLibrary', 'SubThemeRole', 'PairColorRole', 'TupleColorRole', 
