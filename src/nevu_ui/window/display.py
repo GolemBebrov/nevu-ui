@@ -173,9 +173,7 @@ class DisplayGL(DisplayBase):
     def get_height(self):
         return self.get_size()[1]
 
-    def use(self, fbo: moderngl.Framebuffer | NevuSurface):
-        if isinstance(fbo, NevuSurface):
-            fbo = fbo.fbo
+    def use(self, fbo: moderngl.Framebuffer ):
         self.last_used = fbo
         fbo.use()
     
@@ -202,7 +200,7 @@ class DisplayGL(DisplayBase):
         self.renderer.screen.use()
         self.vao.render(moderngl.TRIANGLE_STRIP)
 
-    def blit(self, nevu_surface: NevuSurface, dest):
+    def blit(self, nevu_surface, dest):
         texture = nevu_surface.texture
         if not isinstance(dest, pygame.Rect):
             if len(dest) == 4:
