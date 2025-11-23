@@ -4,7 +4,6 @@ import moderngl
 import numpy as np
 
 from nevu_ui.color.color import ColorAnnotation
-from nevu_ui.nevusurface.nevusurf import NevuSurface
 from nevu_ui.state import nevu_state
 
 from pygame._sdl2.video import (
