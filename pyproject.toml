@@ -24,6 +24,7 @@ dependencies = [
     "pygame-ce>=2.3.0", 
     "numpy",
     "Pillow",
+    "moderngl",
 ]
 
 [project.urls]
