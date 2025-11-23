@@ -77,7 +77,7 @@ class RectCheckBox(Widget):
             inner_surf = self.renderer._create_surf_base(
                 active_size, 
                 True, 
-                self.relm(inner_radius)
+                self.relm(inner_radius), sdf=True
             )
             
             self.surface.blit(inner_surf, offset)

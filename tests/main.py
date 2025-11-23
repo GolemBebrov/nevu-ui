@@ -2,18 +2,19 @@
 import sys
 import nevu_ui as ui
 import pygame
+import random
 pygame.init()
 
 class Mygame(ui.Manager):
     def __init__(self):
         self.window = ui.Window((400,400), resize_type=ui.ResizeType.CropToRatio ,ratio=ui.NvVector2(1,1), _gpu_mode=True)
         super().__init__(self.window)
-        self.fps = 7599999999999 #Задаем нуженый fps
-        self._dirty_mode = False #Для оптимизации(не рекомендуется включать)
+        self.fps = 75999999999999999 #Задаем нуженый fps
+        self._dirty_mode = False #Для тольео оптимизации(не рекомендуется включать)
         self.background = (0,0,100) #Цвет фона
          #Создаем окно
         main_style = ui.Style( #Гланый стиль
-            borderradius=10, borderwidth=2, colortheme=ui.ColorThemeLibrary.github_dark,
+            borderradius=10, borderwidth=2,
             fontname="tests/vk_font.ttf", gradient=ui.Gradient(colors=[ui.Color.AQUA,(100,100,100)],type=ui.GradientType.Linear,direction=ui.LinearSide.Right))
         style_mini_font = main_style( #Подстиль
             fontsize=15, border_radius=15,  
@@ -21,8 +22,12 @@ class Mygame(ui.Manager):
     
         b = ui.Button(lambda: print("Button 1"), "Test Chamber", [50*ui.fill,11*ui.fill], style=style_mini_font(borderradius=15, borderwidth=2, fontsize=10), words_indent=True, alt=True, will_resize=True) #Создаем кнопку
         i = ui.Input([100*ui.fill,30*ui.fill],style_mini_font(borderradius=30,borderwidth=0,fontname="tests/vk_font.ttf"),"","Введите", alt=True, will_resize=True, multiple=True) #Создаем инпут
-        
-        i.animation_manager.add_continuous_animation(ui.animations.EaseOut(3,[0,-100],[0,0],ui.animations.AnimationType.POSITION)) #Добавляем анимацию в начало
+        conf = i.constant_kwargs.copy()
+        conf['single_instance'] = True
+        self.icopy = ui.Input([100*ui.fill,30*ui.fill],**conf)
+        self.icopy.animation_manager.add_start_animation(ui.animations.EaseOut(6,[0,-100],[0,0],ui.animations.AnimationType.POSITION)) #Добавляем анимацию в начало
+        self.icopy.animation_manager.add_start_animation(ui.animations.EaseOut(6,0, 255,ui.animations.AnimationType.OPACITY)) #Добавляем анимацию в начало
+        "ss" if True else "dd"
         "ss" if True else "dd"
         #создаем макет
         gridmenu = ui.Grid([66*ui.fill, 40*ui.fill], x=3,y=3, 
@@ -37,13 +42,23 @@ class Mygame(ui.Manager):
                 layout = ui.Grid([100*ui.fill,100*ui.fill],x=3,y=3, 
                          content = {
                          (2,1.2): gridmenu,
-                         (2,2.1): gridmenu, #Внимание: Grid поддерживает 
-                         (2,3): gridmenu    #Координаты с плавающими числами в допустимом диапозоне
+                         (2,2.1): gridmenu, 
+                         (2,3): self.icopy   
                      }   
                  )
              )    
-        self.menu.quality = ui.Quality.Best #Для качества(по умолчанию Quality.Decent)
-        self.menu.will_resize = True #Для оптимизации
+        items = self.menu.layout.items
+        
+        items = items[:2]
+        for item in items:
+            ititems = item.items
+            anims = ui.animations
+            anim = [anims.Bounce, anims.EaseInBack, anims.EaseIn, anims.EaseOut, anims.EaseInOut][random.randint(0,4)]
+            ititems[0].animation_manager.add_continuous_animation(anim(random.randint(2,5),[125,0],[-125,0],ui.animations.AnimationType.POSITION))
+            ititems[1].animation_manager.add_continuous_animation(ui.animations.Glitch(random.randint(2,5),[-70,0],[70,0],ui.animations.AnimationType.POSITION))
+        print(items)
+        self.menu.quality = ui.Quality.Best 
+        self.menu.will_resize = True 
 
     def draw_loop(self):
         #self.menu.surface.fill(self.background)
@@ -52,11 +67,13 @@ class Mygame(ui.Manager):
       
     def update_loop(self, events):
         self.menu.update()
+        print(self.menu.layout.items[-1].texture.alpha) if hasattr(self.menu.layout.items[-1],"texture") else None
         show_fps = True
         fps_mode = "Unslowed"
         #Для показа фпс
         if show_fps:
             print(f"FPS {fps_mode}: ",ui.time.fps)
+        #print("anim_value:", self.icopy.animation_manager.get_animation_value(ui.animations.AnimationType.POSITION))
 
 def test_main():
     #Запускаем

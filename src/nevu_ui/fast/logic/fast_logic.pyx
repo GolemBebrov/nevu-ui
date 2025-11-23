@@ -161,13 +161,13 @@ cpdef _light_update_helper(
     for i in range(n_items):
         item = items[i]
         coords = cached_coordinates[i]
-        anim_coords = item.animation_manager.get_animation_value(AnimationType.POSITION)
+        anim_coords = NvVector2(item.animation_manager.get_animation_value(AnimationType.POSITION)) if item.animation_manager.get_animation_value(AnimationType.POSITION) is not None else None
         if anim_coords is None:
             item.coordinates = NvVector2(coords.x + add_x,
                                         coords.y + add_y)
         else:
-            item.coordinates = NvVector2(coords.x + rel_helper(anim_coords[0], resize_ratio.x, None, None) + add_x,
-                                        coords.y + rel_helper(anim_coords[1], resize_ratio.y, None, None) + add_y)
+            item.coordinates = NvVector2(coords.x + rel_helper(anim_coords.x, resize_ratio.x, None, None) + add_x,
+                                        coords.y + rel_helper(anim_coords.y, resize_ratio.y, None, None) + add_y)
 
         item.master_coordinates = item.coordinates + m_coords
         item.update(last_events)

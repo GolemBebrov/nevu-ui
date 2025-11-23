@@ -187,22 +187,27 @@ class LayoutType(NevuObject):
     def add_item(self, item: NevuObject):
         if not item.single_instance: item = item.clone()
         item._master_z_handler = self._master_z_handler
+        print("MASTER ZZZ", self._master_z_handler, self)
         if self.is_layout(item): 
-            assert self.is_layout(item)
             item._connect_to_layout(self)
-        elif self.is_widget(item):
-            self.read_item_coords(item)
-            self._start_item(item)
-            if item.floating: self.floating_items.append(item)
-            else: self.items.append(item)
-            return
-        
         self.read_item_coords(item)
         self._start_item(item)
+        if self.booted:
+            item.booted = True
+            item._boot_up()
         self.items.append(item)
         self.cached_coordinates = None
         return item
-
+    
+    def add_floating_item(self, item: NevuObject):
+        if not item.single_instance: item = item.clone()
+        item._master_z_handler = self._master_z_handler
+        if self.is_layout(item): 
+            item._connect_to_layout(self)
+        self.read_item_coords(item)
+        self._start_item(item)
+        self.floating_items.append(item)
+        return item
     def apply_style_to_childs(self, style: Style):
         for item in self.items:
             assert isinstance(item, (Widget, LayoutType))

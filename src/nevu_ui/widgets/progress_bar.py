@@ -4,9 +4,8 @@ import math
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.widgets import Widget, WidgetKwargs
 from nevu_ui.color import PairColorRole
-from nevu_ui.rendering.blit import ReverseAlphaBlit, AlphaBlit
 
-from typing import Any, TypedDict, NotRequired, Unpack, Union
+from typing import NotRequired, Unpack, Union
 
 from nevu_ui.style import (
     Style, default_style
@@ -130,7 +129,8 @@ class ProgressBar(Widget):
         surf = self.renderer._create_surf_base(
             NvVector2(size_x, size_y), 
             override_color=self._subtheme_progress, 
-            radius=radius
+            radius=radius,
+            sdf = True
         )
         
         coords = NvVector2(self._rsize_marg.x / 2 - 1, self._rsize_marg.y / 2 + y_decrease - 1)

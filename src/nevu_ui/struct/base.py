@@ -18,9 +18,18 @@ class Config:
             "resizable": True,
             "ratio": (1,1)
         }
-        self.styles = NotCreatedError
+        self.styles = {}
         self.colors = {}
-        self.colorthemes = NotCreatedError
+        self.colorthemes = {}
         self.animations = NotCreatedError
         
 standart_config = Config()
+
+def get_color(name: str, default = None):
+    return standart_config.colors.get(name, default)
+
+def get_style(name: str, default = None):
+    return standart_config.styles.get(name, default)
+
+def get_colortheme(name: str, default = None):
+    return standart_config.colorthemes.get(name, default)

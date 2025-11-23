@@ -92,7 +92,12 @@ class Glitch(Animation):
                 elif self.type == AnimationType.SIZE:
                     self.current_value = tuple(random.randint(int(self.start[i] * 0.5), int(self.end[i] * 1.5)) for i in range(2))
                 elif self.type == AnimationType.POSITION:
-                    self.current_value = tuple(random.randint(int(self.start[i] - 50), int(self.end[i] + 50)) for i in range(2))
+                    self.current_value = tuple(
+                        random.randint(
+                            min(int(self.start[i] - 50), int(self.end[i] + 50)), 
+                            max(int(self.start[i] - 50), int(self.end[i] + 50))
+                        ) for i in range(2)
+                    )
                 elif self.type == AnimationType.ROTATION:
                     self.current_value = random.uniform(self.start - 45, self.end + 45)
                 elif self.type == AnimationType.OPACITY:
@@ -304,3 +309,21 @@ class EaseInOutBack(Animation):
         else:
             eased_value = (pow(2 * value - 2, 2) * ((c2 + 1) * (value * 2 - 2) + c2) + 2) / 2
         self._apply_easing(eased_value)
+
+def _apply_common_easing(self, eased_value):
+    if self.type == AnimationType.COLOR:
+        self.current_value = tuple(round(self.start[i] + (self.end[i] - self.start[i]) * eased_value) for i in range(4))
+    elif self.type == AnimationType.SIZE:
+        self.current_value = tuple(round(self.start[i] + (self.end[i] - self.start[i]) * eased_value) for i in range(2))
+    elif self.type == AnimationType.POSITION:
+        self.current_value = tuple(round(self.start[i] + (self.end[i] - self.start[i]) * eased_value) for i in range(2))
+    elif self.type == AnimationType.ROTATION:
+        self.current_value = self.start + (self.end - self.start) * eased_value
+    elif self.type == AnimationType.OPACITY:
+        self.current_value = self.start + (self.end - self.start) * eased_value
+    else:
+        raise ValueError(f"Unsupported animation type: {self.type}")
+
+for cls in Animation.__subclasses__():
+  if cls not in (Linear, Bounce):
+    cls._apply_easing = _apply_common_easing

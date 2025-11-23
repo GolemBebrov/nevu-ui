@@ -25,31 +25,39 @@ class StyleKwargs(TypedDict):
     gradient: NotRequired[Gradient]
     
 class Style:
-    def __init__(self,**kwargs: Unpack[StyleKwargs]):
+    def __init__(self, **kwargs: Unpack[StyleKwargs]):
         self._kwargs_for_copy = copy.copy(kwargs)
         self.kwargs_dict = {}
+        self.parameters_dict = {
+            "borderradius": ["borderradius", self._parse_int_min0],
+            "br": ["borderradius", self._parse_int_min0],
+            "borderwidth": ["borderwidth", self._parse_int_min0],
+            "bw": ["borderwidth", self._parse_int_min0],
+            "fontsize": ["fontsize", lambda value: self.parse_int(value, min_restriction = 1)],
+            "fontname": ["fontname", self.parse_str],
+            "fontpath": ["fontname", self.parse_str],
+            "text_align_x": ["text_align_x", self._parse_align],
+            "text_align_y": ["text_align_y", self._parse_align],
+            "transparency": ["transparency", lambda value: self.parse_int(value, max_restriction = 255, min_restriction = 0)],
+            "bgimage": ["bgimage", self.parse_str],
+            "colortheme": ["colortheme", lambda value: self.parse_type(value, ColorTheme)],
+            "gradient": ["gradient", lambda value: self.parse_type(value, Gradient)],
+        }
         self._curr_state = HoverState.UN_HOVERED
-        
         self._init_basic()
-        
         self._add_paramethers()
-        
         self._handle_kwargs(**kwargs)
     
+    def _parse_int_min0(self, value):
+        return self.parse_int(value, min_restriction = 0)
+    
+    def _parse_align(self, value):
+        return self.parse_type(value, Align)
+    
     def _add_paramethers(self):
-        self.add_style_parameter("borderradius", "borderradius", lambda value:self.parse_int(value, min_restriction=0))
-        self.add_style_parameter("br", "borderradius", lambda value:self.parse_int(value, min_restriction=0))
-        self.add_style_parameter("borderwidth", "borderwidth", lambda value:self.parse_int(value, min_restriction=0))
-        self.add_style_parameter("bw", "borderwidth", lambda value:self.parse_int(value, min_restriction=0))
-        self.add_style_parameter("fontsize", "fontsize", lambda value:self.parse_int(value, min_restriction=1))
-        self.add_style_parameter("fontname", "fontname", lambda value:self.parse_str(value))
-        self.add_style_parameter("fontpath", "fontname", lambda value:self.parse_str(value))
-        self.add_style_parameter("text_align_x", "text_align_x", lambda value:self.parse_type(value, Align))
-        self.add_style_parameter("text_align_y", "text_align_y", lambda value:self.parse_type(value, Align))
-        self.add_style_parameter("transparency", "transparency", lambda value:self.parse_int(value, max_restriction=255, min_restriction=0))
-        self.add_style_parameter("bgimage", "bgimage", lambda value:self.parse_str(value))
-        self.add_style_parameter("colortheme", "colortheme", lambda value:self.parse_type(value, ColorTheme))
-        self.add_style_parameter("gradient", "gradient", lambda value:self.parse_type(value, Gradient))
+        for name, value in self.parameters_dict.items():
+            paramether, checker_lambda = value
+            self.add_style_parameter(name, paramether, checker_lambda)
         
     def _init_basic(self):
         self.colortheme = copy.copy(ColorThemeLibrary.material3_dark)
@@ -62,7 +70,7 @@ class Style:
         self.transparency = None
         self.bgimage = None
         self.gradient = None
-        
+    
     def add_style_parameter(self, name: str, attribute_name: str, checker_lambda):
         self.kwargs_dict[name] = (attribute_name, checker_lambda)
         
@@ -107,27 +115,30 @@ class Style:
     
     def _handle_kwargs(self, raise_errors: bool = False, **kwargs):
         for item_name, item_value in kwargs.items():
-            dict_value = self.kwargs_dict.get(item_name.lower(), None)
+            dict_value = self.kwargs_dict.get(item_name.lower().replace("_", ""), None)
             if dict_value is None:
                 continue
-            attribute_name, checker = dict_value
-            if isinstance(item_value, StateVariable):
-                validated_values = {}
-                for state_name in ["static", "hover", "active"]:
-                    value_to_check = item_value[state_name]
-                    is_valid, new_value = checker(value_to_check)
-                    if not is_valid and raise_errors:
-                        raise ValueError(f"Invalid value for state '{state_name}' in attribute '{item_name}'")
-                    validated_values[state_name] = new_value if new_value is not None else value_to_check
-                end_value = StateVariable(**validated_values)
+            self._handle_single_item(item_name, item_value, dict_value, raise_errors)
+
+    def _handle_single_item(self, item_name, item_value, dict_value, raise_errors: bool = False):
+        attribute_name, checker = dict_value
+        if isinstance(item_value, StateVariable):
+            validated_values = {}
+            for state_name in ["static", "hover", "active"]:
+                value_to_check = item_value[state_name]
+                is_valid, new_value = checker(value_to_check)
+                if not is_valid and raise_errors:
+                    raise ValueError(f"Invalid value for state '{state_name}' in attribute '{item_name}'")
+                validated_values[state_name] = new_value if new_value is not None else value_to_check
+            end_value = StateVariable(**validated_values)
+            setattr(self, attribute_name, end_value)
+        else:
+            checker_result, checker_value = checker(item_value)
+            if checker_result:
+                end_value = checker_value if checker_value is not None else item_value
                 setattr(self, attribute_name, end_value)
-            else:
-                checker_result, checker_value = checker(item_value)
-                if checker_result:
-                    end_value = checker_value if checker_value is not None else item_value
-                    setattr(self, attribute_name, end_value)
-                elif raise_errors:
-                    raise ValueError(f"Incorrect value {item_name}")
+            elif raise_errors:
+                raise ValueError(f"Incorrect value {item_name}")
 
     def __getattribute__(self, name: str):
         try:
@@ -177,12 +188,14 @@ class StateVariable:
         raise KeyError
     
     def __setitem__(self, name: int, value):
-        #Only for style for now
         if name == 0:
             self.static = value
         elif name == 1:
             self.hover = value
         elif name == 2:
             self.active = value
+        elif name in {"static", "hover", "active"}:
+            setattr(self, name, value)
+        raise KeyError
 
 default_style = Style()

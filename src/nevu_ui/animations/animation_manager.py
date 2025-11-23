@@ -30,7 +30,7 @@ class AnimationManager:
         self.transition_time = None
 
         self.state = AnimationManagerState.START
-        self.runnung = True
+        self.running = True
 
         self.restart_anim_values()
     def restart_anim_values(self):
@@ -80,7 +80,7 @@ class AnimationManager:
                         self._restart_anim(animation)
 
             case State.ENDED:
-                self.runnung = False
+                self.running = False
                 self.restart_anim_values()
                 self.state = AnimationManagerState.IDLE
 
@@ -143,7 +143,7 @@ class AnimationManager:
                     transition_anim = self.transition_animation(transition_time, start_value, end_value, anim_type) # type: ignore
                     self.transition_animations[anim_type] = transition_anim
                     transition_anim.reset()
-    def _restart_anim(self,animation: Animation):
+    def _restart_anim(self, animation: Animation):
         if animation:
+            animation.start, animation.end = animation.end, animation.start
             animation.reset()
-            animation.start,animation.end = animation.end,animation.start

@@ -1,7 +1,7 @@
 from enum import Enum, auto
 from abc import ABC, abstractmethod
 from typing import Any
-from nevu_ui.utils import time
+from nevu_ui.utils.time import time
 
 class AnimationType(Enum):
     COLOR = auto()
@@ -42,7 +42,7 @@ class Animation(ABC):
         if self.ended:
             return
         self._animation_update(self.time / self.time_maximum)
-        self.time += 1 * time.delta_time
+        self.time += 1 * time.dt
         if self.time >= self.time_maximum:
             self.time = self.time_maximum
             self.ended = True

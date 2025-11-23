@@ -22,6 +22,8 @@ def get_extensions():
         Extension(
             "nevu_ui.fast.shapes.fast_shapes",
             ["src/nevu_ui/fast/shapes/fast_shapes.pyx"],
+            extra_compile_args=['-fopenmp'], 
+            extra_link_args=['-fopenmp'],
             include_dirs=[get_numpy_include()]
         ),
         Extension(

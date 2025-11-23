@@ -1,5 +1,6 @@
 import pygame
 import copy
+from nevu_ui.widgets import Button
 from typing import Any
 import contextlib
 from nevu_ui.fast.logic import _light_update_helper
@@ -394,11 +395,16 @@ class ScrollableBase(LayoutType):
         if not self._parse_align(alignment): return
         if not self._test_debug_print:
             print(f"in {self} added widget: {item} at {alignment}.")
-            
         if item.single_instance is False: item = item.clone()
         item._master_z_handler = self._master_z_handler
+        if self.is_layout(item):
+            item._connect_to_layout(self)
         self.read_item_coords(item)
         self._start_item(item)
+
+        if self.booted:
+            item.booted = True
+            item._boot_up()
         self.items.append(item)
         self.widgets_alignment.append(alignment)
 

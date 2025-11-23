@@ -315,3 +315,6 @@ class Color:
         r, g, b = (sum(c) // len(final_color_list) for c in zip(*final_color_list))
         return (r, g, b)
     
+    @staticmethod
+    def get_color(color: str, default=None):
+        return getattr(Color, color.upper(), default)

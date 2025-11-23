@@ -4,12 +4,21 @@
 # cython: wraparound=False
 # cython: cdivision=True
 # cython: nonecheck=False
+# cython: initializedcheck=False
 
 cimport cython
 import pygame
 from libc.math cimport sqrt
 
 cdef class NvVector2:
+    
+    @staticmethod
+    cdef inline NvVector2 new(float x, float y):
+        cdef NvVector2 vec = NvVector2.__new__(NvVector2)
+        vec.x = x
+        vec.y = y
+        return vec
+
     def __init__(self, *args):
         cdef int nargs = len(args)
         if nargs == 0:
@@ -38,19 +47,19 @@ cdef class NvVector2:
 
     @property
     def xx(self):
-        return NvVector2(self.x, self.x)
+        return NvVector2.new(self.x, self.x)
 
     @property
     def yy(self):
-        return NvVector2(self.y, self.y)
+        return NvVector2.new(self.y, self.y)
 
     @property
     def xy(self):
-        return NvVector2(self.x, self.y)
+        return NvVector2.new(self.x, self.y)
 
     @property
     def yx(self):
-        return NvVector2(self.y, self.x)
+        return NvVector2.new(self.y, self.x)
 
     def to_tuple(self):
         return (self.x, self.y)
@@ -72,35 +81,35 @@ cdef class NvVector2:
             raise IndexError("Vector index out of range")
 
     @cython.ccall
-    cdef NvVector2 _add(self, NvVector2 other):
-        return NvVector2(self.x + other.x, self.y + other.y)
+    cdef inline NvVector2 _add(self, NvVector2 other):
+        return NvVector2.new(self.x + other.x, self.y + other.y)
 
     @cython.ccall
-    cdef NvVector2 _sub(self, NvVector2 other):
-        return NvVector2(self.x - other.x, self.y - other.y)
+    cdef inline NvVector2 _sub(self, NvVector2 other):
+        return NvVector2.new(self.x - other.x, self.y - other.y)
 
     @cython.ccall
-    cdef NvVector2 _mul_scalar(self, float val):
-        return NvVector2(self.x * val, self.y * val)
+    cdef inline NvVector2 _mul_scalar(self, float val):
+        return NvVector2.new(self.x * val, self.y * val)
 
     @cython.ccall
-    cdef NvVector2 _mul_vector(self, NvVector2 other):
-        return NvVector2(self.x * other.x, self.y * other.y)
+    cdef inline NvVector2 _mul_vector(self, NvVector2 other):
+        return NvVector2.new(self.x * other.x, self.y * other.y)
 
     @cython.ccall
-    cdef NvVector2 _iadd(self, NvVector2 other):
+    cdef inline NvVector2 _iadd(self, NvVector2 other):
         self.x += other.x
         self.y += other.y
         return self
 
     @cython.ccall
-    cdef NvVector2 _isub(self, NvVector2 other):
+    cdef inline NvVector2 _isub(self, NvVector2 other):
         self.x -= other.x
         self.y -= other.y
         return self
 
     @cython.ccall
-    cdef NvVector2 _imul(self, NvVector2 other):
+    cdef inline NvVector2 _imul(self, NvVector2 other):
         self.x *= other.x
         self.y *= other.y
         return self
@@ -130,22 +139,22 @@ cdef class NvVector2:
 
     def __truediv__(self, other):
         if isinstance(other, NvVector2):
-            return NvVector2(self.x / other.x, self.y / other.y)
+            return NvVector2.new(self.x / other.x, self.y / other.y)
         elif isinstance(other, (int, float)):
-            return NvVector2(self.x / other, self.y / other)
+            return NvVector2.new(self.x / other, self.y / other)
         else:
             return NotImplemented
 
     def __floordiv__(self, other):
         if isinstance(other, NvVector2):
-            return NvVector2(self.x // other.x, self.y // other.y)
+            return NvVector2.new(self.x // other.x, self.y // other.y)
         elif isinstance(other, (int, float)):
-            return NvVector2(self.x // other, self.y // other)
+            return NvVector2.new(self.x // other, self.y // other)
         else:
             return NotImplemented
 
     def __neg__(self):
-        return NvVector2(-self.x, -self.y)
+        return NvVector2.new(-self.x, -self.y)
 
     def __repr__(self):
         return f"NvVector2({self.x}, {self.y})"
@@ -156,7 +165,7 @@ cdef class NvVector2:
         return self
 
     def get_int(self):
-        return NvVector2(int(self.x), int(self.y))
+        return NvVector2.new(int(self.x), int(self.y))
     
     def to_round(self):
         self.x = round(self.x)
@@ -164,7 +173,7 @@ cdef class NvVector2:
         return self
 
     def get_round(self):
-        return NvVector2(round(self.x), round(self.y))
+        return NvVector2.new(round(self.x), round(self.y))
 
     def to_abs(self):
         self.x = abs(self.x)
@@ -172,7 +181,7 @@ cdef class NvVector2:
         return self
 
     def get_abs(self):
-        return NvVector2(abs(self.x), abs(self.y))
+        return NvVector2.new(abs(self.x), abs(self.y))
 
     def to_neg(self):
         self.x = -self.x
@@ -180,19 +189,19 @@ cdef class NvVector2:
         return self
 
     def get_neg(self):
-        return NvVector2(-self.x, -self.y)
+        return NvVector2.new(-self.x, -self.y)
 
     def to_pygame(self):
         return pygame.Vector2(self.x, self.y)
     
     def copy(self):
-        return NvVector2(self.x, self.y)
+        return NvVector2.new(self.x, self.y)
 
     def __copy__(self):
-        return NvVector2(self.x, self.y)
+        return NvVector2.new(self.x, self.y)
     
     def __deepcopy__(self, memo):
-        return NvVector2(self.x, self.y)
+        return NvVector2.new(self.x, self.y)
     
     def __hash__(self):
         return hash((self.x, self.y))
@@ -211,16 +220,23 @@ cdef class NvVector2:
         return sqrt(self.x * self.x + self.y * self.y)
     
     def normalize(self):
-        cdef float l = self.length
-        if l == 0: 
-            return NvVector2(0, 0)
-        return NvVector2(self.x / l, self.y / l)
+            cdef float l = sqrt(self.x * self.x + self.y * self.y)
+            cdef float inv_l
+            
+            if l == 0: 
+                return NvVector2.new(0.0, 0.0)
+            
+            inv_l = 1.0 / l
+            return NvVector2.new(self.x * inv_l, self.y * inv_l)
     
     def normalize_ip(self):
-        cdef float l = self.length
+        cdef float l = sqrt(self.x * self.x + self.y * self.y)
+        cdef float inv_l
+        
         if l > 0: 
-            self.x /= l
-            self.y /= l
+            inv_l = 1.0 / l
+            self.x *= inv_l
+            self.y *= inv_l
         return self
     
     def distance_to(self, NvVector2 other):

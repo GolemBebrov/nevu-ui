@@ -199,7 +199,14 @@ class Menu:
             result = result1
         return result
         #return lambda: self._scale_background(self.size*_QUALITY_TO_RESOLUTION[self.quality]) if self.will_resize else self._generate_background
-
+    def _scale_image(self, size = None):
+        size = size or self.size * self._resize_ratio
+        return self.cache.get_or_exec(CacheType.Image, lambda: self._load_image(size))
+    def _load_image(self, size = None):
+        size = size or self.size * self._resize_ratio
+        surf = pygame.image.load(self.style.bgimage).convert_alpha()
+        surf = pygame.transform.smoothscale(surf, (max(1, int(size.x)), max(1, int(size.y))))
+        return surf
     def _generate_background(self):
         resize_factor = _QUALITY_TO_RESOLUTION[self.quality] if self.will_resize else self._resize_ratio
         bgsurface = pygame.Surface(self.size * resize_factor, flags = pygame.SRCALPHA)
@@ -207,6 +214,9 @@ class Menu:
             content_surf = self.cache.get_or_exec(CacheType.Scaled_Gradient, lambda: self._scale_gradient(self.size * resize_factor))
             if self.style.transparency: bgsurface.set_alpha(self.style.transparency)
         else: content_surf = self.cache.get(CacheType.Scaled_Gradient)
+        if isinstance(self.style.bgimage, str):
+            content_surf = self.cache.get_or_exec(CacheType.Scaled_Image, lambda: self._scale_image(self.size * resize_factor))
+        else: content_surf = self.cache.get(CacheType.Scaled_Image)
         if content_surf:
             bgsurface.blit(content_surf,(0,0))
         else: bgsurface.fill(self._subtheme.container)
@@ -270,6 +280,7 @@ class Menu:
         
     def close_submenu(self):
         self._opened_sub_menu = None
+        print("CLOSED SUKA")
         
     def _update_surface(self):
         if self.style.borderradius>0:self.surface = pygame.Surface(self._pygame_size, pygame.SRCALPHA)
@@ -332,8 +343,10 @@ class Menu:
             layout._master_z_handler = self.window.z_system
             layout._init_start()
             layout._connect_to_menu(self)
-            layout._boot_up()
+            layout.first_parent_menu = self
 
+            layout._boot_up()
+            
             layout.coordinates = NvVector2(self.size[0]/2 - layout.size[0]/2, self.size[1]/2 - layout.size[1]/2)
             
             self._layout = layout
@@ -448,7 +461,39 @@ class Menu:
         
     def get_rect(self) -> pygame.Rect:
         return pygame.Rect((0,0), self.size * self._resize_ratio)
+    
+    def kill(self):
+        self._enabled = False
+        
+        if self._layout:
+            if hasattr(self._layout, 'kill'):
+                self._layout.kill()
+            elif hasattr(self._layout, 'items'):
+                for item in list(self._layout.items):
+                    if hasattr(item, 'kill'):
+                        item.kill()
+            self._layout = None
+            
+        if self._opened_sub_menu:
+            if hasattr(self._opened_sub_menu, 'kill'):
+                self._opened_sub_menu.kill()
+            self._opened_sub_menu = None
 
+        if hasattr(self, '_args_menus_to_draw'):
+            for item in self._args_menus_to_draw:
+                if hasattr(item, 'kill'):
+                    item.kill()
+            self._args_menus_to_draw.clear()
+            
+        self.cache.clear()
+        self.surface = None
+        self.window = None
+        
+        if nevu_state.window:
+            nevu_state.window.z_system.mark_dirty()
+
+    def __del__(self):
+        pass
 
 # ------ ALL OF CODE AFTER THIS LINE IS DEPRECATED! ------ #
 #

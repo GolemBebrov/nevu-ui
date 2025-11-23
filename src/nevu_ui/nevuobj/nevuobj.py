@@ -4,12 +4,14 @@ from warnings import deprecated
 import pygame
 import copy
 import contextlib
+import difflib
 from typing import Unpack
 
 from nevu_ui.style import Style
 from nevu_ui.color import SubThemeRole
 from nevu_ui.fast.zsystem import ZRequest
 from nevu_ui.state import nevu_state
+from nevu_ui.struct.base import standart_config
 
 from nevu_ui.animations import (
     AnimationType, AnimationManager
@@ -80,7 +82,7 @@ class NevuObject:
     #        size dependent code
     #======================================
     
-    def __init__(self, size: Vector2 | list, style: Style, **constant_kwargs: Unpack[NevuObjectKwargs]):
+    def __init__(self, size: Vector2 | list, style: Style | str, **constant_kwargs: Unpack[NevuObjectKwargs]):
         self.constant_kwargs = constant_kwargs.copy() 
         self._lazy_kwargs = {'size': size}
         
@@ -244,8 +246,20 @@ class NevuObject:
         self._preinit_constants()
         self._change_constants_kwargs(**kwargs)
             
-    def _init_style(self, style: Style):
-        self.style = style
+    def _init_style(self, style: Style | str):
+        if isinstance(style, str):
+            if result := standart_config.styles.get(style, None):
+                self.style: Style = result
+            else:
+                if not standart_config.styles:
+                    raise ValueError("No config styles found")
+                suggestions = difflib.get_close_matches(style, standart_config.styles.keys())
+                err_msg = f"Style {style} not found."
+                if suggestions:
+                    err_msg += f" Did you mean {', '.join(suggestions)}?"
+                raise ValueError(err_msg)
+        else:
+            self.style = style
         
     def _init_objects(self):
         self.cache = Cache()
@@ -268,6 +282,7 @@ class NevuObject:
         self._first_update = True
         self.booted = False
         self._wait_mode = False
+        self.dead = False
         
     def _init_lists(self):
         self._resize_ratio = Vector2(1, 1)
@@ -668,3 +683,31 @@ class NevuObject:
     
     def __deepcopy__(self, *args, **kwargs):
         return self.clone()
+    def kill(self):
+        self.dead = True
+        self.visible = False
+        self.is_active = False
+
+        if hasattr(self, 'z_request') and self.z_request:
+            self.z_request.on_click_func = None
+            self.z_request.on_hover_func = None
+            self.z_request.on_scroll_func = None
+            self.z_request.on_unhover_func = None
+            self.z_request.on_keyup_func = None
+            self.z_request.on_keyup_abandon_func = None
+            self.z_request = None
+
+        if hasattr(self, 'renderer'):
+            self.renderer = None
+
+        if hasattr(self, 'items') and isinstance(self.items, list):
+            for item in list(self.items):
+                if hasattr(item, 'kill'):
+                    item.kill()
+            self.items.clear()
+
+        if self._sended_z_link and nevu_state.window:
+             nevu_state.window.z_system.mark_dirty()
+
+    def __del__(self):
+        self.kill()

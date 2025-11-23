@@ -9,10 +9,6 @@
         "ratio": [16, 9]
     },
 
-    "styles": {
-        "default_style": "new"
-    },
-
     "animations": {
         "previev_animation": {
             "type": "position",
@@ -24,7 +20,28 @@
     },
 
     "colors": {
-        "MyColor": "255, 1, 2"
+        "some-color": [1,2,3],
+        "my-color": [20,200,120]
+    },
+
+    "styles": {
+        "zov": {
+            "border_radius": 0,
+            "border_width": 10
+        },
+        "textzov": {
+            "border_radius": 10,
+            "border_width": 2,
+            "font_size": 50
+        },
+        "zov123": {
+            "border_radius": 10,
+            "border_width": 2
+        },
+        "rodina": {
+            "extends": "textzov",
+            "border_radius": 0
+        }
     },
 
     "generated": true

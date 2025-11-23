@@ -2,7 +2,7 @@ import pygame
 import copy
 from warnings import deprecated
 from pygame._sdl2 import Texture, Image
-
+from nevu_ui.animations import AnimationType
 from typing import (
     Any, NotRequired, Unpack
 )
@@ -40,6 +40,7 @@ class WidgetKwargs(NevuObjectKwargs):
     font_role: NotRequired[PairColorRole]
     quality: NotRequired[Quality]
     _draw_borders: NotRequired[bool]
+    _draw_content: NotRequired[bool]
 
 class Widget(NevuObject):
     _alt: bool
@@ -56,6 +57,7 @@ class Widget(NevuObject):
     _master_mask: Any
     _inline_add_coords: NvVector2
     shader: Shader
+    _draw_content: bool
     
     def __init__(self, size: NvVector2 | list, style: Style = default_style, **constant_kwargs: Unpack[WidgetKwargs]):
         super().__init__(size, style, **constant_kwargs)
@@ -94,6 +96,7 @@ class Widget(NevuObject):
         self._add_constant("quality", Quality, Quality.Decent)
         self._add_constant("_draw_borders", bool, True)
         self._add_constant("shader", (Shader, type(None)), None)
+        self._add_constant("_draw_content", bool, True)
         
     def _init_text_cache(self):
         self._text_baked = None
@@ -241,18 +244,19 @@ class Widget(NevuObject):
     
     def primary_draw(self):
         super().primary_draw()
+        if self.dead: return
         if self._changed:
             self._dirty_rect.append(self.get_rect())
             
             if self.inline: 
-                surf = self.renderer._scale_background(self._csize.to_round()) if self.will_resize else self.renderer._generate_background()
+                surf = self.renderer._scale_background(self._csize.to_round(), only_content = self._draw_content) if self.will_resize else self.renderer._generate_background(only_content = self._draw_content)
                 if self._master_mask:
                     ReverseAlphaBlit.blit(surf, self._master_mask, (self.coordinates.to_round() - self._inline_add_coords.to_round()).to_tuple()) # type: ignore
                 self.surface.blit(surf, self.coordinates.to_round().to_tuple())
             else:
                 TRANSPARENT = (0, 0, 0, 0)
                 self.surface.fill(TRANSPARENT)
-                self.surface = self.renderer._scale_background(self._csize) if self.will_resize else self.renderer._generate_background()
+                self.surface = self.renderer._scale_background(self._csize, only_content = self._draw_content) if self.will_resize else self.renderer._generate_background(only_content = self._draw_content)
     
     def secondary_draw_end(self):
         if self._changed and nevu_state.renderer:
@@ -279,6 +283,8 @@ class Widget(NevuObject):
     
         self._dr_coordinates_old = new_dr_old
         self._first_update = new_first_update
+        if hasattr(self, "texture") and self.texture and (alpha := self.animation_manager.get_animation_value(AnimationType.OPACITY)):
+            self.texture.alpha = alpha
 
     def _boot_up(self):
         pass

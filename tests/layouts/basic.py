@@ -26,15 +26,15 @@ def create_test_instances():
     widgets_size_small = [75*ui.vw, 15*ui.vh]
     widgets_size_fixed = [300, 100]
     
-    widget_kwargs = {"style": widgets_style, "size": widgets_size,  "will_resize": False}
+    widget_kwargs = {"style": widgets_style, "size": widgets_size,  "will_resize": True}
     
     checkbox_group = ui.CheckBoxGroup(single_select=True)
     checkbox_group.on_checkbox_toggled_single = checkboxgroup_wrapper
     
     #widgets
-    widget = ui.Widget(widget_kwargs["size"], widgets_style, clickable=True)
-    label = ui.Label(lorem_ipsum, widget_kwargs["size"], widgets_style)
-    input_box = ui.Input(widget_kwargs["size"], widgets_style, placeholder = "Input!", multiple=True)
+    widget = ui.Widget(style="zov", clickable=True, size=widgets_size, will_resize=False)
+    label = ui.Label(lorem_ipsum, size=widget_kwargs["size"], style="rodina")
+    input_box = ui.Input(**widget_kwargs, placeholder = "Input!", multiple=True, quality=ui.Quality.Poor)
     
     #composable | checkboxgroup example
     rect_checkbox_row = ui.Row([90*ui.fill, 35*ui.fill], x = 3, content = 

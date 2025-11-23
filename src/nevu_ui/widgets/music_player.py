@@ -52,7 +52,7 @@ class MusicPlayer(Widget):
             self.sinus_margin = 0
         self.time_label.coordinates = [(self.size[0] / 2 - self.time_label.size[0] / 2) * self._resize_ratio[0],(self.size[1] - self.time_label.size[1]) * self._resize_ratio[1]]
         if mouse.left_fdown:
-            if pygame.Rect([self.master_coordinates[0], self.master_coordinates[1]],[self.side_button_size, self.side_button_size]).collidepoint(mouse.pos):
+            if pygame.Rect([self.absolute_coordinates[0], self.absolute_coordinates[1]],[self.side_button_size, self.side_button_size]).collidepoint(mouse.pos):
                 self.toggle_play()
 
         if self.is_playing:
