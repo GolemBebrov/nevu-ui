@@ -19,9 +19,7 @@ class CheckBoxGroup():
     
     def _on_checkbox_toggled_wrapper(self, checkbox: RectCheckBox):
         toogled_checkboxes = []
-        toogled_checkboxes.extend(
-            checkbox for checkbox in self._content if checkbox.toogled
-        )
+        toogled_checkboxes.extend(checkbox for checkbox in self._content if checkbox.toogled)
         self.on_checkbox_toggled(toogled_checkboxes)
     
     def _on_checkbox_toggled_single_wrapper(self, checkbox: RectCheckBox):
@@ -31,10 +29,12 @@ class CheckBoxGroup():
         self.on_checkbox_toggled_single(checkbox)
     
     def on_checkbox_toggled(self, included_checkboxes: list[RectCheckBox]):
-        pass #hook
+    #=== hook ===
+        pass
 
     def on_checkbox_toggled_single(self, checkbox: RectCheckBox | None):
-        pass #hook
+    #=== hook ===
+        pass 
     
     def _add_copy(self, checkbox: RectCheckBox):
         self._content.append(checkbox)
@@ -47,9 +47,12 @@ class CheckBoxGroup():
         self._content.append(checkbox)
         self.on_checkbox_added(checkbox)
         
-    def get_checkbox(self, id: str) -> RectCheckBox | None:
+    def get_checkbox_by_id(self, id: str) -> RectCheckBox | None:
         assert id, "id cant be None"
         return next((item for item in self._content if item.id == id), None)
+    
+    @property
+    def current_checkboxes(self): return self._content
     
     def add_event(self, event: NevuEvent):
         self._events.append(event)
