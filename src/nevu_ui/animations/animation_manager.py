@@ -2,9 +2,9 @@ import copy
 
 from enum import Enum, auto
 
-from .animations_library import Linear
-
-from .animation_base import Animation, AnimationType
+from nevu_ui.animations.animations_library import Linear
+from nevu_ui.animations.animation_base import Animation
+from nevu_ui.core_types import AnimationType
 
 class AnimationManagerState(Enum):
     START = auto()

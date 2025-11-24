@@ -1,15 +1,9 @@
-from enum import Enum, auto
-from abc import ABC, abstractmethod
 from typing import Any
-from nevu_ui.utils.time import time
 
-class AnimationType(Enum):
-    COLOR = auto()
-    SIZE = auto()
-    POSITION = auto()
-    ROTATION = auto()
-    OPACITY = auto()
-    _not_used = auto()
+from abc import ABC, abstractmethod
+
+from nevu_ui.utils import time
+from nevu_ui.core_types import AnimationType
 
 class Animation(ABC):
     def __init__(self, time: int = 0, start: Any = None, end: Any = None, type: AnimationType = AnimationType._not_used):
