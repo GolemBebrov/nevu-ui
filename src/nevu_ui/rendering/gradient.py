@@ -56,79 +56,81 @@ class Gradient:
 
     def _apply_linear_gradient(self, surface):
         width, height = surface.get_size()
-        y, x = np.indices((height, width), dtype = np.float32)
+        
+        x_lin = np.linspace(0.0, 1.0, width, dtype=np.float32)
+        y_lin = np.linspace(0.0, 1.0, height, dtype=np.float32)
 
-        w_m = width - 1 if width > 1 else 1
-        h_m = height - 1 if height > 1 else 1
+        if self.direction == LinearSide.Right:
+            progress = x_lin[:, np.newaxis]
+        elif self.direction == LinearSide.Left:
+            progress = 1.0 - x_lin[:, np.newaxis]
+        elif self.direction == LinearSide.Bottom:
+            progress = y_lin[np.newaxis, :]
+        elif self.direction == LinearSide.Top:
+            progress = 1.0 - y_lin[np.newaxis, :]
+        elif self.direction == LinearSide.BottomRight:
+            progress = (x_lin[:, np.newaxis] + y_lin[np.newaxis, :]) * 0.5
+        elif self.direction == LinearSide.TopLeft:
+            progress = 1.0 - (x_lin[:, np.newaxis] + y_lin[np.newaxis, :]) * 0.5
+        elif self.direction == LinearSide.TopRight:
+            progress = (x_lin[:, np.newaxis] + (1.0 - y_lin[np.newaxis, :])) * 0.5
+        elif self.direction == LinearSide.BottomLeft:
+            progress = ((1.0 - x_lin[:, np.newaxis]) + y_lin[np.newaxis, :]) * 0.5
+        else:
+            raise ValueError(f"Unsupported gradient direction: {self.direction}")
 
-        progress = self._get_linear_gradient_progress(x, y, w_m, h_m)
         self._blit_numpy_gradient(surface, progress)
 
-    def _get_linear_gradient_progress(self, x, y, w_m, h_m):
-        dir_map = {
-            LinearSide.Right: x / w_m,
-            LinearSide.Left: 1.0 - (x / w_m),
-            LinearSide.Bottom: y / h_m,
-            LinearSide.Top: 1.0 - (y / h_m),
-            LinearSide.BottomRight: (x / w_m + y / h_m) / 2,
-            LinearSide.TopLeft: 1.0 - (x / w_m + y / h_m) / 2,
-            LinearSide.TopRight: ((x / w_m) + (1.0 - y / h_m)) / 2,
-            LinearSide.BottomLeft: ((1.0 - x / w_m) + (y / h_m)) / 2
-        }
-        progress = dir_map.get(self.direction) # type: ignore
-        if progress is None:
-            raise ValueError(f"Unsupported gradient direction: {self.direction}")
-        return progress
     def _apply_radial_gradient(self, surface):
         width, height = surface.get_size()
         center_x, center_y = self._get_radial_center(width, height)
         
-        y, x = np.indices((height, width), dtype=np.float32)
+        y_grid, x_grid = np.ogrid[:height, :width]
         
-        distance = np.sqrt((x - center_x)**2 + (y - center_y)**2)
-        
-        corners = [(0, 0), (width - 1, 0), (0, height - 1), (width - 1, height - 1)]
-        max_radius = max(np.sqrt((cx - center_x)**2 + (cy - center_y)**2) for cx, cy in corners)
+        dist_sq = (x_grid - center_x)**2 + (y_grid - center_y)**2
+        distance = np.sqrt(dist_sq).astype(np.float32)
+
+        corners = np.array([(0, 0), (width - 1, 0), (0, height - 1), (width - 1, height - 1)], dtype=np.float32)
+        corner_dists_sq = (corners[:, 0] - center_x)**2 + (corners[:, 1] - center_y)**2
+        max_radius = np.sqrt(np.max(corner_dists_sq))
         
         if max_radius == 0:
             surface.fill(self.colors[0])
             return
 
-        progress = distance / max_radius
+        progress = distance.T / max_radius
         self._blit_numpy_gradient(surface, progress)
 
     def _blit_numpy_gradient(self, surface, progress):
         progress = np.clip(progress, 0.0, 1.0)
-        stops = np.linspace(0, 1, len(self.colors))
-
-        r, g, b = self._interpolate_channels(progress, stops)
-
-        gradient_array = np.stack((r.T, g.T, b.T), axis=-1)
-
-        pygame.surfarray.blit_array(surface, gradient_array)
-
-    def _interpolate_channels(self, progress, stops):
-        colors_array = np.array(self.colors)
+        
+        stops = np.linspace(0.0, 1.0, len(self.colors), dtype=np.float32)
+        colors_array = np.array(self.colors, dtype=np.float32)
+        
         r = np.interp(progress, stops, colors_array[:, 0])
         g = np.interp(progress, stops, colors_array[:, 1])
         b = np.interp(progress, stops, colors_array[:, 2])
-        return r, g, b
 
-    def _stack_gradient_array(self, r, g, b):
-        return np.stack([r, g, b], axis=-1).astype(np.uint8)
+        if progress.ndim == 2: 
+            gradient_array = np.dstack((r, g, b)).astype(np.uint8)
+        else:
+            gradient_array = np.stack((r, g, b), axis=-1).astype(np.uint8)
+            gradient_array = np.broadcast_to(gradient_array, surface.get_size() + (3,))
+
+        pygame.surfarray.blit_array(surface, gradient_array)
 
     def _get_radial_center(self, width, height):
         w_m, h_m = width - 1, height - 1
         center_map = {
-            RadialPosition.Center: (w_m / 2, h_m / 2),
-            RadialPosition.TopCenter: (w_m / 2, 0),
+            RadialPosition.Center: (w_m * 0.5, h_m * 0.5),
+            RadialPosition.TopCenter: (w_m * 0.5, 0),
             RadialPosition.TopLeft: (0, 0),
             RadialPosition.TopRight: (w_m, 0),
-            RadialPosition.BottomCenter: (w_m / 2, h_m),
+            RadialPosition.BottomCenter: (w_m * 0.5, h_m),
             RadialPosition.BottomLeft: (0, h_m),
             RadialPosition.BottomRight: (w_m, h_m)
         }
-        return center_map.get(self.direction, (w_m / 2, h_m / 2)) # type: ignore
+        return center_map.get(self.direction, (w_m * 0.5, h_m * 0.5))
 
     def _validate_colors(self, colors):
         if not isinstance(colors, (list, tuple)):
@@ -154,14 +156,14 @@ class Gradient:
 
     def invert(self, new_direction=None):
         if new_direction is None:
-            if self.type == 'linear':
+            if self.type == GradientType.Linear:
                 mapping = {
                     LinearSide.Right: LinearSide.Left, LinearSide.Left: LinearSide.Right,
                     LinearSide.Top: LinearSide.Bottom, LinearSide.Bottom: LinearSide.Top,
                     LinearSide.TopRight: LinearSide.BottomLeft, LinearSide.BottomLeft: LinearSide.TopRight,
                     LinearSide.TopLeft: LinearSide.BottomRight, LinearSide.BottomRight: LinearSide.TopLeft
                 }
-                new_direction = mapping.get(self.direction) # type: ignore
+                new_direction = mapping.get(self.direction)
             elif self.type == GradientType.Radial:
                 mapping = {
                     RadialPosition.Center: RadialPosition.Center,
@@ -169,7 +171,7 @@ class Gradient:
                     RadialPosition.TopLeft: RadialPosition.BottomRight, RadialPosition.BottomRight: RadialPosition.TopLeft,
                     RadialPosition.TopRight: RadialPosition.BottomLeft, RadialPosition.BottomLeft: RadialPosition.TopRight
                 }
-                new_direction = mapping.get(self.direction) # type: ignore
+                new_direction = mapping.get(self.direction)
 
             if new_direction is None:
                 raise ValueError(f"Inversion for direction '{self.direction}' is not supported.")
