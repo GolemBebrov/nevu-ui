@@ -82,11 +82,12 @@ class Window:
         nevu_state.z_system = self.z_system
         
     def _init_lists(self, ratio, size, minsize):
-        self._ratio = NvVector2(ratio) or NvVector2(0, 0)
+        ratio = NvVector2(0, 0) if ratio is None else NvVector2(ratio)
+        self._ratio = ratio
         self._original_size = NvVector2(size)
         self.size = NvVector2(size)
         self.minsize = NvVector2(minsize)
-        
+
         self._crop_width_offset = 0
         self._crop_height_offset = 0
         self._offset = NvVector2(0, 0)
