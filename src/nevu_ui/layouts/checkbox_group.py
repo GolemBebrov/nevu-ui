@@ -15,7 +15,6 @@ from nevu_ui.utils import NevuEvent
 #        all other functions
 
 class CheckBoxGroup():
-    __slots__ = ["_content", "_events", "_single_select"]
     def __init__(self, checkboxes: list[RectCheckBox] | None = None, single_selection: bool = False):
         self._single_select = single_selection; self._content: list[RectCheckBox] = []; self._events: list[NevuEvent] = []
         for checkbox in checkboxes or []: self.add_checkbox(checkbox)
