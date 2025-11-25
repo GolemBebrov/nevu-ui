@@ -9,10 +9,8 @@ from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.logic import _light_update_helper
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.state import nevu_state
+from nevu_ui.style import Style, default_style
 
-from nevu_ui.style import (
-    Style, default_style
-)
 from nevu_ui.core_types import (
     SizeRule, Vh, Vw, Fill
 )
@@ -20,6 +18,7 @@ from nevu_ui.core_types import (
 class LayoutType(NevuObject):
     items: list[NevuObject]
     floating_items: list[NevuObject]
+    content_type = list
     
     def _get_item_master_coordinates(self, item: NevuObject):
         assert isinstance(item, NevuObject), f"Can't use _get_item_master_coordinates on {type(item)}"
@@ -92,7 +91,7 @@ class LayoutType(NevuObject):
         self.layout: LayoutType | None = None
         self.surface: pygame.Surface | None = None
         
-    def _lazy_init(self, size: NvVector2 | list, content: list | None = None):
+    def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None):
         super()._lazy_init(size)
         if content and type(self) == LayoutType:
             for i in content:
@@ -104,12 +103,9 @@ class LayoutType(NevuObject):
             self.cached_coordinates or [],
             self.first_parent_menu.coordinatesMW,
             nevu_state.current_events,
-            add_x,
-            add_y,
+            add_x, add_y,
             self._resize_ratio,
-            self.cached_coordinates is None or len(self.items) != len(self.cached_coordinates)
-            
-        )
+            self.cached_coordinates is None or len(self.items) != len(self.cached_coordinates))
 
     @property
     def coordinates(self): return self._coordinates
@@ -175,19 +171,15 @@ class LayoutType(NevuObject):
         self.border_name = self._border_name
 
     @staticmethod
-    def is_layout(item: NevuObject) -> TypeGuard['LayoutType']:
-        return isinstance(item, LayoutType)
-    
+    def is_layout(item: NevuObject) -> TypeGuard['LayoutType']: return isinstance(item, LayoutType)
     @staticmethod
-    def is_widget(item: NevuObject) -> TypeGuard['Widget']:
-        return isinstance(item, Widget)
-    
-    def _event_on_add_item(self): pass
+    def is_widget(item: NevuObject) -> TypeGuard['Widget']: return isinstance(item, Widget)
 
-    def add_item(self, item: NevuObject):
+    def _on_item_add(self, item: NevuObject): pass
+
+    def _item_add(self, item: NevuObject):
         if not item.single_instance: item = item.clone()
         item._master_z_handler = self._master_z_handler
-        print("MASTER ZZZ", self._master_z_handler, self)
         if self.is_layout(item): 
             item._connect_to_layout(self)
         self.read_item_coords(item)
@@ -195,19 +187,28 @@ class LayoutType(NevuObject):
         if self.booted:
             item.booted = True
             item._boot_up()
+        return item
+    
+    def _after_item_add(self, item: NevuObject):
+        if self.layout:
+            self.layout._on_item_add(item)
+            
+    def add_item(self, item: NevuObject):
+        item = self._item_add(item)
         self.items.append(item)
         self.cached_coordinates = None
+        self._after_item_add(item)
+        self._on_item_add(item)
         return item
     
     def add_floating_item(self, item: NevuObject):
-        if not item.single_instance: item = item.clone()
-        item._master_z_handler = self._master_z_handler
-        if self.is_layout(item): 
-            item._connect_to_layout(self)
-        self.read_item_coords(item)
-        self._start_item(item)
+        item = self._item_add(item)
         self.floating_items.append(item)
+        self.cached_coordinates = None
+        self._after_item_add(item)
+        self._on_item_add(item)
         return item
+    
     def apply_style_to_childs(self, style: Style):
         for item in self.items:
             assert isinstance(item, (Widget, LayoutType))
@@ -258,10 +259,10 @@ class LayoutType(NevuObject):
         
     def _regenerate_coordinates(self):
         for item in self.items + self.floating_items:
-            if item._wait_mode:
-                self.read_item_coords(item)
-                self._start_item(item)
-                return
+            if not item._wait_mode: continue
+            self.read_item_coords(item)
+            self._start_item(item)
+            return
             
     def _connect_to_menu(self, menu: Menu):
         self.cached_coordinates = None
