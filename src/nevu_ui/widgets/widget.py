@@ -70,7 +70,7 @@ class Widget(NevuObject):
         if nevu_state.renderer is None:
             raise ValueError("Window not initialized!")
         assert nevu_state.window, "Window not initialized!"
-
+        assert self.surface, "Surface not initialized!"
         if nevu_state.window._gpu_mode:
             texture = Texture.from_surface(nevu_state.renderer, self.surface)
             texture = Image(texture)
@@ -131,16 +131,11 @@ class Widget(NevuObject):
             self._subtheme_font = self._main_subtheme_font
     
     @property
-    def subtheme_border(self):
-        return self._subtheme_border()
-    
+    def subtheme_border(self): return self._subtheme_border()
     @property
-    def subtheme_content(self):
-        return self._subtheme_content()
-    
+    def subtheme_content(self): return self._subtheme_content()
     @property
-    def subtheme_font(self):
-        return self._subtheme_font()
+    def subtheme_font(self): return self._subtheme_font()
     
     def _lazy_init(self, size: NvVector2 | list):
         super()._lazy_init(size)
@@ -154,7 +149,6 @@ class Widget(NevuObject):
         
     def _alt_getter(self):
         return self._alt
-
     def _alt_setter(self, value):
         self._alt = value
         self._init_alt()
@@ -162,11 +156,9 @@ class Widget(NevuObject):
         
     def _toogle_click_style(self):
         if not self.clickable: return
-        if self.fancy_click_style:
-            self.alt = not self.alt
-        else:
-            self._on_style_change()
-            
+        if self.fancy_click_style: self.alt = not self.alt
+        else: self._on_style_change()
+
     def _on_hover_system(self):
         super()._on_hover_system()
         if not self.hoverable: return
@@ -207,13 +199,10 @@ class Widget(NevuObject):
     def _on_style_change(self):
         self._on_style_change_content()
         self._on_style_change_additional()
-        
     def _on_style_change_content(self):
         self.clear_surfaces()
         self._changed = True
-        
-    def _on_style_change_additional(self):
-        pass
+    def _on_style_change_additional(self): pass
         
     def _update_image(self, style: Style | None = None):
         try:
@@ -224,39 +213,32 @@ class Widget(NevuObject):
             self.cache.set(CacheType.Image, pygame.transform.scale(img, self._csize))
         except Exception: self.cache.clear_selected(whitelist = [CacheType.Image])
 
-    def _main_subtheme_content(self):
-        return self._subtheme.color
-
-    def _main_subtheme_border(self):
-        return self._subtheme.oncolor
-
-    def _alt_subtheme_content(self):
-        return self._subtheme.container
-
-    def _alt_subtheme_border(self):
-        return self._subtheme.oncontainer
-
-    def _main_subtheme_font(self):
-        return self.style.colortheme.get_pair(self.font_role).color
-
-    def _alt_subtheme_font(self):
-        return self.style.colortheme.get_pair(self.font_role).oncolor
+    def _main_subtheme_content(self): return self._subtheme.color
+    def _main_subtheme_border(self): return self._subtheme.oncolor
+    def _alt_subtheme_content(self): return self._subtheme.container
+    def _alt_subtheme_border(self):return self._subtheme.oncontainer
+    def _main_subtheme_font(self): return self.style.colortheme.get_pair(self.font_role).color
+    def _alt_subtheme_font(self): return self.style.colortheme.get_pair(self.font_role).oncolor
     
     def primary_draw(self):
         super().primary_draw()
         if self.dead: return
-        if self._changed:
-            self._dirty_rect.append(self.get_rect())
-            
-            if self.inline: 
-                surf = self.renderer._scale_background(self._csize.to_round(), only_content = self._draw_content) if self.will_resize else self.renderer._generate_background(only_content = self._draw_content)
-                if self._master_mask:
-                    ReverseAlphaBlit.blit(surf, self._master_mask, (self.coordinates.to_round() - self._inline_add_coords.to_round()).to_tuple()) # type: ignore
-                self.surface.blit(surf, self.coordinates.to_round().to_tuple())
-            else:
-                TRANSPARENT = (0, 0, 0, 0)
-                self.surface.fill(TRANSPARENT)
-                self.surface = self.renderer._scale_background(self._csize, only_content = self._draw_content) if self.will_resize else self.renderer._generate_background(only_content = self._draw_content)
+       
+        if not self._changed: return
+        
+        assert self.surface
+        self._dirty_rect.append(self.get_rect())
+        
+        if self.inline: 
+            surf = self.renderer._scale_background(self._csize.to_round(), only_content = self._draw_content) if self.will_resize else self.renderer._generate_background(only_content = self._draw_content)
+            assert surf
+            if self._master_mask:
+                ReverseAlphaBlit.blit(surf, self._master_mask, (self.coordinates.to_round() - self._inline_add_coords.to_round()).to_tuple()) # type: ignore
+            self.surface.blit(surf, self.coordinates.to_round().to_tuple())
+        else:
+            TRANSPARENT = (0, 0, 0, 0)
+            self.surface.fill(TRANSPARENT)
+            self.surface = self.renderer._scale_background(self._csize, only_content = self._draw_content) if self.will_resize else self.renderer._generate_background(only_content = self._draw_content)
     
     def secondary_draw_end(self):
         if self._changed and nevu_state.renderer:
@@ -271,27 +253,22 @@ class Widget(NevuObject):
         new_dr_old, new_first_update = logic_update_helper(
         self._optimized_dirty_rect_for_short_animations,
         self.animation_manager,
-        self._csize,
-        self.absolute_coordinates,
-        self._dirty_rect,
-        self._dr_coordinates_old,
-        self._first_update,
-        self.first_update_functions,
+        self._csize, self.absolute_coordinates,
+        self._dirty_rect, self._dr_coordinates_old,
+        self._first_update, self.first_update_functions,
         self._resize_ratio,
-        self._master_z_handler or self._master_z_handler_placeholder
-        )
+        self._master_z_handler or self._master_z_handler_placeholder)
     
         self._dr_coordinates_old = new_dr_old
         self._first_update = new_first_update
         if hasattr(self, "texture") and self.texture and (alpha := self.animation_manager.get_animation_value(AnimationType.OPACITY)):
             self.texture.alpha = alpha
 
-    def _boot_up(self):
-        pass
+    def _boot_up(self): pass
 
     @deprecated("Use renderer.bake_text() instead. This method will be removed in a future version.")
     def bake_text(self, text: str, unlimited_y: bool = False, words_indent: bool = False,
-                  alignx: Align = Align.CENTER, aligny: Align = Align.CENTER, continuous: bool = False, size_x = None, size_y = None, color = None):
+                alignx: Align = Align.CENTER, aligny: Align = Align.CENTER, continuous: bool = False, size_x = None, size_y = None, color = None):
         size_x = size_x or self._csize.x
         size_y = size_y or self._csize.y
         size = NvVector2(size_x, size_y)
@@ -300,14 +277,10 @@ class Widget(NevuObject):
     def resize(self, resize_ratio: NvVector2):
         super().resize(resize_ratio)
         self._resize_ratio = resize_ratio
-
         self.cache.clear_selected(whitelist = [CacheType.RelSize])
         self.clear_surfaces()
         self._update_image()
-        
         self.surface = pygame.Surface(self._csize, flags = pygame.SRCALPHA)
-
         self._changed = True
 
-    def clone(self):
-        return Widget(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
+    def clone(self): return Widget(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
