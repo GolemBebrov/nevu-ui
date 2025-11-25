@@ -7,15 +7,11 @@ from typing import (
 
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.utils import keyboard
+from nevu_ui.style import Style, default_style
+from nevu_ui.core_types import CacheType, HoverState
 
 from nevu_ui.widgets import (
     Widget, Button, WidgetKwargs
-)
-from nevu_ui.style import (
-    Style, default_style
-)
-from nevu_ui.core_types import (
-    CacheType, HoverState
 )
 
 class ElementSwitcherKwargs(WidgetKwargs):
@@ -205,11 +201,8 @@ class ElementSwitcher(Widget):
         self.elements.append(element)
         self._changed = True
     
-    def next(self):
-        self.step(1)
-        
-    def previous(self):
-        self.step(-1)
+    def next(self): self.step(1)
+    def previous(self): self.step(-1)
         
     def secondary_update(self):
         super().secondary_update()
@@ -265,5 +258,4 @@ class ElementSwitcher(Widget):
             if borders := self.cache.get_or_exec(CacheType.Borders, lambda: self.renderer._create_outlined_rect(self._csize, self.relm(self.style.borderradius),self.relm(self.style.borderwidth))):
                 self.surface.blit(borders, (0, 0))
 
-    def clone(self):
-        return ElementSwitcher(self._lazy_kwargs['size'], copy.deepcopy(self._lazy_kwargs['elements']), copy.deepcopy(self.style), **self.constant_kwargs)
+    def clone(self): return ElementSwitcher(self._lazy_kwargs['size'], copy.deepcopy(self._lazy_kwargs['elements']), copy.deepcopy(self.style), **self.constant_kwargs)

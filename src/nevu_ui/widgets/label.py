@@ -1,14 +1,9 @@
 import copy
+from typing import NotRequired, Unpack
 
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.widgets import Widget, WidgetKwargs
-from nevu_ui.color import PairColorRole
-
-from typing import Any, TypedDict, NotRequired, Unpack
-
-from nevu_ui.style import (
-    Style, default_style
-)
+from nevu_ui.style import Style, default_style
 
 class LabelKwargs(WidgetKwargs):
     words_indent: NotRequired[bool]
@@ -35,30 +30,23 @@ class Label(Widget):
         self.text = text 
         
     @property
-    def text(self):
-        return self._text
-    
-    def _fast_bake_text(self):
-        self.bake_text(self._text, False, self.words_indent, self.style.text_align_x, self.style.text_align_y, color = self.subtheme_font)
-    
-    def _on_style_change(self):
-        super()._on_style_change()
-        #print(f"{self} style changed")
-        
+    def text(self): return self._text
     @text.setter
     def text(self, text: str):
         self._changed = True
         self._text = text
+
+    def _fast_bake_text(self):
+        self.bake_text(self._text, False, self.words_indent, self.style.text_align_x, self.style.text_align_y, color = self.subtheme_font)
 
     def resize(self, resize_ratio: NvVector2):
         super().resize(resize_ratio)
         self._changed = True
 
     @property
-    def style(self):
-        return self._style()
+    def style(self): return self._style()
     @style.setter
-    def style(self,style: Style):
+    def style(self, style: Style):
         self._changed = True
         self._style = copy.deepcopy(style)
         self._update_image()
@@ -68,8 +56,7 @@ class Label(Widget):
         if not self.visible: return
         if self._changed:
             self._fast_bake_text()
-            assert self._text_surface is not None and self._text_rect is not None
+            assert self._text_surface is not None and self._text_rect is not None and self.surface
             self.surface.blit(self._text_surface, self._text_rect)
 
-    def clone(self):
-        return Label(self._lazy_kwargs['text'], self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
+    def clone(self): return Label(self._lazy_kwargs['text'], self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
