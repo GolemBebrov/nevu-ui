@@ -4,10 +4,7 @@ import copy
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.utils import mouse
 from nevu_ui.layouts import LayoutType
-
-from nevu_ui.style import (
-    Style, default_style
-)
+from nevu_ui.style import Style, default_style
 
 # Warning: Semi-legacy class
 
@@ -24,7 +21,7 @@ class Pages(LayoutType):
     def add_item(self, item: LayoutType): # type: ignore
         if self.is_widget(item): raise ValueError("Widget must be Layout")
         super().add_item(item)
-        if self.layout: self.layout._event_on_add_item()
+        if self.layout: self.layout._on_item_add()
         if not self.selected_page:
             self.selected_page = item
             self.selected_page_id = 0
