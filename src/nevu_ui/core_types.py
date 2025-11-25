@@ -141,6 +141,14 @@ class CacheName(StrEnum):
     PREVERSED = "preversed"
     CUSTOM = "custom"
 
+class AnimationType(Enum):
+    COLOR = auto()
+    SIZE = auto()
+    POSITION = auto()
+    ROTATION = auto()
+    OPACITY = auto()
+    _not_used = auto()
+
 class EventType(Enum):
     Resize = auto()
     Render = auto()
