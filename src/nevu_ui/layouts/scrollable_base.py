@@ -1,35 +1,29 @@
-import pygame
-import copy
-from nevu_ui.widgets import Button
 from typing import Any
 import contextlib
+from abc import ABC, abstractmethod
+
 from nevu_ui.fast.logic import _light_update_helper
 from nevu_ui.widgets import Widget
 from nevu_ui.menu import Menu
 from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.layouts import LayoutType
-from nevu_ui.fast.logic.fast_logic import collide_vector, collide_vertical, collide_horizontal
+from nevu_ui.fast.logic.fast_logic import collide_vector
 from nevu_ui.color import SubThemeRole
 from nevu_ui.state import nevu_state
 from nevu_ui.fast.logic.fast_logic import _very_light_update_helper
-from nevu_ui.style import (
-    Style, default_style
-)
-from nevu_ui.core_types import (
-    Align, ScrollBarType
-)
-from nevu_ui.utils import (
-    keyboard, mouse
-)
+from nevu_ui.style import Style, default_style
+from nevu_ui.core_types import Align, ScrollBarType
+from nevu_ui.utils import keyboard, mouse
 
-class ScrollableBase(LayoutType):
+class ScrollableBase(LayoutType, ABC):
     arrow_scroll_power: float | int
     wheel_scroll_power: float | int
     inverted_scrolling: bool
     append_key: Any #Realizes in the children
     descend_key: Any #Realizes in the children
-
+    content_type = list[tuple[Align, NevuObject]]
+    
     class ScrollBar(Widget):
         def __init__(self, size, style, orientation: ScrollBarType, master = None, **constant_kwargs):
             super().__init__(size, style, **constant_kwargs)
@@ -38,8 +32,7 @@ class ScrollableBase(LayoutType):
             
             self.master = master
             
-            if orientation not in ScrollBarType:
-                raise ValueError("Orientation must be 'vertical' or 'horizontal'")
+            if orientation not in ScrollBarType: raise ValueError("Orientation must be 'vertical' or 'horizontal'")
             self.orientation = orientation
             
         def _init_numerical(self):
@@ -83,15 +76,10 @@ class ScrollableBase(LayoutType):
             start_coord = self.track_start_coordinates[axis] - self.offset[axis]
             
             if scaled_track_path[axis] == 0:
-                self.coordinates[axis] = start_coord
-                return
+                self.coordinates[axis] = start_coord; return
 
             path_to_add = scaled_track_path[axis] * (self._percentage / 100)
             self.coordinates[axis] = start_coord + path_to_add
-            
-            if self.master:
-                assert self.master.first_parent_menu.window, "Menu is not valid"
-                self.master.first_parent_menu.window.mark_dirty()
         
         def set_scroll_params(self, track_start_abs, track_path, offset: NvVector2):
             self.track_path = track_path
@@ -128,7 +116,7 @@ class ScrollableBase(LayoutType):
             self.percentage = percents
             self.scrolling = False
             
-    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: list[tuple[Align, NevuObject]] | None = None, **constant_kwargs):
+    def __init__(self, size: NvVector2 | list, style: Style = default_style, content:  content_type| None = None, **constant_kwargs):
         super().__init__(size, style, **constant_kwargs)
         self._lazy_kwargs = {'size': size, 'content': content}
         
@@ -156,8 +144,7 @@ class ScrollableBase(LayoutType):
         self.collided_items = []
         
     @property
-    def coordinates(self):
-        return self._coordinates
+    def coordinates(self): return self._coordinates
     @coordinates.setter
     def coordinates(self, value: NvVector2):
         self._coordinates = value
@@ -171,7 +158,7 @@ class ScrollableBase(LayoutType):
         self._add_constant('wheel_scroll_power', int, 5)
         self._add_constant('inverted_scrolling', bool, False)
         
-    def _lazy_init(self, size: NvVector2 | list, content: list[tuple[Align, NevuObject]] | None = None):
+    def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None):
         super()._lazy_init(size, content)
         self.original_size = self.size.copy()
         self._init_scroll_bar()
@@ -182,16 +169,9 @@ class ScrollableBase(LayoutType):
                 assert type(align) == Align and isinstance(item, NevuObject)
                 self.add_item(item, align)
         self._update_scroll_bar()
-        
-    def _update_scroll_bar(self):
-        pass
     
     def _init_scroll_bar(self):
-        if self._test_debug_print:
-            print(f"in {self} used init scroll bars")
-            
         self.scroll_bar = self._create_scroll_bar()
-        assert self.scroll_bar, "You CANT use ScrollableBase"
         self._boot_scrollbar(self.scroll_bar)
 
     def _boot_scrollbar(self, scroll_bar: ScrollBar):
@@ -200,58 +180,29 @@ class ScrollableBase(LayoutType):
         scroll_bar._init_start()
         scroll_bar.booted = True
         
-    def _create_scroll_bar(self) -> ScrollBar:
-        return None # type: ignore
-        
+    def get_offset(self) -> int | float: return self.actual_max_main / 100 * self.scroll_bar.percentage
+
     def _connect_to_layout(self, layout: LayoutType):
-        if self._test_debug_print:
-            print(f"in {self} used connect to layout: {layout}")
-            
         super()._connect_to_layout(layout)
-        
+
     def _connect_to_menu(self, menu: Menu):
-        if self._test_debug_print:
-            print(f"in {self} used connect to menu: {menu}")
-            
         super()._connect_to_menu(menu)
-        assert self.menu is not None
-        need_resize = False
-        if menu.size[0] < self.size[0]:
-            self.size[0] = menu.size[0]
-            need_resize = True
-        if menu.size[1] < self.size[1]:
-            self.size[1] = menu.size[1]
-            need_resize = True
-        if need_resize:
-            self.menu._set_layout_coordinates(self)
-            
+
     def _is_widget_drawable(self, item: NevuObject):
-        if self._test_debug_print:
-            print(f"in {self} used is drawable for", item)
-        
-        offset = self.get_relative_vector_offset()
-        #if item.master_coordinates.y < offset.y: return False
         coords_1 = item.absolute_coordinates 
         coords_2 = coords_1 + item._csize
         
         viewport_tl = self.absolute_coordinates
         viewport_br = self.absolute_coordinates + self._csize
         
-        c = collide_vector(viewport_tl, viewport_br, coords_1, coords_2)
-        return c
-    @property
-    def _collide_function(self):
-        return collide_vector
+        return collide_vector(viewport_tl, viewport_br, coords_1, coords_2)
     
     def _is_widget_drawable_optimized(self, item: NevuObject):
         rect1 = item.get_rect()
         rect2 = self.get_rect()
-        c = rect1.colliderect(rect2)
-        return c
+        return rect1.colliderect(rect2)
     
     def secondary_draw(self):
-        if self._test_debug_print: print(f"Used secondary_draw in {self}")
-            
         super().secondary_draw()
         for item in self.collided_items:
             assert isinstance(item, (Widget, LayoutType))
@@ -259,16 +210,6 @@ class ScrollableBase(LayoutType):
             
         if self.actual_max_main > 0:
             self._draw_widget(self.scroll_bar)
-            
-    def _set_item_main(self, item: NevuObject, align: Align):
-        pass
-    
-    def get_relative_vector_offset(self) -> NvVector2:
-        return NvVector2()
-    
-    def get_offset(self) -> int | float:
-        percentage = self.scroll_bar.percentage
-        return self.actual_max_main / 100 * percentage
     
     def base_light_update(self, add_x: int | float = 0, add_y: int | float = 0, items = None):
         _light_update_helper(
@@ -279,14 +220,9 @@ class ScrollableBase(LayoutType):
             add_x,
             add_y,
             self._resize_ratio,
-            self.cached_coordinates is None or len(self.items) != len(self.cached_coordinates)
-            
-        )
+            self.cached_coordinates is None or len(self.items) != len(self.cached_coordinates))
+
     def secondary_update(self): 
-        if self._test_debug_print:
-            print(f"in {self} used update")
-            for name, data in self.__dict__.items(): print(f"{name}: {data}")
-            
         super().secondary_update()
         if self.actual_max_main > 0:
             old_percentage = self.scroll_bar.percentage
@@ -295,7 +231,6 @@ class ScrollableBase(LayoutType):
             if old_percentage != new_percentage:
                 self._scroll_needs_update = True
         self.very_light_update()
-        #print(self.collided_items)
         for item in self.collided_items:
             item.update() 
         if self._scroll_needs_update:
@@ -305,31 +240,24 @@ class ScrollableBase(LayoutType):
             self.scroll_bar.coordinates = self._get_scrollbar_coordinates() # type: ignore
             self.scroll_bar.absolute_coordinates = self._get_item_master_coordinates(self.scroll_bar)
             self.scroll_bar._master_z_handler = self._master_z_handler
-        #self.base_light_update() 
-        #if type(self) == ScrollableBase: self._dirty_rect = self._read_dirty_rects()
-    
-    def _get_scrollbar_coordinates(self): 
-        return
-    
+
     def _recollide_items(self):
         self.collided_items.clear()
         drawable = self._is_widget_drawable if self._test_rect_calculation else self._is_widget_drawable_optimized
         self.collided_items = [item for item in self.items if drawable(item)]
-    
+
     def _regenerate_coordinates(self):
         self.very_light_update()
         self._recollide_items()
     
     def very_light_update(self):
+        assert self.cached_coordinates, "You need to regenerate coordinates first."
         _very_light_update_helper(
             self.items,
             self.cached_coordinates,
             self.get_relative_vector_offset(),
-            self._get_item_master_coordinates
-        )
-    def _fast_regen(self):
-        self._recollide_items()
-            
+            self._get_item_master_coordinates)
+
     def logic_update(self):
         super().logic_update()
         inverse = -1 if self.inverted_scrolling else 1
@@ -343,90 +271,70 @@ class ScrollableBase(LayoutType):
             
     def _on_scroll_system(self, side: bool):
         super()._on_scroll_system(side)
-
         direction = 1 if side else -1
 
-        if self.inverted_scrolling:
-            direction *= -1
+        if self.inverted_scrolling: direction *= -1
+        
         self.scroll_bar.move_by_percents(self.wheel_scroll_power * direction)
         self._scroll_needs_update = True
             
     def resize(self, resize_ratio: NvVector2):
-        if self._test_debug_print:
-            print(f"in {self} used resize, current ratio: {resize_ratio}")
-            
-        prev_percentage = self.scroll_bar.percentage if hasattr(self, "scroll_bar") else 0.0
-
         super().resize(resize_ratio)
         self.scroll_bar.resize(resize_ratio)
         self._resize_scrollbar()
-        
         self.cached_coordinates = None
         self._regenerate_coordinates()
-        
         self.scroll_bar.scrolling = False
         self._update_scroll_bar()
+        
+        prev_percentage = self.scroll_bar.percentage if hasattr(self, "scroll_bar") else 0.0
         new_actual_max_main = self.actual_max_main
-
-        if new_actual_max_main > 0:
-            new_percentage = max(0.0, min(prev_percentage, 100.0))
-        else:
-            new_percentage = 0.0
+        new_percentage = max(0.0, min(prev_percentage, 100.0)) if new_actual_max_main > 0 else 0.0
 
         self.scroll_bar.set_percents(new_percentage)
         self.base_light_update()
 
-    def _resize_scrollbar(self):
-        pass
-    
-    def _event_on_add_item(self):
-        if self._test_debug_print:
-            print(f"in {self} used event on add widget")
-        
+    def _on_item_add(self, item: NevuObject):
         self.cached_coordinates = None
         if self.booted == False: return
         self._init_scroll_bar()
         self._update_scroll_bar()
-
-    def _regenerate_max_values(self):
-        pass
     
     def add_item(self, item: NevuObject, alignment: Align): # type: ignore
-        if not self._parse_align(alignment): return
-        if not self._test_debug_print:
-            print(f"in {self} added widget: {item} at {alignment}.")
-        if item.single_instance is False: item = item.clone()
-        item._master_z_handler = self._master_z_handler
-        if self.is_layout(item):
-            item._connect_to_layout(self)
-        self.read_item_coords(item)
-        self._start_item(item)
-
-        if self.booted:
-            item.booted = True
-            item._boot_up()
-        self.items.append(item)
+        if not self._parse_align(alignment): print(f"Warning: align {alignment} not supported in {type(self).__name__}, skipping.."); return
+        super().add_item(item)
         self.widgets_alignment.append(alignment)
-
-        self._event_on_add_item()
-        
-        if self.layout:
-            self.layout._event_on_add_item()
-    
-    def _parse_align(self, align: Align):
-        pass
 
     def clear(self):
         self.items.clear()
         self.widgets_alignment.clear()
         self._restart_coordinates()
-
-    def _restart_coordinates(self):
-        pass
-
+        
     def apply_style_to_childs(self, style: Style):
         super().apply_style_to_childs(style)
-        self._apply_style_to_scroll_bar(style)
+        self.apply_scroll_bar_style(style)
     
-    def _apply_style_to_scroll_bar(self, style: Style):
-        self.scroll_bar.style = style
+    def apply_scroll_bar_style(self, style: Style): self.scroll_bar.style = style
+
+#=== PLACEHOLDERS ===
+    @abstractmethod
+    def _resize_scrollbar(self): pass
+    @abstractmethod
+    def _restart_coordinates(self): pass
+    @abstractmethod
+    def _parse_align(self, align: Align) -> bool: return False
+    @abstractmethod
+    def _regenerate_max_values(self): pass
+    @abstractmethod
+    def _get_scrollbar_coordinates(self) -> NvVector2: return NvVector2()
+    @abstractmethod
+    def _update_scroll_bar(self): pass
+    @abstractmethod
+    def _set_item_main(self, item: NevuObject, align: Align): pass
+    @abstractmethod
+    def get_relative_vector_offset(self) -> NvVector2: return NvVector2()
+    @abstractmethod
+    def _create_scroll_bar(self) -> ScrollBar: return None # type: ignore
+    @property
+    @abstractmethod
+    def _collide_function(self): return collide_vector
