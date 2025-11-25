@@ -194,8 +194,7 @@ class Color:
         """Converts HEX string to RGB tuple."""
         assert ColorAnnotation.is_hex(hex_color), "Invalid HEX color format."
         hex_color = hex_color.lstrip('#')
-        if len(hex_color) != 6:
-            raise ValueError("Invalid HEX color format. Use #RRGGBB.")
+        if len(hex_color) != 6: raise ValueError("Invalid HEX color format. Use #RRGGBB.")
         return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4)) # type: ignore
 
     @staticmethod
@@ -217,13 +216,9 @@ class Color:
     @staticmethod
     def invert(color: ColorAnnotation.AnyColor) -> ColorAnnotation.AnyColor:
         """Inverts the color (makes negative)."""
-        if ColorAnnotation.is_rgb_like(color):
-            return Color._invert_rgb(color)
-        elif ColorAnnotation.is_hsl(color):
-            return Color.invert_hsl(color)
-        elif ColorAnnotation.is_hex(color):
-            raise NotImplementedError("Hex color inversion is not implemented yet.")
-            #return Color._invert_rgb(Color.hex_to_rgb(color))
+        if ColorAnnotation.is_rgb_like(color): return Color._invert_rgb(color)
+        elif ColorAnnotation.is_hsl(color): return Color.invert_hsl(color)
+        elif ColorAnnotation.is_hex(color): raise NotImplementedError("Hex color inversion is not implemented yet.")
         raise ValueError("Invalid color format.")
 
     @staticmethod
@@ -246,8 +241,7 @@ class Color:
         Lightens the color.
         amount: from 0.0 (no change) to 1.0 (completely white).
         """
-        if not (0.0 <= amount <= 1.0):
-            raise ValueError("The 'amount' value should be between 0.0 and 1.0.")
+        if not (0.0 <= amount <= 1.0): raise ValueError("The 'amount' value should be between 0.0 and 1.0.")
         h, l, s = Color.rgb_to_hsl(color)
         l = l + (1 - l) * amount
         return Color.hsl_to_rgb((h, l, s))
@@ -301,16 +295,14 @@ class Color:
                     except AttributeError as e:
                         raise ValueError(f"Unknown color name: {color}") from e
                     
-            elif ColorAnnotation.is_hsl(color):
-                color = Color.hsl_to_rgb(color)
+            elif ColorAnnotation.is_hsl(color): color = Color.hsl_to_rgb(color)
                 
             elif not ColorAnnotation.is_rgb_like(color):
                 raise TypeError(f"Invalid color format for: {color}")
 
             final_color_list.append(color)
 
-        if not final_color_list:
-            return (0, 0, 0)
+        if not final_color_list: return (0, 0, 0)
 
         r, g, b = (sum(c) // len(final_color_list) for c in zip(*final_color_list))
         return (r, g, b)

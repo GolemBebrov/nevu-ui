@@ -1,5 +1,7 @@
-from .color_theme import ColorTheme, ColorSubTheme, ColorPair
 from .color import Color
+from .color_theme import (
+    ColorTheme, ColorSubTheme, ColorPair
+)
 
 class ColorThemeLibrary:
     material3_light = ColorTheme(
