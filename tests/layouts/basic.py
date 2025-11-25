@@ -28,8 +28,8 @@ def create_test_instances():
     
     widget_kwargs = {"style": widgets_style, "size": widgets_size,  "will_resize": True}
     
-    checkbox_group = ui.CheckBoxGroup(single_select=True)
-    checkbox_group.on_checkbox_toggled_single = checkboxgroup_wrapper
+    checkbox_group = ui.CheckBoxGroup(single_selection=True)
+    checkbox_group.on_single_toggled = checkboxgroup_wrapper
     
     #widgets
     widget = ui.Widget(style="zov", clickable=True, size=widgets_size, will_resize=False)

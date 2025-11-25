@@ -38,7 +38,7 @@ class Mygame(ui.Manager):
                          )
         
         self.menu = ui.menu.Menu(self.window,(100*ui.vw,100*ui.vh),
-                style = main_style(borderradius=20,borderwidth=1), alt=False, 
+                style = main_style(borderradius=20,borderwidth=1, gradient=ui.Gradient(colors=[ui.Color.BLACK, ui.Color.PURPLE],type=ui.GradientType.Linear,direction=ui.LinearSide.Bottom)), alt=False, 
                 layout = ui.Grid([100*ui.fill,100*ui.fill],x=3,y=3, 
                          content = {
                          (2,1.2): gridmenu,
