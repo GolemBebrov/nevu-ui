@@ -1,24 +1,23 @@
+from abc import ABC, abstractmethod
+
 from nevu_ui.widgets import Widget
 from nevu_ui.menu import Menu
 from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.core_types import Align
 from nevu_ui.layouts import LayoutType
+from nevu_ui.style import Style, default_style
 
-from nevu_ui.style import (
-    Style, default_style
-)
-
-class StackBase(LayoutType):
+class StackBase(LayoutType, ABC):
     _margin: int | float
-    def __init__(self, style: Style = default_style, content: list[tuple[Align, NevuObject]] | None = None, **constant_kwargs):
+    content_type = list[tuple[Align, NevuObject]]
+    def __init__(self, style: Style = default_style, content: content_type | None = None, **constant_kwargs):
         super().__init__(NvVector2(), style, None, **constant_kwargs)
         self._lazy_kwargs = {'size': NvVector2(), 'content': content}
         
-    def _lazy_init(self, size: NvVector2 | list, content: list[tuple[Align, NevuObject]] | None = None):
+    def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None):
         super()._lazy_init(size, content)
-        if content is None: return
-        if len(content) == 0: return
+        if content is None or len(content) == 0: return
         for inner_tuple in content:
             align, item = inner_tuple
             self.add_item(item, align)
@@ -35,25 +34,18 @@ class StackBase(LayoutType):
         super()._init_test_flags()
         self._test_always_update = True
     
-    def _recalculate_size(self):
-        pass
-    
-    def _recalculate_widget_coordinates(self):
-        pass
-    
-    def add_item(self, item: NevuObject, alignment: Align = Align.CENTER):
+    def add_item(self, item: NevuObject, alignment: Align = Align.CENTER): # type: ignore
         super().add_item(item)
         self.widgets_alignment.append(alignment)
         self.cached_coordinates = None
-        if self.layout: self.layout._event_on_add_item()
-        
+
     def insert_item(self, item: Widget | LayoutType, id: int = -1):
         try:
-            self.items.insert(id,item)
-            self.widgets_alignment.insert(id,Align.CENTER)
+            self.items.insert(id, item)
+            self.widgets_alignment.insert(id, Align.CENTER)
             self._recalculate_size()
-            if self.layout: self.layout._event_on_add_item()
-        except Exception as e: raise e #TODO
+            if self.layout: self.layout._on_item_add(item)
+        except Exception as e: raise e #TODO: FUCK i forgor 
         
     def _connect_to_layout(self, layout: LayoutType):
         super()._connect_to_layout(layout)
@@ -63,17 +55,12 @@ class StackBase(LayoutType):
         super()._connect_to_menu(menu)
         self._recalculate_widget_coordinates() 
         
-    def _event_on_add_item(self):
+    def _on_item_add(self, item: NevuObject):
         if not self.booted:
             self.cached_coordinates = None
-            if self.layout:
-                self.layout.cached_coordinates = None 
+            if self.layout: self.layout.cached_coordinates = None 
             return
-
         self._recalculate_size()
-        
-        if self.layout:
-            self.layout._event_on_add_item()
         
     def secondary_update(self, *args):
         super().secondary_update()
@@ -92,13 +79,17 @@ class StackBase(LayoutType):
     @property
     def spacing(self): return self._spacing
     @spacing.setter
-    def spacing(self, val):
-        self._spacing = val
+    def spacing(self, val): self._spacing = val
         
     def _regenerate_coordinates(self):
         super()._regenerate_coordinates()
         self._recalculate_size()
         self._recalculate_widget_coordinates()
-    
-    def _set_align_coords(self, item, alignment):
-        pass
+
+#=== Placeholders ===
+    @abstractmethod
+    def _set_align_coords(self, item: NevuObject, alignment: Align): pass
+    @abstractmethod
+    def _recalculate_size(self): pass
+    @abstractmethod
+    def _recalculate_widget_coordinates(self): pass
