@@ -2,7 +2,7 @@ from typing import Any
 
 from abc import ABC, abstractmethod
 
-from nevu_ui.utils import time
+from nevu_ui.utils.time import time
 from nevu_ui.core_types import AnimationType
 
 class Animation(ABC):
