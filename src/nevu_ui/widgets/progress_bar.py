@@ -1,15 +1,14 @@
 import copy
 import math
 
+from typing import (
+    NotRequired, Unpack, Union
+)
+
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.widgets import Widget, WidgetKwargs
 from nevu_ui.color import PairColorRole
-
-from typing import NotRequired, Unpack, Union
-
-from nevu_ui.style import (
-    Style, default_style
-)
+from nevu_ui.style import Style, default_style
 
 class ProgressBarKwargs(WidgetKwargs):
     min_value: NotRequired[Union[int, float]]
@@ -72,7 +71,6 @@ class ProgressBar(Widget):
         
     @property
     def progress(self): return self._progress
-    
     @progress.setter
     def progress(self, value):
         self._progress = value
@@ -102,40 +100,29 @@ class ProgressBar(Widget):
     
     def secondary_draw_content(self):
         super().secondary_draw_content()
-        if not self._changed or self.progress <= 0:
-            return
-
+        if not self._changed or self.progress <= 0: return
+        inner_vec = self._csize - self._rsize_marg
+        size = NvVector2(math.ceil(inner_vec.x * self.progress) + 2, inner_vec.y + 2)
         bw = math.ceil(self.relm(self.style.borderwidth))
-        
-        inner_width = self._csize.x - self._rsize_marg.x 
-        inner_height = self._csize.y - self._rsize_marg.y 
-        
-        size_x = math.ceil(inner_width * self.progress) + 2
-        size_y = inner_height + 2
-        
         radius = self.relm(self.style.borderradius) - bw
         min_side = min(self._rsize.x, self._rsize.y) / 2
         radius = min(min_side,max(radius, 0))
         
         y_decrease = 0
-        if size_x / 2 < radius:
-            y_decrease = math.ceil(radius - (size_x / 2))
-            if size_y - y_decrease * 2 > 0:
-                size_y -= y_decrease * 2
+        if size.x / 2 < radius:
+            y_decrease = math.ceil(radius - (size.x / 2))
+            if size.y - y_decrease * 2 > 0: size.y -= y_decrease * 2
         
-        if size_x <= 0 or size_y <= 0:
-            return
+        if size.x <= 0 or size.y <= 0: return
             
         surf = self.renderer._create_surf_base(
-            NvVector2(size_x, size_y), 
+            NvVector2(size.x, size.y), 
             override_color=self._subtheme_progress, 
-            radius=radius,
-            sdf = True
-        )
+            radius=radius, sdf = True)
         
-        coords = NvVector2(self._rsize_marg.x / 2 - 1, self._rsize_marg.y / 2 + y_decrease - 1)
-        
+        coords = (self._rsize_marg/2) - NvVector2(1,1)
+        coords.y += y_decrease
+        assert self.surface
         self.surface.blit(surf, coords.to_tuple())
     
-    def clone(self):
-        return ProgressBar(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
+    def clone(self): return ProgressBar(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
