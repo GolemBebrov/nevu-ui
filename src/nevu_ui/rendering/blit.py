@@ -30,10 +30,6 @@ class AlphaBlit:
             clipped_source_rect = pygame.Rect(src_x_offset, src_y_offset, roi_rect_clipped.width, roi_rect_clipped.height)
             dest_surf.blit(source_surf.subsurface(clipped_source_rect), roi_rect_clipped.topleft, special_flags=pygame.BLEND_RGBA_MULT)
 
-class FastBlit:
-    # will be removed later
-    pass
-
 class ReverseAlphaBlit:
     @staticmethod
     def blit(dest_surf: pygame.Surface, source_surf: pygame.Surface, source_pos: tuple[int, int]):
