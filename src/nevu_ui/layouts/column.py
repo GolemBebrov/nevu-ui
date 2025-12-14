@@ -1,13 +1,27 @@
-import copy
+from typing import Unpack, overload
 
 from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2 
-from nevu_ui.layouts import Grid
+from nevu_ui.layouts import Grid, GridKwargs_uni, GridKwargs_rc, GridKwargs_xy
 from nevu_ui.style import Style, default_style
 
 class Column(Grid):
     content_type = dict[Grid.any_number, NevuObject]
-    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: content_type | None = None, **constant_kwargs):
+    @overload
+    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_rc]):
+        """
+        Initializes a Column object.
+        Parameters:
+        column (int | float): **WARNING: column constant cannot be changed in Column**
+        """
+    @overload
+    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_xy]): 
+        """
+        Initializes a Column object.
+        Parameters:
+        x (int | float): **WARNING: x constant cannot be changed in Column**
+        """
+    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_uni]):
         super().__init__(size, style, None, **constant_kwargs)
         self._lazy_kwargs = {'size': size, 'content': content}
         
@@ -17,6 +31,9 @@ class Column(Grid):
         
     def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None): # type: ignore
         super()._lazy_init(size)
+        self.add_items(content)
+    
+    def add_items(self, content: content_type | None): # type: ignore
         if not content: return
         for ycoord, item in content.items():
             self.add_item(item, ycoord)
@@ -26,5 +43,3 @@ class Column(Grid):
     
     def get_item(self, y: Grid.any_number) -> NevuObject | None: # type: ignore
         return super().get_item(1, y)
-    
-    def clone(self): return Column(self._lazy_kwargs['size'], copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)

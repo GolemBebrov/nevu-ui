@@ -17,15 +17,12 @@ class Row(Grid):
         
     def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None): # type: ignore
         super()._lazy_init(size)
-        self.cell_height = self.size[1] / self.row
-        self.cell_width = self.size[0] / self.column
-        if not content:
-            return
+        self.add_items(content)
+        
+    def add_items(self, content: content_type | None): # type: ignore
+        if not content: return
         for xcoord, item in content.items():
             self.add_item(item, xcoord)
-            
-    def clone(self):
-        return Row(self._lazy_kwargs['size'], copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
             
     def add_item(self, item: NevuObject, x: Grid.any_number): # type: ignore
         return super().add_item(item, x, 1)
