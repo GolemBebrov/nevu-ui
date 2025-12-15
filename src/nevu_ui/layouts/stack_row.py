@@ -27,5 +27,3 @@ class StackRow(StackBase):
             item.absolute_coordinates = self._get_item_master_coordinates(item)
             current_x += self.relx(item.size.x + self.spacing)
             self.cached_coordinates.append(item.coordinates)
-
-    def clone(self): return StackRow(copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)

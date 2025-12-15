@@ -1,5 +1,3 @@
-import copy
-
 from nevu_ui.nevuobj import NevuObject
 from nevu_ui.core_types import Align
 from nevu_ui.layouts import StackBase
@@ -27,5 +25,3 @@ class StackColumn(StackBase):
             item.absolute_coordinates = self._get_item_master_coordinates(item)
             current_y += self.rely(item.size.y + self.spacing)
             self.cached_coordinates.append(item.coordinates)
-            
-    def clone(self): return StackColumn(copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
