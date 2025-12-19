@@ -1,17 +1,13 @@
 import pygame
 import copy
-
-from nevu_ui.core_types import Align
 from nevu_ui.utils import mouse
+from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.core.state import nevu_state
 from nevu_ui.widgets import Widget, WidgetKwargs
-from nevu_ui.state import nevu_state
-from typing import Any, TypedDict, NotRequired, Unpack, override
+from nevu_ui.style import Style, default_style
 
-from nevu_ui.fast.nvvector2 import (
-    NvVector2 as Vector2, NvVector2
-)
-from nevu_ui.style import (
-    Style, default_style
+from typing import (
+    NotRequired, Unpack, override
 )
 
 class InputKwargs(WidgetKwargs):
@@ -32,7 +28,7 @@ class Input(Widget):
     words_indent: bool
     is_active: bool
     
-    def __init__(self, size: Vector2 | list, style: Style = default_style, default: str = "", placeholder: str = "", on_change_function = None, **constant_kwargs: Unpack[InputKwargs]):
+    def __init__(self, size: NvVector2 | list, style: Style = default_style, default: str = "", placeholder: str = "", on_change_function = None, **constant_kwargs: Unpack[InputKwargs]):
         super().__init__(size, style, **constant_kwargs)
         self._lazy_kwargs = {'size': size}
         self._entered_text = ""
@@ -44,14 +40,11 @@ class Input(Widget):
 
     def _init_numerical(self):
         super()._init_numerical()
-        self._text_scroll_offset = 0
-        self._text_scroll_offset_y = 0
+        self._scroll_offset = NvVector2()
         self.max_scroll_y = 0
         self.cursor_place = 0
-        self.left_margin = 10
-        self.right_margin = 10
-        self.top_margin = 5
-        self.bottom_margin = 5
+        self.lt_margin = NvVector2(10, 5)
+        self.rb_margin = NvVector2(10, 5)
         
     def _init_booleans(self):
         super()._init_booleans()
@@ -72,7 +65,7 @@ class Input(Widget):
         self._add_constant("blacklist", (list, type(None)), None)
         self._add_constant("whitelist", (list, type(None)), None)
         
-    def _lazy_init(self, size: Vector2 | list):
+    def _lazy_init(self, size: NvVector2 | list):
         super()._lazy_init(size)
         self._init_cursor()
         self._right_bake_text()
@@ -108,7 +101,7 @@ class Input(Widget):
         last_line_len = len(lines[last_line_index]) if last_line_index >= 0 else 0
         return last_line_index, last_line_len
     
-    def _get_abs_pos_from_line_col(self, target_line_index, target_col_index):
+    def _get_line_abs_pos(self, target_line_index, target_col_index):
         lines = self._entered_text.split('\n')
         target_line_index = max(0, min(target_line_index, len(lines) - 1))
         abs_pos = 0
@@ -131,17 +124,14 @@ class Input(Widget):
             full_line_width = renderFont.size(cursor_line_text)[0]
         except (pygame.error, AttributeError, IndexError): return
         assert self.surface
-        l_margin = int(self.left_margin * self._resize_ratio[0])
-        r_margin = int(self.right_margin * self._resize_ratio[0])
-        visible_width = int(self.surface.get_width() - l_margin - r_margin)
-        
+        sum_margin_vec = self.rel(self.lt_margin + self.rb_margin)
+        visible_width = (self._csize - sum_margin_vec).to_int().x
         visible_width = max(visible_width, 1)
-        cursor_pos_relative_to_visible_start = ideal_cursor_x_offset - self._text_scroll_offset
-        if cursor_pos_relative_to_visible_start < 0: self._text_scroll_offset = ideal_cursor_x_offset
-        elif cursor_pos_relative_to_visible_start > visible_width: self._text_scroll_offset = ideal_cursor_x_offset - visible_width
-
+        relative_cursor_pos = ideal_cursor_x_offset - self._scroll_offset.x
+        if relative_cursor_pos < 0: self._scroll_offset.x = ideal_cursor_x_offset
+        elif relative_cursor_pos > visible_width: self._scroll_offset.x = ideal_cursor_x_offset - visible_width
         max_scroll_x = max(0, full_line_width - visible_width)
-        self._text_scroll_offset = max(0, min(self._text_scroll_offset, max_scroll_x))
+        self._scroll_offset.x = max(0, min(self._scroll_offset.x, max_scroll_x))
 
     def _update_scroll_offset_y(self):
         if not self.multiple or not hasattr(self, 'style'): return
@@ -152,14 +142,13 @@ class Input(Widget):
             ideal_cursor_y_offset = cursor_line * line_height
             total_text_height = self._text_surface.get_height()
         except (pygame.error, AttributeError, IndexError): return
-        t_margin = int(self.top_margin * self._resize_ratio[1])
-        b_margin = int(self.bottom_margin * self._resize_ratio[1])
-        visible_height = int(self._csize.y - t_margin - b_margin)
+        sum_margin = self.rel(self.lt_margin + self.rb_margin)
+        visible_height = (self._csize - sum_margin).to_int().y
         visible_height = max(visible_height, 1)
         self.max_scroll_y = max(0, total_text_height - visible_height)
-        if ideal_cursor_y_offset < self._text_scroll_offset_y: self._text_scroll_offset_y = ideal_cursor_y_offset
-        elif ideal_cursor_y_offset + line_height > self._text_scroll_offset_y + visible_height: self._text_scroll_offset_y = ideal_cursor_y_offset + line_height - visible_height
-        self._text_scroll_offset_y = max(0, min(self._text_scroll_offset_y, self.max_scroll_y))
+        if ideal_cursor_y_offset < self._scroll_offset.y: self._scroll_offset.y = ideal_cursor_y_offset
+        elif ideal_cursor_y_offset + line_height > self._scroll_offset.y + visible_height: self._scroll_offset.y = ideal_cursor_y_offset + line_height - visible_height
+        self._scroll_offset.y = max(0, min(self._scroll_offset.y, self.max_scroll_y))
 
     @override
     def bake_text(self, text: str, words_indent = False, continuous = False, multiline_mode = False): # type: ignore
@@ -199,7 +188,7 @@ class Input(Widget):
         
         lines = []
         current_line = ""
-        max_line_width = int(self._csize[0] - self.relx(self.left_margin + self.right_margin))
+        max_line_width = int(self._csize[0] - self.relx(self.lt_margin.x + self.rb_margin.x))
         
         processed_text = text.replace('\r\n', '\n').replace('\r', '\n')
         paragraphs = processed_text.split('\n')
@@ -218,7 +207,7 @@ class Input(Widget):
                         current_line = word + sep
                 if current_line: lines.append(current_line.rstrip())
 
-            visible_area_height = self.size[1] * self._resize_ratio[1] - self.top_margin*self._resize_ratio[1] - self.bottom_margin*self._resize_ratio[1]
+            visible_area_height = self.size[1] * self._resize_ratio[1] - self.lt_margin.y*self._resize_ratio[1] - self.rb_margin.y*self._resize_ratio[1]
             if line_height > 0:
                 max_visible_lines = int(visible_area_height / line_height)
             else:
@@ -228,7 +217,7 @@ class Input(Widget):
 
             if not visible_lines:
                 self._text_surface = pygame.Surface((1, 1), pygame.SRCALPHA); self._text_surface.fill((0,0,0,0))
-                self._text_rect = self._text_surface.get_rect(topleft=(int(self.left_margin*self._resize_ratio[0]), int(self.top_margin*self._resize_ratio[1])))
+                self._text_rect = self._text_surface.get_rect(topleft=(int(self.lt_margin.x*self._resize_ratio[0]), int(self.lt_margin.y*self._resize_ratio[1])))
                 return
             
             max_w = 0
@@ -247,7 +236,7 @@ class Input(Widget):
                 self._text_surface.blit(line_surf, (0, cury))
                 cury += line_height
 
-            self._text_rect = self._text_surface.get_rect(topleft=(int(self.left_margin*self._resize_ratio[0]), int(self.top_margin*self._resize_ratio[1])))
+            self._text_rect = self._text_surface.get_rect(topleft=(int(self.lt_margin.x*self._resize_ratio[0]), int(self.lt_margin.y*self._resize_ratio[1])))
         
         except (pygame.error, AttributeError):
             self._text_surface = None
@@ -277,16 +266,11 @@ class Input(Widget):
         if not self.booted: return
         self._changed = True
         self._update_image()
-        self.left_margin =  10
-        self.right_margin = 10
-        self.top_margin = 5
-        self.bottom_margin = 5
         if hasattr(self,'_entered_text'):
             self._right_bake_text()
 
     @property
-    def cursor_place(self):
-        return self._cursor_place
+    def cursor_place(self): return self._cursor_place
     @cursor_place.setter
     def cursor_place(self, cursor_place: int):
         self._cursor_place = cursor_place
@@ -369,20 +353,21 @@ class Input(Widget):
             line_idx, _ = self._get_cursor_line_col()
             lines = self._entered_text.split('\n')
             line_len = len(lines[line_idx]) if line_idx < len(lines) else 0
-            self.cursor_place = self._get_abs_pos_from_line_col(line_idx, line_len)
+            self.cursor_place = self._get_line_abs_pos(line_idx, line_len)
         else: self.cursor_place = len(self._entered_text)
+        
     def _parse_arrow_events(self, ctrl, event, initial_cursor_place: int):
         if event.key == pygame.K_UP:
             if self.multiple:
                 current_line, current_col = self._get_cursor_line_col()
                 if current_line > 0:
-                    self.cursor_place = self._get_abs_pos_from_line_col(current_line - 1, current_col)
+                    self.cursor_place = self._get_line_abs_pos(current_line - 1, current_col)
         elif event.key == pygame.K_DOWN:
             if self.multiple:
                 lines = self._entered_text.split('\n')
                 current_line, current_col = self._get_cursor_line_col()
                 if current_line < len(lines) - 1:
-                    self.cursor_place = self._get_abs_pos_from_line_col(current_line + 1, current_col)
+                    self.cursor_place = self._get_line_abs_pos(current_line + 1, current_col)
         elif event.key == pygame.K_RIGHT:
             self._parse_right(ctrl, initial_cursor_place)
         elif event.key == pygame.K_LEFT:
@@ -397,7 +382,7 @@ class Input(Widget):
         elif event.key == pygame.K_HOME:
             if self.multiple:
                 line_idx, _ = self._get_cursor_line_col()
-                self.cursor_place = self._get_abs_pos_from_line_col(line_idx, 0)
+                self.cursor_place = self._get_line_abs_pos(line_idx, 0)
             else: self.cursor_place = 0
         elif event.key == pygame.K_END:
             self._parse_end()
@@ -463,10 +448,29 @@ class Input(Widget):
         
         scroll_amount = direction * line_h * scroll_multiplier
         if not hasattr(self, 'max_scroll_y'): self._update_scroll_offset_y()
-        self._text_scroll_offset_y -= scroll_amount
-        self._text_scroll_offset_y = max(0, min(self._text_scroll_offset_y, getattr(self, 'max_scroll_y', 0)))
+        self._scroll_offset.y -= scroll_amount
+        self._scroll_offset.y = max(0, min(self._scroll_offset.y, getattr(self, 'max_scroll_y', 0)))
         self._changed = True
     
+    def _find_best_cursor_index(self, renderFont, text, x_pos):
+        best_index = 0
+        min_diff = float('inf')
+        current_w = 0
+        for i, char in enumerate(text):
+            char_w = renderFont.size(char)[0]
+            pos_before = current_w
+            pos_after = current_w + char_w
+            diff_before = abs(x_pos - pos_before)
+            diff_after = abs(x_pos - pos_after)
+            if diff_before <= min_diff:
+                min_diff = diff_before
+                best_index = i
+            if diff_after < min_diff:
+                min_diff = diff_after
+                best_index = i + 1
+            current_w += char_w
+        return max(0, min(best_index, len(text)))
+
     def check_selected(self, collided):
         if collided and mouse.left_fdown:
             if not self.selected:
@@ -474,56 +478,21 @@ class Input(Widget):
                 self._changed = True
                 try:
                     renderFont = self.get_font()
-                    relative = mouse.pos - self.absolute_coordinates
-                    lt_marg = self.rel(NvVector2(self.left_margin, self.top_margin))
+                    relative_vec = mouse.pos - self.absolute_coordinates
+                    lt_marg_vec = self.rel(self.lt_margin)
+                    cropped_vec = relative_vec - lt_marg_vec
+                    scrolled_vec = cropped_vec + self._scroll_offset
                     if self.multiple:
                         line_height = self._get_line_height()
-                        if line_height <= 0 : line_height = 1 
-                        target_line_idx_float = (relative.y - lt_marg.y + self._text_scroll_offset_y) / line_height
-                        target_line_index = max(0, int(target_line_idx_float))
+                        if line_height <= 0 : line_height = 1
+                        target_line_index = max(0, int(scrolled_vec.y / line_height))
                         lines = self._entered_text.split('\n')
                         target_line_index = min(target_line_index, len(lines) - 1)
-                        target_x_in_full_line = relative.x - lt_marg.x + self._text_scroll_offset
                         target_line_text = lines[target_line_index] if target_line_index < len(lines) else ""
-                        best_col_index = 0
-                        min_diff = float('inf')
-                        current_w = 0
-                        for i, char in enumerate(target_line_text):
-                            char_w = renderFont.size(char)[0]
-                            pos_before = current_w
-                            pos_after = current_w + char_w
-                            diff_before = abs(target_x_in_full_line - pos_before)
-                            diff_after = abs(target_x_in_full_line - pos_after)
-                            if diff_before <= min_diff:
-                                min_diff = diff_before
-                                best_col_index = i
-                            if diff_after < min_diff:
-                                    min_diff = diff_after
-                                    best_col_index = i + 1
-                            current_w += char_w
-                        best_col_index = max(0, min(best_col_index, len(target_line_text)))
-                        self.cursor_place = self._get_abs_pos_from_line_col(target_line_index, best_col_index)
+                        best_col_index = self._find_best_cursor_index(renderFont, target_line_text, scrolled_vec.x)
+                        self.cursor_place = self._get_line_abs_pos(target_line_index, best_col_index)
                     else:
-                        target_x_in_full_text = relative.x - lt_marg.x + self._text_scroll_offset
-                        best_index = 0
-                        min_diff = float('inf')
-                        current_w = 0
-                        for i, char in enumerate(self._entered_text):
-                            char_w = renderFont.size(char)[0]
-                            pos_before = current_w
-                            pos_after = current_w + char_w
-                            diff_before = abs(target_x_in_full_text - pos_before)
-                            diff_after = abs(target_x_in_full_text - pos_after)
-
-                            if diff_before <= min_diff:
-                                min_diff = diff_before
-                                best_index = i
-                            if diff_after < min_diff:
-                                min_diff = diff_after
-                                best_index = i + 1
-                            current_w += char_w
-
-                        best_index = max(0, min(best_index, len(self._entered_text)))
+                        best_index = self._find_best_cursor_index(renderFont, self._entered_text, scrolled_vec.x)
                         self.cursor_place = best_index
 
                     self._update_scroll_offset()
@@ -538,7 +507,6 @@ class Input(Widget):
 
     @property
     def text(self): return self._entered_text # type: ignore
-    
     @text.setter
     def text(self, text: str | int | float):
         text = str(text)
@@ -570,22 +538,24 @@ class Input(Widget):
             cursor_height = self.cursor.get_height()
         except (pygame.error, AttributeError): return
         
-        lt_margin = self.rel(NvVector2(self.left_margin, self.top_margin))
-        rb_margin = self.rel(NvVector2(self.right_margin, self.bottom_margin))
-        clip = (self._csize - lt_margin - rb_margin).to_int()
+        lt_marg_vec = self.rel(self.lt_margin)
+        rb_marg_vec = self.rel(self.rb_margin)
+        lt_scrolled_vec = lt_marg_vec - self._scroll_offset
+        clip = (self._csize - lt_marg_vec - rb_marg_vec).to_int()
         clip.x, clip.y = max(clip.x, 0), max(clip.y, 0)
     
         if clip.x <= 0 or clip.y <= 0: return
          
         clip_rect = self.surface.get_rect()
-        clip_rect.topleft = lt_margin.to_int()
+        clip_rect.topleft = lt_marg_vec.to_int()
         clip_rect.size = clip.to_int()
         
         if self._text_surface:
             if self.multiple:
-                self._text_rect = self._text_surface.get_rect(topleft=(lt_margin.x - self._text_scroll_offset, lt_margin.y - self._text_scroll_offset_y))
+                self._text_rect = self._text_surface.get_rect(topleft = lt_scrolled_vec.to_int().to_tuple())
             else:
-                self._text_rect = self._text_surface.get_rect(left=lt_margin.x - self._text_scroll_offset,centery=int((lt_margin.y + self.surface.get_height() - rb_margin.y) / 2) )
+                self._text_rect = self._text_surface.get_rect(left = int(lt_scrolled_vec.x), centery = int((lt_marg_vec.y + self.surface.get_height() - rb_marg_vec.y) / 2) )
+            
             original_clip = self.surface.get_clip()
             self.surface.set_clip(clip_rect)
             self.surface.blit(self._text_surface, self._text_rect)
@@ -600,17 +570,18 @@ class Input(Widget):
                     line_text = lines[cursor_line] if cursor_line < len(lines) else ""
                     text_before_cursor_in_line = line_text[:cursor_col]
                     cursor_x_offset = renderFont.size(text_before_cursor_in_line)[0]
-                    cursor_visual.x = int(lt_margin.x + cursor_x_offset - self._text_scroll_offset)
-                    cursor_visual.y = int(lt_margin.y + (cursor_line * line_height) - self._text_scroll_offset_y)
+                    cursor_visual.x = int(lt_scrolled_vec.x + cursor_x_offset)
+                    cursor_visual.y = int(lt_scrolled_vec.y + (cursor_line * line_height))
                 else:
                     text_before_cursor = self._entered_text[:self.cursor_place]
                     cursor_x_offset = renderFont.size(text_before_cursor)[0]
-                    cursor_visual.x = int(lt_margin.x + cursor_x_offset - self._text_scroll_offset)
+                    cursor_visual.x = int(lt_scrolled_vec.x + cursor_x_offset )
                     cursor_visual.y = int((self.surface.get_height() - cursor_height) / 2)
                 
                 cursor_draw_rect = self.cursor.get_rect(topleft=(cursor_visual.x, cursor_visual.y))
                 if clip_rect.colliderect(cursor_draw_rect):
                     self.surface.blit(self.cursor, cursor_draw_rect.topleft)
+                    
             except (pygame.error, AttributeError, IndexError):
                 print("Error drawing cursor")
     
