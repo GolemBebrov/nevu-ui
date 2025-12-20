@@ -9,6 +9,7 @@ from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2 
 from nevu_ui.layouts import LayoutType, LayoutTypeKwargs
 from nevu_ui.style import Style, default_style
+from nevu_ui.size.rules import Gc, Gcw, Gch, Cgc, Cgcw, Cgch
 
 class _Grid_Specifics_rc(TypedDict):
     row: NotRequired[int | float]
@@ -73,7 +74,17 @@ class Grid(LayoutType):
     def secondary_update(self, *args):
         super().secondary_update()
         self.base_light_update()
-        
+
+    def _parse_gcx(self, coord, pos: int): # type: ignore
+        if self.first_parent_menu is None: raise self._unconnected_layout_error("Gcx coords")
+        if self.first_parent_menu.window is None: raise self._uninitialized_layout_error("Gcx coords")
+        if type(coord) == Gc: return self._percent_helper((self.cell_width, self.cell_height)[pos], coord.value), True
+        elif type(coord) == Gcw: return self._percent_helper((self.cell_width), coord.value), True
+        elif type(coord) == Gch: return self._percent_helper((self.cell_height), coord.value), True
+        elif type(coord) == Cgc: return self._percent_helper(self.rel(NvVector2(self.cell_width, self.cell_height))[pos], coord.value), True
+        elif type(coord) == Cgcw: return self._percent_helper(self.relx(self.cell_width), coord.value), True
+        elif type(coord) == Cgch: return self._percent_helper(self.rely(self.cell_height), coord.value), True
+
     def add_item(self, item: NevuObject, x: any_number, y: any_number):  # type: ignore
         range_error = ValueError("Grid index out of range x: {x}, y: {y} ".format(x=x,y=y)+f"Grid size: {self.column}x{self.row}")
         if x > self.column or y > self.row or x < 1 or y < 1: raise range_error
