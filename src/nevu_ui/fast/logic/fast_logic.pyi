@@ -18,6 +18,12 @@ def relm_helper(
     max_val: Optional[float]
 ) -> float: ...
 
+def vec_rel_helper(
+    vec: NvVector2, 
+    resize_ratio_x: float, 
+    resize_ratio_y: float
+) -> NvVector2: ...
+
 def mass_rel_helper(
     mass: Sequence[float], 
     resize_ratio_x: float, 

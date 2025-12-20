@@ -10,15 +10,10 @@ cimport numpy as np
 cimport cython
 import weakref
 from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2
-from nevu_ui.fast.logic import get_rect_helper
 
 np.import_array()
 
 cdef class ZRequest:
-    cdef object _link_ref
-    cdef public object on_hover_func, on_unhover_func, on_click_func, on_scroll_func, on_keyup_func, on_keyup_abandon_func
-    cdef object __weakref__
-
     def __init__(self, link,
                  on_hover_func=None, on_unhover_func=None, on_click_func=None, 
                  on_keyup_func=None, on_keyup_abandon_func=None, on_scroll_func=None):
@@ -37,15 +32,6 @@ cdef class ZRequest:
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef class ZSystem:
-    cdef list _registered_requests
-    cdef object last_hovered_request
-    cdef object clicked_request  
-    cdef list live_requests
-    cdef bint is_dirty
-
-    cdef np.ndarray rects_data
-    cdef np.ndarray z_indices
-
     def __cinit__(self):
         self._registered_requests = []
         self.last_hovered_request = None
@@ -113,16 +99,17 @@ cdef class ZSystem:
 
         cdef object current_winner_request = self.request_cycle(mouse_pos, any_wheel, wheel_down, self.live_requests)
 
-        if self.last_hovered_request is not current_winner_request:
-            if self.last_hovered_request is not None:
-                if self.last_hovered_request.on_unhover_func is not None:
-                    self.last_hovered_request.on_unhover_func()
-            
-            if current_winner_request is not None:
-                if current_winner_request.on_hover_func is not None:
-                    current_winner_request.on_hover_func()
+        if self.clicked_request is None:
+            if self.last_hovered_request is not current_winner_request:
+                if self.last_hovered_request is not None:
+                    if self.last_hovered_request.on_unhover_func is not None:
+                        self.last_hovered_request.on_unhover_func()
+                
+                if current_winner_request is not None:
+                    if current_winner_request.on_hover_func is not None:
+                        current_winner_request.on_hover_func()
 
-        self.last_hovered_request = current_winner_request
+            self.last_hovered_request = current_winner_request
         
         if mouse_down and current_winner_request is not None:
             self.clicked_request = current_winner_request

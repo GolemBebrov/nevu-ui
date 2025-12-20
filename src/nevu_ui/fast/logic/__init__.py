@@ -7,7 +7,8 @@ from .fast_logic import (
     get_rect_helper_cached,
     get_rect_helper_cached_pygame,
     logic_update_helper,
-    _light_update_helper
+    _light_update_helper,
+    vec_rel_helper
 )
 
 __all__ = [
