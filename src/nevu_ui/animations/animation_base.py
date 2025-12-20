@@ -3,7 +3,7 @@ from typing import Any
 from abc import ABC, abstractmethod
 
 from nevu_ui.utils.time import time
-from nevu_ui.core_types import AnimationType
+from nevu_ui.core.enums import AnimationType
 
 class Animation(ABC):
     def __init__(self, time: int = 0, start: Any = None, end: Any = None, type: AnimationType = AnimationType._not_used):

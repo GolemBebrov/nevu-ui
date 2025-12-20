@@ -4,14 +4,7 @@ from enum import Enum, auto
 
 from nevu_ui.animations.animations_library import Linear
 from nevu_ui.animations.animation_base import Animation
-from nevu_ui.core_types import AnimationType
-
-class AnimationManagerState(Enum):
-    START = auto()
-    CONTINUOUS = auto()
-    TRANSITION = auto()
-    IDLE = auto()
-    ENDED = auto()
+from nevu_ui.core.enums import AnimationType, AnimationManagerState
 
 class AnimationManager:
     def __init__(self):

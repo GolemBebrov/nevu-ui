@@ -1,7 +1,8 @@
 import math
 import random
 
-from .animation_base import Animation, AnimationType
+from nevu_ui.animations.animation_base import Animation
+from nevu_ui.core.enums import AnimationType
 
 class Linear(Animation):
     def _animation_update(self, value):
