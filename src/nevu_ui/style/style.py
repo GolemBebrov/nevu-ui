@@ -1,32 +1,62 @@
 import copy
-from typing import TypedDict, NotRequired, Unpack
+from typing import TypedDict, TypeVar, NotRequired, Unpack, Generic
 
-from nevu_ui.core_types import Align, HoverState
+from nevu_ui.core.enums import Align, HoverState
 from nevu_ui.rendering import Gradient
 
 from nevu_ui.color import (
-    Color, ColorThemeLibrary, ColorTheme, SubThemeRole
+    Color, ColorThemeLibrary, ColorTheme
 )
 
+TV = TypeVar("TV")
+
+class StateVariable(Generic[TV]):
+    def __init__(self, static: TV, hover: TV, active: TV):
+        self.static: TV = static
+        self.hover: TV = hover
+        self.active: TV = active
+        
+    def __getitem__(self, name: str | int) -> TV:
+        if name in [0, "static"]:
+            return self.static
+        elif name in [1, "hover"]:
+            return self.hover
+        elif name in [2, "active"]:
+            return self.active
+        raise KeyError
+    
+    def __setitem__(self, name: int, value: TV):
+        if name == 0:
+            self.static = value
+        elif name == 1:
+            self.hover = value
+        elif name == 2:
+            self.active = value
+        elif name in {"static", "hover", "active"}:
+            setattr(self, name, value)
+        raise KeyError
+
+T = TypeVar("T")
+type SVar[T] = T | StateVariable[T]
 
 class StyleKwargs(TypedDict):
-    borderradius: NotRequired[int]
-    br: NotRequired[int]
-    borderwidth: NotRequired[int]
-    bw: NotRequired[int]
-    fontsize: NotRequired[int]
-    fontname: NotRequired[str]
-    fontpath: NotRequired[str]
-    text_align_x: NotRequired[Align]
-    text_align_y: NotRequired[Align]
-    transparency: NotRequired[int]
-    bgimage: NotRequired[str]
-    colortheme: NotRequired[ColorTheme]
-    gradient: NotRequired[Gradient]
+    borderradius: NotRequired[SVar[int]]
+    br: NotRequired[SVar[int]]
+    borderwidth: NotRequired[SVar[int]]
+    bw: NotRequired[SVar[int]]
+    fontsize: NotRequired[SVar[int]]
+    fontname: NotRequired[SVar[str]]
+    fontpath: NotRequired[SVar[str]]
+    text_align_x: NotRequired[SVar[Align]]
+    text_align_y: NotRequired[SVar[Align]]
+    transparency: NotRequired[SVar[int]]
+    bgimage: NotRequired[SVar[str]]
+    colortheme: NotRequired[SVar[ColorTheme]]
+    gradient: NotRequired[SVar[Gradient]]
     
 class Style:
     def __init__(self, **kwargs: Unpack[StyleKwargs]):
-        self._kwargs_for_copy = copy.copy(kwargs)
+        self._kwargs_for_copy = copy.deepcopy(kwargs)
         self.kwargs_dict = {}
         self.parameters_dict = {
             "borderradius": ["borderradius", self._parse_int_min0],
@@ -158,44 +188,13 @@ class Style:
         style._curr_state = HoverState.UN_HOVERED
         return style
     
-    def clone(self):
-        return Style(**self._kwargs_for_copy)
-
+    def clone(self): return Style(**self._kwargs_for_copy)
+    def __deepcopy__(self, memo): return copy.copy(self)
+    
 hstate_to_state = {
     HoverState.CLICKED: "active",
     HoverState.HOVERED: "hover",
     HoverState.UN_HOVERED: "static"
 }
-
-class StateVariable:
-    def __init__(self, static, hover, active):
-        if len({type(static), type(hover), type(active)}) != 1:
-            raise ValueError("static, hover and active must be of the same type")
-        self.type = type(static)
-        self.static = static
-        self.hover = hover
-        self.active = active
-        
-    def __getitem__(self, name: str | int):
-        if name == 0:
-            return self.static
-        elif name == 1:
-            return self.hover
-        elif name == 2:
-            return self.active
-        elif name in {"static", "hover", "active"}:
-            return getattr(self, name)
-        raise KeyError
-    
-    def __setitem__(self, name: int, value):
-        if name == 0:
-            self.static = value
-        elif name == 1:
-            self.hover = value
-        elif name == 2:
-            self.active = value
-        elif name in {"static", "hover", "active"}:
-            setattr(self, name, value)
-        raise KeyError
 
 default_style = Style()
