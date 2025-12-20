@@ -1,24 +1,39 @@
-import pygame
 import copy
-from typing import TypeGuard
+import pygame
+from itertools import chain
 from warnings import deprecated
+
+from typing import (
+    TypeGuard, Iterator, Unpack
+)
 
 from nevu_ui.widgets import Widget
 from nevu_ui.menu import Menu
-from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.logic import _light_update_helper
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.state import nevu_state
+from nevu_ui.core.state import nevu_state
 from nevu_ui.style import Style, default_style
+from nevu_ui.nevuobj import NevuObject, NevuObjectKwargs
 
-from nevu_ui.core_types import (
-    SizeRule, Vh, Vw, Fill
+from nevu_ui.size.rules import (
+    SizeRule, _all_fillx, _all_vx, _all_gcx, Fill, FillW, FillH, CFill, CFillW, CFillH, Vh, Vw, Cvh, Cvw
 )
 
+class LayoutTypeKwargs(NevuObjectKwargs): pass
+    
 class LayoutType(NevuObject):
     items: list[NevuObject]
     floating_items: list[NevuObject]
     content_type = list
+
+    def _all_items(self) -> Iterator[NevuObject]:
+        return chain(self.items, self.floating_items)
+
+    def _unconnected_layout_error(self, item):
+        return ValueError(f"Cant use {item} in unconnected layout {self}")
+
+    def _uninitialized_layout_error(self, item):
+        return ValueError(f"Cant use {item} in uninitialized layout {self}")
     
     def _get_item_master_coordinates(self, item: NevuObject):
         assert isinstance(item, NevuObject), f"Can't use _get_item_master_coordinates on {type(item)}"
@@ -48,26 +63,14 @@ class LayoutType(NevuObject):
 
     def _boot_up(self):
         self.booted = True
-        for item in self.items + self.floating_items:
+        for item in self._all_items():
             assert isinstance(item, (Widget, LayoutType))
             self.read_item_coords(item)
             self._start_item(item)
             item.booted = True
             item._boot_up()
-            
-    @property
-    def _rsize(self) -> NvVector2:
-        bw = self.menu.style.borderwidth if self.menu else self.first_parent_menu.style.borderwidth
-        return self._csize - NvVector2(bw, bw) if self.menu else self._csize
-
-    @property
-    def _rsize_marg(self) -> NvVector2:
-        bw = self.menu.style.borderwidth if self.menu else self.first_parent_menu.style.borderwidth
-        bw = int(self.relm(bw))
-        if self.menu: return (self._csize - (self._csize - NvVector2(bw,bw)))/2
-        return NvVector2()
     
-    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: list | None  = None, **constant_kwargs):
+    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: list | None  = None, **constant_kwargs: Unpack[LayoutTypeKwargs]):
         super().__init__(size, style, **constant_kwargs)
         self._lazy_kwargs = {'size': size, 'content': content}
         self.border_name = " "
@@ -97,6 +100,9 @@ class LayoutType(NevuObject):
             for i in content:
                 self.add_item(i)
 
+    def add_items(self, content: content_type):
+        raise NotImplementedError("Subclasses of LayoutType may implement add_items()")
+    
     def base_light_update(self, add_x: int | float = 0, add_y: int | float = 0 ):
         _light_update_helper(
             self.items,
@@ -108,12 +114,12 @@ class LayoutType(NevuObject):
             self.cached_coordinates is None or len(self.items) != len(self.cached_coordinates))
 
     @property
-    def coordinates(self): return self._coordinates
+    def coordinates(self): return self._coordinates if hasattr(self, "_coordinates") else NvVector2()
     @coordinates.setter
     def coordinates(self, value):
-        if not self._first_update and self._coordinates == value: return
+        if not self._first_update and self.coordinates == value: return
+        if value != self.coordinates: self.cached_coordinates = None
         self._coordinates = value
-        self.cached_coordinates = None
 
     @property
     @deprecated("borders is deprecated and incompatible with sdl2 or gl renderers")
@@ -121,9 +127,9 @@ class LayoutType(NevuObject):
 
     @borders.setter
     @deprecated("borders is deprecated and incompatible with sdl2 or gl renderers")
-    def borders(self, bool: bool): 
-        self._borders = bool
-        print("Warning: borders is deprecated and incompatible with sdl2 or gl renderers")
+    def borders(self, value: bool): 
+        self._borders = value
+        print(f"Warning: using {self.__class__.__name__} borders is deprecated and incompatible with sdl2 or gl renderers")
 
     @property
     def border_name(self) -> str: return self.border_name
@@ -135,17 +141,47 @@ class LayoutType(NevuObject):
                 self.border_font = pygame.sysfont.SysFont("Arial", self.relx(self.first_parent_menu._style.fontsize))
                 self.border_font_surface = self.border_font.render(self._border_name, True, (255,255,255))
             except Exception as e: print(e)
-
-    def _convert_item_coord(self, coord, i: int = 0):
-        if not isinstance(coord, SizeRule):
-            return coord, False
-        if isinstance(coord, (Vh, Vw)):
-            if self.first_parent_menu is None: raise ValueError(f"Cant use Vh or Vw in unconnected layout {self}")
-            if self.first_parent_menu.window is None: raise ValueError(f"Cant use Vh or Vw in uninitialized layout {self}")
-            if type(coord) == Vh: return self.first_parent_menu.window.size[1]/100 * coord.value, True
-            elif type(coord) == Vw: return self.first_parent_menu.window.size[0]/100 * coord.value, True
-        elif type(coord) == Fill: return self._rsize[i]/ 100 * coord.value, True
-        return coord, False
+    
+    @staticmethod
+    def _percent_helper(size, value):
+        if size == 0:
+            raise ValueError("Size must not be zero in _percent_helper")
+        return size / 100 * value
+    
+    def _parse_vx(self, coord: SizeRule) -> tuple[float, bool] | None:
+        if self.first_parent_menu is None: raise self._unconnected_layout_error("Vx like coords")
+        if self.first_parent_menu.window is None: raise self._uninitialized_layout_error("Vx like coords")
+        if type(coord) == Cvw: return self._percent_helper(self.first_parent_menu.window.size.x, coord.value), True
+        elif type(coord) == Cvh: return self._percent_helper(self.first_parent_menu.window.size.y, coord.value), True
+        elif type(coord) == Vw: return self._percent_helper(self.first_parent_menu.window.original_size.x, coord.value), True
+        elif type(coord) == Vh: return self._percent_helper(self.first_parent_menu.window.original_size.y, coord.value), True
+    
+    def _parse_fillx(self, coord: SizeRule, pos: int) -> tuple[float, bool] | None:
+        if self.first_parent_menu is None: raise self._unconnected_layout_error("FillX coords")
+        if self.first_parent_menu.window is None: raise self._uninitialized_layout_error("FillX coords")
+        if  type(coord) == Fill: return self._percent_helper(self.original_size[pos], coord.value), True
+        elif type(coord) == FillW: return self._percent_helper(self.original_size.x, coord.value), True
+        elif type(coord) == FillH: return self._percent_helper(self.original_size.y, coord.value), True
+        elif type(coord) == CFill: return self._percent_helper(self._rsize[pos], coord.value), True
+        elif type(coord) == CFillW: return self._percent_helper(self._rsize.x, coord.value), True
+        elif type(coord) == CFillH: return self._percent_helper(self._rsize.y, coord.value), True
+    
+    def _parse_gcx(self, coord, pos: int):
+        raise ValueError(f"Handling for SizeRule '{type(coord).__name__}' is only Grid feature")
+    
+    def _convert_item_coord(self, coord, pos: int = 0) -> tuple[float, bool]:
+        if not isinstance(coord, SizeRule): return coord, False
+        result = None
+        if type(coord) in _all_vx:
+            result = self._parse_vx(coord)
+        elif type(coord) in _all_fillx: 
+            result = self._parse_fillx(coord, pos)
+        elif type(coord) in _all_gcx:
+            result = self._parse_gcx(coord, pos)
+        
+        if result is None: raise ValueError(f"Handling for SizeRule '{type(coord).__name__}' is not implemented")
+        
+        return result
 
     def read_item_coords(self, item: NevuObject):
         if self.booted == False: return
@@ -165,7 +201,7 @@ class LayoutType(NevuObject):
     def resize(self, resize_ratio: NvVector2):
         super().resize(resize_ratio)
         self.cached_coordinates = None
-        for item in self.items + self.floating_items:
+        for item in self._all_items():
             assert isinstance(item, (Widget, LayoutType))
             item.resize(self._resize_ratio)
         self.border_name = self._border_name
@@ -187,6 +223,7 @@ class LayoutType(NevuObject):
         if self.booted:
             item.booted = True
             item._boot_up()
+            item.resize(self._resize_ratio)
         return item
     
     def _after_item_add(self, item: NevuObject):
@@ -230,7 +267,7 @@ class LayoutType(NevuObject):
 
     def _read_dirty_rects(self):
         dirty_rects = []
-        for item in self.items + self.floating_items:
+        for item in self._all_items():
             assert isinstance(item, (Widget, LayoutType))
             if len(item._dirty_rect) > 0:
                 dirty_rects.extend(item._dirty_rect)
@@ -254,15 +291,12 @@ class LayoutType(NevuObject):
             
         if self.cached_coordinates is None and self.booted:
             self._regenerate_coordinates()
-            
-        if type(self) == LayoutType: self._dirty_rect = self._read_dirty_rects()
         
     def _regenerate_coordinates(self):
-        for item in self.items + self.floating_items:
+        for item in self._all_items():
             if not item._wait_mode: continue
             self.read_item_coords(item)
             self._start_item(item)
-            return
             
     def _connect_to_menu(self, menu: Menu):
         self.cached_coordinates = None
@@ -279,9 +313,9 @@ class LayoutType(NevuObject):
         self.cached_coordinates = None
 
     def get_item_by_id(self, id: str) -> NevuObject | None:
-        mass = self.items + self.floating_items
         if id is None: return None
-        return next((item for item in mass if item.id == id), None)
+        return next((item for item in self._all_items() if item.id == id), None)
     
-    def clone(self):
-        return LayoutType(self._lazy_kwargs['size'], copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
+    def _create_clone(self):
+        cls = self.__class__
+        return cls(self._lazy_kwargs['size'], copy.deepcopy(self.style), copy.deepcopy(self._lazy_kwargs['content']), **self.constant_kwargs)
