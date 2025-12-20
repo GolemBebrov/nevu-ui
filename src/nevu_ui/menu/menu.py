@@ -5,25 +5,29 @@ from pygame._sdl2 import Texture
 from nevu_ui.nevuobj import NevuObject
 from nevu_ui.window import Window
 from nevu_ui.color import SubThemeRole
-from nevu_ui.state import nevu_state
+from nevu_ui.core.state import nevu_state
 from nevu_ui.rendering.shader import convert_surface_to_gl_texture
 from nevu_ui.style import Style, default_style
-from nevu_ui.fast.nvvector2 import NvVector2 as Vector2, NvVector2
+from nevu_ui.fast.nvvector2 import NvVector2 as NvVector2, NvVector2
 from nevu_ui.utils import Cache, NevuEvent
+from nevu_ui.rendering import AlphaBlit, Gradient
 
-from nevu_ui.core_types import (
-    _QUALITY_TO_RESOLUTION, SizeRule, Vh, Vw, Fill, Quality, CacheType, EventType
+from nevu_ui.core.enums import (
+    _QUALITY_TO_RESOLUTION, Quality, CacheType, EventType
 )
-from nevu_ui.rendering import (
-    OutlinedRoundedRect, RoundedRect, AlphaBlit, Gradient
+from nevu_ui.size.rules import (
+    SizeRule, Vh, Vw, Fill
+)
+from nevu_ui.fast.shapes import (
+    _create_rounded_rect_surface_optimized, _create_outlined_rounded_rect_sdf
 )
 from nevu_ui.fast.logic import (
     rel_helper, relm_helper, mass_rel_helper
 )
 
 class Menu:
-    def __init__(self, window: Window | None, size: list | tuple | Vector2, style: Style = default_style, alt: bool = False, layout = None): 
-        self._coordinatesWindow = Vector2(0,0)
+    def __init__(self, window: Window | None, size: list | tuple | NvVector2, style: Style = default_style, alt: bool = False, layout = None): 
+        self._coordinatesWindow = NvVector2(0,0)
         self._init_primary(window, style)
         if not self.window: return
         self._init_size(size)
@@ -66,7 +70,7 @@ class Menu:
         if self.window:
             self.window.add_event(NevuEvent(self, self.resize, EventType.Resize))
 
-    def _init_size(self, size: list | tuple | Vector2):
+    def _init_size(self, size: list | tuple | NvVector2):
         initial_size = list(size) #type: ignore
         for i in range(len(initial_size)):
             item = initial_size[i]
@@ -74,9 +78,9 @@ class Menu:
                 converted, is_ruled = self._convert_item_coord(item, i)
                 initial_size[i] = float(converted)
             else: initial_size[i] = float(item)
-        self.size = Vector2(initial_size)
-        self.coordinates = Vector2(0, 0)
-        self._resize_ratio = Vector2(1, 1)
+        self.size = NvVector2(initial_size)
+        self.coordinates = NvVector2(0, 0)
+        self._resize_ratio = NvVector2(1, 1)
         self._layout = None
 
     def _init_secondary(self):
@@ -89,9 +93,9 @@ class Menu:
         self.will_resize = False
 
     def _init_tertiary(self, size):
-        self.first_window_size = self.window.size if self.window else Vector2(0, 0)
+        self.first_window_size = self.window.size if self.window else NvVector2(0, 0)
         self.first_size = size
-        self.first_coordinates = Vector2(0, 0)
+        self.first_coordinates = NvVector2(0, 0)
         self._opened_sub_menu = None
         self._subtheme_role = SubThemeRole.PRIMARY
 
@@ -231,12 +235,12 @@ class Menu:
         self.cache.clear_selected(whitelist = [CacheType.Image, CacheType.Scaled_Gradient, CacheType.Surface, CacheType.Borders, CacheType.Scaled_Background, CacheType.RelSize, CacheType.Texture])
     
     @property
-    def coordinatesMW(self) -> Vector2: return self._coordinatesWindow
+    def coordinatesMW(self) -> NvVector2: return self._coordinatesWindow
     
     @coordinatesMW.setter
-    def coordinatesMW(self, coordinates: Vector2):
+    def coordinatesMW(self, coordinates: NvVector2):
         if self.window is None: raise ValueError("Window is not initialized!")
-        self._coordinatesWindow = Vector2(self.relx(coordinates.x) + self.window._offset[0], 
+        self._coordinatesWindow = NvVector2(self.relx(coordinates.x) + self.window._offset[0], 
                                         self.rely(coordinates.y) + self.window._offset[1])
         
     def coordinatesMW_update(self): self.coordinatesMW = self.coordinates
@@ -259,11 +263,11 @@ class Menu:
     def resize(self, size: NvVector2):
         self.clear_surfaces()
         self._changed = True
-        self._resize_ratio = Vector2([size[0] / self.first_window_size[0], size[1] / self.first_window_size[1]])
+        self._resize_ratio = NvVector2([size[0] / self.first_window_size[0], size[1] / self.first_window_size[1]])
         if self.window is None: raise ValueError("Window is not initialized!")
         if self.isrelativeplaced:
             assert self.relative_percent_x and self.relative_percent_y
-            self.coordinates = Vector2(
+            self.coordinates = NvVector2(
                 (self.window.size[0] - self.window._crop_width_offset) / 100 * self.relative_percent_x - self.size[0] / 2,
                 (self.window.size[1] - self.window._crop_height_offset) / 100 * self.relative_percent_y - self.size[1] / 2)
 
@@ -272,7 +276,7 @@ class Menu:
         
         if self._layout:
             self._layout.resize(self._resize_ratio)
-            self._layout.coordinates = Vector2(self.rel(self.size, vector=True) / 2 - self.rel(self._layout.size,vector=True) / 2)
+            self._layout.coordinates = NvVector2(self.rel(self.size, vector=True) / 2 - self.rel(self._layout.size,vector=True) / 2)
             self._layout.update()
             self._layout.draw()
         if self.style.transparency: self.surface.set_alpha(self.style.transparency)
@@ -315,10 +319,10 @@ class Menu:
         else: raise ValueError(f"Layout {type(layout).__name__} can't be main")
         
     def _set_layout_coordinates(self, layout):
-        layout.coordinates = Vector2(self.size[0]/2 - layout.size[0]/2, self.size[1]/2 - layout.size[1]/2)
+        layout.coordinates = NvVector2(self.size[0]/2 - layout.size[0]/2, self.size[1]/2 - layout.size[1]/2)
         
     def set_coordinates(self, x: int, y: int):
-        self.coordinates = Vector2(x, y)
+        self.coordinates = NvVector2(x, y)
         self.coordinatesMW_update()
         
         self.isrelativeplaced = False
@@ -328,7 +332,7 @@ class Menu:
         
     def set_coordinates_relative(self, percent_x: int, percent_y: int):
         if self.window is None: raise ValueError("Window is not initialized!")
-        self.coordinates = Vector2([(self.window.size[0]-self.window._crop_width_offset)/100*percent_x-self.size[0]/2,
+        self.coordinates = NvVector2([(self.window.size[0]-self.window._crop_width_offset)/100*percent_x-self.size[0]/2,
                                     (self.window.size[1]-self.window._crop_height_offset)/100*percent_y-self.size[1]/2])
         self.coordinatesMW_update()
         self.isrelativeplaced = True
@@ -345,7 +349,7 @@ class Menu:
         else:
             avg_scale_factor = (self._resize_ratio[0] + self._resize_ratio[1]) / 2
         radius = self._style.borderradius * avg_scale_factor
-        surf.blit(RoundedRect.create_sdf([int(ss[0]), int(ss[1])], int(radius), self._subtheme_content), (0, 0))
+        surf.blit(_create_rounded_rect_surface_optimized((int(ss[0]), int(ss[1])), int(radius), self._subtheme_border), (0, 0))
         return surf
     
     def _create_outlined_rect(self, size = None):
@@ -356,7 +360,7 @@ class Menu:
             avg_scale_factor = (self._resize_ratio[0] + self._resize_ratio[1]) / 2
         radius = self._style.borderradius * avg_scale_factor
         width = self._style.borderwidth * avg_scale_factor
-        return OutlinedRoundedRect.create_sdf([int(ss[0]), int(ss[1])], int(radius), int(width), self._subtheme_border)
+        return _create_outlined_rounded_rect_sdf((int(ss[0]), int(ss[1])), int(radius), int(width), self._subtheme_border)
     
     def draw(self):
         if not self.enabled or not self.window:
