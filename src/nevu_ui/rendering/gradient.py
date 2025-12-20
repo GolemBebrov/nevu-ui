@@ -3,8 +3,8 @@ import numpy as np
 
 from nevu_ui.color import Color
 
-from nevu_ui.core_types import (
-    Align, LinearSide, RadialPosition, GradientType, GradientConfig
+from nevu_ui.core import (
+    LinearSide, RadialPosition, GradientType, GradientConfig
 )
 
 class Gradient:
@@ -130,7 +130,7 @@ class Gradient:
             RadialPosition.BottomLeft: (0, h_m),
             RadialPosition.BottomRight: (w_m, h_m)
         }
-        return center_map.get(self.direction, (w_m * 0.5, h_m * 0.5))
+        return center_map.get(self.direction, (w_m * 0.5, h_m * 0.5)) # type: ignore
 
     def _validate_colors(self, colors):
         if not isinstance(colors, (list, tuple)):
@@ -145,8 +145,8 @@ class Gradient:
                         validated_colors.append(color_tuple)
                     else:
                         raise ValueError()
-                except (AttributeError, ValueError):
-                    raise ValueError(f"Unsupported color name: '{color}'.")
+                except (AttributeError, ValueError) as e:
+                    raise ValueError(f"Unsupported color name: '{color}'.") from e
             elif isinstance(color, (tuple, list)) and len(color) == 3 and all(isinstance(c, int) and 0 <= c <= 255 for c in color):
                 validated_colors.append(tuple(color))
             else:
@@ -163,7 +163,7 @@ class Gradient:
                     LinearSide.TopRight: LinearSide.BottomLeft, LinearSide.BottomLeft: LinearSide.TopRight,
                     LinearSide.TopLeft: LinearSide.BottomRight, LinearSide.BottomRight: LinearSide.TopLeft
                 }
-                new_direction = mapping.get(self.direction)
+                new_direction = mapping.get(self.direction) # type: ignore
             elif self.type == GradientType.Radial:
                 mapping = {
                     RadialPosition.Center: RadialPosition.Center,
@@ -171,9 +171,9 @@ class Gradient:
                     RadialPosition.TopLeft: RadialPosition.BottomRight, RadialPosition.BottomRight: RadialPosition.TopLeft,
                     RadialPosition.TopRight: RadialPosition.BottomLeft, RadialPosition.BottomLeft: RadialPosition.TopRight
                 }
-                new_direction = mapping.get(self.direction)
+                new_direction = mapping.get(self.direction) # type: ignore
 
-            if new_direction is None:
-                raise ValueError(f"Inversion for direction '{self.direction}' is not supported.")
-                
+        if new_direction is None:
+            raise ValueError(f"Inversion for direction '{self.direction}' is not supported.")
+
         return Gradient(list(reversed(self.colors)), self.type, new_direction, self.transparency)
