@@ -7,12 +7,12 @@ from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.style import Style
 from nevu_ui.rendering import AlphaBlit, Gradient
 
-from nevu_ui.core_types import (
+from nevu_ui.core.enums import (
     _QUALITY_TO_RESOLUTION, CacheType, HoverState, Align
 )
 
 from nevu_ui.fast.shapes import (
-    _create_rounded_rect_surface_optimized, _create_outlined_rounded_rect_sdf
+    _create_rounded_rect_surface_optimized, _create_outlined_rounded_rect_sdf, transform_into_outlined_rounded_rect
 )
 
 class _DrawNamespace:
@@ -73,6 +73,7 @@ class BackgroundRenderer:
     
     def _create_surf_base(self, size = None, alt = False, radius = None, standstill = False, override_color = None, sdf = False): 
         root = self.root
+        #print("+ !creating surf base ::")
         style = root._style
         
         needed_size = size or root._csize
@@ -101,16 +102,19 @@ class BackgroundRenderer:
         
         radius = (style.borderradius * avg_scale_factor) if radius is None else radius
         r_radius = round(radius)
+        #print("super debug info :===: (true rad, style rad, radius)", r_radius, style.borderradius, radius)
         
         if sdf:
             surf.blit(_create_rounded_rect_surface_optimized(tuple_size, r_radius, color), (0, 0))
         else:
             pygame.draw.rect(surf, color, pygame.rect.Rect(0, 0, *tuple_size), 0, r_radius)
         
+        #print("- !created surf base :=: (size)", surf.get_size())
         return surf
     
     def _create_outlined_rect(self, size = None, radius = None, width = None, sdf = False): 
         root = self.root
+        #print("+ !creating outlined rect(borders) ::")
         style = root._style
         
         needed_size = size or root._csize
@@ -128,24 +132,33 @@ class BackgroundRenderer:
         
         r_radius = round(radius)
         r_width = round(width)
-        
-        if sdf: result = _create_outlined_rounded_rect_sdf(tuple_size, r_radius, r_width, root.subtheme_border)
+        #print("super debug info :===: (true rad, style rad, radius)", r_radius, style.borderradius, radius)
+
+        if sdf: 
+            result = self.draw.create_clear(tuple_size, flags = pygame.SRCALPHA)
+            transform_into_outlined_rounded_rect(result, r_radius, r_width, root.subtheme_border)
         else:
             result = pygame.Surface(tuple_size, flags = pygame.SRCALPHA)
             pygame.draw.rect(result, root.subtheme_border, pygame.rect.Rect(0, 0, *tuple_size), r_width, r_radius)
+        #print("- !outlined rect created :=: (size)", result.get_size())
         return result
     
-    def _get_correct_mask(self): 
+    def _get_correct_mask(self, sdf=True, add = 0, radius = None): 
         root = self.root
+        radius = radius or root.relm(root.style.borderradius)
         size = root._csize.to_round().copy()
+        size -= NvVector2(add, add)
+        if sdf:
+            size -= NvVector2(2,2)
         if root.style.borderwidth > 0:
             size -= NvVector2(2,2)
         
-        return self._create_surf_base(size, root.alt, root.relm(root.style.borderradius))
+        return self._create_surf_base(size, root.alt, radius)
     
     def _generate_background(self, sdf = True, only_content = False): 
         root = self.root
         style = root._style
+        #print("+ + #generating background :==: (root cls, id)", root.__class__.__name__, root.id)
         cache = root.cache
         
         resize_factor = _QUALITY_TO_RESOLUTION[root.quality] if root.will_resize else root._resize_ratio
@@ -162,10 +175,12 @@ class BackgroundRenderer:
 
         if only_content:
             if border_width > 0:
+                #print(f"!!! borderwidth({style.borderwidth}) > 0, adjusting mask")
                 correct_mask = self._create_surf_base(rounded_size, sdf = False)
-                offset = NvVector2(2,2) if sdf else NvVector2(4,4) 
+                offset = NvVector2(2,2)
                 mask_surf = cache.get_or_exec(CacheType.Surface, lambda: self._create_surf_base(rounded_size - offset, sdf = False))
             else:
+                #print(f"!!! borderwidth({style.borderwidth}) == 0, keep the same mask")
                 mask_surf = correct_mask = self._create_surf_base(rounded_size, sdf = False)
 
         final_surf = pygame.Surface(tuple_size, flags = pygame.SRCALPHA)
@@ -195,6 +210,8 @@ class BackgroundRenderer:
 
         if style.transparency: 
             final_surf.set_alpha(style.transparency)
+        #print("- - #generated background :=: (final_size)", final_surf.get_size())
+        #print()
         return final_surf
     
     def _generate_image(self):
@@ -215,10 +232,10 @@ class BackgroundRenderer:
         size = size or root._csize
         return self.draw.scale(root.cache.get_or_exec(CacheType.Gradient, self._draw_gradient), self.min_size(size))
 
-    def _scale_background(self, size = None, only_content = False): 
+    def _scale_background(self, size = None, only_content = False, sdf = True): 
         root = self.root
         size = size or root._csize
-        return self.draw.scale(root.cache.get_or_exec(CacheType.Background, lambda: self._generate_background(only_content=only_content)), self.min_size(size))
+        return self.draw.scale(root.cache.get_or_exec(CacheType.Background, lambda: self._generate_background(sdf = sdf)), self.min_size(size))
     
     @staticmethod
     def _split_words(words: list, font: pygame.font.Font, x, marg = " "):
@@ -255,6 +272,7 @@ class BackgroundRenderer:
         
         color = color or root.subtheme_font
         size = size or root._csize
+        assert size
 
         renderFont = root.get_font() 
         line_height = renderFont.get_linesize()
