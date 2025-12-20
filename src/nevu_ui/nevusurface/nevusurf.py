@@ -1,7 +1,7 @@
 import moderngl
 import pygame
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.state import nevu_state
+from nevu_ui.core.state import nevu_state
 from typing import overload
 class NevuSurface:
     def __init__(self, size: NvVector2 | tuple | list):
