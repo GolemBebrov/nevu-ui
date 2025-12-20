@@ -3,7 +3,7 @@ import copy
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.widgets import WidgetKwargs, Widget
 from collections.abc import Callable
-from nevu_ui.core_types import EventType
+from nevu_ui.core.enums import EventType
 
 from typing import Any, TypedDict, NotRequired, Unpack, Union
 

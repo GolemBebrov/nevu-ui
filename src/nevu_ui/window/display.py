@@ -4,7 +4,7 @@ import moderngl
 import numpy as np
 
 from nevu_ui.color.color import ColorAnnotation
-from nevu_ui.state import nevu_state
+from nevu_ui.core.state import nevu_state
 
 from pygame._sdl2.video import (
     Window as SDL2Window, Renderer,
@@ -242,23 +242,12 @@ class DisplayClassic(DisplayBase):
         self.window = pygame.display.set_mode(size, flags, **kwargs)
         pygame.display.set_caption(title)
         
-    def get_rect(self):
-        return self.window.get_rect()
-    
-    def get_size(self):
-        return self.window.get_size()
-    
-    def get_width(self):
-        return self.window.get_width()
-    
-    def get_height(self):
-        return self.window.get_height()
+    def get_rect(self): return self.window.get_rect()
+    def get_size(self): return self.window.get_size()
+    def get_width(self): return self.window.get_width()
+    def get_height(self): return self.window.get_height()
+    def clear(self, color: ColorAnnotation.RGBLikeColor = (0, 0, 0)): self.window.fill(color)
+    def update(self): pygame.display.update()
     
     def blit(self, source, dest: pygame.Rect): #type: ignore
         self.window.blit(source, dest)
-
-    def clear(self, color: ColorAnnotation.RGBLikeColor = (0, 0, 0)):
-        self.window.fill(color)
-    
-    def update(self):
-        pygame.display.update()

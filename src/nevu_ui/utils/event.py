@@ -1,4 +1,4 @@
-from nevu_ui.core_types import EventType
+from nevu_ui.core.enums import EventType
 from warnings import deprecated
 @deprecated("Use NevuEvent instead. This class will be removed in a future version.")
 class Event:

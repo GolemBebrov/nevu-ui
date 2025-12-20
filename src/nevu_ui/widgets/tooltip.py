@@ -1,5 +1,5 @@
 from nevu_ui.style import Style, default_style
-from nevu_ui.core_types import TooltipType
+from nevu_ui.core.enums import TooltipType
 class Tooltip():
     def __init__(self, type: TooltipType, text, style: Style = default_style):
         self.text = text
