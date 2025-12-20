@@ -9,23 +9,21 @@ from typing import Unpack
 
 from nevu_ui.style import Style
 from nevu_ui.color import SubThemeRole
+from nevu_ui.core.classes import Events
 from nevu_ui.fast.zsystem import ZRequest
-from nevu_ui.state import nevu_state
+from nevu_ui.core.state import nevu_state
 from nevu_ui.struct.base import standart_config
 from nevu_ui.animations import AnimationType, AnimationManager
 from nevu_ui.utils import Cache, NevuEvent
-from nevu_ui.fast.nvvector2 import NvVector2 as Vector2, NvVector2
+from nevu_ui.size.rules import Px, SizeRule
+from nevu_ui.fast.nvvector2 import NvVector2
 
 from nevu_ui.fast.logic import (
-    relm_helper, rel_helper, mass_rel_helper, get_rect_helper_pygame, get_rect_helper
+    relm_helper, rel_helper, mass_rel_helper, vec_rel_helper, get_rect_helper_pygame, get_rect_helper
 )
-from nevu_ui.core_types import (
-    SizeRule, Px, Vh, Vw, Fill, HoverState, Events, EventType, CacheType
+from nevu_ui.core.enums import (
+    HoverState, EventType, CacheType
 )
-
-class ZSystemPlaceholder:
-    def add(self, *args, **kwargs): pass
-    def mark_dirty(self, *args, **kwargs): pass
 
 class ConstantStorage:
     __slots__ = ('supported_classes', 'defaults', 'links', 'properties', 'is_set', 'excluded', 'external')
@@ -73,7 +71,7 @@ class NevuObject:
     #        size dependent code
     #======================================
     
-    def __init__(self, size: Vector2 | list, style: Style | str, **constant_kwargs: Unpack[NevuObjectKwargs]):
+    def __init__(self, size: NvVector2 | list, style: Style | str, **constant_kwargs: Unpack[NevuObjectKwargs]):
         self.constant_kwargs = constant_kwargs.copy() 
         self._lazy_kwargs = {'size': size}
         
@@ -195,7 +193,6 @@ class NevuObject:
             if needed_type == Any:
                 return True
             if isinstance(value, needed_type):
-                print("da")
                 return True
         return False
 
@@ -239,7 +236,7 @@ class NevuObject:
                 if suggestions:
                     err_msg += f" Did you mean {', '.join(suggestions)}?"
                 raise ValueError(err_msg)
-        else: self.style = style
+        else: print("style", style.borderradius); self.style = style
         
     def _init_objects(self):
         self.cache = Cache()
@@ -247,7 +244,7 @@ class NevuObject:
         self._hover_state = HoverState.UN_HOVERED
         self.animation_manager = AnimationManager()
         self._master_z_handler = None
-        self._master_z_handler_placeholder = ZSystemPlaceholder()
+        self.z_request = None
 
     def _init_booleans(self):
         self._sended_z_link = False
@@ -264,9 +261,9 @@ class NevuObject:
         self.dead = False
         
     def _init_lists(self):
-        self._resize_ratio = Vector2(1, 1)
-        self.coordinates = Vector2()
-        self.absolute_coordinates = Vector2()
+        self._resize_ratio = NvVector2(1, 1)
+        self.coordinates = NvVector2()
+        self.absolute_coordinates = NvVector2()
         self.first_update_functions = []
         self._dirty_rect = []
         
@@ -278,12 +275,13 @@ class NevuObject:
         if not self._wait_mode: self._lazy_init(**self._lazy_kwargs)
 
     def _lazy_init(self, size):
-        self.size = size if isinstance(size, Vector2) else Vector2(size)
+        self.size = size if isinstance(size, NvVector2) else NvVector2(size)
+        self.original_size = self.size.copy()
 
     def num_handler(self, number: SizeRule | int | float) -> SizeRule | int | float:
         if isinstance(number, SizeRule):
             if type(number) == Px: return number.value
-            elif type(number) in [Vh, Vw, Fill]: self._wait_mode = True
+            else: self._wait_mode = True
         return number
 
 #=== Utils ===
@@ -391,7 +389,7 @@ class NevuObject:
     
     def _on_event_add(self): self.constant_kwargs['events'] = self._events
         
-    def resize(self, resize_ratio: Vector2):
+    def resize(self, resize_ratio: NvVector2):
         self._changed = True
         self._resize_ratio = resize_ratio
         self.cache.clear_selected(whitelist=[CacheType.RelSize])
@@ -465,10 +463,14 @@ class NevuObject:
     
     @hover_state.setter
     def hover_state(self, value: HoverState):
-        self.style.mark_state(value)
         if self._hover_state == value and not self._force_state_set_continue: return
+        self.on_state_change(value)
+        self._on_state_change_system(value)
+        
         if self._force_state_set_continue: self._force_state_set_continue = False
         self._hover_state = value
+        
+        self.style.mark_state(value)
         
         match self._hover_state:
             case HoverState.CLICKED:
@@ -483,6 +485,14 @@ class NevuObject:
                     self._group_on_keyup_abandon()
                     self._kup_abandoned = False
                 else: self._group_on_unhover()
+                
+        self.after_state_change()
+        self._after_state_change_system()
+        
+    def on_state_change(self, state: HoverState): pass
+    def _on_state_change_system(self, state: HoverState): pass
+    def after_state_change(self): pass
+    def _after_state_change_system(self): pass
 
 #=== Rect functions ===
     def get_rect_opt(self, without_animation: bool = False):
@@ -499,13 +509,13 @@ class NevuObject:
     def get_rect(self):
         return get_rect_helper_pygame(self.absolute_coordinates, self._resize_ratio, self.size)
     def get_rect_tuple(self):
-        return get_rect_helper(self.absolute_coordinates, self._resize_ratio, self.size)
+        return get_rect(self.absolute_coordinates, self._resize_ratio, self.size)
     def get_rect_static(self):
         return get_rect_helper(self.coordinates, self._resize_ratio, self.size)
 
 #=== Cache update functions ===
     def _update_coords(self): return self.coordinates
-    def _update_size(self): return Vector2(self.rel(self.size))
+    def _update_size(self): return NvVector2(self.rel(self.size))
 
 #=== Update functions ===
     #========= UPDATE STRUCTURE: ==========
@@ -603,19 +613,33 @@ class NevuObject:
         return relm_helper(num, self._resize_ratio.x, self._resize_ratio.y, min, max)
     
     def rel(self, mass: NvVector2, vector: bool = True) -> NvVector2:  
-        return mass_rel_helper(mass, self._resize_ratio.x, self._resize_ratio.y, vector) # type: ignore
+        return vec_rel_helper(mass, self._resize_ratio.x, self._resize_ratio.y) # type: ignore
 
 #=== Clone functions ===
-    def clone(self):
-        return NevuObject(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
+    def _create_clone(self):
+        cls = self.__class__
+        return cls(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
+    
+    def clone(self): 
+        new_self = self._create_clone()
+        self._on_copy_system(new_self)
+        self.on_copy(new_self)
+        new_self._on_copy_system_after()
+        new_self.on_copy_after()
+        return new_self
+    
+    def _on_copy_system(self, clone: "NevuObject"): 
+        clone._active = self._active
+        clone._visible = self._visible
+        clone.dead = self.dead
+        clone.cache = self.cache.copy()
+    def _on_copy_system_after(self): pass
+    def on_copy(self, clone): pass
+    def on_copy_after(self): pass
     def __deepcopy__(self, *args, **kwargs): return self.clone()
 
 #=== Kill functions ===
-    def kill(self):
-        self.dead = True
-        self.visible = False
-        self.is_active = False
-
+    def _clear_z_request(self):
         if hasattr(self, 'z_request') and self.z_request:
             self.z_request.on_click_func = None
             self.z_request.on_hover_func = None
@@ -624,6 +648,13 @@ class NevuObject:
             self.z_request.on_keyup_func = None
             self.z_request.on_keyup_abandon_func = None
             self.z_request = None
+            
+    def kill(self):
+        self.dead = True
+        self.visible = False
+        self.is_active = False
+
+        self._clear_z_request()
 
         if hasattr(self, 'renderer'): self.renderer = None
 
@@ -634,5 +665,3 @@ class NevuObject:
 
         if hasattr(self, '_sended_z_link') and self._sended_z_link and nevu_state.window:
             nevu_state.window.z_system.mark_dirty()
-
-    def __del__(self): self.kill()
