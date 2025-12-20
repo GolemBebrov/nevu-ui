@@ -1,5 +1,5 @@
 from nevu_ui.nevuobj import NevuObject
-from nevu_ui.core_types import Align
+from nevu_ui.core.enums import Align
 from nevu_ui.layouts import StackBase
 
 class StackColumn(StackBase):

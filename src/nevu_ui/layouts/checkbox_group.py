@@ -1,5 +1,5 @@
 from nevu_ui.widgets import RectCheckBox
-from nevu_ui.core_types import EventType
+from nevu_ui.core.enums import EventType
 from nevu_ui.utils import NevuEvent
 
 #CHECKBOX_GROUP STRUCTURE: ====================

@@ -6,7 +6,7 @@ from nevu_ui.widgets import Widget
 from nevu_ui.menu import Menu
 from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.core_types import Align
+from nevu_ui.core.enums import Align
 from nevu_ui.layouts import LayoutType, LayoutTypeKwargs
 from nevu_ui.style import Style, default_style
 

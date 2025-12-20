@@ -7,6 +7,8 @@ from nevu_ui.layouts import LayoutType
 from nevu_ui.style import Style, default_style
 
 # Warning: Semi-legacy class
+#!!! WILL BE REMOVED SOON !!!
+#!!! DO NOT USE !!!
 
 class Pages(LayoutType):
     def __init__(self, size: list | NvVector2, style: Style = default_style, content: list | None = None, **constant_kwargs):
@@ -16,8 +18,7 @@ class Pages(LayoutType):
     def _lazy_init(self, size: NvVector2 | list, content: list | None = None):
         super()._lazy_init(size, content)
         if content:
-            for item in content:
-                self.add_item(item)
+            for item in content: self.add_item(item)
     def add_item(self, item: LayoutType): # type: ignore
         if self.is_widget(item): raise ValueError("Widget must be Layout")
         super().add_item(item)
