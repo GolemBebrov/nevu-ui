@@ -1,4 +1,5 @@
 import copy
+import pygame
 import math
 
 from typing import (
@@ -58,6 +59,7 @@ class ProgressBar(Widget):
     def _init_booleans(self):
         super()._init_booleans()
         self.hoverable = False
+        self._changed_value = False
     
     def _add_constants(self):
         super()._add_constants()
@@ -81,8 +83,10 @@ class ProgressBar(Widget):
         
     def value_getter(self): return self._current_value
     def value_setter(self, value): 
+        #if hasattr(self, "_current_value") and self._current_value == value:  WARNING: not work as expected
+        #    return
         self._current_value = value
-        self._changed = True
+        self._changed_value = True
         if not hasattr(self, "_progress"):
             self.set_progress_by_value(value)
     
@@ -98,9 +102,25 @@ class ProgressBar(Widget):
     def _alt_subtheme_progress(self):
         return self.style.colortheme.get_pair(self.color_pair_role).oncolor
     
+    def primary_draw(self):
+        super().primary_draw()
+        if self._changed and self.surface:
+            self.bgsurface = pygame.Surface(self.surface.get_size(), pygame.SRCALPHA)
+            self.bgsurface.blit(self.surface, (0,0))
+            self.surface.fill((0,0,0,0))
+            self._changed_value = True
+            self.clear_texture()
+    
+    def _create_surface(self, bar_surf, coords):
+        assert self.surface
+        self.clear_texture()
+        self.surface.blit(self.bgsurface, (0,0))
+        self.surface.blit(bar_surf, coords)
+    
     def secondary_draw_content(self):
         super().secondary_draw_content()
-        if not self._changed or self.progress <= 0: return
+        if not (self._changed_value) or self.progress < 0: return
+        self._changed_value = False
         inner_vec = self._csize - self._rsize_marg
         size = NvVector2(math.ceil(inner_vec.x * self.progress) + 2, inner_vec.y + 2)
         bw = math.ceil(self.relm(self.style.borderwidth))
@@ -114,15 +134,14 @@ class ProgressBar(Widget):
             if size.y - y_decrease * 2 > 0: size.y -= y_decrease * 2
         
         if size.x <= 0 or size.y <= 0: return
-            
+        
         surf = self.renderer._create_surf_base(
-            NvVector2(size.x, size.y), 
+            size, 
             override_color=self._subtheme_progress, 
             radius=radius, sdf = True)
         
         coords = (self._rsize_marg/2) - NvVector2(1,1)
         coords.y += y_decrease
         assert self.surface
-        self.surface.blit(surf, coords.to_tuple())
-    
-    def clone(self): return ProgressBar(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
+        
+        self._create_surface(surf, coords.to_tuple())
