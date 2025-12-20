@@ -1,9 +1,5 @@
-from .blit import FastBlit, AlphaBlit
-from .circle import Circle
-from .line import Line
-from .triangle import Triangle
-from .rect import Rect, RoundedRect
-from .outlined_rect import OutlinedRect, OutlinedRoundedRect
+from .blit import AlphaBlit, ReverseAlphaBlit
 from .gradient import Gradient
 from .shader import Shader
-__all__ = ["FastBlit", "AlphaBlit", "Circle", "Line", "Triangle", "Rect", "RoundedRect", "OutlinedRect", "OutlinedRoundedRect", "Gradient", "Shader"]
+from .dist_to_segment import _dist_to_segment_sq
+__all__ = ["AlphaBlit", "ReverseAlphaBlit", "Gradient", "Shader"]
