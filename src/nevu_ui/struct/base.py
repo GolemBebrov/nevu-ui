@@ -1,5 +1,5 @@
 from nevu_ui.struct import Struct
-from nevu_ui.core_types import ConfigType
+from nevu_ui.core.classes import ConfigType
 
 class NotCreatedError(Exception):
     def __init__(self) -> None:

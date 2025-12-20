@@ -1,14 +1,13 @@
-from nevu_ui.struct import Struct, SubStruct
-from nevu_ui.core_types import ConfigType
+import json
+import time
+
+from nevu_ui.core.classes import ConfigType
 from nevu_ui.struct import Validator
-from nevu_ui.style import default_style, Style
 from typing import Any
 from nevu_ui.struct import standart_config
 from enum import StrEnum
-import json
-from nevu_ui.color import Color
-from dataclasses import dataclass
-import time
+from nevu_ui.struct import Struct, SubStruct
+from nevu_ui.style import default_style, Style
 
 class ApplierBuffer:
     def __init__(self) -> None:
@@ -46,7 +45,7 @@ class Applier:
                 print("Not implemented yet, skipping...")
                 continue
             substruct_validators = structure_validators.open(key)
-            is_any = substruct_validators.config.get(Any)
+            is_any = substruct_validators.config.get(Any) #type: ignore
             result, adds = Applier._validate_substruct(key, is_any, substruct, substruct_validators)
             if not result and adds:
                 print(f"During {key} validation occured errors:")
@@ -210,7 +209,7 @@ class Applier:
                 exit_dest = 1
                 continue
             
-            param_name, validator = result
+            param_name, validator = result #type: ignore
             
             if not validator(_val)[0]:
                 return False, f"{_val} is not valid for {param}"

@@ -70,7 +70,7 @@ class Validator:
         for item in items:
             if _simple_mode:
                 if not isinstance(items[item], valid_items[Any]):
-                    err_batch.append(f"{item}: {expected_type_str} but get {actual_type_str} '{items[item]}'")
+                    err_batch.append(f"{item}: {expected_type_str} but get {actual_type_str} '{items[item]}'") # type: ignore
                 _valid_keys.append(item)
                 continue
             if item not in valid_items.keys():
