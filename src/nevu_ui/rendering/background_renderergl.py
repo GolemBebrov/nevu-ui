@@ -6,7 +6,7 @@ from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.style import Style
 import moderngl as gl
-from nevu_ui.state import nevu_state
+from nevu_ui.core.state import nevu_state
 from PIL import Image
 from nevu_ui.nevusurface.nevusurf import NevuSurface
 
@@ -26,7 +26,7 @@ class _DrawNamespaceGl:
         assert isinstance(ctx, gl.Context)
         return ctx
     
-    def gradient(self, surface: pygame.Surface, transparency = None, style: Style | None = None) -> Gradient:
+    def gradient(self, surface: pygame.Surface, transparency = None, style: Style | None = None) -> Gradient: # type: ignore
         raise NotImplementedError("GL gradient is not implemented yet.")
 
     def create_clear(self, size, data = None) -> gl.Texture:
