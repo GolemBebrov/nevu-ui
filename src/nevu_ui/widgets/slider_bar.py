@@ -4,7 +4,7 @@ import pygame
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.widgets import Widget, Button, WidgetKwargs
 from nevu_ui.utils import mouse
-from nevu_ui.core_types import Align
+from nevu_ui.core.enums import Align
 from nevu_ui.widgets.progress_bar import ProgressBar
 from nevu_ui.color import TupleColorRole, PairColorRole
 
@@ -43,9 +43,11 @@ class Slider(Widget):
         self.create_progress_bar()
     
     def create_progress_bar(self):
+        assert self.surface
+        self.progress_bar_surf = self.surface.copy()
         progress_style = self.progress_style or self.style
-        self.progress_bar = ProgressBar(self.size, progress_style, min_value = self.start, max_value = self.end, value = self.current_value, inline=True, alt = self.alt, color_pair_role=self.bar_pair_role, will_resize=self.will_resize, role=self.bar_pair_role, z=-999)
-        self.progress_bar.surface = self.surface
+        self.progress_bar = ProgressBar(self.size, progress_style, min_value = self.start, max_value = self.end, value = self.current_value, inline=True, alt = self.alt, color_pair_role=self.bar_pair_role, role=self.bar_pair_role, z=-999)
+        self.progress_bar.surface = self.progress_bar_surf
         self.progress_bar._init_start()
         self.progress_bar.booted = True
         self.progress_bar._boot_up()
@@ -56,6 +58,11 @@ class Slider(Widget):
     def _init_booleans(self):
         super()._init_booleans()
         self.dragging = False 
+        self._font_changed = False
+    
+    def _init_objects(self):
+        super()._init_objects()
+        self.progress_bar_surf = None
     
     def _on_click_system(self):
         super()._on_click_system()
@@ -120,13 +127,31 @@ class Slider(Widget):
             value = round(value / self.step) * self.step
         value = max(self.start, min(self.end, value))
         
-        if value != self.current_value:
+        if abs(value - self.current_value) > 1e-9:
             self.current_value = value
+            self._create_font()
             
-    def primary_draw(self):
-        if self._changed:
-            self.surface.fill((0,0,0,0))
+    def primary_draw(self): pass
     
+    def _create_surf(self):
+        assert self.surface and self.progress_bar_surf
+        assert self._text_surface and self._text_rect
+        self.clear_texture()
+        self.surface.fill((0,0,0,0))
+        self.surface.blit(self.progress_bar_surf, (0,0))
+        self.surface.blit(self._text_surface, self._text_rect)
+        
+    
+    def _create_font(self):
+        #print(self.style.colortheme.get_tuple(self.tuple_role))
+        self.renderer.bake_text(str(round(self.progress_bar.progress*100)), alignx = self.style.text_align_x, aligny = self.style.text_align_y, color=self.style.colortheme.get_tuple(self.tuple_role))
+    
+    def _after_state_change_system(self):
+        super()._after_state_change_system()
+        self._create_font()
+        self.adjust_text_rect()
+        self._create_surf()
+        
     def secondary_draw_content(self):
         super().secondary_draw_content()
         if not self.visible: return
@@ -134,13 +159,12 @@ class Slider(Widget):
         self.progress_bar.coordinates = NvVector2()
         
         if self._changed:
-            self.clear_texture()
-            self.renderer.bake_text(str(round(self.progress_bar.progress*100)), alignx = self.style.text_align_x, aligny = self.style.text_align_y, color=self.style.colortheme.get_tuple(self.tuple_role))
+            assert self.surface
+            if not self._text_surface:
+                self._create_font()
             assert self._text_surface and self._text_rect
-            
             self.adjust_text_rect()
-            
-            self.surface.blit(self._text_surface, self._text_rect)
+            self._create_surf()
     
     def adjust_text_rect(self):
         assert self._text_rect
@@ -149,27 +173,27 @@ class Slider(Widget):
         padx = 0
         pady = 0
         
-        border_size = self._rsize_marg.x / 2
+        border_size = self._rsize_marg / 2
         
         match self.style.text_align_x:
             case Align.LEFT:
-                padx = self.padding_x + border_size
+                padx = self.padding_x + border_size.x
             case Align.RIGHT: 
-                padx = -self.padding_x - border_size
+                padx = -self.padding_x - border_size.x
         
         match self.style.text_align_y:
             case Align.TOP:
-                pady = self.padding_y + border_size
+                pady = self.padding_y + border_size.y
             case Align.BOTTOM: 
-                pady = -self.padding_y - border_size
+                pady = -self.padding_y - border_size.y
         
         assert isinstance(self._text_rect, pygame.Rect)
         self._text_rect.move_ip(padx, pady)
     
     def resize(self, resize_ratio: NvVector2):
         super().resize(resize_ratio)
+        assert self.surface
+        self._create_font()
+        self.progress_bar_surf = self.surface.copy()
         self.progress_bar.resize(resize_ratio)
-        self.progress_bar.surface = self.surface
-    
-    def clone(self):
-        return Slider(self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
+        self.progress_bar.surface = self.progress_bar_surf
