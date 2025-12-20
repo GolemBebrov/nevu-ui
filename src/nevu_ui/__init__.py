@@ -8,17 +8,18 @@ from .fast import NvVector2
 from .color import (
     Color, ColorTheme, ColorSubTheme, ColorPair, ColorThemeLibrary, SubThemeRole, PairColorRole, TupleColorRole
 )
-from .state import nevu_state
+from .core.state import nevu_state
 from .style import (
     Style, default_style, StateVariable
 )
 from .struct import apply_config
-from .core_types import (
-    Align, SizeRule, PercentSizeRule, SizeUnit, 
-    Vh, vh, Vw, vw, Fill, fill, Px, px, 
-    Quality, HoverState, Events,
-    LinearSide, RadialPosition, GradientType,CacheName, CacheType,EventType
+from .core.enums import (
+    Align, 
+    Quality, HoverState,
+    LinearSide, RadialPosition, GradientType,CacheName, CacheType, EventType
 )
+from . import size
+from .size.units import SizeRule, PercentSizeRule, SizeUnit, Fill, FillW, FillH, Vh, Vw, Gc, Gcw, Gch, fill, fillw, fillh, vh, vw, gc, gcw, gch, px, Px, cfill, cfillw, cfillh, cvh, cvw, cgc, cgcw, cgch
 from .widgets import (
     Widget, Label, Button, EmptyWidget, RectCheckBox, Image, Gif, Input, MusicPlayer, ElementSwitcher, Element, ProgressBar, Slider
 )
@@ -65,6 +66,6 @@ __all__ = [
     'animations', 
 ]
 
-version = "0.6.x"
+version = "0.6.6"
 
-print(f"nevu-UI version: {version}")
+print(f"nevu-ui {version}")
