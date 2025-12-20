@@ -1,20 +1,26 @@
-from typing import Any
 import contextlib
 from abc import ABC, abstractmethod
+from typing import Any, Unpack, NotRequired
 
 from nevu_ui.fast.logic import _light_update_helper
 from nevu_ui.widgets import Widget
-from nevu_ui.menu import Menu
 from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.layouts import LayoutType
+from nevu_ui.layouts import LayoutType, LayoutTypeKwargs
 from nevu_ui.fast.logic.fast_logic import collide_vector
 from nevu_ui.color import SubThemeRole
-from nevu_ui.state import nevu_state
+from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.logic.fast_logic import _very_light_update_helper
 from nevu_ui.style import Style, default_style
-from nevu_ui.core_types import Align, ScrollBarType
+from nevu_ui.core.enums import Align, ScrollBarType
 from nevu_ui.utils import keyboard, mouse
+
+class _ScrollableKwargs(LayoutTypeKwargs):
+    arrow_scroll_power: NotRequired[float | int]
+    wheel_scroll_power: NotRequired[float | int]
+    inverted_scrolling: NotRequired[bool]
+
+class ScrollableKwargs(_ScrollableKwargs, LayoutTypeKwargs): pass
 
 class ScrollableBase(LayoutType, ABC):
     arrow_scroll_power: float | int
@@ -25,10 +31,10 @@ class ScrollableBase(LayoutType, ABC):
     content_type = list[tuple[Align, NevuObject]]
     
     class ScrollBar(Widget):
-        def __init__(self, size, style, orientation: ScrollBarType, master = None, **constant_kwargs):
+        def __init__(self, size, style, orientation: ScrollBarType, master = None, **constant_kwargs: Unpack[ScrollableKwargs]):
             super().__init__(size, style, **constant_kwargs)
             if not isinstance(master, ScrollableBase):
-                print("WARNING: this class is intended to be used in ScrollableBase layout.")
+                print("!WARNING!: this class is intended to be used in ScrollableBase layout.")
             
             self.master = master
             
@@ -116,7 +122,7 @@ class ScrollableBase(LayoutType, ABC):
             self.percentage = percents
             self.scrolling = False
             
-    def __init__(self, size: NvVector2 | list, style: Style = default_style, content:  content_type| None = None, **constant_kwargs):
+    def __init__(self, size: NvVector2 | list, style: Style = default_style, content:  content_type | None = None, **constant_kwargs: Unpack[ScrollableKwargs]):
         super().__init__(size, style, **constant_kwargs)
         self._lazy_kwargs = {'size': size, 'content': content}
         
@@ -160,16 +166,18 @@ class ScrollableBase(LayoutType, ABC):
         
     def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None):
         super()._lazy_init(size, content)
-        self.original_size = self.size.copy()
         self._init_scroll_bar()
-        if content and isinstance(self, ScrollableBase):
+        self.add_items(content)
+        self._update_scroll_bar()
+        
+    def add_items(self, content: content_type | None):
+        if content:
             for mass in content:
                 assert len(mass) == 2
                 align, item = mass
-                assert type(align) == Align and isinstance(item, NevuObject)
+                assert type(align) == Align and isinstance(item, NevuObject), f"Incorrect align or item ({align}, {item})"
                 self.add_item(item, align)
-        self._update_scroll_bar()
-    
+                
     def _init_scroll_bar(self):
         self.scroll_bar = self._create_scroll_bar()
         self._boot_scrollbar(self.scroll_bar)
@@ -181,12 +189,6 @@ class ScrollableBase(LayoutType, ABC):
         scroll_bar.booted = True
         
     def get_offset(self) -> int | float: return self.actual_max_main / 100 * self.scroll_bar.percentage
-
-    def _connect_to_layout(self, layout: LayoutType):
-        super()._connect_to_layout(layout)
-
-    def _connect_to_menu(self, menu: Menu):
-        super()._connect_to_menu(menu)
 
     def _is_widget_drawable(self, item: NevuObject):
         coords_1 = item.absolute_coordinates 
@@ -235,6 +237,7 @@ class ScrollableBase(LayoutType, ABC):
             item.update() 
         if self._scroll_needs_update:
             self._regenerate_coordinates()
+            self._update_scroll_bar()
             self._scroll_needs_update = False 
         if self.actual_max_main > 0:
             self.scroll_bar.coordinates = self._get_scrollbar_coordinates() # type: ignore
@@ -297,7 +300,6 @@ class ScrollableBase(LayoutType, ABC):
     def _on_item_add(self, item: NevuObject):
         self.cached_coordinates = None
         if self.booted == False: return
-        self._init_scroll_bar()
         self._update_scroll_bar()
     
     def add_item(self, item: NevuObject, alignment: Align): # type: ignore

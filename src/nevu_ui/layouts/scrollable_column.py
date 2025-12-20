@@ -5,8 +5,8 @@ from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.layouts.scrollable_base import ScrollableBase
 from nevu_ui.fast.logic.fast_logic import collide_vertical
-from nevu_ui.state import nevu_state
-from nevu_ui.core_types import Align, ScrollBarType
+from nevu_ui.core.state import nevu_state
+from nevu_ui.core.enums import Align, ScrollBarType
 
 class ScrollableColumn(ScrollableBase):
     def _add_constants(self):
