@@ -8,7 +8,7 @@ class TestAppending(NevuTest):
         #self.print_debug_fps = True
         self.fps = 99999999
         self.appending_layout_h = \
-            ui.StackRow(spacing = 40,content = 
+            ui.StackRow(spacing = 40,single_instance=False, content = 
             [(ui.Align.CENTER, self.showcase_widgets[0]),
              (ui.Align.CENTER, self.showcase_widgets[1]),
              (ui.Align.CENTER, self.showcase_widgets[2]),]
@@ -21,8 +21,8 @@ class TestAppending(NevuTest):
                     }
                 )
         self.grid = self.test_menu.layout
-    def update_loop(self, events=None):
-        super().update_loop(events)
+    def on_update(self, events=None):
+        super().on_update(events)
         #print(self.test_hard_widget.text)
 ts = TestAppending()
 ts.run()

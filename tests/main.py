@@ -60,12 +60,12 @@ class Mygame(ui.Manager):
         self.menu.quality = ui.Quality.Best 
         self.menu.will_resize = True 
 
-    def draw_loop(self):
+    def on_draw(self):
         #self.menu.surface.fill(self.background)
         self.menu.draw()
         #рисуем меню
       
-    def update_loop(self, events):
+    def on_update(self, events):
         self.menu.update()
         print(self.menu.layout.items[-1].texture.alpha) if hasattr(self.menu.layout.items[-1],"texture") else None
         show_fps = True

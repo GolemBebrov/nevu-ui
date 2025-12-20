@@ -11,16 +11,24 @@ def test_typehints():
     ui.LayoutType(**basic_kwargs, content = [basic_widget]) 
     
     ui.Grid(**basic_kwargs, content = {(1,1): basic_widget})
-    
+    ui.Grid(**basic_kwargs, content = {(1.2,1.1): basic_widget})
+    ui.StackRow()
     ui.Row(**basic_kwargs, content = {1: basic_widget})
+    ui.Row(**basic_kwargs, content = {1.2: basic_widget})
     
     ui.Column(**basic_kwargs, content= {1: basic_widget})
+    ui.Column(**basic_kwargs, content= {1.1: basic_widget})
     
     ui.StackRow(**basic_kwargs, content = [(ui.Align.CENTER, basic_widget)])
     
     ui.StackColumn(**basic_kwargs, content = [(ui.Align.CENTER, basic_widget)])
     
-    ui.Scrollable(**basic_kwargs, content = [(ui.Align.CENTER, basic_widget)])
+    ui.ScrollableRow(**basic_kwargs, content = [(ui.Align.CENTER, basic_widget)])
     
     ui.Pages(**basic_kwargs, content = [basic_widget])
     
+    ui.Button(**basic_kwargs,)
+    
+    ui.Input(**basic_kwargs)
+    
+    ui.Widget(**basic_kwargs,)

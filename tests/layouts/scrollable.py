@@ -1,9 +1,13 @@
 import nevu_ui as ui
+from nevu_ui.size.units import *
 import pygame
 from basic import NevuTest
 pygame.init()
-
 class TestScrollable(NevuTest):
+    def add(self): 
+        self.scrollable.add_items([
+            (ui.Align.LEFT, self.showcase_widgets[0]),
+        ])
     def add_to_layout(self):
         self.do_fps_test = True
         self._dirty_mode = False
@@ -12,9 +16,10 @@ class TestScrollable(NevuTest):
         self.fps = 999999999
         a = zip([ui.Align.CENTER] * len(self.showcase_widgets), self.showcase_widgets)
         a = list(a)
-        a.append((ui.Align.CENTER, ui.ScrollableRow([100*ui.fill, 100*ui.vh], content = a.copy())))
+        a.append((ui.Align.CENTER, ui.Button(self.add, "add", [50*vw,33*vh])))
+        #a.append((ui.Align.CENTER, ui.ScrollableRow([100*ui.fill, 100*ui.vh], content = a.copy())))
         self.test_menu.layout = \
-        ui.ScrollableColumn([100*ui.fill, 100*ui.vh], wheel_scroll_power=1,
+        ui.ScrollableColumn([100*fill, 100*vh], wheel_scroll_power=1,
                 z = -1,
                 content = a
                 )
@@ -25,8 +30,8 @@ class TestScrollable(NevuTest):
     def first_update(self):
         super().first_update()
         
-    def draw_loop(self):
-        super().draw_loop()
+    def on_draw(self):
+        super().on_draw()
 
     #self.test_widget.surface = self.window.surface
     #a = self.test_widget.renderer._create_surf_base((500,500), radius = 20)

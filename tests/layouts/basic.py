@@ -1,6 +1,6 @@
 import nevu_ui as ui
 import pygame
-
+from nevu_ui.size.units import *
 def checkboxgroup_wrapper(checkbox: ui.RectCheckBox | None):
     if checkbox is None: print("Вы прекратили выбор"); return
     assert checkbox.id
@@ -18,31 +18,35 @@ def create_test_instances():
     ui.apply_config("structure_test.json")
     test_window = ui.ConfiguredWindow()
     #test_window = ui.Window((300,300), title="Test Window", resize_type=ui.ResizeType.CropToRatio, ratio=ui.NvVector2(1,1), _gpu_mode=True)
-    test_menu = ui.Menu(test_window,[100*ui.vw, 100*ui.vh],ui.default_style(borderradius=10))
+    widgets_style = ui.default_style(borderradius=35, borderwidth=5, colortheme=ui.ColorThemeLibrary.material3_dark)
+    test_menu = ui.Menu(test_window,[100*vw, 100*vh],widgets_style(borderradius=10,borderwidth=0))
+    test_menu._subtheme_role = ui.SubThemeRole.SECONDARY
     
-    widgets_style = ui.default_style(borderradius=ui.StateVariable(20,20,10), borderwidth=ui.StateVariable(2,3,1))
     
-    widgets_size = [75*ui.vw, 35*ui.vh]
-    widgets_size_small = [75*ui.vw, 15*ui.vh]
+    
+    widgets_size = [75*vw, 35*vh]
+    widgets_size_small = [75*vw, 15*vh]
     widgets_size_fixed = [300, 100]
     
-    widget_kwargs = {"style": widgets_style, "size": widgets_size,  "will_resize": True}
+    widget_kwargs = {"style": widgets_style, "size": widgets_size}
     
     checkbox_group = ui.CheckBoxGroup(single_selection=True)
     checkbox_group.on_single_toggled = checkboxgroup_wrapper
     
     #widgets
-    widget = ui.Widget(style="zov", clickable=True, size=widgets_size, will_resize=False)
+    widget = ui.Widget(style=widgets_style, clickable=True, size=widgets_size, single_instance=True)
+    widget.subtheme_role = ui.SubThemeRole.ERROR
+    
     label = ui.Label(lorem_ipsum, size=widget_kwargs["size"], style="rodina")
     input_box = ui.Input(**widget_kwargs, placeholder = "Input!", multiple=True, quality=ui.Quality.Poor)
     
     #composable | checkboxgroup example
-    rect_checkbox_row = ui.Row([90*ui.fill, 35*ui.fill], x = 3, content = 
-                               {
-                                   1: ui.RectCheckBox(id = "check_box1", size = 35, style = widgets_style), #type: ignore
-                                   2: ui.RectCheckBox(id = "check_box2", size = 35, style = widgets_style), #type: ignore
-                                   3: ui.RectCheckBox(id = "check_box3", size = 35, style = widgets_style), #type: ignore
-                               })
+    rect_checkbox_row = ui.Row([90*fill, 35*fill], x = 3, content = 
+                            {
+                                1: ui.RectCheckBox(id = "check_box1", size = 35, style = widgets_style), 
+                                2.2: ui.RectCheckBox(id = "check_box2", size = 35, style = widgets_style),
+                                3: ui.RectCheckBox(id = "check_box3", size = 35, style = widgets_style),
+                            })
     
     for item in rect_checkbox_row._lazy_kwargs["content"].values():
         assert isinstance(item, ui.RectCheckBox)
@@ -52,7 +56,8 @@ def create_test_instances():
     element_swither = ui.ElementSwitcher(**widget_kwargs, elements = ["putin", "zelenka", "zov", "peremoga"], arrow_width=30)
     progress_bar = ui.ProgressBar(**widget_kwargs, value = 50)
     
-    slider_bar = ui.Slider(widgets_size_fixed, widgets_style(text_align_x = ui.StateVariable(ui.Align.CENTER, ui.Align.RIGHT, ui.Align.LEFT), borderwidth=2,borderradius=50), start = 0, end = 100, step = 1, current_value = 50, tuple_role = ui.TupleColorRole.OUTLINE, bar_pair_role=ui.PairColorRole.SURFACE, will_resize=False)# alt = True)
+    
+    slider_bar = ui.Slider(widgets_size, widgets_style(text_align_x = ui.StateVariable(ui.Align.CENTER, ui.Align.RIGHT, ui.Align.LEFT)), start = 0, end = 100, step = 1, current_value = 50, tuple_role = ui.TupleColorRole.INVERSE_PRIMARY, bar_pair_role=ui.PairColorRole.SURFACE_VARIANT)# alt = True)
     #element = element_swither.find("fruit_1")
     showcase_widgets = [widget, label, input_box, rect_checkbox_row, element_swither, progress_bar, slider_bar]
     
@@ -76,11 +81,11 @@ class NevuTest(ui.Manager):
     def add_to_layout(self):
         pass
         #Override in test
-    def draw_loop(self):
-        super().draw_loop()
+    def on_draw(self):
+        super().on_draw()
         self.test_menu.draw()
-    def update_loop(self, events = None):
-        super().update_loop(events)
+    def on_update(self, events = None):
+        super().on_update(events)
         self.test_menu.update()
         if self.do_fps_test:
             print(f"Debug: FPS-{ui.time.fps}")
@@ -98,8 +103,8 @@ class NevuTest(ui.Manager):
             if len(self.middle_list) != 0: 
                 print(f'frame: {self.frame} avg fps:{int(sum(self.middle_list)/len(self.middle_list))}')
             self.frame += 1
-    def _after_draw_loop(self):
-        super()._after_draw_loop()
+    def _after_draw(self):
+        super()._after_draw()
         if self.draw_cursor:
             surf = pygame.Surface((10,10))
             pygame.draw.circle(surf, (255,0,0), (0,0), 5)

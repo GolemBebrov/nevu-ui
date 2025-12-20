@@ -10,13 +10,13 @@ class MyGame(ui.Manager): #Создаем базу нашего приложен
         self.menu = ui.Menu(self.window, [100*ui.vw, 100*ui.vh], #Создаем меню
                             layout= ui.Grid([100*ui.vw, 100*ui.vh], row=3, column=3, #Создаем макет grid
                                             content = { 
-                                                (2, 2): ui.Button(lambda: print("You clicked!"), "Button", [50*ui.fill,33*ui.fill]) #Создаем кнопку
+                                                (2, 2): ui.Button(lambda: print("You clicked!"), "КНОПКА!", [50*ui.fill,33*ui.fill]) #Создаем кнопку
                                             }
                                             )
                             )
-    def draw_loop(self):
+    def on_draw(self):
         self.menu.draw() #рисуем меню
-    def update_loop(self, events):
+    def on_update(self, events):
         self.menu.update() #обновляем меню
 
 game = MyGame()
