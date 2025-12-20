@@ -1,53 +1,42 @@
 import sys
 import pygame
-from pygame._sdl2 import Renderer
-
-from nevu_ui.fast.nvvector2 import NvVector2
+from typing import TypeGuard
 from warnings import deprecated
 
-from nevu_ui.state import nevu_state
+from nevu_ui.core.state import nevu_state
+from nevu_ui.struct.base import standart_config
+from nevu_ui.core.classes import ConfigType
+from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.fast.zsystem import ZSystem, ZRequest
+from nevu_ui.core.enums import ResizeType, EventType
+
 from nevu_ui.window.display import (
     DisplayClassic, DisplaySdl, DisplayBase, DisplayGL
-)
-from nevu_ui.core_types import (
-    ResizeType, EventType
 )
 from nevu_ui.utils import (
     mouse, keyboard, time, NevuEvent
 )
-from nevu_ui.fast.zsystem import (
-    ZSystem, ZRequest
-)
-from nevu_ui.struct.base import standart_config
-from nevu_ui.core_types import ConfigType
-from typing import TypeGuard
 
 class Window:
     _display: DisplayBase
     @staticmethod
     def cropToRatio(width: int, height: int, ratio: NvVector2, default=(0, 0)):
         if height == 0 or ratio.y == 0: return default
-        rx, ry = ratio
         aspect_ratio = width / height
-        if abs(aspect_ratio - (rx / ry)) < 1e-6: return default
-        
-        if aspect_ratio > rx / ry:
-            crop_width = width - (height * rx / ry)
-            return crop_width, default[1]
-        else:
-            crop_height = height - (width * ry / rx)
-            return default[0], crop_height
+        if abs(aspect_ratio - (ratio.x / ratio.y)) < 1e-6: return default
+        if aspect_ratio > ratio.x / ratio.y:
+            return width - (height * ratio.x / ratio.y), default[1]
+        crop_height = height - (width * ratio.y / ratio.x)
+        return default[0], crop_height
     
     def __init__(self, size, minsize=(10, 10), title="pygame window", resizable = True, ratio: NvVector2 | None = None, resize_type: ResizeType = ResizeType.CropToRatio, _gpu_mode = False, open_gl_mode  = False):
         self._gpu_mode = _gpu_mode
         self._open_gl_mode = open_gl_mode
-        if _gpu_mode and self._open_gl_mode:
-            self._gpu_mode = False
+        if _gpu_mode and self._open_gl_mode: self._gpu_mode = False
         self._debouncing_limit = 0.1
         self._debouncing_limit_counter = 0
 
         self.resize_type = resize_type
-        
         self.resizable = resizable
         self._title = title
         
@@ -63,9 +52,7 @@ class Window:
 
         self._selected_context_menu = None
         self._next_update_dirty_rects = []
-        
         self.z_system = ZSystem()
-        
         self._set_nevu_state()
 
     def _set_nevu_state(self):
@@ -73,12 +60,9 @@ class Window:
         if self._gpu_mode or self._open_gl_mode:
             assert isinstance(self._display, (DisplaySdl, DisplayGL))
             nevu_state.renderer = self._display.renderer #type: ignore
-            if isinstance(self._display, DisplayGL):
-                nevu_state._renderer_type = "opengl"
-            else:
-                nevu_state._renderer_type = "sdl"
-        else:
-            nevu_state._renderer_type = "classic"
+            if isinstance(self._display, DisplayGL): nevu_state._renderer_type = "opengl"
+            else: nevu_state._renderer_type = "sdl"
+        else: nevu_state._renderer_type = "classic"
         nevu_state.z_system = self.z_system
         
     def _init_lists(self, ratio, size, minsize):
@@ -98,20 +82,17 @@ class Window:
             self._display = DisplayClassic(self.title, self.size.to_tuple(), root = self, flags = flags)
         elif not self._open_gl_mode:
             kwargs = {}
-            if self.resizable:
-                kwargs['resizable'] = True
+            if self.resizable: kwargs['resizable'] = True
             self._display = DisplaySdl(self.title, [int(self.size[0]), int(self.size[1])], root = self, **kwargs)
         else:
             kwargs = {}
-            if self.resizable:
-                kwargs['resizable'] = True
+            if self.resizable: kwargs['resizable'] = True
             self._display = DisplayGL(self.title, [int(self.size[0]), int(self.size[1])], root = self, **kwargs)
         
     @property
     @deprecated("Please use 'window.display' instead")
     def surface(self) -> DisplayBase:
         return self._display
-    
     @property
     def display(self) -> DisplayBase:
         return self._display
@@ -136,8 +117,7 @@ class Window:
     def add_request(self, z_request: ZRequest):
         self.z_system.add(z_request)
     
-    def mark_dirty(self):
-        self.z_system.mark_dirty()
+    def mark_dirty(self): self.z_system.mark_dirty()
     
     def update(self, events, fps: int = 60):
         """
@@ -166,50 +146,39 @@ class Window:
         if self._debouncing_limit_counter >= self._debouncing_limit:
             self._resize()
             self._debouncing_limit_counter = -1
-
         self._clock.tick(fps)
         self.z_system.cycle(mouse.pos, mouse.left_fdown, mouse.left_up, mouse.any_wheel, mouse.wheel_down)
         self._event_cycle(EventType.Update)
+
     def _resize(self):
         if self.resize_type == ResizeType.CropToRatio:
             self._recalculate_render_area()
             render_width = self.size[0] - self._crop_width_offset
             render_height = self.size[1] - self._crop_height_offset
             self._event_cycle(EventType.Resize, [render_width, render_height])
-        else:
-            self._event_cycle(EventType.Resize, self.size)
+        else: self._event_cycle(EventType.Resize, self.size)
     def _update_utils(self, events):
         mouse.update(events)
         time.update()
         keyboard.update()
     @property
-    def offset(self):
-        return self._offset
-
+    def offset(self): return self._offset
     @property
-    def title(self):
-        return self._title
-
+    def title(self): return self._title
     @title.setter
     def title(self, text:str):
         self._title = text
         pygame.display.set_caption(self._title)
-
     @property
-    def ratio(self):
-        return self._ratio
-
+    def ratio(self): return self._ratio
     @ratio.setter
     def ratio(self, ratio: NvVector2):
         self._ratio = ratio
         self._recalculate_render_area()
-
     @property
-    def original_size(self):
-        return self._original_size
+    def original_size(self): return self._original_size
 
-    def add_event(self, event: NevuEvent):
-        self._events.append(event)
+    def add_event(self, event: NevuEvent): self._events.append(event)
 
     def _event_cycle(self, type: EventType, *args, **kwargs):
         for event in self._events:
@@ -240,8 +209,5 @@ class ConfiguredWindow(Window):
         title = standart_config.win_config["title"]
         resizeable = standart_config.win_config["resizable"]
         fps = standart_config.win_config["fps"]
-        #print(
-        #    f"title: {title}\nsize: {size}\ndisplay: {display_type}\nutils: {standart_config.win_config['utils']}\nfps: {fps}\nresizable: {resizeable}\nratio: {ratio}"
-        #)
         super().__init__(title=title, size=size, _gpu_mode = gpu_mode, open_gl_mode = gl_mode, resize_type=ResizeType.CropToRatio, ratio = ratio, resizable = resizeable)
         
