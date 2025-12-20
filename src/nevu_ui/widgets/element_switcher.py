@@ -1,17 +1,16 @@
 import copy
 import contextlib
 
-from typing import (
-    Callable, Any, NotRequired, Unpack
-)
-
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.utils import keyboard
 from nevu_ui.style import Style, default_style
-from nevu_ui.core_types import CacheType, HoverState
+from nevu_ui.core.enums import CacheType, HoverState
 
 from nevu_ui.widgets import (
     Widget, Button, WidgetKwargs
+)
+from typing import (
+    Callable, Any, NotRequired, Unpack
 )
 
 class ElementSwitcherKwargs(WidgetKwargs):
@@ -64,6 +63,7 @@ class ElementSwitcher(Widget):
     right_text: str
     left_key: Any
     right_key: Any
+    offset_perc: NvVector2
     def __init__(self, size: NvVector2 | list, elements: list[Element | Any | list] | None = None, style: Style = default_style, **constant_kwargs: Unpack[ElementSwitcherKwargs]):
         super().__init__(size, style, **constant_kwargs)
         self._lazy_kwargs = {'size': size, 'elements': elements}
@@ -78,11 +78,12 @@ class ElementSwitcher(Widget):
         self._add_constant("left_key", Any, None)
         self._add_constant("right_text", (str), ">")
         self._add_constant("right_key", Any, None)
+        self._add_constant("offset_perc", NvVector2, NvVector2(2,2))
 
     def _init_booleans(self):
         super()._init_booleans()
-        self.hoverable = False
         self._delayed_button_update = False
+        self.hoverable = False
         
     def _lazy_init(self, size: NvVector2 | list, elements: list[Element] | None = None):
         super()._lazy_init(size)
@@ -96,12 +97,9 @@ class ElementSwitcher(Widget):
         self._additional_y_marg = 1
     
     @property
-    def _global_hovered(self):
-        return self.hover_state in [HoverState.HOVERED, HoverState.CLICKED] or self._button_hovered
-    
+    def _global_hovered(self): return self.hover_state in [HoverState.HOVERED, HoverState.CLICKED] or self._button_hovered
     @property
-    def _button_hovered(self):
-        return self.button_left.hover_state in [HoverState.HOVERED, HoverState.CLICKED] or self.button_right.hover_state in [HoverState.HOVERED, HoverState.CLICKED]
+    def _button_hovered(self): return self.button_left.hover_state in [HoverState.HOVERED, HoverState.CLICKED] or self.button_right.hover_state in [HoverState.HOVERED, HoverState.CLICKED]
     
     def logic_update(self):
         super().logic_update()
@@ -113,8 +111,10 @@ class ElementSwitcher(Widget):
                 self.next()
     
     def _create_buttons(self):
-        self.button_left = Button(self.previous, self.left_text, NvVector2(self._get_arrow_width(), self._rsize.y).to_round(), self.style(borderwidth = 0, borderradius = self.style.borderradius - self._rsize_marg.x / 2), z = self.z + 1, inline = True, fancy_click_style = False, alt = self.alt) #type: ignore
-        self.button_right = Button(self.next, self.right_text, NvVector2(self._get_arrow_width(), self._rsize.y).to_round(), self.style(borderwidth = 0), z = self.z + 1, inline = True, fancy_click_style = False, alt = self.alt)
+        button_size = (NvVector2(self._get_arrow_width(), self._rsize.y) / 100 * (NvVector2(100,100) - self.offset_perc)).to_round()
+        self.button_offset = NvVector2(self._get_arrow_width(), self._rsize.y) - button_size
+        self.button_left = Button(self.previous, self.left_text, button_size, self.style(borderwidth = 0, borderradius = 0), z = self.z + 1, inline = True, fancy_click_style = False, alt = self.alt) #type: ignore
+        self.button_right = Button(self.next, self.right_text, button_size, self.style(borderwidth = 0, borderradius = 0), z = self.z + 1, inline = True, fancy_click_style = False, alt = self.alt)
         self._start_button(self.button_left)
         self._start_button(self.button_right)
         self._delayed_button_update = True
@@ -132,8 +132,9 @@ class ElementSwitcher(Widget):
         self.button_right._on_style_change()
         
     def _position_buttons(self):
-        self.button_left.coordinates = NvVector2(self._rsize_marg.x / 2, self._rsize_marg.y / 2)
-        self.button_right.coordinates = NvVector2(self._rsize.x + self._rsize_marg.x / 2 - self.button_right._csize.x, self._rsize_marg.y / 2)
+        offset = self._rsize_marg / 2 + self.button_offset / 2
+        self.button_left.coordinates = offset
+        self.button_right.coordinates = NvVector2(self._rsize.x + self._rsize_marg.x / 2 - self.button_offset.x /2 - self.button_right._csize.x, offset.y)
     
     def _get_arrow_width(self):
         return round(self.relx((self.size.x - self.style.borderwidth*2) / 100 * self.arrow_width))
@@ -149,9 +150,7 @@ class ElementSwitcher(Widget):
         self._delayed_button_update = True
         
     @property
-    def current_index(self):
-        return self._current_index
-    
+    def current_index(self): return self._current_index
     @current_index.setter
     def current_index(self, index: int):
         self._current_index = index
@@ -186,8 +185,7 @@ class ElementSwitcher(Widget):
         assert id, "id cannot be None"
         return next((item for item in reversed(self.elements) if item.id == id), None)
     
-    def count(self):
-        return len(self.elements)
+    def count(self): return len(self.elements)
     
     def remove(self, id: str):
         assert id, "id cannot be None"
@@ -235,6 +233,7 @@ class ElementSwitcher(Widget):
         if not self.visible: return
         
         if self._changed:
+            assert self.surface
             self.bake_text(self.current_element_text, size_x = self._csize.x - self.button_left._csize.x * 2)
             self._draw_buttons()
             assert self._text_surface is not None and self._text_rect is not None, "Text surface or rect is None"
@@ -248,14 +247,41 @@ class ElementSwitcher(Widget):
         self.clear_texture()
         
     def _draw_buttons(self):
-        self.button_left._master_mask = self.renderer._get_correct_mask()
-        self.button_left.draw()
+        add_forced = self.relm(self.style.borderwidth) / 3 * 2
+        add_forced = round(add_forced)
         
-        self.button_right._master_mask = self.renderer._get_correct_mask()
-        self.button_right.draw()
+        #? Expiriments with formulas:
+        
+        #? 1 variant: Correct
+        #!current borderwidth 15 + 15 = 30; 15/3*2 = 10
+        #! 20 - 2 = 18; forced_offset
+        #! 18 + 4 = 22; added renderer offset
+        #! 22 + 10 + 2 = 34; added widget offset
+        #! 34 - 30 = 4
+        #! 4/2 = 2, CORRECT, 2 inner pixels
+        
+        #? 2 variant: Correct
+        #!current borderwidth 12 + 12 = 24; 12/3*2 = 8
+        #! 16 - 2 = 14; forced_offset
+        #! 14 + 4 = 18; added renderer offset
+        #! 18 + 8 + 2 = 28; added widget offset
+        #! 28 - 24 = 4
+        #! 4/2 = 2, CORRECT, 2 inner pixels
+        
+        #? radius calculation
+        #TODO: make correct perc
+        
+        #? Final formula: x = borderwidth / 3 * 2
 
-        if self.style.borderwidth > 0:
-            if borders := self.cache.get_or_exec(CacheType.Borders, lambda: self.renderer._create_outlined_rect(self._csize, self.relm(self.style.borderradius),self.relm(self.style.borderwidth))):
-                self.surface.blit(borders, (0, 0))
+        radius = self.relm(self.style.borderradius) - 8
+        add_forced += 4
+        mask = self.renderer._get_correct_mask(sdf=self._sdf_mode, add=add_forced*2-2, radius=radius)
+        
+        self.button_left._master_mask = mask
+        self.button_right._master_mask = mask
+        self.button_left._inline_add_coords = NvVector2(add_forced, add_forced)
+        self.button_right._inline_add_coords = NvVector2(add_forced, add_forced)
+        self.button_left.draw()
+        self.button_right.draw()
 
     def clone(self): return ElementSwitcher(self._lazy_kwargs['size'], copy.deepcopy(self._lazy_kwargs['elements']), copy.deepcopy(self.style), **self.constant_kwargs)
