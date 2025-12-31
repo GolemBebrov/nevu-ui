@@ -1,4 +1,3 @@
-from nevu_ui.struct import Struct
 from nevu_ui.core.classes import ConfigType
 
 class NotCreatedError(Exception):
