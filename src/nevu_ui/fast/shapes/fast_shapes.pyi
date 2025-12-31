@@ -10,7 +10,7 @@ def _create_outlined_rounded_rect_sdf(
 
 def _create_rounded_rect_surface_optimized(
     size: Tuple[int, int], 
-    radius: int, 
+    radius: int | float | tuple, 
     color: Union[Tuple[int, int, int], Tuple[int, int, int, int]]
 ) -> pygame.Surface: ...
 
@@ -23,7 +23,7 @@ def transform_into_outlined_rounded_rect_sdf(
 
 def transform_into_outlined_rounded_rect(
     surf: pygame.Surface, 
-    radius: int, 
+    radius: int | float | tuple, 
     width: float,
     color: Union[Tuple[int, int, int], Tuple[int, int, int, int]]
 ) -> None: ...
