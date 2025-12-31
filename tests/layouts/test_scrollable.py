@@ -13,7 +13,7 @@ class TestScrollable(NevuTest):
         self.do_fps_test = True
         self._dirty_mode = False
         tetete_progressbar = ui.Slider([35*ui.vw, 35*ui.vw], ui.default_style(borderradius=500, borderwidth=3))
-        nyachechevitsya = ui.ElementSwitcher([80*ui.fill, 15*ui.fill], ["Goida", ["Тромб", "x_01"], "Маг 1", "Мечник 2", "Маг 3"],ui.default_style(borderradius=30), single_instance = False)
+        nyachechevitsya = ui.ElementSwitcher([80*ui.fill, 15*ui.fill], ["Goida", ["Тромб", "x_01"], "Маг 1", "Мечник 2", "Маг 3"],ui.default_style(borderradius=15), single_instance = False)
         self.fps = 999999999
         self.test_menu.layout = \
         ui.ScrollableColumn([100*ui.fill, 100*ui.vh],

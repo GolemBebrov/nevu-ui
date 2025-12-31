@@ -18,11 +18,9 @@ def create_test_instances():
     ui.apply_config("structure_test.json")
     test_window = ui.ConfiguredWindow()
     #test_window = ui.Window((300,300), title="Test Window", resize_type=ui.ResizeType.CropToRatio, ratio=ui.NvVector2(1,1), _gpu_mode=True)
-    widgets_style = ui.default_style(borderradius=35, borderwidth=5, colortheme=ui.ColorThemeLibrary.material3_dark)
+    widgets_style = ui.default_style(borderradius=(100,0,100,100), borderwidth=5, colortheme=ui.ColorThemeLibrary.material3_dark)
     test_menu = ui.Menu(test_window,[100*vw, 100*vh],widgets_style(borderradius=10,borderwidth=0))
     test_menu._subtheme_role = ui.SubThemeRole.SECONDARY
-    
-    
     
     widgets_size = [75*vw, 35*vh]
     widgets_size_small = [75*vw, 15*vh]
@@ -41,23 +39,25 @@ def create_test_instances():
     input_box = ui.Input(**widget_kwargs, placeholder = "Input!", multiple=True, quality=ui.Quality.Poor)
     
     #composable | checkboxgroup example
-    rect_checkbox_row = ui.Row([90*fill, 35*fill], x = 3, content = 
+    rect_checkbox_row = ui.Row([90*fill, 35*fill], x = 3, single_instance=True, content = 
                             {
                                 1: ui.RectCheckBox(id = "check_box1", size = 35, style = widgets_style), 
                                 2.2: ui.RectCheckBox(id = "check_box2", size = 35, style = widgets_style),
                                 3: ui.RectCheckBox(id = "check_box3", size = 35, style = widgets_style),
                             })
+    rect_checkbox_row.borders = True
+    #rect_checkbox_row.border_name = "RectCheckBox Row"
     
     for item in rect_checkbox_row._lazy_kwargs["content"].values():
         assert isinstance(item, ui.RectCheckBox)
         checkbox_group.add_checkbox(item)
     
     
-    element_swither = ui.ElementSwitcher(**widget_kwargs, elements = ["putin", "zelenka", "zov", "peremoga"], arrow_width=30)
+    element_swither = ui.ElementSwitcher(**widget_kwargs, elements = ["ooo","an apple", "nom nom", "mehhh"], arrow_width=30)
     progress_bar = ui.ProgressBar(**widget_kwargs, value = 50)
     
     
-    slider_bar = ui.Slider(widgets_size, widgets_style(text_align_x = ui.StateVariable(ui.Align.CENTER, ui.Align.RIGHT, ui.Align.LEFT)), start = 0, end = 100, step = 1, current_value = 50, tuple_role = ui.TupleColorRole.INVERSE_PRIMARY, bar_pair_role=ui.PairColorRole.SURFACE_VARIANT)# alt = True)
+    slider_bar = ui.Slider(widgets_size, widgets_style(text_align_x = ui.StateVariable(ui.Align.CENTER, ui.Align.RIGHT, ui.Align.LEFT), fontsize=45), start = 0, end = 100, step = 1, current_value = 50, tuple_role = ui.TupleColorRole.INVERSE_PRIMARY, bar_pair_role=ui.PairColorRole.SURFACE_VARIANT)# alt = True)
     #element = element_swither.find("fruit_1")
     showcase_widgets = [widget, label, input_box, rect_checkbox_row, element_swither, progress_bar, slider_bar]
     

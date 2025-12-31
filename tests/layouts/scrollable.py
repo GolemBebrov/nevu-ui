@@ -9,11 +9,11 @@ class TestScrollable(NevuTest):
             (ui.Align.LEFT, self.showcase_widgets[0]),
         ])
     def add_to_layout(self):
-        self.do_fps_test = True
+        #self.do_fps_test = True
         self._dirty_mode = False
         #self.print_debug_fps = True
         self.draw_cursor = False
-        self.fps = 999999999
+        self.fps = 9999999991
         a = zip([ui.Align.CENTER] * len(self.showcase_widgets), self.showcase_widgets)
         a = list(a)
         a.append((ui.Align.CENTER, ui.Button(self.add, "add", [50*vw,33*vh])))
@@ -32,6 +32,10 @@ class TestScrollable(NevuTest):
         
     def on_draw(self):
         super().on_draw()
+        for i in self.scrollable.items:
+            if isinstance(i, ui.ElementSwitcher):
+                #print(i.get_rect())
+                pass
 
     #self.test_widget.surface = self.window.surface
     #a = self.test_widget.renderer._create_surf_base((500,500), radius = 20)
