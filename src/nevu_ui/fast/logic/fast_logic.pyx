@@ -26,20 +26,19 @@ cdef inline float _rel_helper_c(float num, float resize_ratio, float c_min, floa
     cdef float result = c_round(num * resize_ratio)
     return _rel_corner_helper_c(result, c_min, c_max, has_min, has_max)
 
-cpdef float rel_helper(float num, float resize_ratio, object min_val, object max_val):
-    cdef bint has_min = min_val is not None
-    cdef bint has_max = max_val is not None
-    cdef float c_min = <float>min_val if has_min else 0.0
-    cdef float c_max = <float>max_val if has_max else 0.0
+cpdef float rel_helper(float num, float resize_ratio, float min_val, float max_val):
+    cdef bint has_min = min_val != -1.0
+    cdef bint has_max = max_val != -1.0
+    cdef float c_min = min_val if has_min else 0.0
+    cdef float c_max = max_val if has_max else 0.0
     return _rel_helper_c(num, resize_ratio, c_min, c_max, has_min, has_max)
 
-cpdef float relm_helper(float num, float resize_ratio_x, float resize_ratio_y, object min_val, object max_val):
-    cdef float result, c_min, c_max
-    cdef bint has_min = min_val is not None
-    cdef bint has_max = max_val is not None
-    result = c_round(num * ((resize_ratio_x + resize_ratio_y) * 0.5))
-    c_min = <float>min_val if has_min else 0.0
-    c_max = <float>max_val if has_max else 0.0
+cpdef float relm_helper(float num, float resize_ratio_x, float resize_ratio_y, float min_val, float max_val):
+    cdef bint has_min = min_val != -1.0
+    cdef bint has_max = max_val != -1.0
+    cdef float result = c_round(num * ((resize_ratio_x + resize_ratio_y) * 0.5))
+    cdef float c_min = min_val if has_min else 0.0
+    cdef float c_max = max_val if has_max else 0.0
     return _rel_corner_helper_c(result, c_min, c_max, has_min, has_max)
 
 cpdef NvVector2 mass_rel_helper(list mass, float resize_ratio_x, float resize_ratio_y, bint vector):
@@ -73,7 +72,6 @@ cpdef get_rect_helper_cached_pygame(NvVector2 master_coordinates, NvVector2 csiz
 
 cpdef logic_update_helper(
     bint optimized_dirty_rect,
-    object animation_manager,
     NvVector2 csize,
     NvVector2 master_coordinates,
     list dirty_rect,
@@ -93,21 +91,14 @@ cpdef logic_update_helper(
     cdef float rr_x = resize_ratio.x
     cdef float rr_y = resize_ratio.y
 
-    if not optimized_dirty_rect:
-        if animation_manager.state != AnimationManagerState.IDLE and animation_manager.state != AnimationManagerState.ENDED:
-            anim = animation_manager.current_animations.get(AnimationType.POSITION)
-            if anim is not None:
-                z_system.mark_dirty()
-    else:
-        dr_coordinates_new = master_coordinates
-        rect_new = pygame.Rect(dr_coordinates_new.x, dr_coordinates_new.y, csize.x, csize.y)
-        rect_old = pygame.Rect(_dr_coordinates_old.x, _dr_coordinates_old.y, csize.x, csize.y)
-        
-        if rect_new != rect_old:
-            z_system.mark_dirty()
-        
-        total_dirty_rect = rect_new.union(rect_old)
-        _dr_coordinates_old = dr_coordinates_new.copy()
+    dr_coordinates_new = master_coordinates
+    rect_new = pygame.Rect(dr_coordinates_new.x, dr_coordinates_new.y, csize.x, csize.y)
+    rect_old = pygame.Rect(_dr_coordinates_old.x, _dr_coordinates_old.y, csize.x, csize.y)
+    if rect_new != rect_old:
+        z_system.mark_dirty()
+    
+    total_dirty_rect = rect_new.union(rect_old)
+    _dr_coordinates_old = dr_coordinates_new.copy()
 
     if _first_update:
         _first_update = False
@@ -120,14 +111,9 @@ cpdef _light_update_helper(
     list items,
     list cached_coordinates,
     NvVector2 coordinatesMW,
-    list current_events,
-    float add_x,
-    float add_y,
+    NvVector2 add_vector,
     NvVector2 resize_ratio,
-    bint not_need_to_process
     ):
-    if not_need_to_process:
-        return
     cdef int i
     cdef int n_items = len(items)
     cdef object item
@@ -135,21 +121,19 @@ cpdef _light_update_helper(
     cdef NvVector2 m_coords
 
     m_coords = coordinatesMW
-    cdef list last_events = current_events
 
     for i in range(n_items):
         item = items[i]
         coords = cached_coordinates[i]
         anim_coords = NvVector2(item.animation_manager.get_animation_value(AnimationType.POSITION)) if item.animation_manager.get_animation_value(AnimationType.POSITION) is not None else None
         if anim_coords is None:
-            item.coordinates = NvVector2(coords.x + add_x,
-                                        coords.y + add_y)
+            item.coordinates = coords + add_vector
         else:
-            item.coordinates = NvVector2(coords.x + rel_helper(anim_coords.x, resize_ratio.x, None, None) + add_x,
-                                        coords.y + rel_helper(anim_coords.y, resize_ratio.y, None, None) + add_y)
+            correct_coords = coords + vec_rel_helper(anim_coords, resize_ratio.x, resize_ratio.y)
+            item.coordinates = correct_coords + add_vector
 
-        item.master_coordinates = item.coordinates + m_coords
-        item.update(last_events)
+        item.absolute_coordinates = item.coordinates + m_coords
+        item.update()
 
 cpdef bint collide_horizontal(NvVector2 r1_tl, NvVector2 r1_br, NvVector2 r2_tl, NvVector2 r2_br):
     return r1_tl.x < r2_br.x and r1_br.x > r2_tl.x
@@ -167,14 +151,13 @@ cpdef _very_light_update_helper(
     object _get_item_master_coordinates
     ):
 
-    cdef Py_ssize_t i
     cdef Py_ssize_t n = len(items)
     cdef object item
     cdef NvVector2 coords
 
     for i in range(n):
         item = items[i]
-        coords = <NvVector2>cached_coordinates[i]
+        coords = cached_coordinates[i]
         
         res = coords - add_vector
         

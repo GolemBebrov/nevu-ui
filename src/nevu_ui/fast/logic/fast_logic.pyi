@@ -14,8 +14,8 @@ def relm_helper(
     num: float, 
     resize_ratio_x: float, 
     resize_ratio_y: float, 
-    min_val: Optional[float], 
-    max_val: Optional[float]
+    min_val: float, 
+    max_val: float
 ) -> float: ...
 
 def vec_rel_helper(
@@ -25,7 +25,7 @@ def vec_rel_helper(
 ) -> NvVector2: ...
 
 def mass_rel_helper(
-    mass: Sequence[float], 
+    mass: list, 
     resize_ratio_x: float, 
     resize_ratio_y: float, 
     vector: bool
@@ -55,7 +55,6 @@ def get_rect_helper_cached_pygame(
 
 def logic_update_helper(
     optimized_dirty_rect: bool,
-    animation_manager: Any,
     csize: NvVector2,
     master_coordinates: NvVector2,
     dirty_rect: List[pygame.Rect],
@@ -69,12 +68,9 @@ def logic_update_helper(
 def _light_update_helper(
     items: List[Any],
     cached_coordinates: List[NvVector2],
-    first_parent_menu: Any,
-    nevu_state: Any,
-    add_x: float,
-    add_y: float,
+    coordinatesMW: NvVector2,
+    add_vector: NvVector2,
     resize_ratio: NvVector2,
-    not_need_to_process: bool
 ) -> None: ...
 
 def collide_vector(
