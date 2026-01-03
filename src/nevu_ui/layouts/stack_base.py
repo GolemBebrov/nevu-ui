@@ -3,7 +3,9 @@ from typing import Unpack, NotRequired, TypedDict
 import copy
 
 from nevu_ui.widgets import Widget
-from nevu_ui.menu import Menu
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from nevu_ui.menu import Menu
 from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.core.enums import Align

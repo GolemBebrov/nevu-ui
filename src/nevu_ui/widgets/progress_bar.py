@@ -60,6 +60,7 @@ class ProgressBar(Widget):
         super()._init_booleans()
         self.hoverable = False
         self._changed_value = False
+        self._supports_tuple_borderradius = False
     
     def _add_constants(self):
         super()._add_constants()

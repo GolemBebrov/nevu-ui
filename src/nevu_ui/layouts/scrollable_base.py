@@ -217,12 +217,9 @@ class ScrollableBase(LayoutType, ABC):
         _light_update_helper(
             items or self.collided_items,
             self.cached_coordinates or [],
-            self.first_parent_menu.coordinatesMW,
-            nevu_state.current_events,
-            add_x,
-            add_y,
-            self._resize_ratio,
-            self.cached_coordinates is None or len(self.items) != len(self.cached_coordinates))
+            self.first_parent_menu.absolute_coordinates,
+            NvVector2(add_x, add_y),
+            self._resize_ratio)
 
     def secondary_update(self): 
         super().secondary_update()
@@ -242,7 +239,6 @@ class ScrollableBase(LayoutType, ABC):
         if self.actual_max_main > 0:
             self.scroll_bar.coordinates = self._get_scrollbar_coordinates() # type: ignore
             self.scroll_bar.absolute_coordinates = self._get_item_master_coordinates(self.scroll_bar)
-            self.scroll_bar._master_z_handler = self._master_z_handler
 
     def _recollide_items(self):
         self.collided_items.clear()

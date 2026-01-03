@@ -8,7 +8,9 @@ from typing import (
 )
 
 from nevu_ui.widgets import Widget
-from nevu_ui.menu import Menu
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from nevu_ui.menu import Menu
 from nevu_ui.fast.logic import _light_update_helper
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.core.state import nevu_state
@@ -37,7 +39,8 @@ class LayoutType(NevuObject):
     
     def _get_item_master_coordinates(self, item: NevuObject):
         assert isinstance(item, NevuObject), f"Can't use _get_item_master_coordinates on {type(item)}"
-        return item.coordinates + self.first_parent_menu.coordinatesMW
+        assert self.first_parent_menu, self._unconnected_layout_error(item)
+        return item.coordinates + self.first_parent_menu.absolute_coordinates
 
     def _draw_widget(self, item: NevuObject, multiply: NvVector2 | None = None, add: NvVector2 | None = None):
         assert isinstance(item, NevuObject), f"Cant use _draw_widget on {type(item)}"
@@ -54,8 +57,10 @@ class LayoutType(NevuObject):
         coordinates = item.coordinates.copy()
         if multiply: coordinates *= multiply
         if add: coordinates += add
+
         
         if nevu_state.renderer and isinstance(item, Widget):
+            if not hasattr(item, 'texture'): return
             assert item.texture
             nevu_state.renderer.blit(item.texture, pygame.Rect(coordinates.to_tuple(), item._csize.to_tuple()))
         else:
@@ -89,7 +94,7 @@ class LayoutType(NevuObject):
         
     def _init_objects(self):
         super()._init_objects()
-        self.first_parent_menu = Menu(None, (1,1), default_style)
+        self.first_parent_menu = None#Menu(None, (1,1), default_style)
         self.menu: Menu | None = None
         self.layout: LayoutType | None = None
         self.surface: pygame.Surface | None = None
@@ -104,14 +109,13 @@ class LayoutType(NevuObject):
         raise NotImplementedError("Subclasses of LayoutType may implement add_items()")
     
     def base_light_update(self, add_x: int | float = 0, add_y: int | float = 0 ):
+        if self.cached_coordinates is None or len(self.items) != len(self.cached_coordinates): return
         _light_update_helper(
             self.items,
             self.cached_coordinates or [],
-            self.first_parent_menu.coordinatesMW,
-            nevu_state.current_events,
-            add_x, add_y,
-            self._resize_ratio,
-            self.cached_coordinates is None or len(self.items) != len(self.cached_coordinates))
+            self.first_parent_menu.absolute_coordinates if self.first_parent_menu else NvVector2(),
+            NvVector2(add_x, add_y),
+            self._resize_ratio,)
 
     @property
     def coordinates(self): return self._coordinates if hasattr(self, "_coordinates") else NvVector2()
@@ -138,9 +142,9 @@ class LayoutType(NevuObject):
         self._border_name = name
         if self.first_parent_menu:
             try:
-                self.border_font = pygame.sysfont.SysFont("Arial", self.relx(self.first_parent_menu._style.fontsize))
+                self.border_font = pygame.sysfont.SysFont("Arial", int(self.relx(self.first_parent_menu._style.fontsize)))
                 self.border_font_surface = self.border_font.render(self._border_name, True, (255,255,255))
-            except Exception as e: print(e)
+            except Exception as e: print(f"Error with border_name: {e}")
     
     @staticmethod
     def _percent_helper(size, value):
@@ -215,7 +219,6 @@ class LayoutType(NevuObject):
 
     def _item_add(self, item: NevuObject):
         if not item.single_instance: item = item.clone()
-        item._master_z_handler = self._master_z_handler
         if self.is_layout(item): 
             item._connect_to_layout(self)
         self.read_item_coords(item)
@@ -286,7 +289,7 @@ class LayoutType(NevuObject):
             self.first_parent_menu = self.layout.first_parent_menu
         
         for item in self.floating_items:
-            item.absolute_coordinates = item.coordinates + self.first_parent_menu.coordinatesMW
+            item.absolute_coordinates = item.coordinates + self.first_parent_menu.absolute_coordinates
             item.update()
             
         if self.cached_coordinates is None and self.booted:

@@ -42,5 +42,4 @@ class _DrawNamespaceGl:
         img_data = img.tobytes()
         return self.create_clear(img.size, img_data)
 
-
-#Warning: Code will be cooked soon!
+#!Warning: Code will be cooked soon!

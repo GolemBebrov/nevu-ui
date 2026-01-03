@@ -3,6 +3,9 @@ import pygame
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.core.state import nevu_state
 from typing import overload
+
+#! Can be imported only from nevu_ui.nevusurface.nevusurf
+
 class NevuSurface:
     def __init__(self, size: NvVector2 | tuple | list):
         if nevu_state.renderer_type != "opengl":

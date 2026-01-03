@@ -43,10 +43,10 @@ class Pages(LayoutType):
         if self.selected_page_id >= len(self.items): self.selected_page_id = 0
         self.selected_page = self.items[self.selected_page_id]
     def get_left_rect(self):
-        return pygame.Rect(self.coordinates[0]+(self.first_parent_menu.coordinatesMW[0]),self.coordinates[1]+self.first_parent_menu.coordinatesMW[1],
+        return pygame.Rect(self.coordinates[0]+(self.first_parent_menu.absolute_coordinates[0]),self.coordinates[1]+self.first_parent_menu.absolute_coordinates[1],
                             self.relx(self.size[0]/10),self.rely(self.size[1]))
     def get_right_rect(self):
-        return pygame.Rect(self.coordinates[0]+self.relx(self.size[0]-self.size[0]/10)+self.first_parent_menu.coordinatesMW[0],self.coordinates[1]+self.first_parent_menu.coordinatesMW[1],
+        return pygame.Rect(self.coordinates[0]+self.relx(self.size[0]-self.size[0]/10)+self.first_parent_menu.absolute_coordinates[0],self.coordinates[1]+self.first_parent_menu.absolute_coordinates[1],
                             self.relx(self.size[0]/10),self.rely(self.size[1]))
     def secondary_update(self, *args):
         super().secondary_update()

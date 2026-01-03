@@ -20,6 +20,8 @@ class ScrollableColumn(ScrollableBase):
         return self.ScrollBar([self.size[0]/40,self.size[1]/20], self.style, ScrollBarType.Vertical, self)
 
     def _update_scroll_bar(self):
+        if not self.first_parent_menu: return
+        assert self.first_parent_menu.window
         track_start_y, track_path_y = self.absolute_coordinates[1], self.size[1]
         offset = NvVector2(self.first_parent_menu.window._crop_width_offset, self.first_parent_menu.window._crop_height_offset) if self.first_parent_menu.window else NvVector2(0,0)
         
