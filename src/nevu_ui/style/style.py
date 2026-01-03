@@ -40,7 +40,7 @@ T = TypeVar("T")
 type SVar[T] = T | StateVariable[T]
 
 class StyleKwargs(TypedDict):
-    borderradius: NotRequired[SVar[int]]
+    borderradius: NotRequired[SVar[int | float | tuple]]
     br: NotRequired[SVar[int]]
     borderwidth: NotRequired[SVar[int]]
     bw: NotRequired[SVar[int]]
@@ -59,7 +59,7 @@ class Style:
         self._kwargs_for_copy = copy.deepcopy(kwargs)
         self.kwargs_dict = {}
         self.parameters_dict = {
-            "borderradius": ["borderradius", self._parse_int_min0],
+            "borderradius": ["borderradius", self._parse_br],
             "br": ["borderradius", self._parse_int_min0],
             "borderwidth": ["borderwidth", self._parse_int_min0],
             "bw": ["borderwidth", self._parse_int_min0],
@@ -80,6 +80,13 @@ class Style:
     
     def _parse_int_min0(self, value):
         return self.parse_int(value, min_restriction = 0)
+    
+    def _parse_br(self, value):
+        if isinstance(value, int | float):
+            return self._parse_int_min0(value)
+        elif self.parse_type(value, tuple) and len(value) == 4 and all(isinstance(i, int | float) for i in value):
+            return True, None
+        return False, None
     
     def _parse_align(self, value):
         return self.parse_type(value, Align)
