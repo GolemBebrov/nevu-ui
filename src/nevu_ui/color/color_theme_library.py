@@ -13,9 +13,7 @@ class ColorThemeLibrary:
         surface=ColorPair(color=(255, 251, 254), oncolor=(28, 27, 31)),
         surface_variant=ColorPair(color=(231, 224, 236), oncolor=(73, 69, 79)),
         outline=(121, 116, 126),
-        inverse_surface=ColorPair(color=(49, 48, 51), oncolor=(244, 239, 244)),
-        inverse_primary=(208, 188, 255)
-    )
+        inverse_surface=ColorPair(color=(49, 48, 51), oncolor=(244, 239, 244)), inverse_primary=(208, 188, 255))
 
     material3_dark = ColorTheme(
         primary=ColorSubTheme(color=(208, 188, 255), oncolor=(56, 30, 114), container=(79, 55, 139), oncontainer=(234, 221, 255)),
@@ -26,9 +24,7 @@ class ColorThemeLibrary:
         surface=ColorPair(color=(28, 27, 31), oncolor=(230, 225, 229)),
         surface_variant=ColorPair(color=(73, 69, 79), oncolor=(202, 196, 208)),
         outline=(147, 143, 153),
-        inverse_surface=ColorPair(color=(230, 225, 229), oncolor=(49, 48, 51)),
-        inverse_primary=(103, 80, 164)
-    )
+        inverse_surface=ColorPair(color=(230, 225, 229), oncolor=(49, 48, 51)), inverse_primary=(103, 80, 164))
 
     ocean_light = ColorTheme(
         primary=ColorSubTheme(color=Color.STEELBLUE, oncolor=Color.WHITE, container=Color.LIGHTBLUE, oncontainer=Color.DARKSLATEBLUE),
@@ -39,9 +35,7 @@ class ColorThemeLibrary:
         surface=ColorPair(color=Color.WHITE, oncolor=Color.DARKSLATEGRAY),
         surface_variant=ColorPair(color=Color.POWDERBLUE, oncolor=Color.SLATEGRAY),
         outline=Color.LIGHTSLATEGRAY,
-        inverse_surface=ColorPair(color=Color.DARKSLATEGRAY, oncolor=Color.WHITE),
-        inverse_primary=Color.SKYBLUE
-    )
+        inverse_surface=ColorPair(color=Color.DARKSLATEGRAY, oncolor=Color.WHITE), inverse_primary=Color.SKYBLUE)
 
     synthwave_dark = ColorTheme(
         primary=ColorSubTheme(color=Color.DEEPPINK, oncolor=Color.WHITE, container=(99, 0, 57), oncontainer=Color.PINK),
@@ -52,9 +46,7 @@ class ColorThemeLibrary:
         surface=ColorPair(color=(36, 17, 68), oncolor=Color.LAVENDER),
         surface_variant=ColorPair(color=Color.DARKSLATEBLUE, oncolor=Color.THISTLE),
         outline=Color.SLATEBLUE,
-        inverse_surface=ColorPair(color=Color.LAVENDER, oncolor=(21, 2, 53)),
-        inverse_primary=Color.MAGENTA
-    )
+        inverse_surface=ColorPair(color=Color.LAVENDER, oncolor=(21, 2, 53)), inverse_primary=Color.MAGENTA)
 
     catppuccin_latte = ColorTheme(
         primary=ColorSubTheme(color=(136, 57, 239), oncolor=(255, 255, 255), container=(234, 221, 255), oncontainer=(28, 0, 80)),
@@ -65,9 +57,7 @@ class ColorThemeLibrary:
         surface=ColorPair(color=(205, 214, 244), oncolor=(76, 79, 105)),
         surface_variant=ColorPair(color=(220, 224, 232), oncolor=(92, 95, 119)),
         outline=(116, 119, 141),
-        inverse_surface=ColorPair(color=(49, 50, 68), oncolor=(244, 239, 244)),
-        inverse_primary=(186, 187, 241)
-    )
+        inverse_surface=ColorPair(color=(49, 50, 68), oncolor=(244, 239, 244)), inverse_primary=(186, 187, 241))
 
     catppuccin_mocha = ColorTheme(
         primary=ColorSubTheme(color=(203, 166, 247), oncolor=(49, 50, 68), container=(70, 48, 119), oncontainer=(234, 221, 255)),
@@ -78,9 +68,7 @@ class ColorThemeLibrary:
         surface=ColorPair(color=(30, 30, 46), oncolor=(205, 214, 244)),
         surface_variant=ColorPair(color=(69, 71, 90), oncolor=(186, 194, 222)),
         outline=(127, 132, 156),
-        inverse_surface=ColorPair(color=(205, 214, 244), oncolor=(49, 50, 68)),
-        inverse_primary=(137, 180, 250)
-    )
+        inverse_surface=ColorPair(color=(205, 214, 244), oncolor=(49, 50, 68)), inverse_primary=(137, 180, 250))
 
     github_light= ColorTheme(
         primary=ColorSubTheme(color=(9, 105, 218), oncolor=(255, 255, 255), container=(221, 235, 252), oncontainer=(0, 28, 58)),
@@ -91,9 +79,7 @@ class ColorThemeLibrary:
         surface=ColorPair(color=(246, 248, 250), oncolor=(31, 35, 40)),
         surface_variant=ColorPair(color=(246, 248, 250), oncolor=(87, 96, 106)),
         outline=(208, 215, 222),
-        inverse_surface=ColorPair(color=(31, 35, 40), oncolor=(240, 246, 252)),
-        inverse_primary=(136, 189, 255)
-    )
+        inverse_surface=ColorPair(color=(31, 35, 40), oncolor=(240, 246, 252)), inverse_primary=(136, 189, 255))
 
     github_dark = ColorTheme(
         primary=ColorSubTheme(color=(88, 166, 255), oncolor=(13, 17, 23), container=(21, 53, 94), oncontainer=(221, 235, 252)),
@@ -104,9 +90,7 @@ class ColorThemeLibrary:
         surface=ColorPair(color=(22, 27, 34), oncolor=(201, 209, 217)),
         surface_variant=ColorPair(color=(22, 27, 34), oncolor=(139, 148, 158)),
         outline=(48, 54, 61),
-        inverse_surface=ColorPair(color=(201, 209, 217), oncolor=(13, 17, 23)),
-        inverse_primary=(9, 105, 218)
-    )
+        inverse_surface=ColorPair(color=(201, 209, 217), oncolor=(13, 17, 23)), inverse_primary=(9, 105, 218))
 
     gruvbox_light = ColorTheme(
         primary=ColorSubTheme(color=(69, 133, 136), oncolor=(251, 241, 199), container=(211, 222, 194), oncontainer=(40, 40, 40)),
@@ -117,9 +101,7 @@ class ColorThemeLibrary:
         surface=ColorPair(color=(235, 219, 178), oncolor=(60, 56, 54)),
         surface_variant=ColorPair(color=(211, 197, 162), oncolor=(92, 84, 78)),
         outline=(168, 153, 132),
-        inverse_surface=ColorPair(color=(60, 56, 54), oncolor=(251, 241, 199)),
-        inverse_primary=(131, 165, 152)
-    )
+        inverse_surface=ColorPair(color=(60, 56, 54), oncolor=(251, 241, 199)), inverse_primary=(131, 165, 152))
 
     gruvbox_dark = ColorTheme(
         primary=ColorSubTheme(color=(131, 165, 152), oncolor=(40, 40, 40), container=(69, 133, 136), oncontainer=(235, 219, 178)),
@@ -130,9 +112,7 @@ class ColorThemeLibrary:
         surface=ColorPair(color=(60, 56, 54), oncolor=(235, 219, 178)),
         surface_variant=ColorPair(color=(80, 73, 69), oncolor=(189, 174, 147)),
         outline=(124, 111, 100),
-        inverse_surface=ColorPair(color=(235, 219, 178), oncolor=(40, 40, 40)),
-        inverse_primary=(69, 133, 136)
-    )
+        inverse_surface=ColorPair(color=(235, 219, 178), oncolor=(40, 40, 40)), inverse_primary=(69, 133, 136))
 
     pastel_rose_light = ColorTheme(
         primary=ColorSubTheme(color=Color.ROYALBLUE, oncolor=Color.WHITE, container=Color.LIGHTSTEELBLUE, oncontainer=Color.DARKBLUE),
@@ -143,9 +123,7 @@ class ColorThemeLibrary:
         surface=ColorPair(color=Color.GHOSTWHITE, oncolor=Color.BLACK),
         surface_variant=ColorPair(color=Color.LIGHTGRAY, oncolor=Color.DARKSLATEGRAY),
         outline=Color.SLATEGRAY,
-        inverse_surface=ColorPair(color=Color.DARKSLATEGRAY, oncolor=Color.WHITESMOKE),
-        inverse_primary=Color.CORNFLOWERBLUE,
-    )
+        inverse_surface=ColorPair(color=Color.DARKSLATEGRAY, oncolor=Color.WHITESMOKE), inverse_primary=Color.CORNFLOWERBLUE)
     
     neon_cyber_dark = ColorTheme(
         primary=ColorSubTheme(color=(191, 0, 255), oncolor=(255, 255, 255), container=(138, 0, 255), oncontainer=(223, 0, 255)),
@@ -156,6 +134,4 @@ class ColorThemeLibrary:
         surface=ColorPair(color=(28, 28, 28), oncolor=(230, 230, 250)),
         surface_variant=ColorPair(color=(40, 40, 40), oncolor=(216, 191, 216)),
         outline=(106, 90, 205),
-        inverse_surface=ColorPair(color=(230, 230, 250), oncolor=(12, 12, 12)),
-        inverse_primary=(138, 43, 226)
-    )
+        inverse_surface=ColorPair(color=(230, 230, 250), oncolor=(12, 12, 12)), inverse_primary=(138, 43, 226))
