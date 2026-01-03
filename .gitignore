@@ -20,3 +20,5 @@ test/
 *.ttf
 
 *.egg-info /
+
+*.html
