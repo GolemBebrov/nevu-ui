@@ -50,13 +50,32 @@ class _DrawNamespace:
         if surface is None: return
         return pygame.transform.smoothscale(surface, size)
     
+    def _round_radius(self, radius: int | float | tuple):
+        if isinstance(radius, tuple):
+            return tuple(map(round, radius))
+        else:
+            return round(radius)
+    
+    def _mult_radius(self, radius: int | float | tuple, mult: float):
+        if isinstance(radius, tuple):
+            return tuple(map(lambda x: x * mult, radius))
+        else:
+            return radius * mult
+    
+    def _normalize_radius(self, radius: int | float | tuple, _clipped = False) -> tuple:
+        if isinstance(radius, int|float):
+            radius = (radius, radius, radius, radius)
+        if _clipped:
+            radius = tuple(map(lambda x: max(0, x-1), radius))
+        return radius
+    
 class BackgroundRenderer:
     __slots__ = ["_root", "draw"]
     def __init__(self, root: NevuObject):
-        assert isinstance(root, NevuObject), "Root must be NevuObject"
+        #assert isinstance(root, NevuObject), "Root must be NevuObject"
         self._root = weakref.proxy(root) 
         self.draw = _DrawNamespace(self)
-    
+        
     @property
     def root(self): return self._root
     
@@ -66,19 +85,16 @@ class BackgroundRenderer:
         
         if not style.gradient: return
         
-        gradient = self.draw.create_clear(root.size * _QUALITY_TO_RESOLUTION[root.quality], flags = pygame.SRCALPHA)
+        gradient = self.draw.create_clear(root._csize, flags = pygame.SRCALPHA)
         self.draw.gradient(gradient, transparency = style.transparency)
         
         return gradient
     
-    def _create_surf_base(self, size = None, alt = False, radius = None, standstill = False, override_color = None, sdf = False): 
+    def _create_surf_base(self, size = None, alt = False, radius = None, standstill = False, override_color = None, sdf = False, _clipped = False): 
         root = self.root
-        #print("+ !creating surf base ::")
         style = root._style
-        
         needed_size = size or root._csize
-        needed_size.to_round()
-        tuple_size = needed_size.to_tuple()
+        tuple_size = needed_size.to_round().to_tuple()
         
         surf = pygame.Surface(tuple_size, flags = pygame.SRCALPHA)
         
@@ -91,56 +107,40 @@ class BackgroundRenderer:
             elif hover_state == HoverState.HOVERED and root.hoverable: 
                 color = Color.darken(color, 0.2)
         
-        if override_color:
-            color = override_color
+        if override_color: color = override_color
+        avg_scale_factor = (root._resize_ratio.x + root._resize_ratio.y) * 0.5
         
-        if root.will_resize:
-            avg_scale_factor = _QUALITY_TO_RESOLUTION[root.quality]
+        radius = self.draw._mult_radius(style.borderradius, avg_scale_factor) if radius is None else radius
+        r_radius = self.draw._round_radius(radius)
+        
+        if sdf: surf.blit(_create_rounded_rect_surface_optimized(tuple_size, r_radius, color), (0, 0))
         else:
-            rr = root._resize_ratio
-            avg_scale_factor = (rr.x + rr.y) * 0.5
-        
-        radius = (style.borderradius * avg_scale_factor) if radius is None else radius
-        r_radius = round(radius)
-        #print("super debug info :===: (true rad, style rad, radius)", r_radius, style.borderradius, radius)
-        
-        if sdf:
-            surf.blit(_create_rounded_rect_surface_optimized(tuple_size, r_radius, color), (0, 0))
-        else:
-            pygame.draw.rect(surf, color, pygame.rect.Rect(0, 0, *tuple_size), 0, r_radius)
-        
-        #print("- !created surf base :=: (size)", surf.get_size())
+            r_radius = self.draw._normalize_radius(r_radius, _clipped = _clipped)
+            #!to normalize with sdf
+            pygame.draw.rect(surf, color, pygame.rect.Rect(0, 0, *tuple_size), 0, -1, r_radius[0], r_radius[1], r_radius[3], r_radius[2])
         return surf
     
     def _create_outlined_rect(self, size = None, radius = None, width = None, sdf = False): 
         root = self.root
-        #print("+ !creating outlined rect(borders) ::")
         style = root._style
         
         needed_size = size or root._csize
-        needed_size.to_round()
-        tuple_size = needed_size.to_tuple()
-        
-        if root.will_resize:
-            avg_scale_factor = _QUALITY_TO_RESOLUTION[root.quality]
-        else:
-            rr = root._resize_ratio
-            avg_scale_factor = (rr.x + rr.y) * 0.5
+        tuple_size = needed_size.to_round().to_tuple()
+        avg_scale_factor = (root._resize_ratio.x + root._resize_ratio.y) * 0.5
             
-        radius = radius or style.borderradius * avg_scale_factor
+        radius = radius or self.draw._mult_radius(style.borderradius, avg_scale_factor)
         width = width or style.borderwidth * avg_scale_factor
         
-        r_radius = round(radius)
+        r_radius = self.draw._round_radius(radius)
         r_width = round(width)
-        #print("super debug info :===: (true rad, style rad, radius)", r_radius, style.borderradius, radius)
 
         if sdf: 
             result = self.draw.create_clear(tuple_size, flags = pygame.SRCALPHA)
             transform_into_outlined_rounded_rect(result, r_radius, r_width, root.subtheme_border)
         else:
             result = pygame.Surface(tuple_size, flags = pygame.SRCALPHA)
-            pygame.draw.rect(result, root.subtheme_border, pygame.rect.Rect(0, 0, *tuple_size), r_width, r_radius)
-        #print("- !outlined rect created :=: (size)", result.get_size())
+            r_radius = self.draw._normalize_radius(r_radius)
+            pygame.draw.rect(result, root.subtheme_border, pygame.rect.Rect(0, 0, *tuple_size), r_width, -1, r_radius[0], r_radius[1], r_radius[3], r_radius[2])
         return result
     
     def _get_correct_mask(self, sdf=True, add = 0, radius = None): 
@@ -148,22 +148,16 @@ class BackgroundRenderer:
         radius = radius or root.relm(root.style.borderradius)
         size = root._csize.to_round().copy()
         size -= NvVector2(add, add)
-        if sdf:
-            size -= NvVector2(2,2)
-        if root.style.borderwidth > 0:
-            size -= NvVector2(2,2)
+        if sdf: size -= NvVector2(2,2)
+        if root.style.borderwidth > 0: size -= NvVector2(2,2)
         
         return self._create_surf_base(size, root.alt, radius)
     
     def _generate_background(self, sdf = True, only_content = False): 
         root = self.root
         style = root._style
-        #print("+ + #generating background :==: (root cls, id)", root.__class__.__name__, root.id)
         cache = root.cache
-        
-        resize_factor = _QUALITY_TO_RESOLUTION[root.quality] if root.will_resize else root._resize_ratio
-        
-        rounded_size = (root.size * resize_factor).to_round()
+        rounded_size = root._csize.to_round()
         tuple_size = rounded_size.to_tuple()
         
         border_width = style.borderwidth
@@ -175,13 +169,11 @@ class BackgroundRenderer:
 
         if only_content:
             if border_width > 0:
-                #print(f"!!! borderwidth({style.borderwidth}) > 0, adjusting mask")
                 correct_mask = self._create_surf_base(rounded_size, sdf = False)
                 offset = NvVector2(2,2)
-                mask_surf = cache.get_or_exec(CacheType.Surface, lambda: self._create_surf_base(rounded_size - offset, sdf = False))
+                mask_surf = cache.get_or_exec(CacheType.Surface, lambda: self._create_surf_base(rounded_size - offset, sdf = False, _clipped=True))
             else:
-                #print(f"!!! borderwidth({style.borderwidth}) == 0, keep the same mask")
-                mask_surf = correct_mask = self._create_surf_base(rounded_size, sdf = False)
+                mask_surf = correct_mask = self._create_surf_base(rounded_size, sdf = True)
 
         final_surf = pygame.Surface(tuple_size, flags = pygame.SRCALPHA)
         
@@ -203,15 +195,13 @@ class BackgroundRenderer:
             final_surf.blit(content_surf, (0,0))
             
         if border_width > 0:
-            cache_type = CacheType.Scaled_Borders if root.will_resize else CacheType.Borders
+            cache_type = CacheType.Borders
             if border := cache.get_or_exec(cache_type, lambda: self._create_outlined_rect(rounded_size, sdf = sdf)):
                 if root._draw_borders:
                     final_surf.blit(border, (0, 0))
 
         if style.transparency: 
             final_surf.set_alpha(style.transparency)
-        #print("- - #generated background :=: (final_size)", final_surf.get_size())
-        #print()
         return final_surf
     
     def _generate_image(self):
@@ -219,8 +209,7 @@ class BackgroundRenderer:
         assert root.style.bgimage, "Bgimage not set"
         return self.draw.load_image(root.style.bgimage)
 
-    def min_size(self, size: NvVector2): 
-        return (max(1, int(size.x)), max(1, int(size.y)))
+    def min_size(self, size: NvVector2):  return (max(1, int(size.x)), max(1, int(size.y)))
     
     def _scale_image(self, size = None): 
         root = self.root
@@ -241,15 +230,12 @@ class BackgroundRenderer:
     def _split_words(words: list, font: pygame.font.Font, x, marg = " "):
         current_line = ""
         lines = []
-        
         font_size = font.size
         
         for word in words:
             force_next_line = False
-            if word == '\n':
-                force_next_line = True
-            elif len(word) >= 2 and word[0] == '\\' and word[1] == 'n':
-                force_next_line = True
+            if word == '\n': force_next_line = True
+            elif len(word) >= 2 and word[0] == '\\' and word[1] == 'n': force_next_line = True
             
             if force_next_line:
                 lines.append(current_line)
@@ -307,7 +293,6 @@ class BackgroundRenderer:
         if alignx == Align.LEFT: text_rect.left = container_rect.left
         elif alignx == Align.CENTER: text_rect.centerx = container_rect.centerx
         elif alignx == Align.RIGHT: text_rect.right = container_rect.right
-
         if aligny == Align.TOP: text_rect.top = container_rect.top
         elif aligny == Align.CENTER: text_rect.centery = container_rect.centery
         elif aligny == Align.BOTTOM: text_rect.bottom = container_rect.bottom
