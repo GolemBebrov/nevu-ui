@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING
 from pygame._sdl2 import Renderer
 
 if TYPE_CHECKING:
-    from nevu_ui.window.display import DisplayGL, DisplaySdl
     from nevu_ui.window import Window
     from nevu_ui.fast.zsystem import ZSystem
     from nevu_ui.ui_manager import Manager
@@ -38,7 +37,6 @@ class NevuState:
             self.current_dirty_rects.clear()
     
     @property
-    def renderer_type(self):
-        return self._renderer_type
+    def renderer_type(self): return self._renderer_type
     
 nevu_state = NevuState()

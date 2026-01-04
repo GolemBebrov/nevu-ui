@@ -1,6 +1,7 @@
 import copy
 
 from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.nevuobj.nevuobj import NevuObject
 from nevu_ui.widgets import WidgetKwargs, Widget
 from collections.abc import Callable
 from nevu_ui.core.enums import EventType
@@ -29,6 +30,7 @@ class RectCheckBox(Widget):
     def _init_booleans(self):
         super()._init_booleans()
         self._toogled = False
+        self._supports_tuple_borderradius = False
         
     def _add_constants(self):
         super()._add_constants()
@@ -74,20 +76,19 @@ class RectCheckBox(Widget):
             
             inner_radius = (self.style.borderradius - self.relm(self.style.borderwidth / 2))
             
-            inner_surf = self.renderer._create_surf_base(
-                active_size, 
-                True, 
-                self.relm(inner_radius), sdf=True
-            )
+            inner_surf = self.renderer._create_surf_base(active_size, True, self.relm(inner_radius), sdf=True)
             
             self.surface.blit(inner_surf, offset)
+            self.clear_texture()
             
     def _on_click_system(self):
         self.toogled = not self.toogled
         super()._on_click_system()
-        
-    def clone(self):
+    
+    def _create_clone(self):
         self.constant_kwargs['events'] = self._events.copy()
-        selfcopy = RectCheckBox(self._lazy_kwargs['size'].x, copy.deepcopy(self.style), **self.constant_kwargs) # type: ignore
-        self._event_cycle(EventType.OnCopy, selfcopy)
-        return selfcopy
+        return self.__class__(self._lazy_kwargs['size'].x, copy.deepcopy(self.style), **self.constant_kwargs) # type: ignore
+    
+    def _on_copy_system(self, clone: NevuObject): # type: ignore
+        super()._on_copy_system(clone, no_cache=True)
+        self._event_cycle(EventType.OnCopy, clone)

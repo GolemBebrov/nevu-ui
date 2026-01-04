@@ -2,6 +2,7 @@ import pygame
 import numpy as np
 
 from nevu_ui.color import Color
+from nevu_ui.fast.nvvector2 import NvVector2
 
 from nevu_ui.core import (
     LinearSide, RadialPosition, GradientType, GradientConfig
@@ -27,27 +28,19 @@ class Gradient:
             raise ValueError(f"Unrecognized gradient type: {self.type}")
 
     def _validate_gradient_type(self):
-        if self.type not in GradientType:
-            raise ValueError(f"Gradient type '{self.type}' is not supported. Choose linear or radial.")
-
+        if self.type not in GradientType: raise ValueError(f"Gradient type '{self.type}' is not supported. Choose linear or radial.")
     def _validate_linear_direction(self):
-        if self.direction not in LinearSide:
-            raise ValueError(f"Linear gradient direction '{self.direction}' is not supported.")
-
+        if self.direction not in LinearSide: raise ValueError(f"Linear gradient direction '{self.direction}' is not supported.")
     def _validate_radial_direction(self):
-        if self.direction not in RadialPosition:
-            raise ValueError(f"Radial gradient direction '{self.direction}' is not supported.")
+        if self.direction not in RadialPosition: raise ValueError(f"Radial gradient direction '{self.direction}' is not supported.")
 
-    def with_transparency(self, transparency):
-        return Gradient(self.colors, self.type, self.direction, transparency)
+    def with_transparency(self, transparency): return Gradient(self.colors, self.type, self.direction, transparency)
 
     def apply_gradient(self, surface):
         gradient_surface = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
         
-        if self.type == GradientType.Linear:
-            self._apply_linear_gradient(gradient_surface)
-        elif self.type == GradientType.Radial:
-            self._apply_radial_gradient(gradient_surface)
+        if self.type == GradientType.Linear: self._apply_linear_gradient(gradient_surface)
+        elif self.type == GradientType.Radial: self._apply_radial_gradient(gradient_surface)
         
         if self.transparency is not None:
             gradient_surface.set_alpha(self.transparency)
@@ -56,37 +49,25 @@ class Gradient:
 
     def _apply_linear_gradient(self, surface):
         width, height = surface.get_size()
-        
         x_lin = np.linspace(0.0, 1.0, width, dtype=np.float32)
         y_lin = np.linspace(0.0, 1.0, height, dtype=np.float32)
 
-        if self.direction == LinearSide.Right:
-            progress = x_lin[:, np.newaxis]
-        elif self.direction == LinearSide.Left:
-            progress = 1.0 - x_lin[:, np.newaxis]
-        elif self.direction == LinearSide.Bottom:
-            progress = y_lin[np.newaxis, :]
-        elif self.direction == LinearSide.Top:
-            progress = 1.0 - y_lin[np.newaxis, :]
-        elif self.direction == LinearSide.BottomRight:
-            progress = (x_lin[:, np.newaxis] + y_lin[np.newaxis, :]) * 0.5
-        elif self.direction == LinearSide.TopLeft:
-            progress = 1.0 - (x_lin[:, np.newaxis] + y_lin[np.newaxis, :]) * 0.5
-        elif self.direction == LinearSide.TopRight:
-            progress = (x_lin[:, np.newaxis] + (1.0 - y_lin[np.newaxis, :])) * 0.5
-        elif self.direction == LinearSide.BottomLeft:
-            progress = ((1.0 - x_lin[:, np.newaxis]) + y_lin[np.newaxis, :]) * 0.5
-        else:
-            raise ValueError(f"Unsupported gradient direction: {self.direction}")
-
+        match self.direction:
+            case LinearSide.Right: progress = x_lin[:, np.newaxis]
+            case LinearSide.Left: progress = 1.0 - x_lin[:, np.newaxis]
+            case LinearSide.Bottom: progress = y_lin[np.newaxis, :]
+            case LinearSide.Top: progress = 1.0 - y_lin[np.newaxis, :]
+            case LinearSide.BottomRight: progress = (x_lin[:, np.newaxis] + y_lin[np.newaxis, :]) * 0.5
+            case LinearSide.TopLeft: progress = 1.0 - (x_lin[:, np.newaxis] + y_lin[np.newaxis, :]) * 0.5
+            case LinearSide.TopRight: progress = (x_lin[:, np.newaxis] + (1.0 - y_lin[np.newaxis, :])) * 0.5
+            case LinearSide.BottomLeft: progress = ((1.0 - x_lin[:, np.newaxis]) + y_lin[np.newaxis, :]) * 0.5
+            case _: raise ValueError(f"Unsupported gradient direction: {self.direction}")
         self._blit_numpy_gradient(surface, progress)
 
     def _apply_radial_gradient(self, surface):
         width, height = surface.get_size()
         center_x, center_y = self._get_radial_center(width, height)
-        
         y_grid, x_grid = np.ogrid[:height, :width]
-        
         dist_sq = (x_grid - center_x)**2 + (y_grid - center_y)**2
         distance = np.sqrt(dist_sq).astype(np.float32)
 
@@ -128,52 +109,43 @@ class Gradient:
             RadialPosition.TopRight: (w_m, 0),
             RadialPosition.BottomCenter: (w_m * 0.5, h_m),
             RadialPosition.BottomLeft: (0, h_m),
-            RadialPosition.BottomRight: (w_m, h_m)
-        }
-        return center_map.get(self.direction, (w_m * 0.5, h_m * 0.5)) # type: ignore
+            RadialPosition.BottomRight: (w_m, h_m)}
+        return NvVector2(center_map.get(self.direction, (w_m * 0.5, h_m * 0.5))) # type: ignore
 
     def _validate_colors(self, colors):
         if not isinstance(colors, (list, tuple)):
             raise ValueError("Gradient colors must be a list or tuple.")
-
         validated_colors = []
         for color in colors:
             if isinstance(color, str):
                 try:
                     color_tuple = getattr(Color, color.upper())
-                    if isinstance(color_tuple, tuple) and len(color_tuple) == 3:
-                        validated_colors.append(color_tuple)
-                    else:
-                        raise ValueError()
+                    if isinstance(color_tuple, tuple) and len(color_tuple) == 3: validated_colors.append(color_tuple)
+                    else: raise ValueError(f"Invalid color {color_tuple} with name {color}.")
                 except (AttributeError, ValueError) as e:
                     raise ValueError(f"Unsupported color name: '{color}'.") from e
             elif isinstance(color, (tuple, list)) and len(color) == 3 and all(isinstance(c, int) and 0 <= c <= 255 for c in color):
                 validated_colors.append(tuple(color))
             else:
                 raise ValueError("Each color must be a tuple of 3 integers (RGB) or a valid color name.")
-
         return validated_colors
 
-    def invert(self, new_direction=None):
+    def invert(self, new_direction = None):
         if new_direction is None:
             if self.type == GradientType.Linear:
                 mapping = {
                     LinearSide.Right: LinearSide.Left, LinearSide.Left: LinearSide.Right,
                     LinearSide.Top: LinearSide.Bottom, LinearSide.Bottom: LinearSide.Top,
                     LinearSide.TopRight: LinearSide.BottomLeft, LinearSide.BottomLeft: LinearSide.TopRight,
-                    LinearSide.TopLeft: LinearSide.BottomRight, LinearSide.BottomRight: LinearSide.TopLeft
-                }
+                    LinearSide.TopLeft: LinearSide.BottomRight, LinearSide.BottomRight: LinearSide.TopLeft}
                 new_direction = mapping.get(self.direction) # type: ignore
             elif self.type == GradientType.Radial:
                 mapping = {
                     RadialPosition.Center: RadialPosition.Center,
                     RadialPosition.TopCenter: RadialPosition.BottomCenter, RadialPosition.BottomCenter: RadialPosition.TopCenter,
                     RadialPosition.TopLeft: RadialPosition.BottomRight, RadialPosition.BottomRight: RadialPosition.TopLeft,
-                    RadialPosition.TopRight: RadialPosition.BottomLeft, RadialPosition.BottomLeft: RadialPosition.TopRight
-                }
+                    RadialPosition.TopRight: RadialPosition.BottomLeft, RadialPosition.BottomLeft: RadialPosition.TopRight}
                 new_direction = mapping.get(self.direction) # type: ignore
-
         if new_direction is None:
             raise ValueError(f"Inversion for direction '{self.direction}' is not supported.")
-
         return Gradient(list(reversed(self.colors)), self.type, new_direction, self.transparency)

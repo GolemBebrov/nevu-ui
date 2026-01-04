@@ -31,10 +31,8 @@ class EaseOut(Animation):
 
 class EaseInOut(Animation):
     def _animation_update(self, value):
-        if value < 0.5:
-            eased_value = 2 * value * value
-        else:
-            eased_value = -1 + (4 - 2 * value) * value
+        if value < 0.5: eased_value = 2 * value * value
+        else: eased_value = -1 + (4 - 2 * value) * value
         self._apply_easing(eased_value)
 
 class Bounce(Animation):
@@ -96,20 +94,16 @@ class Glitch(Animation):
                     self.current_value = tuple(
                         random.randint(
                             min(int(self.start[i] - 50), int(self.end[i] + 50)), 
-                            max(int(self.start[i] - 50), int(self.end[i] + 50))
-                        ) for i in range(2)
-                    )
+                            max(int(self.start[i] - 50), int(self.end[i] + 50))) for i in range(2))
                 elif self.type == AnimationType.ROTATION:
                     self.current_value = random.uniform(self.start - 45, self.end + 45)
                 elif self.type == AnimationType.OPACITY:
                     self.current_value = random.uniform(0, 1)
-            else:
-                self._apply_easing(value)
-        else:
-            self._apply_easing(1)
+            else: self._apply_easing(value)
+        else: self._apply_easing(1)
 
 class Shake(Animation):
-    def __init__(self, time, start, end, type:AnimationType,shake_amplitude=1,continuous=False):
+    def __init__(self, time, start, end, type: AnimationType, shake_amplitude = 1,continuous = False):
         super().__init__(time, start, end, type)
         self.shake_amplitude = shake_amplitude
         self.continuous = continuous
@@ -124,8 +118,7 @@ class Shake(Animation):
                 offset_y = random.uniform(-self.shake_amplitude,self.shake_amplitude)
             self.current_value = (
                 round(self.start[0] + (self.end[0] - self.start[0]) * value + offset_x),
-                round(self.start[1] + (self.end[1] - self.start[1]) * value + offset_y)
-            )
+                round(self.start[1] + (self.end[1] - self.start[1]) * value + offset_y))
         elif self.type == AnimationType.ROTATION:
             offset_angle = random.uniform(-magnitude * 5, magnitude * 5)
             self.current_value = self.start + (self.end - self.start) * value + offset_angle
@@ -135,16 +128,13 @@ class Shake(Animation):
             self.current_value = tuple(round(self.start[i] + (self.end[i] - self.start[i]) * value) for i in range(2))
         elif self.type == AnimationType.OPACITY:
              self.current_value = self.start + (self.end - self.start) * value
-        else:
-             raise ValueError
+        else: raise ValueError
 
 class Flicker(Animation):
     def _animation_update(self, value):
         if self.type == AnimationType.OPACITY:
-            if random.random() < 0.2:
-                self.current_value = random.uniform(0, 0.5)
-            else:
-                self.current_value = self.start + (self.end - self.start) * value
+            if random.random() < 0.2: self.current_value = random.uniform(0, 0.5)
+            else: self.current_value = self.start + (self.end - self.start) * value
         elif self.type == AnimationType.COLOR:
             if random.random() < 0.2:
                 self.current_value = (random.randint(0,255),random.randint(0,255),random.randint(0,255),random.randint(0,255))
@@ -156,8 +146,7 @@ class Flicker(Animation):
              self.current_value = tuple(round(self.start[i] + (self.end[i] - self.start[i]) * value) for i in range(2))
         elif self.type == AnimationType.ROTATION:
             self.current_value = self.start + (self.end - self.start) * value
-        else:
-             raise ValueError
+        else: raise ValueError
 
 class Pulse(Animation):
     def _animation_update(self, value):
@@ -172,8 +161,7 @@ class Pulse(Animation):
              self.current_value = tuple(round(self.start[i] + (self.end[i] - self.start[i]) * value) for i in range(2))
         elif self.type == AnimationType.ROTATION:
             self.current_value = self.start + (self.end - self.start) * value
-        else:
-            raise ValueError
+        else: raise ValueError
 
 class EaseInQuad(Animation):
     def _animation_update(self, value):
@@ -187,10 +175,8 @@ class EaseOutQuad(Animation):
 
 class EaseInOutQuad(Animation):
     def _animation_update(self, value):
-        if value < 0.5:
-            eased_value = 2 * value * value
-        else:
-            eased_value =  -1 + (4 - 2 * value) * value
+        if value < 0.5: eased_value = 2 * value * value
+        else: eased_value =  -1 + (4 - 2 * value) * value
         self._apply_easing(eased_value)
 
 class EaseInCubic(Animation):
@@ -205,10 +191,8 @@ class EaseOutCubic(Animation):
 
 class EaseInOutCubic(Animation):
     def _animation_update(self, value):
-        if value < 0.5:
-            eased_value = 4 * value * value * value
-        else:
-            eased_value = 1 - pow(-2 * value + 2, 3) / 2
+        if value < 0.5: eased_value = 4 * value * value * value
+        else: eased_value = 1 - pow(-2 * value + 2, 3) / 2
         self._apply_easing(eased_value)
 
 class EaseInQuart(Animation):
@@ -223,10 +207,8 @@ class EaseOutQuart(Animation):
 
 class EaseInOutQuart(Animation):
     def _animation_update(self, value):
-        if value < 0.5:
-            eased_value = 8 * value * value * value * value
-        else:
-            eased_value = 1 - pow(-2 * value + 2, 4) / 2
+        if value < 0.5: eased_value = 8 * value * value * value * value
+        else: eased_value = 1 - pow(-2 * value + 2, 4) / 2
         self._apply_easing(eased_value)
 
 class EaseInQuint(Animation):
@@ -259,14 +241,10 @@ class EaseOutExpo(Animation):
 
 class EaseInOutExpo(Animation):
     def _animation_update(self, value):
-        if value == 0:
-            eased_value = 0
-        elif value == 1:
-            eased_value = 1
-        elif value < 0.5:
-            eased_value = pow(2, 20 * value - 10) / 2
-        else:
-            eased_value = (2 - pow(2, -20 * value + 10)) / 2
+        if value == 0: eased_value = 0
+        elif value == 1: eased_value = 1
+        elif value < 0.5: eased_value = pow(2, 20 * value - 10) / 2
+        else: eased_value = (2 - pow(2, -20 * value + 10)) / 2
         self._apply_easing(eased_value)
 
 class EaseInCirc(Animation):
@@ -322,8 +300,7 @@ def _apply_common_easing(self, eased_value):
         self.current_value = self.start + (self.end - self.start) * eased_value
     elif self.type == AnimationType.OPACITY:
         self.current_value = self.start + (self.end - self.start) * eased_value
-    else:
-        raise ValueError(f"Unsupported animation type: {self.type}")
+    else: raise ValueError(f"Unsupported animation type: {self.type}")
 
 for cls in Animation.__subclasses__():
   if cls not in (Linear, Bounce):

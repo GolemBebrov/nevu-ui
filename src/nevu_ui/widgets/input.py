@@ -50,6 +50,8 @@ class Input(Widget):
         super()._init_booleans()
         self.hoverable = False
         self.selected = False
+        self._changed_text = False
+        self._changed_cursor = False
         
     def _init_text_cache(self):
         self._text_surface = None
@@ -335,7 +337,7 @@ class Input(Widget):
                 self.cursor_place += 1
         else:
             self.cursor_place = min(len(self._entered_text), self.cursor_place+1)
-        self._changed = True
+        self._changed_cursor = True
     
     def _parse_left(self, ctrl, initial_cursor_place: int):
         if ctrl:
@@ -346,7 +348,7 @@ class Input(Widget):
             if self.cursor_place == initial_cursor_place and self.cursor_place > 0:
                 self.cursor_place -= 1
         else: self.cursor_place = max(0,self.cursor_place-1)
-        self._changed = True
+        self._changed_cursor = True
         
     def _parse_end(self):
         if self.multiple:
@@ -398,26 +400,37 @@ class Input(Widget):
             if self.allow_paste: self._parse_paste()
         elif unicode_char := event.unicode: self._parse_unicode(unicode_char)
     
+    def _on_click_system(self):
+        super()._on_click_system()
+        self.check_selected()
+    
     def event_update(self, events: list | None = None):
         events = nevu_state.current_events
         if events is None: events = []
+        
         super().event_update(events)
+        def off_selection(self): self.selected = False; self._changed = True
         if not self.is_active:
-            if self.selected:
-                self.selected = False
-                self._changed = True
+            if self.selected: off_selection(self)
             return
         prev_selected = self.selected
-        mouse_collided = self.get_rect().collidepoint(mouse.pos)
-        self.check_selected(mouse_collided)
+        if mouse.left_fdown:
+            mouse_collided = self.get_rect().collidepoint(mouse.pos)
+            if self.selected and not mouse_collided:
+                off_selection(self)
+                self.clear_texture()
+            elif self.selected and mouse_collided:
+                self._update_scroll_offset()
+                self._update_scroll_offset_y()
+                self.clear_texture()
+        
         if prev_selected != self.selected:
             if self.selected:
                 self._update_scroll_offset()
                 self._update_scroll_offset_y()
-            else: self._changed = True
+            else: self._changed_cursor = True
             
         if self.selected:
-            text_changed = False
             cursor_moved = False
             for event in events:
                 if event.type == pygame.KEYDOWN:
@@ -425,11 +438,12 @@ class Input(Widget):
                     initial_text = self._entered_text
                     self._parse_keydown_events(event, initial_cursor_place)
                     if self.cursor_place != initial_cursor_place: cursor_moved = True
-                    if self._entered_text != initial_text: text_changed = True
-                    if text_changed or cursor_moved: self._changed = True
+                    if self._entered_text != initial_text: self._changed_text = True
+                    if self._changed_text or cursor_moved: self._changed = True
 
-            if text_changed:
+            if self._changed_text:
                 self._right_bake_text()
+                self._changed_text = False
                 if self._on_change_fun:
                     try: self._on_change_fun(self._entered_text)
                     except Exception as e: print(f"Error in Input on_change_function: {e}")
@@ -471,40 +485,32 @@ class Input(Widget):
             current_w += char_w
         return max(0, min(best_index, len(text)))
 
-    def check_selected(self, collided):
-        if collided and mouse.left_fdown:
-            if not self.selected:
-                self.selected = True
-                self._changed = True
-                try:
-                    renderFont = self.get_font()
-                    relative_vec = mouse.pos - self.absolute_coordinates
-                    lt_marg_vec = self.rel(self.lt_margin)
-                    cropped_vec = relative_vec - lt_marg_vec
-                    scrolled_vec = cropped_vec + self._scroll_offset
-                    if self.multiple:
-                        line_height = self._get_line_height()
-                        if line_height <= 0 : line_height = 1
-                        target_line_index = max(0, int(scrolled_vec.y / line_height))
-                        lines = self._entered_text.split('\n')
-                        target_line_index = min(target_line_index, len(lines) - 1)
-                        target_line_text = lines[target_line_index] if target_line_index < len(lines) else ""
-                        best_col_index = self._find_best_cursor_index(renderFont, target_line_text, scrolled_vec.x)
-                        self.cursor_place = self._get_line_abs_pos(target_line_index, best_col_index)
-                    else:
-                        best_index = self._find_best_cursor_index(renderFont, self._entered_text, scrolled_vec.x)
-                        self.cursor_place = best_index
-
-                    self._update_scroll_offset()
-                    self._update_scroll_offset_y()
-
-                except (pygame.error, AttributeError, IndexError) as e: pass
-
-        elif not collided and mouse.left_fdown:
-            if self.selected:
-                self.selected = False
-                self._changed = True
-
+    def check_selected(self):
+        if self.selected: return
+        self.selected = True
+        self._changed = True
+        try:
+            renderFont = self.get_font()
+            relative_vec = mouse.pos - self.absolute_coordinates
+            lt_marg_vec = self.rel(self.lt_margin)
+            cropped_vec = relative_vec - lt_marg_vec
+            scrolled_vec = cropped_vec + self._scroll_offset
+            if self.multiple:
+                line_height = self._get_line_height()
+                if line_height <= 0 : line_height = 1
+                target_line_index = max(0, int(scrolled_vec.y / line_height))
+                lines = self._entered_text.split('\n')
+                target_line_index = min(target_line_index, len(lines) - 1)
+                target_line_text = lines[target_line_index] if target_line_index < len(lines) else ""
+                best_col_index = self._find_best_cursor_index(renderFont, target_line_text, scrolled_vec.x)
+                self.cursor_place = self._get_line_abs_pos(target_line_index, best_col_index)
+            else:
+                best_index = self._find_best_cursor_index(renderFont, self._entered_text, scrolled_vec.x)
+                self.cursor_place = best_index
+            self._update_scroll_offset()
+            self._update_scroll_offset_y()
+        except (pygame.error, AttributeError, IndexError) as e: pass
+        
     @property
     def text(self): return self._entered_text # type: ignore
     @text.setter

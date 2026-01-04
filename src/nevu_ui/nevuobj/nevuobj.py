@@ -5,6 +5,7 @@ import pygame
 import copy
 import contextlib
 import difflib
+import weakref
 from typing import Unpack
 
 from nevu_ui.style import Style
@@ -25,6 +26,18 @@ from nevu_ui.core.enums import (
     HoverState, EventType, CacheType
 )
 
+global_counter = 0
+
+def add_obj(self):
+    global global_counter
+    global_counter += 1
+    #print(self.__class__.__name__, "added, counter:", global_counter)
+
+def del_obj(self):
+    global global_counter
+    global_counter -= 1
+    #print(self, "deleted, counter:", global_counter)
+
 class ConstantStorage:
     __slots__ = ('supported_classes', 'defaults', 'links', 'properties', 'is_set', 'excluded', 'external')
     def __init__(self):
@@ -37,23 +50,20 @@ class ConstantStorage:
         self.excluded = []
 
 class NevuObjectKwargs(TypedDict):
-    actual_clone: NotRequired[bool] 
     id: NotRequired[str | None]
     floating: NotRequired[bool]
     single_instance: NotRequired[bool]
     events: NotRequired[Events]
     z: NotRequired[int]
     depth: NotRequired[int]
-    z_request_optimization: NotRequired[bool]
 
 class NevuObject:
     id: str | None
     floating: bool
     single_instance: bool
     _events: Events
-    actual_clone: bool
     z: int
-    z_request_optimization: bool
+    
     
     #INIT STRUCTURE: ====================
     #    __init__ >
@@ -72,6 +82,7 @@ class NevuObject:
     #======================================
     
     def __init__(self, size: NvVector2 | list, style: Style | str, **constant_kwargs: Unpack[NevuObjectKwargs]):
+        self.constants: ConstantStorage = None #type: ignore
         self.constant_kwargs = constant_kwargs.copy() 
         self._lazy_kwargs = {'size': size}
         
@@ -101,6 +112,10 @@ class NevuObject:
         
         #=== Style ===
         self._init_style(style)
+        
+        if __debug__:
+            add_obj(self)
+            weakref.finalize(self, del_obj, self.__class__.__name__)
     
 #=== ConstantEngine functions ===
     def _add_constant(self, name, supported_classes: tuple | Any, default: Any, 
@@ -119,18 +134,14 @@ class NevuObject:
     
     def _block_constant(self, name: str):
         self.constants.excluded.append(name)
-    
-    def _init_constants_base(self):
-        self.constants = ConstantStorage()
 
     def __getattribute__(self, name):
-        get = super().__getattribute__
-        with contextlib.suppress(AttributeError):
-            constants: ConstantStorage = get('constants')
-            constant_properties = constants.properties
-            if name in constant_properties:
-                return constant_properties[name][0]()
-        return get(name)
+        get = _get_attr
+        constants: ConstantStorage = get(self,'constants')
+        if constants is None: return get(self,name)
+        constant_properties = constants.properties
+        if name in constant_properties: return constant_properties[name][0]()
+        return get(self,name)
 
     def __setattr__(self, name, value):
         try:
@@ -146,14 +157,12 @@ class NevuObject:
         except AttributeError: super().__setattr__(name, value)
     
     def _add_constants(self):
-        self._add_constant("actual_clone", bool, False)
         self._add_constant("id", (str, type(None)), None)
         self._add_constant("floating", bool, False)
         self._add_constant("single_instance", bool, False)
         self._add_constant("events", Events, Events(), getter=self._get_events, setter=self._set_events)
         self._add_constant("z", int, 0)
         self._add_constant_link("depth", "z")
-        self._add_constant("z_request_optimization", bool, False)
 
     def _add_constant_link(self, name: str, link_name: str): self.constants.links[name] = link_name
 
@@ -188,12 +197,9 @@ class NevuObject:
     def _is_valid_type(self, value, needed_types):
         needed_types = (needed_types,)
         for needed_type in needed_types:
-            if needed_type == Callable and callable(value):
-                return True
-            if needed_type == Any:
-                return True
-            if isinstance(value, needed_type):
-                return True
+            if needed_type == Callable and callable(value): return True
+            if needed_type == Any: return True
+            if isinstance(value, needed_type): return True
         return False
 
     def _process_constant(self, name, constant_name, needed_types, value):
@@ -219,7 +225,7 @@ class NevuObject:
         self._z_request_optimization_max = 5
     
     def _init_constants(self, **kwargs):
-        self._init_constants_base()
+        self.constants = ConstantStorage()
         self._add_constants()
         self._preinit_constants()
         self._change_constants_kwargs(**kwargs)
@@ -236,14 +242,13 @@ class NevuObject:
                 if suggestions:
                     err_msg += f" Did you mean {', '.join(suggestions)}?"
                 raise ValueError(err_msg)
-        else: print("style", style.borderradius); self.style = style
+        else: self.style = style
         
     def _init_objects(self):
         self.cache = Cache()
         self._subtheme_role = SubThemeRole.TERTIARY
         self._hover_state = HoverState.UN_HOVERED
         self.animation_manager = AnimationManager()
-        self._master_z_handler = None
         self.z_request = None
 
     def _init_booleans(self):
@@ -508,8 +513,6 @@ class NevuObject:
         
     def get_rect(self):
         return get_rect_helper_pygame(self.absolute_coordinates, self._resize_ratio, self.size)
-    def get_rect_tuple(self):
-        return get_rect(self.absolute_coordinates, self._resize_ratio, self.size)
     def get_rect_static(self):
         return get_rect_helper(self.coordinates, self._resize_ratio, self.size)
 
@@ -536,7 +539,7 @@ class NevuObject:
     #======================================
 
     def update(self, events: list | None = None):
-        events = events or []
+        events = events or nevu_state.current_events
         self.primary_update(events)
         self.secondary_update()
         self._event_cycle(EventType.Update)
@@ -551,6 +554,7 @@ class NevuObject:
         if not self._active or not self._visible: return
         if not self._sended_z_link and nevu_state.window != None:
             self._sended_z_link = True
+            #print("SENDED {}".format(self))
             self._z_request = ZRequest(
                 link=self,
                 on_hover_func=self._hover,
@@ -603,13 +607,13 @@ class NevuObject:
         if self._changed: self._changed = False
 
 #=== Relative functions ===
-    def relx(self, num: int | float, min: int | None = None, max: int| None = None) -> int | float:
+    def relx(self, num: int | float, min: int | float = -1.0, max: int | float = -1.0) -> int | float:
         return rel_helper(num, self._resize_ratio.x, min, max)
 
-    def rely(self, num: int | float, min: int | None = None, max: int| None = None) -> int | float:
+    def rely(self, num: int | float, min: int | float = -1.0, max: int | float = -1.0) -> int | float:
         return rel_helper(num, self._resize_ratio.y, min, max)
 
-    def relm(self, num: int | float, min: int | None = None, max: int | None = None) -> int | float:
+    def relm(self, num: int | float, min: int | float = -1.0, max: int | float = -1.0) -> int | float:
         return relm_helper(num, self._resize_ratio.x, self._resize_ratio.y, min, max)
     
     def rel(self, mass: NvVector2, vector: bool = True) -> NvVector2:  
@@ -628,11 +632,12 @@ class NevuObject:
         new_self.on_copy_after()
         return new_self
     
-    def _on_copy_system(self, clone: "NevuObject"): 
+    def _on_copy_system(self, clone: "NevuObject", no_cache: bool = False): 
         clone._active = self._active
         clone._visible = self._visible
         clone.dead = self.dead
-        clone.cache = self.cache.copy()
+        if not no_cache:
+            clone.cache = self.cache.copy()
     def _on_copy_system_after(self): pass
     def on_copy(self, clone): pass
     def on_copy_after(self): pass
@@ -665,3 +670,5 @@ class NevuObject:
 
         if hasattr(self, '_sended_z_link') and self._sended_z_link and nevu_state.window:
             nevu_state.window.z_system.mark_dirty()
+
+_get_attr = object.__getattribute__

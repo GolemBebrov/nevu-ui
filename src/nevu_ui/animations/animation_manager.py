@@ -26,16 +26,14 @@ class AnimationManager:
         self.running = True
 
         self.restart_anim_values()
-    def restart_anim_values(self):
-        self.current_values = self.basic_set_of_animations.copy()
+    def restart_anim_values(self): self.current_values = self.basic_set_of_animations.copy()
+    
     def process_animation(self, animation: Animation):
-        
         self.current_values[animation.type] = animation.current_value
 
     def update(self):
         State = AnimationManagerState
         match self.state:
-
             case State.START:
                 current_animations = self.current_animations
                 for anim_type, animation in current_animations.items():
@@ -46,7 +44,6 @@ class AnimationManager:
                 if all(animation is None for animation in current_animations.values()):
                     self.state = AnimationManagerState.TRANSITION
                     self._start_transition_animations()
-
             case State.TRANSITION:
                 current_animations = self.current_animations
                 all_transitions_finished = True  
@@ -60,7 +57,6 @@ class AnimationManager:
 
                 if all_transitions_finished:
                     self.state = AnimationManagerState.CONTINUOUS
-
             case State.CONTINUOUS:
                 current_animations = self.current_animations
                 if all(animation is None for animation in current_animations.values()):
@@ -77,8 +73,7 @@ class AnimationManager:
                 self.restart_anim_values()
                 self.state = AnimationManagerState.IDLE
 
-            case State.IDLE:
-                pass
+            case State.IDLE: pass
     @property
     def current_animations(self) -> dict[AnimationType, Animation|None]:
         match self.state:

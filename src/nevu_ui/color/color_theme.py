@@ -1,8 +1,7 @@
 from dataclasses import dataclass
 from enum import StrEnum
 
-class _RoleAncestor(StrEnum):
-    pass
+class _RoleAncestor(StrEnum): pass
 
 class SubThemeRole(_RoleAncestor):
     PRIMARY = "primary"
@@ -22,13 +21,11 @@ class TupleColorRole(_RoleAncestor):
     
 @dataclass
 class ColorPair:
-    """Представляет пару цветов (основной цвет и цвет контента на нем)."""
     color: tuple
     oncolor: tuple
 
 @dataclass
 class ColorSubTheme:
-    """Представляет часть цветовой схемы, основанную на ролях Material Design 3."""
     color: tuple
     oncolor: tuple
     container: tuple
@@ -36,10 +33,6 @@ class ColorSubTheme:
 
 @dataclass
 class ColorTheme:
-    """
-    Представляет полную, структурированную цветовую схему,
-    организованную по ролям Material Design 3.
-    """
     primary: ColorSubTheme
     secondary: ColorSubTheme
     tertiary: ColorSubTheme

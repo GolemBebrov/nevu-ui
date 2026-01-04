@@ -214,6 +214,7 @@ class ScrollableBase(LayoutType, ABC):
             self._draw_widget(self.scroll_bar)
     
     def base_light_update(self, add_x: int | float = 0, add_y: int | float = 0, items = None):
+        assert self.first_parent_menu, self._unconnected_layout_error(items or self.collided_items)
         _light_update_helper(
             items or self.collided_items,
             self.cached_coordinates or [],

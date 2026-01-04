@@ -19,6 +19,8 @@ class ScrollableRow(ScrollableBase):
     def _create_scroll_bar(self) -> ScrollableBase.ScrollBar: return self.ScrollBar([self.size[0]/20,self.size[1]/40], self.style, ScrollBarType.Horizontal, self)
 
     def _update_scroll_bar(self):
+        if not self.first_parent_menu: return
+        assert self.first_parent_menu.window
         track_start_x, track_path_x = self.absolute_coordinates[0], self.size[0]
         offset = NvVector2(self.first_parent_menu.window._crop_width_offset, self.first_parent_menu.window._crop_height_offset) if self.first_parent_menu.window else NvVector2(0,0)
         

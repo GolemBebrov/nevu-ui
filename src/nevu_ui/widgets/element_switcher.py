@@ -73,7 +73,7 @@ class ElementSwitcher(Widget):
         self._add_constant("on_change", (type(None), Callable), None)
         self._add_constant("current_index", int, 0)
         self._add_constant("button_padding", int, 10)
-        self._add_constant("arrow_width", int, 10)
+        self._add_constant("arrow_width", int, 30)
         self._add_constant("left_text", (str), "<")
         self._add_constant("left_key", Any, None)
         self._add_constant("right_text", (str), ">")
@@ -84,6 +84,7 @@ class ElementSwitcher(Widget):
         super()._init_booleans()
         self._delayed_button_update = False
         self.hoverable = False
+        self._easy_mode = False
         
     def _lazy_init(self, size: NvVector2 | list, elements: list[Element] | None = None):
         super()._lazy_init(size)
@@ -110,11 +111,33 @@ class ElementSwitcher(Widget):
             elif keyboard.is_fdown(self.right_key):
                 self.next()
     
+    def _change_style_rad(self, style: Style, norad_idx: tuple[int, int], rad_idx: tuple[int, int], offset: int):
+        if isinstance(style.borderradius, tuple):
+            br = list(style.borderradius)
+            br[norad_idx[0]], br[norad_idx[1]] = 0, 0
+            br[rad_idx[0]], br[rad_idx[1]] = br[rad_idx[0]] - offset, br[rad_idx[1]] - offset
+        else:
+            br = [0]*4
+            br[rad_idx[0]], br[rad_idx[1]] = style.borderradius - offset, style.borderradius - offset
+        style.borderradius = tuple(br) # type: ignore
+    
+    def _shape_buttons_radius(self, offset: int | float):
+        button_style = self.style(borderwidth=0)
+        button_style_left = button_style()
+        button_style_right = button_style()
+        border_offset = self.relm(self.style.borderwidth) 
+        idx1, idx2 = (2, 1), (0, 3)
+        self._change_style_rad(button_style_left, idx1, idx2, -offset + border_offset) # type: ignore
+        self._change_style_rad(button_style_right, idx2, idx1, -offset + border_offset) # type: ignore
+        self.button_left.style = button_style_left
+        self.button_right.style = button_style_right
+    
     def _create_buttons(self):
         button_size = (NvVector2(self._get_arrow_width(), self._rsize.y) / 100 * (NvVector2(100,100) - self.offset_perc)).to_round()
         self.button_offset = NvVector2(self._get_arrow_width(), self._rsize.y) - button_size
-        self.button_left = Button(self.previous, self.left_text, button_size, self.style(borderwidth = 0, borderradius = 0), z = self.z + 1, inline = True, fancy_click_style = False, alt = self.alt) #type: ignore
-        self.button_right = Button(self.next, self.right_text, button_size, self.style(borderwidth = 0, borderradius = 0), z = self.z + 1, inline = True, fancy_click_style = False, alt = self.alt)
+        self.button_left = Button(self.previous, self.left_text, button_size, self.style, z = self.z + 1, inline = True, fancy_click_style = False, alt = self.alt) #type: ignore
+        self.button_right = Button(self.next, self.right_text, button_size, self.style, z = self.z + 1, inline = True, fancy_click_style = False, alt = self.alt)
+        self._shape_buttons_radius(self.relm(0.5))
         self._start_button(self.button_left)
         self._start_button(self.button_right)
         self._delayed_button_update = True
@@ -132,14 +155,17 @@ class ElementSwitcher(Widget):
         self.button_right._on_style_change()
         
     def _position_buttons(self):
-        offset = self._rsize_marg / 2 + self.button_offset / 2
+        self._check_mode()
+        offset = self._rsize_marg / 2 + self.rel(self.button_offset) / 2 
         self.button_left.coordinates = offset
-        self.button_right.coordinates = NvVector2(self._rsize.x + self._rsize_marg.x / 2 - self.button_offset.x /2 - self.button_right._csize.x, offset.y)
+        right_offset_x = self._rsize.x + self._rsize_marg.x / 2 - self.relx(self.button_offset.x) / 2 - self.button_right._csize.x
+        self.button_right.coordinates = NvVector2(right_offset_x, offset.y)
     
     def _get_arrow_width(self):
         return round(self.relx((self.size.x - self.style.borderwidth*2) / 100 * self.arrow_width))
     
     def _resize_buttons(self):
+        self._shape_buttons_radius(self.rely(0.5))
         self.button_left.resize(self._resize_ratio)
         self.button_right.resize(self._resize_ratio)
 
@@ -215,7 +241,6 @@ class ElementSwitcher(Widget):
             self._delayed_button_update = False
     
     def _light_update_button(self, button: Button):
-        button._master_z_handler = self._master_z_handler
         self._set_master_coordinates(button)
         button.update()
     
@@ -245,42 +270,12 @@ class ElementSwitcher(Widget):
         self.button_right._changed = True
         self._delayed_button_update = True
         self.clear_texture()
-        
+    
+    def _check_mode(self):
+        self._easy_mode = self._csize.y <= 250
+    
     def _draw_buttons(self):
-        add_forced = self.relm(self.style.borderwidth) / 3 * 2
-        add_forced = round(add_forced)
-        
-        #? Expiriments with formulas:
-        
-        #? 1 variant: Correct
-        #!current borderwidth 15 + 15 = 30; 15/3*2 = 10
-        #! 20 - 2 = 18; forced_offset
-        #! 18 + 4 = 22; added renderer offset
-        #! 22 + 10 + 2 = 34; added widget offset
-        #! 34 - 30 = 4
-        #! 4/2 = 2, CORRECT, 2 inner pixels
-        
-        #? 2 variant: Correct
-        #!current borderwidth 12 + 12 = 24; 12/3*2 = 8
-        #! 16 - 2 = 14; forced_offset
-        #! 14 + 4 = 18; added renderer offset
-        #! 18 + 8 + 2 = 28; added widget offset
-        #! 28 - 24 = 4
-        #! 4/2 = 2, CORRECT, 2 inner pixels
-        
-        #? radius calculation
-        #TODO: make correct perc
-        
-        #? Final formula: x = borderwidth / 3 * 2
-
-        radius = self.relm(self.style.borderradius) - 8
-        add_forced += 4
-        mask = self.renderer._get_correct_mask(sdf=self._sdf_mode, add=add_forced*2-2, radius=radius)
-        
-        self.button_left._master_mask = mask
-        self.button_right._master_mask = mask
-        self.button_left._inline_add_coords = NvVector2(add_forced, add_forced)
-        self.button_right._inline_add_coords = NvVector2(add_forced, add_forced)
+        self._check_mode()
         self.button_left.draw()
         self.button_right.draw()
 

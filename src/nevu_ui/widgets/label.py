@@ -56,8 +56,8 @@ class Label(Widget):
         if not self.visible: return
         if self._changed:
             self._fast_bake_text()
-            assert self._text_surface and self._text_rect and self.surface
-            self.surface.blit(self._text_surface, self._text_rect)
+            if self._text_surface and self._text_rect:
+                self.surface.blit(self._text_surface, self._text_rect)
 
     def _create_clone(self):
         return self.__class__(self._lazy_kwargs['text'], self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)

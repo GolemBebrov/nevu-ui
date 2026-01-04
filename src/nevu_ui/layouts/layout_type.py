@@ -148,8 +148,6 @@ class LayoutType(NevuObject):
     
     @staticmethod
     def _percent_helper(size, value):
-        if size == 0:
-            raise ValueError("Size must not be zero in _percent_helper")
         return size / 100 * value
     
     def _parse_vx(self, coord: SizeRule) -> tuple[float, bool] | None:
@@ -289,6 +287,7 @@ class LayoutType(NevuObject):
             self.first_parent_menu = self.layout.first_parent_menu
         
         for item in self.floating_items:
+            assert self.first_parent_menu, self._unconnected_layout_error(item)
             item.absolute_coordinates = item.coordinates + self.first_parent_menu.absolute_coordinates
             item.update()
             

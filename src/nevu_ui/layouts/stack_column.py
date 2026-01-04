@@ -4,6 +4,8 @@ from nevu_ui.layouts import StackBase
 
 class StackColumn(StackBase):
     def _recalculate_size(self):
+        if not hasattr(self, "size"): print("StackColumn not booted") ; return
+        if any(x.booted == False for x in self.items): return
         self.size[1] = sum(item.size[1] + self.spacing for item in self.items) if len(self.items) > 0 else 0
         self.size[0] = max(x.size[0] for x in self.items) if len(self.items) > 0 else 0
 
