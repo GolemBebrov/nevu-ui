@@ -9,6 +9,7 @@ from nevu_ui.core.classes import ConfigType
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.fast.zsystem import ZSystem, ZRequest
 from nevu_ui.core.enums import ResizeType, EventType
+from nevu_ui.overlay import overlay
 
 from nevu_ui.window.display import (
     DisplayClassic, DisplaySdl, DisplayBase, DisplayGL
@@ -75,38 +76,31 @@ class Window:
         self._crop_width_offset = 0
         self._crop_height_offset = 0
         self._offset = NvVector2(0, 0)
+        
     def _init_graphics(self):
+        kwargs = {}
         if not self._gpu_mode and not self._open_gl_mode:
             flags = pygame.RESIZABLE if self.resizable else 0
             flags |= pygame.HWSURFACE | pygame.DOUBLEBUF
             self._display = DisplayClassic(self.title, self.size.to_tuple(), root = self, flags = flags)
         elif not self._open_gl_mode:
-            kwargs = {}
             if self.resizable: kwargs['resizable'] = True
             self._display = DisplaySdl(self.title, [int(self.size[0]), int(self.size[1])], root = self, **kwargs)
         else:
-            kwargs = {}
             if self.resizable: kwargs['resizable'] = True
             self._display = DisplayGL(self.title, [int(self.size[0]), int(self.size[1])], root = self, **kwargs)
         
     @property
     @deprecated("Please use 'window.display' instead")
-    def surface(self) -> DisplayBase:
-        return self._display
+    def surface(self) -> DisplayBase: return self._display
     @property
-    def display(self) -> DisplayBase:
-        return self._display
+    def display(self) -> DisplayBase: return self._display
     
-    def is_gl(self, display) -> TypeGuard[DisplayGL]:
-        return isinstance(self._display, DisplayGL) 
+    def is_gl(self, display) -> TypeGuard[DisplayGL]: return isinstance(self._display, DisplayGL)
+    def is_sdl(self, display) -> TypeGuard[DisplaySdl]: return isinstance(self._display, DisplaySdl)
+    def is_legacy(self, display) -> TypeGuard[DisplayClassic]: return isinstance(self._display, DisplayClassic) 
     
-    def clear(self, color = (0, 0, 0)):
-        """
-        Fill the entire surface with the given color
-        Args:
-            color (tuple[int, int, int], optional): RGB color to fill with. Defaults to (0, 0, 0).
-        """
-        self._display.fill(color)
+    def clear(self, color = (0, 0, 0)): self._display.fill(color)
 
     def _recalculate_render_area(self):
         current_w, current_h = self._display.get_size()
@@ -114,19 +108,10 @@ class Window:
         self._crop_width_offset, self._crop_height_offset = self.cropToRatio(current_w, current_h, target_ratio)
         self._offset = NvVector2(self._crop_width_offset // 2, self._crop_height_offset // 2)
 
-    def add_request(self, z_request: ZRequest):
-        self.z_system.add(z_request)
-    
+    def add_request(self, z_request: ZRequest): self.z_system.add(z_request)
     def mark_dirty(self): self.z_system.mark_dirty()
     
     def update(self, events, fps: int = 60):
-        """
-        Updates the window state and processes events.
-
-        Args:
-            events (list[pygame.Event]): List of events to process.
-            fps (int, optional): Desired frames per second. Defaults to 60.
-        """
         self._next_update_dirty_rects.clear()
         self.display.clear()
         nevu_state.current_events = events
@@ -157,10 +142,21 @@ class Window:
             render_height = self.size[1] - self._crop_height_offset
             self._event_cycle(EventType.Resize, [render_width, render_height])
         else: self._event_cycle(EventType.Resize, self.size)
+    
+    def draw_overlay(self):
+        if self._gpu_mode:
+            texture = overlay.get_result_sdl(self.size)
+        elif not self._open_gl_mode and not self._gpu_mode:
+            texture = overlay.get_result(self.size)
+        else:
+            texture = overlay.get_result(self.size)
+        self.display.blit(texture, (0, 0))
+        
     def _update_utils(self, events):
         mouse.update(events)
         time.update()
         keyboard.update()
+        
     @property
     def offset(self): return self._offset
     @property
@@ -182,8 +178,7 @@ class Window:
 
     def _event_cycle(self, type: EventType, *args, **kwargs):
         for event in self._events:
-            if event._type == type:
-                event(*args, **kwargs)
+            if event._type == type: event(*args, **kwargs)
 
     @property
     def rel(self):
@@ -195,19 +190,10 @@ class ConfiguredWindow(Window):
     def __init__(self):
         size = standart_config.win_config["size"]
         display_type = standart_config.win_config["display"]
-        if display_type == ConfigType.Window.Display.Sdl:
-            gpu_mode = True
-            gl_mode = False
-        elif display_type == ConfigType.Window.Display.Opengl:
-            gpu_mode = False
-            gl_mode = True
-        else:
-            gpu_mode = False
-            gl_mode = False
-        #print("gpu mode:", gpu_mode, "gl mode:", gl_mode)
+        gpu_mode = display_type == ConfigType.Window.Display.Sdl
+        gl_mode = display_type == ConfigType.Window.Display.Opengl
         ratio = standart_config.win_config["ratio"]
         title = standart_config.win_config["title"]
         resizeable = standart_config.win_config["resizable"]
-        fps = standart_config.win_config["fps"]
+        #fps = standart_config.win_config["fps"] TODO
         super().__init__(title=title, size=size, _gpu_mode = gpu_mode, open_gl_mode = gl_mode, resize_type=ResizeType.CropToRatio, ratio = ratio, resizable = resizeable)
-        
