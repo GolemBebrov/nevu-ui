@@ -1,8 +1,8 @@
 # cython: language_level=3
 
 cdef class NvVector2:
-    cdef public float x
-    cdef public float y
+    cdef public double x
+    cdef public double y
     
     @staticmethod
     cdef NvVector2 new(float x, float y)
