@@ -1,4 +1,3 @@
-from .structure_base import Struct, SubStruct, SubItem
-from .validator import Validator
+from .validator import check
 from .base import Config, standart_config
-from .applier import apply_config, Applier
+from .applier import apply_config
