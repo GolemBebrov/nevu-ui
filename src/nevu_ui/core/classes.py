@@ -1,5 +1,9 @@
 from enum import StrEnum
-
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from nevu_ui.fast.nvvector2 import NvVector2
+    
 class Events:
     __slots__ = ('content', 'on_add')
     def __init__(self):
@@ -33,3 +37,27 @@ class ConfigType():
             Keyboard = ["keyboard"]
             Mouse = ["mouse"]
             Time = ["time"]
+
+class TooltipType:
+    @dataclass
+    class Small():
+        title: str = ""
+    @dataclass
+    class Medium():
+        title: str = ""
+        content: str = ""
+    @dataclass
+    class Large():
+        title: str = ""
+        content: str = ""
+        
+    @dataclass
+    class Custom():
+        ratio: NvVector2
+        title: str = ""
+    
+    @dataclass
+    class BigCustom():
+        ratio: NvVector2
+        title: str = ""
+        content: str = ""
