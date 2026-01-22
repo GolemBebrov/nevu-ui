@@ -1,4 +1,8 @@
-from enum import Enum, auto, StrEnum
+from enum import Enum, auto, StrEnum, IntEnum
+
+#Svalka
+#faputa approved
+
 
 class Align(Enum):
     CENTER = auto()
@@ -6,6 +10,20 @@ class Align(Enum):
     RIGHT = auto()
     TOP = auto()
     BOTTOM = auto()
+
+class Malign(Enum):
+    """This is a mirror of Align with PascalCase"""
+    Center = Align.CENTER
+    Left = Align.LEFT
+    Right = Align.RIGHT
+    Top = Align.TOP
+    Bottom = Align.BOTTOM
+
+class ConstantLayer(IntEnum):
+    Top = 1
+    Basic = 2
+    Complicated = 3
+    Lazy = 4
 
 class Quality(Enum):
     Poor = auto()
@@ -102,6 +120,7 @@ class EventType(Enum):
     OnUnhover = auto()
     OnMouseScroll = auto()
     OnCopy = auto()
+    OnChange = auto()
 
 class ZRequestType(Enum):
     HoverCandidate = auto()
@@ -111,11 +130,6 @@ class ZRequestType(Enum):
 class ScrollBarType(StrEnum):
     Vertical = "vertical"
     Horizontal = "horizontal"
-
-class TooltipType(StrEnum):
-    Small = "small"
-    Medium = "medium"
-    Large = "large"
 
 class HoverState(Enum):
     UN_HOVERED = auto()
