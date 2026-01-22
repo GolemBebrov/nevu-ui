@@ -10,6 +10,7 @@ from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.widgets import Widget, WidgetKwargs
 from nevu_ui.color import PairColorRole
 from nevu_ui.style import Style, default_style
+from nevu_ui.core.enums import ConstantLayer
 
 class ProgressBarKwargs(WidgetKwargs):
     min_value: NotRequired[Union[int, float]]
@@ -64,11 +65,11 @@ class ProgressBar(Widget):
     
     def _add_constants(self):
         super()._add_constants()
-        self._add_constant("min_value", (int, float), 0)
+        self._add_constant("min_value", (int, float), 0, layer=ConstantLayer.Top)
         self._add_constant_link("min", "min_value")
-        self._add_constant("max_value", (int, float), 100)
+        self._add_constant("max_value", (int, float), 100, layer=ConstantLayer.Top)
         self._add_constant_link("max", "max_value")
-        self._add_constant("value", (int, float), 0, getter=self.value_getter, setter=self.value_setter)
+        self._add_constant("value", (int, float), 0, getter=self.value_getter, setter=self.value_setter, layer=ConstantLayer.Top)
         self._add_constant("color_pair_role", PairColorRole, PairColorRole.BACKGROUND)
         self._add_constant_link("role", "color_pair_role")
         
@@ -85,11 +86,18 @@ class ProgressBar(Widget):
     def value_getter(self): return self._current_value
     def value_setter(self, value): 
         #if hasattr(self, "_current_value") and self._current_value == value:  WARNING: not work as expected
-        #    return
+        #    return "Hui sosi pyaniy checker tipov"
         self._current_value = value
         self._changed_value = True
         if not hasattr(self, "_progress"):
             self.set_progress_by_value(value)
+        else:
+            self.on_value_change()
+            self._on_value_change_system()
+            
+    
+    def _on_value_change_system(self): pass
+    def on_value_change(self): pass
     
     def _init_alt(self):
         super()._init_alt()
