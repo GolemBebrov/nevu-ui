@@ -14,7 +14,7 @@ from nevu_ui.color import SubThemeRole, PairColorRole
 from nevu_ui.style import Style, default_style
 
 from nevu_ui.core.enums import (
-    Quality, Align, CacheType
+    Align, CacheType, ConstantLayer
 )
 from typing import (
     Any, NotRequired, Unpack
@@ -69,16 +69,17 @@ class Widget(NevuObject):
     
     def _add_constants(self):
         super()._add_constants()
-        self._add_constant("alt", bool, False, getter=self._alt_getter, setter=self._alt_setter)
+        self._add_constant("alt", bool, False, getter=self._alt_getter, setter=self._alt_setter, layer=ConstantLayer.Complicated)
         self._add_constant("clickable", bool, False)
         self._add_constant("hoverable", bool, True)
-        self._add_constant("fancy_click_style", bool, True)
+        self._add_constant("fancy_click_style", bool, False)
         self._add_constant("resize_bg_image", bool, False)
-        self._add_constant("z", int, 1)
+        self._change_constant_default("z", 1)
         self._add_constant("inline", bool, False)
         self._add_constant("font_role", PairColorRole, PairColorRole.SURFACE_VARIANT)
         self._add_constant("_draw_borders", bool, True)
         self._add_constant("_draw_content", bool, True)
+        self._change_constant_default("subtheme_role", SubThemeRole.SECONDARY)
         
     def _init_text_cache(self):
         self._text_baked = None
@@ -87,10 +88,9 @@ class Widget(NevuObject):
         
     def _init_objects(self):
         super()._init_objects()
-        self._subtheme_role = SubThemeRole.SECONDARY
         self.renderer = BackgroundRenderer(self)
         self._master_mask = None
-        
+    
     def _init_lists(self):
         super()._init_lists()
         self._dr_coordinates_old = self.coordinates.copy()
@@ -100,7 +100,6 @@ class Widget(NevuObject):
     def _init_booleans(self):
         super()._init_booleans()
         self._optimized_dirty_rect_for_short_animations = True
-        self._original_alt = self._alt
         self._sdf_mode = True
         self._supports_tuple_borderradius = True
 
@@ -113,27 +112,34 @@ class Widget(NevuObject):
 
     def _normalize_borderradius(self):  
         if isinstance(self.style.borderradius, int | float):
-            br = self.style.borderradius
-            br = max(br, 0)
-            br = min(br, self.size.x / 2)
-            br = min(br, self.size.y / 2)
-            if br != self.style.borderradius: self._changed = True
-            self.style.borderradius = br #type: ignore
+            self._normalize_br_num()
+        elif isinstance(self.style.borderradius, tuple):
+            self._normalize_br_tuple()
+
+    def _normalize_br_num(self):
+        br = self.style.borderradius
+        br = max(br, 0)
+        br = min(br, self.size.x / 2)
+        br = min(br, self.size.y / 2)
+        if br != self.style.borderradius: self._changed = True
+        self.style.borderradius = br #type: ignore
+        self.clear_surfaces()
+        self.clear_texture()
+    
+    def _normalize_br_tuple(self):
+        assert isinstance(self.style.borderradius, tuple)
+        br = list(self.style.borderradius)
+        for i in range(len(br)):
+            br[i] = max(br[i], 0)
+            br[i] = min(br[i], self.size.x / 2)
+            br[i] = min(br[i], self.size.y / 2)
+        new_br = tuple(br)
+        if new_br != self.style.borderradius:
+            self.style.borderradius = new_br #type: ignore
+            self._changed = True
             self.clear_surfaces()
             self.clear_texture()
-
-        elif isinstance(self.style.borderradius, tuple):
-            br = list(self.style.borderradius)
-            for i in range(len(br)):
-                br[i] = max(br[i], 0)
-                br[i] = min(br[i], self.size.x / 2)
-                br[i] = min(br[i], self.size.y / 2)
-            new_br = tuple(br)
-            if new_br != self.style.borderradius:
-                self.style.borderradius = new_br #type: ignore
-                self._changed = True
-                self.clear_surfaces()
-                self.clear_texture()
+                
     def _init_alt(self):
         if self.alt: 
             self._subtheme_border = self._alt_subtheme_border
@@ -153,14 +159,16 @@ class Widget(NevuObject):
     
     def _lazy_init(self, size: NvVector2 | list):
         super()._lazy_init(size)
+        self._original_alt = self.alt
         if self.inline: return
         self.surface = pygame.Surface(size, flags = pygame.SRCALPHA)
-
+    
     def _on_subtheme_role_change(self):
         super()._on_subtheme_role_change()
-        self._init_alt()
+        if self.booted:
+            self._init_alt()
         self._on_style_change()
-        
+
     def _alt_getter(self): return self._alt
     def _alt_setter(self, value):
         self._alt = value
@@ -192,6 +200,8 @@ class Widget(NevuObject):
         super()._on_keyup_abandon_system()
         if self.alt != self._original_alt:
             self.alt = self._original_alt
+        if not self.hoverable: return
+        self._on_style_change()
             
     def clear_all(self):
         """
@@ -286,7 +296,7 @@ class Widget(NevuObject):
         size_x = size_x or self._csize.x
         size_y = size_y or self._csize.y
         size = NvVector2(size_x, size_y)
-        self.renderer.bake_text(text, unlimited_y, words_indent, alignx, aligny, size, color)
+        self.renderer.bake_text(text, unlimited_y, words_indent, self.style, size, color)
 
     def resize(self, resize_ratio: NvVector2):
         super().resize(resize_ratio)
