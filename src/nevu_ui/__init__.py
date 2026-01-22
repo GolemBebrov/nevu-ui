@@ -8,8 +8,8 @@ from .ui_manager import Manager
 from .fast import NvVector2
 from .rendering import Gradient
 from .core.state import nevu_state
-from .struct import apply_config
-from .overlay import overlay
+from .struct import apply_config, get_style, get_color, get_all_styles, get_all_colors
+from .overlay import overlay, Tooltip
 
 from .size.units import (
     SizeRule, PercentSizeRule, SizeUnit, Fill, FillW, FillH, Vh, Vw, Gc, Gcw, Gch, fill, fillw, fillh, vh, vw, gc, gcw, gch, px, Px, cfill, cfillw, cfillh, cvh, cvw, cgc, cgcw, cgch
@@ -21,8 +21,9 @@ from .style import (
     Style, default_style, StateVariable
 )
 from .core.enums import (
-    Align, Quality, HoverState, LinearSide, RadialPosition, GradientType, CacheName, CacheType, EventType
+    Align, Quality, HoverState, LinearSide, RadialPosition, GradientType, CacheName, CacheType, EventType,
 )
+from .core.classes import TooltipType
 from .widgets import (
     Widget, Label, Button, EmptyWidget, RectCheckBox, Image, Gif, Input, MusicPlayer, ElementSwitcher, Element, ProgressBar, Slider
 )
@@ -38,9 +39,9 @@ from .window.window import (
 
 __all__ = [
     #===Most Used===
-    "Menu", "Window", "ConfiguredWindow", "NevuObject", "Manager", "NvVector2", "nevu_state", "apply_config",
+    "Menu", "Window", "ConfiguredWindow", "NevuObject", "Manager", "NvVector2", "nevu_state", "apply_config", "get_style", "get_color", "get_all_styles", "get_all_colors", "overlay", "TooltipType",
     #===Widgets===
-    "Widget", "Label", "Button", "EmptyWidget", "RectCheckBox", "Image", "Gif", "Input", "MusicPlayer", "ElementSwitcher", "Element", "ProgressBar", "Slider",
+    "Widget", "Label", "Button", "EmptyWidget", "RectCheckBox", "Image", "Gif", "Input", "MusicPlayer", "ElementSwitcher", "Element", "ProgressBar", "Slider", "Tooltip",
     #===Layouts===
     "LayoutType", "Grid", "Row", "Column", "ScrollableColumn", "ScrollableRow", "IntPickerGrid", "Pages", "Gallery_Pages", "StackRow", "StackColumn", "CheckBoxGroup",
     #===Utils===
