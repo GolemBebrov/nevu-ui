@@ -2,7 +2,8 @@ import pygame
 import weakref
 
 from nevu_ui.color import Color
-from nevu_ui.nevuobj import NevuObject
+from typing import TYPE_CHECKING
+if TYPE_CHECKING: from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.style import Style
 from nevu_ui.rendering import AlphaBlit, Gradient
@@ -63,7 +64,7 @@ class _DrawNamespace:
             return radius * mult
     
     def _normalize_radius(self, radius: int | float | tuple, _clipped = False) -> tuple:
-        if isinstance(radius, int|float):
+        if isinstance(radius, (int,float)):
             radius = (radius, radius, radius, radius)
         if _clipped:
             radius = tuple(map(lambda x: max(0, x-1), radius))
@@ -252,15 +253,19 @@ class BackgroundRenderer:
         lines.append(current_line)
         return lines
     
-    def bake_text(self, text: str, unlimited_y: bool = False, words_indent: bool = False,
-                alignx: Align = Align.CENTER, aligny: Align = Align.CENTER, size: NvVector2 | None = None, color = None):
+    def bake_text(self, text: str, unlimited_y: bool = False, words_indent: bool = False, style: Style | None = None, size: NvVector2 | None = None, color = None, outside = False, outside_rect = None, override_font_size = None):
         root = self.root
+        style = style or root.style
+        assert style
+        
+        alignx = style.text_align_x
+        aligny = style.text_align_y
         
         color = color or root.subtheme_font
         size = size or root._csize
         assert size
 
-        renderFont = root.get_font() 
+        renderFont = root.get_font(override_font_size) 
         line_height = renderFont.get_linesize()
 
         if words_indent:
@@ -277,18 +282,19 @@ class BackgroundRenderer:
             while len(lines) * line_height > size.y:
                 lines.pop(-1)
                 is_cropped = True
-
-        root._text_baked = "\n".join(lines)
+                
+        baked_text = "\n".join(lines)
 
         if is_cropped and not unlimited_y:
-            root._text_baked = f"{root._text_baked[:-3]}..."
+            baked_text = f"{baked_text[:-3]}..."
 
-        root._text_surface = renderFont.render(root._text_baked, True, color)
+        text_surface: pygame.Surface = renderFont.render(baked_text, True, color)
         
-        if root.inline: container_rect = pygame.Rect(root.coordinates.to_round().to_tuple(), root._csize.to_round())
+        if outside and outside_rect: container_rect = outside_rect
+        elif root.inline: container_rect = pygame.Rect(root.coordinates.to_round().to_tuple(), root._csize.to_round())
         else: container_rect = root.surface.get_rect()
             
-        text_rect = root._text_surface.get_rect()
+        text_rect = text_surface.get_rect()
 
         if alignx == Align.LEFT: text_rect.left = container_rect.left
         elif alignx == Align.CENTER: text_rect.centerx = container_rect.centerx
@@ -297,4 +303,9 @@ class BackgroundRenderer:
         elif aligny == Align.CENTER: text_rect.centery = container_rect.centery
         elif aligny == Align.BOTTOM: text_rect.bottom = container_rect.bottom
 
-        root._text_rect = text_rect
+        if outside:
+            return text_surface, text_rect, baked_text
+        else:
+            root._text_surface = text_surface
+            root._text_rect = text_rect
+            root._text_baked = baked_text
