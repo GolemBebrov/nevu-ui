@@ -17,11 +17,11 @@ class Mygame(ui.Manager):
             borderradius=10, borderwidth=2,
             fontname="tests/vk_font.ttf", gradient=ui.Gradient(colors=[ui.Color.AQUA,(100,100,100)],type=ui.GradientType.Linear,direction=ui.LinearSide.Right))
         style_mini_font = main_style( #Подстиль
-            fontsize=15, border_radius=15,  
+            fontsize=15, borderradius=(5,0,0,5),  
             borderwidth=4, gradient=ui.Gradient(colors=[ui.Color.REBECCAPURPLE,ui.Color.mix(ui.Color.AQUA,ui.Color.REBECCAPURPLE)],type=ui.GradientType.Linear,direction=ui.LinearSide.Top))
     
-        b = ui.Button(lambda: print("Button 1"), "Test Chamber", [50*ui.fill,11*ui.fill], style=style_mini_font(borderradius=15, borderwidth=2, fontsize=10), words_indent=True, alt=True, will_resize=True) #Создаем кнопку
-        i = ui.Input([100*ui.fill,30*ui.fill],style_mini_font(borderradius=30,borderwidth=0,fontname="tests/vk_font.ttf"),"","Введите", alt=True, will_resize=True, multiple=True) #Создаем инпут
+        b = ui.Button(lambda: print("Button 1"), "Test Chamber", [50*ui.fill,11*ui.fill], style=style_mini_font(borderradius=5, borderwidth=2, fontsize=10), words_indent=True, alt=True) #Создаем кнопку
+        i = ui.Input([100*ui.fill,30*ui.fill],style_mini_font(borderradius=30,borderwidth=0,fontname="tests/vk_font.ttf"),"","Введите", alt=True, multiple=True) #Создаем инпут
         conf = i.constant_kwargs.copy()
         conf['single_instance'] = True
         self.icopy = ui.Input([100*ui.fill,30*ui.fill],**conf)
@@ -36,7 +36,15 @@ class Mygame(ui.Manager):
                                         (2,2): i
                                     }
                          )
-        
+        gridmenu.booted = True
+        gridmenu._boot_up()
+        gridmenu._boot_up()
+        gridmenu._boot_up()
+        gridmenu._boot_up()
+        gridmenu._boot_up()
+        gridmenu._connect_to_layout(gridmenu)
+        gridmenu._boot_up()
+
         self.menu = ui.menu.Menu(self.window,(100*ui.vw,100*ui.vh),
                 style = main_style(borderradius=20,borderwidth=1, gradient=ui.Gradient(colors=[ui.Color.BLACK, ui.Color.PURPLE],type=ui.GradientType.Linear,direction=ui.LinearSide.Bottom)), alt=False, 
                 layout = ui.Grid([100*ui.fill,100*ui.fill],x=3,y=3, 
@@ -47,6 +55,10 @@ class Mygame(ui.Manager):
                      }   
                  )
              )    
+        print(gridmenu.layout)
+        gridmenu._connect_to_menu(self.menu)
+        print(gridmenu.layout)
+        print(gridmenu.first_parent_menu)
         items = self.menu.layout.items
         
         items = items[:2]
@@ -57,22 +69,34 @@ class Mygame(ui.Manager):
             ititems[0].animation_manager.add_continuous_animation(anim(random.randint(2,5),[125,0],[-125,0],ui.animations.AnimationType.POSITION))
             ititems[1].animation_manager.add_continuous_animation(ui.animations.Glitch(random.randint(2,5),[-70,0],[70,0],ui.animations.AnimationType.POSITION))
         print(items)
-        self.menu.quality = ui.Quality.Best 
-        self.menu.will_resize = True 
+        self.surf_test = pygame.Surface((100,100))
+        self.surf_test.fill((255,0,0))
+        self.test_coords = ui.NvVector2(0.0,0.0)
+        ui.overlay.change_element("test", self.surf_test, self.test_coords, 0)
+        
 
     def on_draw(self):
         #self.menu.surface.fill(self.background)
         self.menu.draw()
         #рисуем меню
+        self.window.draw_overlay()
       
     def on_update(self, events):
         self.menu.update()
-        print(self.menu.layout.items[-1].texture.alpha) if hasattr(self.menu.layout.items[-1],"texture") else None
+        if self.test_coords.x > self.window.size.x - self.window._crop_width_offset // 2: 
+            self.test_coords.x = -100 + self.window._crop_width_offset // 2
+            self.test_coords.y += 1 + self.window._crop_height_offset // 2
+           # self.test_coords += 
+        else: 
+            self.test_coords += ui.NvVector2(100*ui.time.dt*self.window.ratio.x,0)
+            #print(self.test_coords)
+        ui.overlay.change_element("test", self.surf_test, self.test_coords, 0)
+        #print(self.menu.layout.items[-1].texture.alpha) if hasattr(self.menu.layout.items[-1],"texture") else None
         show_fps = True
         fps_mode = "Unslowed"
         #Для показа фпс
-        if show_fps:
-            print(f"FPS {fps_mode}: ",ui.time.fps)
+        #if show_fps:
+            #print(f"FPS {fps_mode}: ",ui.time.fps)
         #print("anim_value:", self.icopy.animation_manager.get_animation_value(ui.animations.AnimationType.POSITION))
 
 def test_main():

@@ -10,10 +10,10 @@ class TestScrollable(NevuTest):
         if id == "Zov": print("ЗОВ БРАТИК")
         if id == "GOIDA": print("GOIDA ZOV ZOV ZOV")
     def add_to_layout(self):
-        self.do_fps_test = True
+        #self.do_fps_test = True
         self._dirty_mode = False
         tetete_progressbar = ui.Slider([35*ui.vw, 35*ui.vw], ui.default_style(borderradius=500, borderwidth=3))
-        nyachechevitsya = ui.ElementSwitcher([80*ui.fill, 15*ui.fill], ["Goida", ["Тромб", "x_01"], "Маг 1", "Мечник 2", "Маг 3"],ui.default_style(borderradius=15), single_instance = False)
+        nyachechevitsya = ui.ElementSwitcher([30*ui.fill, 35*ui.fill], ["Goida", ["Тромб", "x_01"], "Маг 1", "Мечник 2", "Маг 3"],ui.default_style(borderradius=(10,0,0,10)), single_instance = False)
         self.fps = 999999999
         self.test_menu.layout = \
         ui.ScrollableColumn([100*ui.fill, 100*ui.vh],
@@ -40,11 +40,12 @@ class TestScrollable(NevuTest):
         self.test_menu.layout.items[-1].id = "GOIDA"
         self.test_menu.layout.items[-2].id = "Zov"
         #self.scrollable._test_always_update = True
-        print(self.scrollable.get_rect())
+        #print(self.scrollable.get_rect())
         
         #assert isinstance(self.scrollable, ui.ScrollableRow)
     def first_update(self):
         super().first_update()
+
     def on_draw(self):
         super().on_draw()
         #print(ui.time.fps)
@@ -58,6 +59,21 @@ class TestScrollable(NevuTest):
         #self.scrollable._regenerate_coordinates()
 
 ts = TestScrollable()
+
+ui.mouse.pos
+ui.mouse.center_fdown
+ui.mouse.left_up
+ui.mouse.right_down
+ui.mouse.left_still
+
+ui.keyboard.is_down(pygame.K_0)
+ui.keyboard.is_fdown(pygame.K_s)
+ui.keyboard.is_up(pygame.K_0)
+
+ui.time.fps
+ui.time.float_fps
+ui.time.dt 
+ui.time.delta_time
 
 ts.run()
 

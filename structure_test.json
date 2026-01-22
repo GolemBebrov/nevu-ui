@@ -4,7 +4,7 @@
         "size": [1600, 900],
         "display": "sdl",
         "utils": ["keyboard", "mouse", "time"],
-        "fps": 60,
+        "fps": 90,
         "resizable": true,
         "ratio": [16, 9]
     },
@@ -21,7 +21,7 @@
 
     "colors": {
         "some-color": [1,2,3],
-        "my-color": [20,200,120]
+        "my-c22o123lor": [20,30,120]
     },
 
     "styles": {
