@@ -1,11 +1,13 @@
-from nevu_ui.fast.nvvector2 import NvVector2
-from pygame import Surface
 import pygame
 from pygame._sdl2 import Texture
+from typing import Any
+
+from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.core.state import nevu_state
 
 class OverlayManager:
-    PipelineItem = tuple[Surface, NvVector2, int | float]
+    PipelineItem = tuple[pygame.Surface, NvVector2, int | float]
+    layer_type = float | int
     def __init__(self):
         self.pipeline: dict[str, OverlayManager.PipelineItem] = {}
         self._init_markers()
@@ -17,7 +19,7 @@ class OverlayManager:
         self._sorted = False
     
     def _init_cache(self):
-        self._rendered_cache: Surface = None #type: ignore
+        self._rendered_cache: pygame.Surface = None #type: ignore
         self._rendered_sdl_cache = None
         self._sorted_cache = {}
         self._cached_size = None
@@ -37,26 +39,50 @@ class OverlayManager:
         self.mark_unsorted()
         self.mark_undone()
         self.mark_sdl_undone()
-        
-    def add_action(self, name, surface, coordinates: NvVector2, layer: int | float = 0):
+
+    def add_element(self, name, surface, coordinates: NvVector2, layer: layer_type = 0):
         self.pipeline[name] = (surface, coordinates, layer)
         self.mark_all()
     
-    def remove_action(self, name, strict: bool = False):
-        if name in self.pipeline:
+    def _validate_strict(self, name: Any, strict: bool, function = None):
+        if not strict and function: function()
+        else: raise ValueError(f"Element {name} not found and cannot be changed")
+        
+    def remove_element(self, name: Any, strict: bool = False):
+        if self.has_element(name):
             del self.pipeline[name]
             self.mark_all()
-        elif strict:
-            raise ValueError(f"Action {name} not found and cannot be removed")
+        else: self._validate_strict(name, strict)
     
-    def change_action(self, name, surface, coordinates: NvVector2, layer: int | float = 0, strict: bool = False):
-        if name in self.pipeline:
+    def change_element(self, name: Any, surface, coordinates: NvVector2, layer: layer_type = 0, strict: bool = False):
+        if self.has_element(name):
             self.pipeline[name] = (surface, coordinates, layer)
             self.mark_all()
-        elif not strict:
-            self.add_action(name, surface, coordinates, layer)
-        else: raise ValueError(f"Action {name} not found and cannot be changed")
-        
+        else: self._validate_strict(name, strict, lambda: self.add_element(name, surface, coordinates, layer))
+    
+    def change_coordinates(self, name: Any, coordinates: NvVector2, strict: bool = False):
+        if self.has_element(name):
+            curr_item = self.pipeline[name]
+            self.pipeline[name] = (curr_item[0], coordinates, curr_item[2])
+            self.mark_all()
+        else: self._validate_strict(name, strict, lambda: print(f"Element {name} not found and cannot be changed")) #TODO потом, в 0.9
+    
+    def change_layer(self, name: Any, layer: layer_type, strict: bool = False):
+        if self.has_element(name):
+            curr_item = self.pipeline[name]
+            self.pipeline[name] = (curr_item[0], curr_item[1], layer)
+            self.mark_all()
+        else: self._validate_strict(name, strict, lambda: print(f"Element {name} not found and cannot be changed")) #TODO!!!!!!
+    
+    def change_surface(self, name: Any, surface: pygame.Surface, strict: bool = False):
+        if self.has_element(name):
+            curr_item = self.pipeline[name]
+            self.pipeline[name] = (surface, curr_item[1], curr_item[2])
+            self.mark_all() 
+        else: self._validate_strict(name, strict, lambda: print(f"Element {name} not found and cannot be changed")) #Totya(#TODO#!#!#1!!!!!!)
+    
+    def has_element(self, name): return name in self.pipeline
+    
     @property
     def sorted_pipeline(self):
         if not self._sorted: 
@@ -64,26 +90,27 @@ class OverlayManager:
             self._sorted_cache = sorted(self.pipeline.items(), key=lambda x: x[1][2])
         return self._sorted_cache
     
-    def draw_pipeline(self, surface: Surface):
+    def draw_pipeline(self, surface: pygame.Surface):
         if surface.size != self._cached_size:
             self.mark_undone()
             self._cached_size = surface.size
         if self._rendered:
             surface.blit(self._rendered_cache, (0,0))
             return
-        for action in self.sorted_pipeline:
-            surf = action[1][0]
-            coords: NvVector2 = action[1][1]
-            surface.blit(surf, coords.to_int().to_tuple())
+        for element in self.sorted_pipeline:
+            surf = element[1][0]
+            coords: NvVector2 = element[1][1]
+            surface.blit(surf, coords.to_tuple())
     
     def get_result(self, size):
         if size != self._cached_size:
             self.mark_undone()
             self._cached_size = size
         if self._rendered: return self._rendered_cache
-        result = Surface(size, flags = pygame.SRCALPHA)
+        result = pygame.Surface(size, flags = pygame.SRCALPHA)
         self.draw_pipeline(result)
         self._rendered_cache = result
+        self._rendered = True
         return result
     
     def get_result_sdl(self, size):
