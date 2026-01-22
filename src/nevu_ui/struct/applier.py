@@ -233,3 +233,7 @@ transform_to_basic_config = {
 
 #! Global functions
 def apply_config(file_name: str): _apply_config(json.load(open(file_name, "r")))
+def get_style(name: str, default = None): return standart_config.styles.get(name, default)
+def get_color(name: str, default = None): return standart_config.colors.get(name, default)
+def get_all_styles(): return standart_config.styles
+def get_all_colors(): return standart_config.colors

@@ -24,11 +24,5 @@ class Config:
         
 standart_config = Config()
 
-def get_color(name: str, default = None):
-    return standart_config.colors.get(name, default)
-
-def get_style(name: str, default = None):
-    return standart_config.styles.get(name, default)
-
 def get_colortheme(name: str, default = None):
     return standart_config.colorthemes.get(name, default)

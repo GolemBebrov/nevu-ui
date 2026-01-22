@@ -13,7 +13,7 @@ from libc.math cimport sqrt
 cdef class NvVector2:
     
     @staticmethod
-    cdef inline NvVector2 new(float x, float y):
+    cdef inline NvVector2 new(double x, double y):
         cdef NvVector2 vec = NvVector2.__new__(NvVector2)
         vec.x = x
         vec.y = y
@@ -72,7 +72,7 @@ cdef class NvVector2:
         else:
             raise IndexError("Vector index out of range")
 
-    def __setitem__(self, int index, float value):
+    def __setitem__(self, int index, double value):
         if index == 0:
             self.x = value
         elif index == 1:
@@ -89,7 +89,7 @@ cdef class NvVector2:
         return NvVector2.new(self.x - other.x, self.y - other.y)
 
     @cython.ccall
-    cdef inline NvVector2 _mul_scalar(self, float val):
+    cdef inline NvVector2 _mul_scalar(self, double val):
         return NvVector2.new(self.x * val, self.y * val)
 
     @cython.ccall
@@ -220,8 +220,8 @@ cdef class NvVector2:
         return sqrt(self.x * self.x + self.y * self.y)
     
     def normalize(self):
-            cdef float l = sqrt(self.x * self.x + self.y * self.y)
-            cdef float inv_l
+            cdef double l = sqrt(self.x * self.x + self.y * self.y)
+            cdef double inv_l
             
             if l == 0: 
                 return NvVector2.new(0.0, 0.0)
@@ -230,8 +230,8 @@ cdef class NvVector2:
             return NvVector2.new(self.x * inv_l, self.y * inv_l)
     
     def normalize_ip(self):
-        cdef float l = sqrt(self.x * self.x + self.y * self.y)
-        cdef float inv_l
+        cdef double l = sqrt(self.x * self.x + self.y * self.y)
+        cdef double inv_l
         
         if l > 0: 
             inv_l = 1.0 / l
@@ -240,13 +240,13 @@ cdef class NvVector2:
         return self
     
     def distance_to(self, NvVector2 other):
-        cdef float dx = self.x - other.x
-        cdef float dy = self.y - other.y
+        cdef double dx = self.x - other.x
+        cdef double dy = self.y - other.y
         return sqrt(dx * dx + dy * dy)
 
     def distance_squared_to(self, NvVector2 other):
-        cdef float dx = self.x - other.x
-        cdef float dy = self.y - other.y
+        cdef double dx = self.x - other.x
+        cdef double dy = self.y - other.y
         return dx * dx + dy * dy
 
     def dot(self, NvVector2 other):
