@@ -3,7 +3,6 @@ from collections.abc import Callable
 from warnings import deprecated
 import pygame
 import copy
-import contextlib
 import difflib
 import weakref
 from typing import Unpack
@@ -18,12 +17,13 @@ from nevu_ui.animations import AnimationType, AnimationManager
 from nevu_ui.utils import Cache, NevuEvent
 from nevu_ui.size.rules import Px, SizeRule
 from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.overlay.tooltip import Tooltip
 
 from nevu_ui.fast.logic import (
     relm_helper, rel_helper, mass_rel_helper, vec_rel_helper, get_rect_helper_pygame, get_rect_helper
 )
 from nevu_ui.core.enums import (
-    HoverState, EventType, CacheType
+    HoverState, EventType, CacheType, ConstantLayer
 )
 
 global_counter = 0
@@ -39,7 +39,7 @@ def del_obj(self):
     #print(self, "deleted, counter:", global_counter)
 
 class ConstantStorage:
-    __slots__ = ('supported_classes', 'defaults', 'links', 'properties', 'is_set', 'excluded', 'external')
+    __slots__ = ('supported_classes', 'defaults', 'links', 'properties', 'is_set', 'excluded', 'external', 'layers')
     def __init__(self):
         self.supported_classes = {}
         self.defaults = {}
@@ -47,6 +47,7 @@ class ConstantStorage:
         self.properties = {}
         self.is_set = {}
         self.external = {}
+        self.layers = {}
         self.excluded = []
 
 class NevuObjectKwargs(TypedDict):
@@ -56,6 +57,8 @@ class NevuObjectKwargs(TypedDict):
     events: NotRequired[Events]
     z: NotRequired[int]
     depth: NotRequired[int]
+    tooltip: NotRequired[Tooltip]
+    subtheme_role: NotRequired[SubThemeRole]
 
 class NevuObject:
     id: str | None
@@ -63,47 +66,59 @@ class NevuObject:
     single_instance: bool
     _events: Events
     z: int
-    
+    tooltip: Tooltip
+    subtheme_role: SubThemeRole
     
     #INIT STRUCTURE: ====================
     #    __init__ >
     #        preinit >
-    #            constants 
-    #        basic_variables >
+    #            flags
     #            test_flags
-    #            booleans
+    #            constants l1
+    #        basic_variables >
     #            numerical
-    #            lists
+    #            lists/vectors
+    #            booleans/dependent flags
+    #            constants l2
     #        complicated_variables >
     #            objects
     #            style
-    #    postinit(lazy_init) >
-    #        size dependent code
+    #            constants l3
+    #    _lazy_init >
+    #        size/master dependent code
     #======================================
     
     def __init__(self, size: NvVector2 | list, style: Style | str, **constant_kwargs: Unpack[NevuObjectKwargs]):
         self.constants: ConstantStorage = None #type: ignore
         self.constant_kwargs = constant_kwargs.copy() 
         self._lazy_kwargs = {'size': size}
+        self.first_update_functions = []
         
     #=== Pre Init ===
-    
-        #=== Constants ===
-        self._init_constants(**constant_kwargs)
+        #=== Flags ===
+        self._init_flags()
         
-    #=== Basic Variables ===    
-
         #=== Test Flags ===
         self._init_test_flags()
         
-        #=== Booleans(Flags) ===
-        self._init_booleans()
+        #=== Constants Declaration ===
+        self._declare_constants(**constant_kwargs)
         
+        #=== Constants L1 Init ===
+        self._init_constant_layer(ConstantLayer.Top, **constant_kwargs)
+        
+    #=== Basic Variables ===    
         #=== Numerical(int, float) ===
         self._init_numerical()
 
         #=== Lists/Vectors ===
         self._init_lists()
+
+        #=== Booleans(Flags) ===
+        self._init_booleans()
+        
+        #=== Constants L2 Init ===
+        self._init_constant_layer(ConstantLayer.Basic, **constant_kwargs)
         
     #=== Complicated Variables ===
     
@@ -113,48 +128,65 @@ class NevuObject:
         #=== Style ===
         self._init_style(style)
         
+        #=== Constants L3 Init ===
+        self._init_constant_layer(ConstantLayer.Complicated, **constant_kwargs)
+        
         if __debug__:
             add_obj(self)
             weakref.finalize(self, del_obj, self.__class__.__name__)
     
 #=== ConstantEngine functions ===
     def _add_constant(self, name, supported_classes: tuple | Any, default: Any, 
-                      getter: Callable | None = None, setter: Callable | None = None, deleter: Callable | None = None):
+                      getter: Callable | None = None, setter: Callable | None = None, deleter: Callable | None = None, layer = 1):
         self.constants.supported_classes[name] = supported_classes
         self.constants.defaults[name] = default
-        self.constants.is_set[name] = False
+        self.constants.layers[name] = layer
         if getter or setter or deleter:
             self.constants.properties[name] = [getter, setter, deleter]
+            
+    def _change_constant_name(self, name: str, new_name: str):
+        if name == new_name: return
+        if name not in self.constants.defaults: raise KeyError(f"Constant '{name}' does not exist and cannot be renamed.")
+        if new_name in self.constants.defaults: raise ValueError(f"Constant '{new_name}' already exists.")
+        self.constants.supported_classes[new_name] = self.constants.supported_classes.pop(name)
+        self.constants.defaults[new_name] = self.constants.defaults.pop(name)
+        
+        if name in self.constants.properties:
+            self.constants.properties[new_name] = self.constants.properties.pop(name)
     
-    def _add_free_constant(self, name, default: Any):
+    def _change_constant_default(self, name: str, default: Any):
+        if name not in self.constants.defaults: raise KeyError(f"Constant '{name}' does not exist and cannot be changed.")
+        #print(f"from {self.constants.defaults[name]} to {default} with name {name} in {self}")
+        self.constants.defaults[name] = default
+    
+    def _add_free_constant(self, name, default: Any, layer = 1):
         self.constants.supported_classes[name] = Any
         self.constants.defaults[name] = default
-        self.constants.is_set[name] = None
         self.constants.external[name] = True
+        self.constants.layers[name] = layer
     
     def _block_constant(self, name: str):
         self.constants.excluded.append(name)
 
     def __getattribute__(self, name):
         get = _get_attr
-        constants: ConstantStorage = get(self,'constants')
-        if constants is None: return get(self,name)
+        constants: ConstantStorage = get(self, 'constants')
+        if constants is None: return get(self, name)
         constant_properties = constants.properties
         if name in constant_properties: return constant_properties[name][0]()
-        return get(self,name)
+        return get(self, name)
 
     def __setattr__(self, name, value):
-        try:
-            if name in self.constants.supported_classes:
-                if name in self.constants.external: super().__setattr__(name, value)
-                elif name in self.constants.properties: self.constants.properties[name][1](value)
-                elif not self._is_valid_type(value, self.constants.supported_classes[name]):
-                    raise TypeError(
-                        f"Invalid type for constant '{name}'. ",
-                        f"Expected {self.constants.supported_classes[name]}, but got {type(value).__name__}.")
-                else: super().__setattr__(name, value)
+        if not hasattr(self, 'constants') or not hasattr(self.constants, 'supported_classes'): super().__setattr__(name, value); return
+        if name in self.constants.supported_classes:
+            if name in self.constants.external: super().__setattr__(name, value)
+            elif name in self.constants.properties: self.constants.properties[name][1](value)
+            elif not self._is_valid_type(value, self.constants.supported_classes[name]):
+                raise TypeError(
+                    f"Invalid type for constant '{name}'. ",
+                    f"Expected {self.constants.supported_classes[name]}, but got {type(value).__name__}.")
             else: super().__setattr__(name, value)
-        except AttributeError: super().__setattr__(name, value)
+        else: super().__setattr__(name, value)
     
     def _add_constants(self):
         self._add_constant("id", (str, type(None)), None)
@@ -163,36 +195,45 @@ class NevuObject:
         self._add_constant("events", Events, Events(), getter=self._get_events, setter=self._set_events)
         self._add_constant("z", int, 0)
         self._add_constant_link("depth", "z")
-
+        self._add_constant("tooltip", Tooltip | type(None), None, getter=self._tooltip_getter, setter=self._tooltip_setter, layer=ConstantLayer.Complicated)
+        self._add_constant("subtheme_role", SubThemeRole, SubThemeRole.TERTIARY, getter=self.subtheme_role_getter, setter=self.subtheme_role_setter, layer=ConstantLayer.Complicated)
+    
     def _add_constant_link(self, name: str, link_name: str): self.constants.links[name] = link_name
 
-    def _preinit_constants(self):
+    def _preinit_constants(self, layer):
         for name, value in self.constants.defaults.items():
+            if self.constants.layers[name] != layer: continue
+            if name in list(self.constant_kwargs.keys()): continue
             if not hasattr(self, name) or self.constants.external.get(name, False):
                 setattr(self, name, value)
 
-    def _change_constants_kwargs(self, **kwargs):
+    def _apply_constants(self, current_layer, **kwargs):
         constant_name = None
         needed_types = None
+        processed = set()
         for name, value in kwargs.items():
             name = name.lower()
-            constant_name, needed_types = self._extract_constant_data(name)
+            constant_name, needed_types, layer = self._extract_constant_data(name)
+            if current_layer != layer: continue
+            if constant_name in processed: 
+                raise ValueError(f"Constant {name}({constant_name}) is already set.")
             self._process_constant(name, constant_name, needed_types, value)
-            constant_name = None
-            needed_types = None
+            processed.add(constant_name)
     
     def _extract_constant_data(self, name):
         if name in self.constants.supported_classes.keys():
             constant_name = name
             needed_types = self.constants.supported_classes[name]
+            layer = self.constants.layers[name]
         elif name in self.constants.links.keys():
             constant_name = self.constants.links[name]
             if constant_name not in self.constants.supported_classes.keys():
                 raise ValueError(f"Invalid constant link {name} -> {self.constants.links[name]}. Constant not found.")
             needed_types = self.constants.supported_classes[constant_name]
+            layer = self.constants.layers[constant_name]
         else:
             raise ValueError(f"Constant {name} not found")
-        return constant_name, needed_types
+        return constant_name, needed_types, layer
     
     def _is_valid_type(self, value, needed_types):
         needed_types = (needed_types,)
@@ -213,22 +254,34 @@ class NevuObject:
             if not(is_valid := self._is_valid_type(value, needed_types)):
                 raise TypeError(f"Invalid type for constant '{constant_name}' in {self.__class__.__name__} instance. ",
                                 f"Expected {needed_types}, but got {type(value).__name__}.")
-        
         setattr(self, constant_name, value)
-        self.constants.is_set[constant_name] = True
 
 #=== Initialization ===
+    def _init_flags(self): 
+        self._sended_z_link = False
+        self._dragging = False
+        self._is_kup = False
+        self._kup_abandoned = False
+        self._force_state_set_continue = False
+        self._visible = True
+        self._active = True
+        self._changed = True
+        self._first_update = True
+        self.booted = False
+        self._wait_mode = False
+        self.dead = False
+        
     def _init_test_flags(self): pass
     
-    def _init_numerical(self):
-        self._z_request_optimization_timer = 5
-        self._z_request_optimization_max = 5
+    def _init_numerical(self): pass
     
-    def _init_constants(self, **kwargs):
+    def _declare_constants(self, **kwargs):
         self.constants = ConstantStorage()
         self._add_constants()
-        self._preinit_constants()
-        self._change_constants_kwargs(**kwargs)
+        
+    def _init_constant_layer(self, layer, **kwargs):
+        self._preinit_constants(layer)
+        self._apply_constants(layer, **kwargs)
             
     def _init_style(self, style: Style | str):
         if isinstance(style, str):
@@ -246,30 +299,16 @@ class NevuObject:
         
     def _init_objects(self):
         self.cache = Cache()
-        self._subtheme_role = SubThemeRole.TERTIARY
         self._hover_state = HoverState.UN_HOVERED
         self.animation_manager = AnimationManager()
         self.z_request = None
 
-    def _init_booleans(self):
-        self._sended_z_link = False
-        self._dragging = False
-        self._is_kup = False
-        self._kup_abandoned = False
-        self._force_state_set_continue = False
-        self._visible = True
-        self._active = True
-        self._changed = True
-        self._first_update = True
-        self.booted = False
-        self._wait_mode = False
-        self.dead = False
+    def _init_booleans(self): pass
         
     def _init_lists(self):
         self._resize_ratio = NvVector2(1, 1)
         self.coordinates = NvVector2()
         self.absolute_coordinates = NvVector2()
-        self.first_update_functions = []
         self._dirty_rect = []
         
     def _init_start(self):
@@ -278,7 +317,11 @@ class NevuObject:
         for i, item in enumerate(self._lazy_kwargs["size"]): #type: ignore
             self._lazy_kwargs["size"][i] = self.num_handler(item) #type: ignore
         if not self._wait_mode: self._lazy_init(**self._lazy_kwargs)
-
+    
+    def _lazy_init_wrapper(self, *args, **kwargs):
+        self._lazy_init(*args, **kwargs)
+        self._init_constant_layer(ConstantLayer.Lazy, **self.constant_kwargs)
+        
     def _lazy_init(self, size):
         self.size = size if isinstance(size, NvVector2) else NvVector2(size)
         self.original_size = self.size.copy()
@@ -294,7 +337,7 @@ class NevuObject:
     def wait_mode(self): return self._wait_mode
     @wait_mode.setter
     def wait_mode(self, value: bool):
-        if self._wait_mode == True and not value: self._lazy_init(**self._lazy_kwargs)
+        if self._wait_mode == True and not value: self._lazy_init_wrapper(**self._lazy_kwargs)
         self._wait_mode = value
 
     @property
@@ -317,11 +360,10 @@ class NevuObject:
     def get_animation_value(self, animation_type: AnimationType):
         return self.animation_manager.get_current_value(animation_type)
 
-    def get_font(self):
-        avg_resize_ratio = (self._resize_ratio[0] + self._resize_ratio[1]) / 2
-        font_size = int(self.style.fontsize * avg_resize_ratio)
+    def get_font(self, override_size = None):
+        font_size = int(self.relm(override_size or self.style.fontsize))
         return (pygame.font.SysFont(self.style.fontname, font_size) if self.style.fontname == "Arial" 
-                else pygame.font.Font(self.style.fontname, font_size))
+            else pygame.font.Font(self.style.fontname, font_size))
     
     @property
     def max_borderradius(self): return min(self._rsize.x, self._rsize.y) / 2
@@ -334,11 +376,9 @@ class NevuObject:
     @property
     def _rsize_marg(self) -> NvVector2: return self._csize - self._rsize 
 
-    @property
-    def subtheme_role(self): return self._subtheme_role
+    def subtheme_role_getter(self): return self._subtheme_role
     
-    @subtheme_role.setter
-    def subtheme_role(self, value: SubThemeRole):
+    def subtheme_role_setter(self, value: SubThemeRole):
         self._subtheme_role = value
         self.cache.clear()
         self._on_subtheme_role_change()
@@ -348,6 +388,12 @@ class NevuObject:
     @property
     def _subtheme(self): return self.style.colortheme.get_subtheme(self._subtheme_role)
 
+    def _tooltip_setter(self, value: Tooltip | None): 
+        self._tooltip = value
+        if self._tooltip: 
+            self._tooltip.connect_to_master(self)
+    def _tooltip_getter(self): return self._tooltip
+    
 #=== Action functions ===
     def show(self): self._visible = True
     def hide(self): self._visible = False
@@ -390,7 +436,6 @@ class NevuObject:
     def _set_events(self, value):
         self._events = value
         self._events.on_add = self._on_event_add #type: ignore
-        if self.actual_clone: self.constant_kwargs['events'] = value
     
     def _on_event_add(self): self.constant_kwargs['events'] = self._events
         
@@ -415,6 +460,7 @@ class NevuObject:
     def on_keyup_abandon(self): """Override this function to run code when a key is released outside of the object"""
     def on_unhover(self): """Override this function to run code when the object is unhovered"""
     def on_scroll(self, side: bool): """Override this function to run code when the object is scrolled"""
+    def on_change(self): """Override this function to run code when the object is changed"""
     
     #=== System hooks ===
     def _on_click_system(self): self._event_cycle(EventType.OnKeyDown, self)
@@ -423,6 +469,7 @@ class NevuObject:
     def _on_keyup_abandon_system(self): self._event_cycle(EventType.OnKeyUpAbandon, self)
     def _on_unhover_system(self): self._event_cycle(EventType.OnUnhover, self)
     def _on_scroll_system(self, side: bool): self._event_cycle(EventType.OnMouseScroll, self, side)
+    def _on_change_system(self): self._event_cycle(EventType.OnChange, self)
     
     #=== Group functions ===
     def _group_on_click(self):
@@ -590,6 +637,9 @@ class NevuObject:
     #======================================
 
     def draw(self):
+        if self._changed and self._active and self._visible and not self.wait_mode:
+            self.on_change()
+            self._on_change_system()
         self.primary_draw()
         self._event_cycle(EventType.Draw)
         self.secondary_draw()
