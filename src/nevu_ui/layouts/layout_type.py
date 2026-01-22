@@ -1,32 +1,43 @@
+from __future__ import annotations
 import copy
 import pygame
 from itertools import chain
-from warnings import deprecated
 
 from typing import (
-    TypeGuard, Iterator, Unpack
+    TypeGuard, Iterator, Unpack, NotRequired, Any
 )
 
 from nevu_ui.widgets import Widget
+
 from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from nevu_ui.menu import Menu
+if TYPE_CHECKING: from nevu_ui.menu import Menu
 from nevu_ui.fast.logic import _light_update_helper
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.core.state import nevu_state
+from nevu_ui.core.enums import ConstantLayer
 from nevu_ui.style import Style, default_style
 from nevu_ui.nevuobj import NevuObject, NevuObjectKwargs
+from nevu_ui.overlay import overlay
 
 from nevu_ui.size.rules import (
     SizeRule, _all_fillx, _all_vx, _all_gcx, Fill, FillW, FillH, CFill, CFillW, CFillH, Vh, Vw, Cvh, Cvw
 )
 
-class LayoutTypeKwargs(NevuObjectKwargs): pass
+class LayoutTypeKwargs(NevuObjectKwargs):
+    border_color: NotRequired[tuple]
+    borders: NotRequired[bool]
+    border_name: NotRequired[str]
     
 class LayoutType(NevuObject):
     items: list[NevuObject]
     floating_items: list[NevuObject]
     content_type = list
+    border_color: tuple
+    borders: bool
+    border_name: str
+    layout: LayoutType | None
+    menu: Menu | None
+    
 
     def _all_items(self) -> Iterator[NevuObject]:
         return chain(self.items, self.floating_items)
@@ -57,13 +68,12 @@ class LayoutType(NevuObject):
         coordinates = item.coordinates.copy()
         if multiply: coordinates *= multiply
         if add: coordinates += add
-
         
         if nevu_state.renderer and isinstance(item, Widget):
             if not hasattr(item, 'texture'): return
             assert item.texture
             nevu_state.renderer.blit(item.texture, pygame.Rect(coordinates.to_tuple(), item._csize.to_tuple()))
-        else:
+        elif isinstance(item, Widget): 
             self.surface.blit(item.surface, coordinates.to_tuple())
 
     def _boot_up(self):
@@ -74,11 +84,13 @@ class LayoutType(NevuObject):
             self._start_item(item)
             item.booted = True
             item._boot_up()
-    
+
+    def __getitem__(self, id: str) -> NevuObject:
+        return self.get_item_by_id_strict(id)
+
     def __init__(self, size: NvVector2 | list, style: Style = default_style, content: list | None  = None, **constant_kwargs: Unpack[LayoutTypeKwargs]):
         super().__init__(size, style, **constant_kwargs)
         self._lazy_kwargs = {'size': size, 'content': content}
-        self.border_name = " "
         
     def _init_lists(self):
         super()._init_lists()
@@ -90,15 +102,20 @@ class LayoutType(NevuObject):
     def _init_booleans(self):
         super()._init_booleans()
         self._can_be_main_layout = True
-        self._borders = False
         
     def _init_objects(self):
         super()._init_objects()
-        self.first_parent_menu = None#Menu(None, (1,1), default_style)
-        self.menu: Menu | None = None
-        self.layout: LayoutType | None = None
+        self.first_parent_menu = None
+        self.menu = None
+        self.layout = None
         self.surface: pygame.Surface | None = None
-        
+    
+    def _add_constants(self):
+        super()._add_constants()
+        self._add_constant("border_name", str, "", self._border_name_getter, self._border_name_setter, layer=ConstantLayer.Complicated)
+        self._add_constant("borders", bool, False, self._borders_getter, self._borders_setter, layer=ConstantLayer.Complicated)
+        self._add_constant("border_color", tuple, (255, 255, 255))
+    
     def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None):
         super()._lazy_init(size)
         if content and type(self) == LayoutType:
@@ -125,30 +142,19 @@ class LayoutType(NevuObject):
         if value != self.coordinates: self.cached_coordinates = None
         self._coordinates = value
 
-    @property
-    @deprecated("borders is deprecated and incompatible with sdl2 or gl renderers")
-    def borders(self):return self._borders
-
-    @borders.setter
-    @deprecated("borders is deprecated and incompatible with sdl2 or gl renderers")
-    def borders(self, value: bool): 
-        self._borders = value
-        print(f"Warning: using {self.__class__.__name__} borders is deprecated and incompatible with sdl2 or gl renderers")
-
-    @property
-    def border_name(self) -> str: return self.border_name
-    @border_name.setter
-    def border_name(self, name: str):
+    def _borders_getter(self): return self._borders
+    def _borders_setter(self, value: bool): self._borders = value
+    def _border_name_getter(self) -> str: return self._border_name
+    def _border_name_setter(self, name: str):
         self._border_name = name
         if self.first_parent_menu:
             try:
                 self.border_font = pygame.sysfont.SysFont("Arial", int(self.relx(self.first_parent_menu._style.fontsize)))
-                self.border_font_surface = self.border_font.render(self._border_name, True, (255,255,255))
+                self.border_font_surface = self.border_font.render(self._border_name, True, self.border_color)
             except Exception as e: print(f"Error with border_name: {e}")
     
     @staticmethod
-    def _percent_helper(size, value):
-        return size / 100 * value
+    def _percent_helper(size, value): return size / 100 * value
     
     def _parse_vx(self, coord: SizeRule) -> tuple[float, bool] | None:
         if self.first_parent_menu is None: raise self._unconnected_layout_error("Vx like coords")
@@ -209,9 +215,9 @@ class LayoutType(NevuObject):
         self.border_name = self._border_name
 
     @staticmethod
-    def is_layout(item: NevuObject) -> TypeGuard['LayoutType']: return isinstance(item, LayoutType)
+    def is_layout(item: NevuObject) -> TypeGuard[LayoutType]: return isinstance(item, LayoutType)
     @staticmethod
-    def is_widget(item: NevuObject) -> TypeGuard['Widget']: return isinstance(item, Widget)
+    def is_widget(item: NevuObject) -> TypeGuard[Widget]: return isinstance(item, Widget)
 
     def _on_item_add(self, item: NevuObject): pass
 
@@ -228,8 +234,7 @@ class LayoutType(NevuObject):
         return item
     
     def _after_item_add(self, item: NevuObject):
-        if self.layout:
-            self.layout._on_item_add(item)
+        if self.layout: self.layout._on_item_add(item)
             
     def add_item(self, item: NevuObject):
         item = self._item_add(item)
@@ -259,13 +264,26 @@ class LayoutType(NevuObject):
         super().primary_draw()
         if self.borders:
             assert self.surface
-            if hasattr(self, "border_font_surface"):
-                self.surface.blit(self.border_font_surface, [self.coordinates[0], self.coordinates[1] - self.border_font_surface.get_height()])
-                pygame.draw.rect(self.surface,(255,255,255),[self.coordinates[0], self.coordinates[1], self._csize.x, self._csize.y], 1)
-        
+            assert nevu_state.window
+            if nevu_state.window.is_legacy(nevu_state.window.display):
+                if hasattr(self, "border_font_surface"):
+                    self.surface.blit(self.border_font_surface, [self.coordinates[0], self.coordinates[1] - self.border_font_surface.get_height()])
+                    pygame.draw.rect(self.surface, self.border_color, [self.coordinates[0], self.coordinates[1], self._csize.x, self._csize.y], 1)
+            else:
+                surf = pygame.Surface(self._csize.to_tuple(), flags = pygame.SRCALPHA)
+                surf.fill((0,0,0,0))
+                if hasattr(self, "border_font_surface"):
+                    surf.blit(self.border_font_surface, [0, 0])
+                    pygame.draw.rect(surf, self.border_color, [0, 0, self._csize.x, self._csize.y], 1)
+                overlay.change_element(self, surf, self.absolute_coordinates, -1)
         for item in self.floating_items:
             self._draw_widget(item, self.rel(item.coordinates))
 
+    def logic_update(self):
+        super().logic_update()
+        if overlay.has_element(self):
+            overlay.change_coordinates(self, self.absolute_coordinates)
+    
     def _read_dirty_rects(self):
         dirty_rects = []
         for item in self._all_items():
@@ -275,8 +293,8 @@ class LayoutType(NevuObject):
                 item._dirty_rect.clear()
         return dirty_rects
 
-    def secondary_update(self):
-        super().secondary_update()
+    def logic_update(self):
+        super().logic_update()
         if self.menu:
             self.surface = self.menu.surface
             self.all_layouts_coords = NvVector2()
@@ -299,25 +317,25 @@ class LayoutType(NevuObject):
             if not item._wait_mode: continue
             self.read_item_coords(item)
             self._start_item(item)
-            
-    def _connect_to_menu(self, menu: Menu):
+    
+    def _connect_to_parent(self, attr: tuple[str, Any], surface: pygame.Surface | None, first_parent_menu: Menu | None):
+        setattr(self, *attr)
+        self.surface = surface
+        self.first_parent_menu = first_parent_menu
         self.cached_coordinates = None
-        self.menu = menu
-        self.surface = self.menu.surface
-        self.first_parent_menu = menu
-        self.border_name = self._border_name
-
-    def _connect_to_layout(self, layout: "LayoutType"):
-        self.surface = layout.surface
-        self.layout = layout
-        self.first_parent_menu = layout.first_parent_menu
-        self.border_name = self._border_name
-        self.cached_coordinates = None
-
+    
+    def _connect_to_menu(self, menu: Menu): self._connect_to_parent(("menu", menu), menu.surface, menu)
+    def _connect_to_layout(self, layout: LayoutType): self._connect_to_parent(("layout", layout), layout.surface, layout.first_parent_menu)
+        
     def get_item_by_id(self, id: str) -> NevuObject | None:
         if id is None: return None
         return next((item for item in self._all_items() if item.id == id), None)
     
+    def get_item_by_id_strict(self, id: str) -> NevuObject:
+        if id is None: raise ValueError("ID cannot be None")
+        if result := next((item for item in self._all_items() if item.id == id), None):
+            return result
+        else: raise ValueError(f"Item with id {id} not found")
+    
     def _create_clone(self):
-        cls = self.__class__
-        return cls(self._lazy_kwargs['size'], copy.deepcopy(self.style), copy.deepcopy(self._lazy_kwargs['content']), **self.constant_kwargs)
+        return self.__class__(self._lazy_kwargs['size'], copy.deepcopy(self.style), copy.deepcopy(self._lazy_kwargs['content']), **self.constant_kwargs)
