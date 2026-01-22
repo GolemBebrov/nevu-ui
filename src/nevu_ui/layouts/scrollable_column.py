@@ -9,34 +9,30 @@ from nevu_ui.core.state import nevu_state
 from nevu_ui.core.enums import Align, ScrollBarType
 
 class ScrollableColumn(ScrollableBase):
+    def _main_coord(self, coordinates: NvVector2): return coordinates.y
+    def _sec_coord(self, coordinates: NvVector2): return coordinates.x
+    @property
+    def _main_axis(self): return 1
+    
     def _add_constants(self):
         super()._add_constants()
         self.append_key = pygame.K_UP
         self.descend_key = pygame.K_DOWN
+        self._change_constant_default("basic_alignment", Align.LEFT)
 
     def _parse_align(self, align: Align): return align in (Align.LEFT, Align.RIGHT, Align.CENTER)
 
     def _create_scroll_bar(self) -> ScrollableBase.ScrollBar:
-        return self.ScrollBar([self.size[0]/40,self.size[1]/20], self.style, ScrollBarType.Vertical, self)
-
-    def _update_scroll_bar(self):
-        if not self.first_parent_menu: return
-        assert self.first_parent_menu.window
-        track_start_y, track_path_y = self.absolute_coordinates[1], self.size[1]
-        offset = NvVector2(self.first_parent_menu.window._crop_width_offset, self.first_parent_menu.window._crop_height_offset) if self.first_parent_menu.window else NvVector2(0,0)
-        
-        start_coords = NvVector2(self.coordinates[0] + self.relx(self.size[0] - self.scroll_bar.size[0]), track_start_y)
-        track_path = NvVector2(0, track_path_y)
-        
-        self.scroll_bar.set_scroll_params(start_coords, track_path, offset / 2)
+        if not self.scrollbar_perc:
+            size = NvVector2(self.size[0]/40, self.size[1]/20)
+        else: size = self.size / 100 * self.scrollbar_perc
+        return self.ScrollBar(size, self.style, ScrollBarType.Vertical, self)
 
     def _get_scrollbar_coordinates(self) -> NvVector2:
         return NvVector2(self._coordinates.x + self.relx(self.size.x - self.scroll_bar.size.x), self.scroll_bar.coordinates.y)
 
-    def _resize_scrollbar(self): self.scroll_bar.coordinates.y = self.rely(self.scroll_bar.size.y)
-
     def _set_item_main(self, item: NevuObject, align: Align):
-        container_width, widget_width = self.relx(self.size[0]), self.relx(item.size[0])
+        container_width, widget_width = self._csize.x, item._csize.x
         padding = self.relx(self.padding)
         
         match align:
@@ -80,7 +76,5 @@ class ScrollableColumn(ScrollableBase):
         self.actual_max_main = 0
 
     def get_relative_vector_offset(self) -> NvVector2: return NvVector2(0, self.rely(self.get_offset()))
-
-    def add_item(self, item: NevuObject, alignment: Align = Align.LEFT): super().add_item(item, alignment)
 
     def clone(self): return ScrollableColumn(self._lazy_kwargs['size'], copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)

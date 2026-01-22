@@ -19,6 +19,8 @@ class _ScrollableKwargs(LayoutTypeKwargs):
     arrow_scroll_power: NotRequired[float | int]
     wheel_scroll_power: NotRequired[float | int]
     inverted_scrolling: NotRequired[bool]
+    scrollbar_perc: NotRequired[NvVector2 | None]
+    basic_alignment: NotRequired[Align]
 
 class ScrollableKwargs(_ScrollableKwargs, LayoutTypeKwargs): pass
 
@@ -28,7 +30,9 @@ class ScrollableBase(LayoutType, ABC):
     inverted_scrolling: bool
     append_key: Any #Realizes in the children
     descend_key: Any #Realizes in the children
+    scrollbar_perc: NvVector2
     content_type = list[tuple[Align, NevuObject]]
+    basic_alignment: Align
     
     class ScrollBar(Widget):
         def __init__(self, size, style, orientation: ScrollBarType, master = None, **constant_kwargs: Unpack[ScrollableKwargs]):
@@ -163,6 +167,8 @@ class ScrollableBase(LayoutType, ABC):
         self._add_constant('arrow_scroll_power', int, 5)
         self._add_constant('wheel_scroll_power', int, 5)
         self._add_constant('inverted_scrolling', bool, False)
+        self._add_constant('scrollbar_perc', (NvVector2, type(None)), None)
+        self._add_constant('basic_alignment', (Align, type(None)), None)
         
     def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None):
         super()._lazy_init(size, content)
@@ -277,21 +283,28 @@ class ScrollableBase(LayoutType, ABC):
         
         self.scroll_bar.move_by_percents(self.wheel_scroll_power * direction)
         self._scroll_needs_update = True
-            
+
+    def _update_scroll_bar(self):
+        if not self.first_parent_menu: return
+        assert self.first_parent_menu.window
+        track_start, track_path_main = self.absolute_coordinates, self._main_coord(self.size)
+        offset = NvVector2(self.first_parent_menu.window._crop_width_offset, self.first_parent_menu.window._crop_height_offset) if self.first_parent_menu.window else NvVector2(0,0)
+        start_coords = NvVector2()
+        start_coords[abs(self._main_axis - 1)] = self._sec_coord(self.coordinates + self.rel(self.size - self.scroll_bar.size))
+        start_coords[self._main_axis] = self._main_coord(track_start)
+        track_path = NvVector2(0, track_path_main)
+        self.scroll_bar.set_scroll_params(start_coords, track_path, offset / 2)
+
     def resize(self, resize_ratio: NvVector2):
+        old_scrbar_perc = self.scroll_bar.percentage
         super().resize(resize_ratio)
         self.scroll_bar.resize(resize_ratio)
-        self._resize_scrollbar()
+        self._update_scroll_bar()
+        self._resize_scrollbar(old_scrbar_perc)
         self.cached_coordinates = None
+        self._scroll_needs_update = True
         self._regenerate_coordinates()
         self.scroll_bar.scrolling = False
-        self._update_scroll_bar()
-        
-        prev_percentage = self.scroll_bar.percentage if hasattr(self, "scroll_bar") else 0.0
-        new_actual_max_main = self.actual_max_main
-        new_percentage = max(0.0, min(prev_percentage, 100.0)) if new_actual_max_main > 0 else 0.0
-
-        self.scroll_bar.set_percents(new_percentage)
         self.base_light_update()
 
     def _on_item_add(self, item: NevuObject):
@@ -299,7 +312,8 @@ class ScrollableBase(LayoutType, ABC):
         if self.booted == False: return
         self._update_scroll_bar()
     
-    def add_item(self, item: NevuObject, alignment: Align): # type: ignore
+    def add_item(self, item: NevuObject, alignment: Align | None = None):  # type: ignore
+        alignment = alignment or self.basic_alignment
         if not self._parse_align(alignment): print(f"Warning: align {alignment} not supported in {type(self).__name__}, skipping.."); return
         super().add_item(item)
         self.widgets_alignment.append(alignment)
@@ -312,12 +326,20 @@ class ScrollableBase(LayoutType, ABC):
     def apply_style_to_childs(self, style: Style):
         super().apply_style_to_childs(style)
         self.apply_scroll_bar_style(style)
-    
+        
+    def _resize_scrollbar(self, old_percentage: int | float):
+        self.scroll_bar.set_percents(old_percentage)
+        
     def apply_scroll_bar_style(self, style: Style): self.scroll_bar.style = style
 
 #=== PLACEHOLDERS ===
+    @property
     @abstractmethod
-    def _resize_scrollbar(self): pass
+    def _main_axis(self) -> int: pass
+    @abstractmethod
+    def _main_coord(self, coordinates: NvVector2) -> int | float: pass
+    @abstractmethod
+    def _sec_coord(self, coordinates: NvVector2) -> int | float: pass
     @abstractmethod
     def _restart_coordinates(self): pass
     @abstractmethod
@@ -326,8 +348,6 @@ class ScrollableBase(LayoutType, ABC):
     def _regenerate_max_values(self): pass
     @abstractmethod
     def _get_scrollbar_coordinates(self) -> NvVector2: return NvVector2()
-    @abstractmethod
-    def _update_scroll_bar(self): pass
     @abstractmethod
     def _set_item_main(self, item: NevuObject, align: Align): pass
     @abstractmethod

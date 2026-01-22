@@ -9,31 +9,27 @@ from nevu_ui.core.state import nevu_state
 from nevu_ui.core.enums import Align, ScrollBarType
 
 class ScrollableRow(ScrollableBase):
+    def _main_coord(self, coordinates: NvVector2): return coordinates.x
+    def _sec_coord(self, coordinates: NvVector2): return coordinates.y
+    @property
+    def _main_axis(self): return 0
     def _add_constants(self):
         super()._add_constants()
         self.append_key = pygame.K_LEFT
         self.descend_key = pygame.K_RIGHT
+        self._change_constant_default("basic_alignment", Align.TOP)
 
     def _parse_align(self, align: Align): return align in (Align.TOP, Align.BOTTOM, Align.CENTER)
 
-    def _create_scroll_bar(self) -> ScrollableBase.ScrollBar: return self.ScrollBar([self.size[0]/20,self.size[1]/40], self.style, ScrollBarType.Horizontal, self)
-
-    def _update_scroll_bar(self):
-        if not self.first_parent_menu: return
-        assert self.first_parent_menu.window
-        track_start_x, track_path_x = self.absolute_coordinates[0], self.size[0]
-        offset = NvVector2(self.first_parent_menu.window._crop_width_offset, self.first_parent_menu.window._crop_height_offset) if self.first_parent_menu.window else NvVector2(0,0)
-        
-        start_coords = NvVector2(track_start_x, self.coordinates[1] + self.rely(self.size[1] - self.scroll_bar.size[1]))
-        track_path = NvVector2(track_path_x, 0)
-        
-        self.scroll_bar.set_scroll_params(start_coords, track_path, offset / 2)
+    def _create_scroll_bar(self) -> ScrollableBase.ScrollBar: 
+        if not self.scrollbar_perc:
+            size = NvVector2(self.size[0]/20, self.size[1]/40)
+        else: size = self.size/100*self.scrollbar_perc
+        return self.ScrollBar(size, self.style, ScrollBarType.Horizontal, self)
 
     def _get_scrollbar_coordinates(self) -> NvVector2:
         return NvVector2(self.scroll_bar.coordinates.x, self._coordinates.y + self.rely(self.size.y - self.scroll_bar.size.y))
-
-    def _resize_scrollbar(self): self.scroll_bar.coordinates.x = self.relx(self.scroll_bar.size.x)
-        
+    
     @property
     def _collide_function(self): return collide_horizontal
         
