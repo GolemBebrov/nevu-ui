@@ -1,7 +1,7 @@
 import pygame
 import copy
 from pygame._sdl2 import Texture
-
+from functools import partial
 from nevu_ui.nevuobj import NevuObject
 from nevu_ui.window import Window
 from nevu_ui.layouts import LayoutType
@@ -52,7 +52,7 @@ class Menu:
         self._init_primary(window, style)
         if not self.window: return
         self._renderer_proxy = MenuRendererProxy(self)
-        self._renderer = BackgroundRenderer(self._renderer_proxy) #type: ignore
+        self._renderer = BackgroundRenderer(self._renderer_proxy) 
         self._borrow_from_nevuobj()
         self._borrow_from_widget()
         self._borrow_from_layout()
@@ -64,24 +64,24 @@ class Menu:
         if layout: self.layout = layout
     
     def _borrow_from_nevuobj(self):
-        self.rel = self._borrow_func(NevuObject.rel)
-        self.relm = self._borrow_func(NevuObject.relm)
-        self.relx = self._borrow_func(NevuObject.relm)
-        self.rely = self._borrow_func(NevuObject.relm)
+        self.rel = partial(NevuObject.rel, self)
+        self.relm = partial(NevuObject.relm, self) 
+        self.relx = partial(NevuObject.relm, self)
+        self.rely = partial(NevuObject.relm, self) 
     def _borrow_from_widget(self):
-        self.clear_surfaces = self._borrow_func(Widget.clear_surfaces)
-        self.clear_all = self._borrow_func(Widget.clear_all)
+        self.clear_surfaces = partial(Widget.clear_surfaces, self) #type: ignore
+        self.clear_all = partial(Widget.clear_all, self) #type: ignore
     def _borrow_from_layout(self):
         self._layout_proxy = MenuLayoutProxy(self)
-        self._convert_item_coord = self._borrow_func(LayoutType._convert_item_coord, self._layout_proxy)
-        self._parse_fillx = self._borrow_func(LayoutType._parse_fillx, self._layout_proxy)
-        self._parse_gcx = self._borrow_func(LayoutType._parse_gcx, self._layout_proxy)
-        self._parse_vx = self._borrow_func(LayoutType._parse_vx, self._layout_proxy)
-        self._percent_helper = LayoutType._percent_helper #
-        self.read_item_coords = self._borrow_func(LayoutType.read_item_coords, self._layout_proxy)
+        self._convert_item_coord = partial(LayoutType._convert_item_coord, self._layout_proxy)
+        self._parse_fillx = partial(LayoutType._parse_fillx, self._layout_proxy)
+        self._parse_gcx = partial(LayoutType._parse_gcx, self._layout_proxy)
+        self._parse_vx =  partial(LayoutType._parse_vx, self._layout_proxy)
+        self._percent_helper = partial(LayoutType._percent_helper) #
+        self.read_item_coords = partial(LayoutType.read_item_coords, self._layout_proxy)
     def _borrow_func(self, func, master = None):
         master = master or self
-        return lambda *args, **kwargs: func(master, *args, **kwargs)
+        return partial(func, master)
     
     @property
     def _texture(self): return self.cache.get_or_exec(CacheType.Texture, self.convert_texture)

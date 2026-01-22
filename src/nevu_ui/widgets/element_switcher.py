@@ -55,7 +55,7 @@ class Elements:
         return element_list
 
 class ElementSwitcher(Widget):
-    on_change: Callable | None
+    on_content_change: Callable | None
     _сurrent_index: int
     button_padding: int
     arrow_width: int
@@ -70,7 +70,7 @@ class ElementSwitcher(Widget):
 
     def _add_constants(self):
         super()._add_constants()
-        self._add_constant("on_change", (type(None), Callable), None)
+        self._add_constant("on_content_change", (type(None), Callable), None)
         self._add_constant("current_index", int, 0)
         self._add_constant("button_padding", int, 10)
         self._add_constant("arrow_width", int, 30)
@@ -182,8 +182,8 @@ class ElementSwitcher(Widget):
         self._current_index = index
         self._changed = True
         self._delayed_button_update = True
-        if self.on_change: 
-            self.on_change(self.current_element_text)
+        if self.on_content_change: 
+            self.on_content_change(self.current_element_text)
         
     @property
     def current_element(self):

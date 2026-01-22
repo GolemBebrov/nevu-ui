@@ -1,13 +1,28 @@
-import copy
+from typing import Unpack, overload
 
 from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2 
 from nevu_ui.layouts import Grid
 from nevu_ui.style import Style, default_style
+from nevu_ui.layouts import GridKwargs_uni, GridKwargs_rc, GridKwargs_xy
 
 class Row(Grid):
     content_type = dict[Grid.any_number, NevuObject]
-    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: content_type | None = None, **constant_kwargs):
+    @overload
+    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_rc]):
+        """
+        Initializes a Row object.
+        Parameters:
+        row (int | float): **WARNING: row constant cannot be changed in Row**
+        """
+    @overload
+    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_xy]): 
+        """
+        Initializes a Row object.
+        Parameters:
+        y (int | float): **WARNING: y constant cannot be changed in Row**
+        """
+    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_uni]):
         super().__init__(size, style, None, **constant_kwargs)
         self._lazy_kwargs = {'size': size, 'content': content}
         

@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Unpack, NotRequired, TypedDict
 import copy
 
+from nevu_ui.size.base import SizeRule
 from nevu_ui.widgets import Widget
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -17,6 +18,7 @@ class _StackKwargs(TypedDict):
 
 class StackKwargs(_StackKwargs, LayoutTypeKwargs): pass
 
+#Nnna nanachi approved!
 class StackBase(LayoutType, ABC):
     _margin: int | float
     content_type = list[tuple[Align, NevuObject]]
@@ -44,13 +46,16 @@ class StackBase(LayoutType, ABC):
         
     def _init_test_flags(self):
         super()._init_test_flags()
-        self._test_always_update = True
+        self._test_always_update = False
     
     def add_item(self, item: NevuObject, alignment: Align = Align.CENTER): # type: ignore
         super().add_item(item)
         self.widgets_alignment.append(alignment)
         self.cached_coordinates = None
 
+    def _parse_fillx(self, coord: SizeRule, pos: int) -> tuple[float, bool] | None:
+        raise ValueError(f"Handling for SizeRule '{type(coord).__name__}' is not supported in {type(self).__name__}")
+    
     def insert_item(self, item: Widget | LayoutType, id: int = -1):
         try:
             self.items.insert(id, item)
