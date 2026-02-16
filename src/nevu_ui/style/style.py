@@ -2,10 +2,10 @@ import copy
 from typing import TypedDict, TypeVar, NotRequired, Unpack, Generic
 
 from nevu_ui.core.enums import Align, HoverState
-from nevu_ui.rendering import Gradient
+from nevu_ui.rendering import GradientPygame
 
 from nevu_ui.color import (
-    Color, ColorThemeLibrary, ColorTheme
+    Color, ColorThemeLibrary, ColorTheme, SubThemeRole, PairColorRole
 )
 
 TV = TypeVar("TV")
@@ -52,7 +52,10 @@ class StyleKwargs(TypedDict):
     transparency: NotRequired[SVar[int]]
     bgimage: NotRequired[SVar[str]]
     colortheme: NotRequired[SVar[ColorTheme]]
-    gradient: NotRequired[SVar[Gradient]]
+    gradient: NotRequired[SVar[GradientPygame]]
+    font_role: NotRequired[SVar[PairColorRole]]
+    color_role: NotRequired[SVar[SubThemeRole]]
+    subtheme_role: NotRequired[SVar[SubThemeRole]]
     
 class Style:
     def __init__(self, **kwargs: Unpack[StyleKwargs]):
@@ -71,7 +74,10 @@ class Style:
             "transparency": ["transparency", lambda value: self.parse_int(value, max_restriction = 255, min_restriction = 0)],
             "bgimage": ["bgimage", self.parse_str],
             "colortheme": ["colortheme", lambda value: self.parse_type(value, ColorTheme)],
-            "gradient": ["gradient", lambda value: self.parse_type(value, Gradient)],
+            "gradient": ["gradient", lambda value: self.parse_type(value, GradientPygame)],
+            "color_role": ["color_role", lambda value: self.parse_type(value, SubThemeRole)],
+            "subtheme_role": ["color_role", lambda value: self.parse_type(value, SubThemeRole)],
+            "font_role": ["font_role", lambda value: self.parse_type(value, PairColorRole)],
         }
         self._curr_state = HoverState.UN_HOVERED
         self._init_basic()
@@ -107,30 +113,28 @@ class Style:
         self.transparency = None
         self.bgimage = None
         self.gradient = None
+        self.color_role = None
+        self.font_role = None
     
     def add_style_parameter(self, name: str, attribute_name: str, checker_lambda):
         self.kwargs_dict[name] = (attribute_name, checker_lambda)
         
     def parse_color(self, value, can_be_gradient: bool = False, can_be_trasparent: bool = False, can_be_string: bool = False) -> tuple[bool, tuple|None]:
-        if isinstance(value, Gradient) and can_be_gradient:
+        if isinstance(value, GradientPygame) and can_be_gradient:
             return True, None
 
-        elif isinstance(value, (tuple, list)) and (len(value) == 3 or len(value) == 4) and all(isinstance(c, int) for c in value):
-            for item in value:
-                if item < 0 or item > 255:
-                    return False, None
-            return True, None
-
+        elif isinstance(value, (tuple, list)) and len(value) in {3, 4} and all(isinstance(c, int) for c in value):
+            return next(((False, None) for item in value if item < 0 or item > 255), (True, None))
+        
         elif isinstance(value, str) and can_be_string:
             try:
                 color_value = Color[value] # type: ignore
-            except KeyError:
-                return False, None
+            except KeyError: return False, None
             else:
                 assert isinstance(color_value, tuple)
                 return True, color_value
 
-        return False, None 
+        return False, None
     
     def parse_int(self, value: int, max_restriction: int|None = None, min_restriction: int|None = None) -> tuple[bool, None]:
         if isinstance(value, int):
@@ -152,7 +156,7 @@ class Style:
     
     def _handle_kwargs(self, raise_errors: bool = False, **kwargs):
         for item_name, item_value in kwargs.items():
-            dict_value = self.kwargs_dict.get(item_name.lower().replace("_", ""), None)
+            dict_value = self.kwargs_dict.get(item_name.lower(), None)
             if dict_value is None:
                 continue
             self._handle_single_item(item_name, item_value, dict_value, raise_errors)
