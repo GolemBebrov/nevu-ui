@@ -22,12 +22,11 @@ class Column(Grid):
         x (int | float): **WARNING: x constant cannot be changed in Column**
         """
     def __init__(self, size: NvVector2 | list, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_uni]):
-        super().__init__(size, style, None, **constant_kwargs)
-        self._lazy_kwargs = {'size': size, 'content': content}
+        super().__init__(size, style, content, **constant_kwargs) # type: ignore
         
-    def _add_constants(self):
-        super()._add_constants()
-        self._block_constant("column")
+    def _add_params(self):
+        super()._add_params()
+        self._block_param("column")
         
     def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None): # type: ignore
         super()._lazy_init(size)

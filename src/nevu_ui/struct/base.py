@@ -11,7 +11,7 @@ class Config:
         self.win_config = {
             "title": "Nevu UI",
             "size": ConfigType.Window.Size.Medium,
-            "display": ConfigType.Window.Display.Classic,
+            "display": ConfigType.Window.Display.Pygame,
             "utils": ConfigType.Window.Utils.All,
             "fps": 60,
             "resizable": True,

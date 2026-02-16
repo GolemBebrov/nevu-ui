@@ -27,12 +27,12 @@ class CheckBoxGroup():
     def single_select(self): return self._single_select
 
 #=== Wrappers ===
-    def _on_toggle_multiple_wrapper(self, checkbox: RectCheckBox): self.on_multiple_toggled([c for c in self._content if c.toogled])
+    def _on_toggle_multiple_wrapper(self, checkbox: RectCheckBox): self.on_multiple_toggled([c for c in self._content if c.toggled])
     
     def _on_toggle_single_wrapper(self, checkbox: RectCheckBox):
-        if checkbox.toogled == False: return self.on_single_toggled(None)
+        if checkbox.toggled == False: return self.on_single_toggled(None)
         for item in self._content:
-            if item is not checkbox: item.toogled = False
+            if item is not checkbox: item.toggled = False
         self.on_single_toggled(checkbox)
         
 #=== Hooks ===

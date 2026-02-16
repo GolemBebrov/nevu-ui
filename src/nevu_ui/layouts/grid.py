@@ -9,7 +9,11 @@ from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2 
 from nevu_ui.layouts import LayoutType, LayoutTypeKwargs
 from nevu_ui.style import Style, default_style
-from nevu_ui.size.rules import Gc, Gcw, Gch, Cgc, Cgcw, Cgch
+from nevu_ui.layouts.typehints import GridTemplate
+
+from nevu_ui.size.rules import (
+    Gc, Gcw, Gch, Cgc, Cgcw, Cgch
+)
 
 class _Grid_Specifics_rc(TypedDict):
     row: NotRequired[int | float]
@@ -31,15 +35,17 @@ class Grid(LayoutType):
     @overload
     def __init__(self, size: NvVector2 | list, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_xy]): ...
     def __init__(self, size: NvVector2 | list, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_uni]):
-        super().__init__(size, style, **constant_kwargs)
-        self._lazy_kwargs = {'size': size, 'content': content}
-        
-    def _add_constants(self):
-        super()._add_constants()
-        self._add_constant("column", (int, float), 1)
-        self._add_constant("row", (int, float), 1)
-        self._add_constant_link("y", "row")
-        self._add_constant_link("x", "column")
+        super().__init__(size, style, content, **constant_kwargs) # type: ignore
+    
+    def _create_template(self, size: NvVector2 | list, content: content_type | None): # type: ignore
+        return GridTemplate(size, content)
+    
+    def _add_params(self):
+        super()._add_params()
+        self._add_param("column", (int, float), 1)
+        self._add_param("row", (int, float), 1)
+        self._add_param_link("y", "row")
+        self._add_param_link("x", "column")
     
     def _init_lists(self):
         super()._init_lists()
@@ -55,7 +61,7 @@ class Grid(LayoutType):
         if not content: return
         for coords, item in content.items():
             self.add_item(item, coords[0], coords[1])
-
+    
     def _regenerate_coordinates(self):
         super()._regenerate_coordinates()
         self.cached_coordinates = []
@@ -68,16 +74,22 @@ class Grid(LayoutType):
             size_adapt_vec = (c_vec - item._csize) / 2
             coordinates = coords_marg_vec + curr_cell_vec + size_adapt_vec
             item.coordinates = coordinates
-            item.absolute_coordinates = self._get_item_master_coordinates(item)
+            item.absolute_coordinates = self._get_item_abs_coords(item)
             self.cached_coordinates.append(coordinates)
             
     def secondary_update(self, *args):
         super().secondary_update()
-        self.base_light_update()
+        self._base_light_update()
+        #print(self, self.get_param_strict("id").value)
+        #if self.get_param_value("id") == "secret_test":
+        #    print(self.coordinates)
+        #    print("--")
+        #    print(self.absolute_coordinates)
+        #    print(self.items, self.cached_coordinates)
 
     def _parse_gcx(self, coord, pos: int): # type: ignore
         if self.first_parent_menu is None: raise self._unconnected_layout_error("Gcx coords")
-        if self.first_parent_menu.window is None: raise self._uninitialized_layout_error("Gcx coords")
+        if self.first_parent_menu._window is None: raise self._uninitialized_layout_error("Gcx coords")
         if type(coord) == Gc: return self._percent_helper((self.cell_width, self.cell_height)[pos], coord.value), True
         elif type(coord) == Gcw: return self._percent_helper((self.cell_width), coord.value), True
         elif type(coord) == Gch: return self._percent_helper((self.cell_height), coord.value), True

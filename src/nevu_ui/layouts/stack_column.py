@@ -24,6 +24,6 @@ class StackColumn(StackBase):
             item, alignment = self.items[i], self.widgets_alignment[i]
             item.coordinates.y = self.coordinates.y + (current_y + m / 2)
             self._set_align_coords(item, alignment)
-            item.absolute_coordinates = self._get_item_master_coordinates(item)
+            item.absolute_coordinates = self._get_item_abs_coords(item)
             current_y += self.rely(item.size.y + self.spacing)
             self.cached_coordinates.append(item.coordinates)

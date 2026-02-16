@@ -20,11 +20,9 @@ class StackKwargs(_StackKwargs, LayoutTypeKwargs): pass
 
 #Nnna nanachi approved!
 class StackBase(LayoutType, ABC):
-    _margin: int | float
     content_type = list[tuple[Align, NevuObject]]
     def __init__(self, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[StackKwargs]):
-        super().__init__(NvVector2(), style, None, **constant_kwargs)
-        self._lazy_kwargs = {'size': NvVector2(), 'content': content}
+        super().__init__(NvVector2(), style, content, **constant_kwargs)
         
     def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None):
         super()._lazy_init(size, content)
@@ -40,10 +38,17 @@ class StackBase(LayoutType, ABC):
         super()._init_lists()
         self.widgets_alignment = []
         
-    def _add_constants(self):
-        super()._add_constants()
-        self._add_constant("spacing",(int, float), 10)
-        
+    def _add_params(self):
+        super()._add_params()
+        self._add_param("spacing",(int, float), 10)
+    
+    def _init_numerical(self):
+        super()._init_numerical()
+        self._bugfix1 = 2
+    
+    def _clear_cached_coordinates(self):
+        super()._clear_cached_coordinates()
+    
     def _init_test_flags(self):
         super()._init_test_flags()
         self._test_always_update = False
@@ -71,20 +76,22 @@ class StackBase(LayoutType, ABC):
     def _connect_to_menu(self, menu: Menu):
         super()._connect_to_menu(menu)
         self._recalculate_widget_coordinates() 
-        
+    
     def _on_item_add(self, item: NevuObject):
+        #print(self, item)
         if not self.booted:
             self.cached_coordinates = None
             if self.layout: self.layout.cached_coordinates = None 
             return
         self._recalculate_size()
+        if self.layout: self.layout._on_item_add(item)
         
     def secondary_update(self, *args):
         super().secondary_update()
-        self.base_light_update()
-        
-    def secondary_draw(self):
-        super().secondary_draw()
+        self._base_light_update()
+    
+    def _secondary_draw(self):
+        super()._secondary_draw()
         for item in self.items:
             assert isinstance(item, (Widget, LayoutType))
             if not item.booted:
@@ -94,9 +101,9 @@ class StackBase(LayoutType, ABC):
             self._draw_widget(item)
             
     @property
-    def spacing(self): return self._spacing
+    def spacing(self): return self.get_param_strict("spacing").value
     @spacing.setter
-    def spacing(self, val): self._spacing = val
+    def spacing(self, val): self.set_param_value("spacing", val)
         
     def _regenerate_coordinates(self):
         super()._regenerate_coordinates()
@@ -104,7 +111,7 @@ class StackBase(LayoutType, ABC):
         self._recalculate_widget_coordinates()
     
     def _create_clone(self):
-        return self.__class__(copy.deepcopy(self.style), copy.deepcopy(self._lazy_kwargs['content']), **self.constant_kwargs)
+        return self.__class__(copy.deepcopy(self.style), copy.deepcopy(self._template['content']), **self.constant_kwargs)
 
 #=== Placeholders ===
     @abstractmethod
