@@ -1,29 +1,14 @@
 import pygame
 import copy
+from typing import Unpack, override
 
 from nevu_ui.utils import mouse
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.core.state import nevu_state
-from nevu_ui.widgets import Widget, WidgetKwargs
+from nevu_ui.widgets import Widget, InputKwargs
 from nevu_ui.style import Style, default_style
 
-from typing import (
-    NotRequired, Unpack, override
-)
-
-class InputKwargs(WidgetKwargs):
-    is_active: NotRequired[bool]
-    multiple: NotRequired[bool]
-    allow_paste: NotRequired[bool]
-    words_indent: NotRequired[bool]
-    max_characters: NotRequired[int | None]
-    blacklist: NotRequired[list | None]
-    whitelist: NotRequired[list | None]
-    padding: NotRequired[list | tuple]
-
 class Input(Widget):
-    blacklist: list | None
-    whitelist: list | None
     max_characters: int | None
     multiple: bool
     allow_paste: bool
@@ -93,17 +78,26 @@ class Input(Widget):
         self._text_surface = None
         self._text_rect = pygame.Rect(0, 0, 0, 0)
         
-    def _add_constants(self):
-        super()._add_constants()
-        self._add_constant("is_active", bool, True)
-        self._add_constant("multiple", bool, False)
-        self._add_constant("allow_paste", bool, True)
-        self._add_constant("words_indent", bool, False)
-        self._add_constant("max_characters", (int, type(None)), None)
-        self._add_constant("blacklist", (list, type(None)), None)
-        self._add_constant("whitelist", (list, type(None)), None)
-        self._add_constant("padding", (list, tuple), (0,0,0,0))
-        
+    def _add_params(self):
+        super()._add_params()
+        self._add_param("is_active", bool, True)
+        self._add_param("multiple", bool, False)
+        self._add_param("allow_paste", bool, True)
+        self._add_param("words_indent", bool, False)
+        self._add_param("max_characters", (int, type(None)), None)
+        self._add_param("blacklist", (list, type(None)), None)
+        self._add_param("whitelist", (list, type(None)), None)
+        self._add_param("padding", (list, tuple), (0,0,0,0))
+    
+    @property
+    def whitelist(self): return self.get_param_strict("whitelist").value
+    @whitelist.setter
+    def whitelist(self, value): self.set_param_value("whitelist", value)
+    @property
+    def blacklist(self): return self.get_param_strict("blacklist").value
+    @blacklist.setter
+    def blacklist(self, value): self.set_param_value("blacklist", value)
+    
     def _lazy_init(self, size: NvVector2 | list):
         super()._lazy_init(size)
         self._init_cursor()
@@ -122,7 +116,7 @@ class Input(Widget):
     def _get_line_height(self):
         try:
             if not hasattr(self, '_style') or not self.style.fontname: raise AttributeError("Font not ready")
-            return self.get_font().get_height()
+            return self.get_pygame_font().get_height()
         except (pygame.error, AttributeError) as e: raise e
         
     def _get_cursor_line_col(self) -> NvVector2:
@@ -153,7 +147,7 @@ class Input(Widget):
         if not hasattr(self,'style'): return
         if not hasattr(self, 'surface'): return
         try:
-            renderFont = self.get_font()
+            renderFont = self.get_pygame_font()
             cursor_grid = self._get_cursor_line_col()
             lines = self._entered_text.split('\n')
             curr_line_text = lines[int(cursor_grid.x)] if cursor_grid.x < len(lines) else ""
@@ -188,7 +182,7 @@ class Input(Widget):
 
     @override
     def bake_text(self, text: str, words_indent = False, continuous = False, multiline_mode = False): # type: ignore
-        renderFont = self.get_font()
+        renderFont = self.get_pygame_font()
         line_height = int(self._get_line_height())
         
         if continuous:
@@ -289,8 +283,8 @@ class Input(Widget):
         else: self.bake_text(text_to_render, continuous=True)
         self._update_scroll_offset_x()
         
-    def resize(self, resize_ratio: NvVector2):
-        super().resize(resize_ratio)
+    def _resize(self, resize_ratio: NvVector2):
+        super()._resize(resize_ratio)
         self._init_cursor()
         self._right_bake_text()
         
@@ -439,11 +433,11 @@ class Input(Widget):
         super()._on_click_system()
         self.check_selected()
     
-    def event_update(self, events: list | None = None):
+    def _event_update(self, events: list | None = None):
         events = nevu_state.current_events
         if events is None: events = []
         
-        super().event_update(events)
+        super()._event_update(events)
         def off_selection(self): self.selected = False; self._changed = True
         if not self.is_active:
             if self.selected: off_selection(self)
@@ -525,7 +519,7 @@ class Input(Widget):
         self.selected = True
         self._changed = True
         try:
-            renderFont = self.get_font()
+            renderFont = self.get_pygame_font()
             relative_vec = mouse.pos - self.absolute_coordinates
             lt_marg_vec = self.rel(self.lt_margin)
             cropped_vec = relative_vec - lt_marg_vec
@@ -554,7 +548,7 @@ class Input(Widget):
         original_text = self._entered_text
         if not self.multiple:
             text = text.replace('\r\n', ' ').replace('\r', ' ').replace('\n', ' ')
-
+        print("setted", text)
         if self.max_characters is not None: text = text[:self.max_characters]
         self._entered_text = text
         self.cursor_place = min(len(self._entered_text), self.cursor_place)
@@ -573,7 +567,7 @@ class Input(Widget):
         if not self._changed: return
         assert self.surface
         try:
-            renderFont = self.get_font()
+            renderFont = self.get_pygame_font()
             if not renderFont: raise AttributeError
             line_height = self._get_line_height()
             cursor_height = self.cursor.get_height()

@@ -1,27 +1,19 @@
 import copy
 import contextlib
 
+from typing import (
+    Callable, Any, Unpack
+)
+
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.utils import keyboard
+from nevu_ui.core.enums import HoverState
 from nevu_ui.style import Style, default_style
-from nevu_ui.core.enums import CacheType, HoverState
 
 from nevu_ui.widgets import (
-    Widget, Button, WidgetKwargs
+    Widget, Button, ElementSwitcherKwargs
 )
-from typing import (
-    Callable, Any, NotRequired, Unpack
-)
-
-class ElementSwitcherKwargs(WidgetKwargs):
-    on_change: NotRequired[Callable | None]
-    current_index: NotRequired[int]
-    button_padding: NotRequired[int]
-    arrow_width: NotRequired[int]
-    left_text: NotRequired[str]
-    left_key: NotRequired[Any]
-    right_text: NotRequired[str]
-    right_key: NotRequired[Any]
+from nevu_ui.widgets import ElementSwitcherTemplate
 
 class Element:
     __slots__ = ["text", "id"]
@@ -66,19 +58,19 @@ class ElementSwitcher(Widget):
     offset_perc: NvVector2
     def __init__(self, size: NvVector2 | list, elements: list[Element | Any | list] | None = None, style: Style = default_style, **constant_kwargs: Unpack[ElementSwitcherKwargs]):
         super().__init__(size, style, **constant_kwargs)
-        self._lazy_kwargs = {'size': size, 'elements': elements}
+        self._template = ElementSwitcherTemplate(size, elements)
 
-    def _add_constants(self):
-        super()._add_constants()
-        self._add_constant("on_content_change", (type(None), Callable), None)
-        self._add_constant("current_index", int, 0)
-        self._add_constant("button_padding", int, 10)
-        self._add_constant("arrow_width", int, 30)
-        self._add_constant("left_text", (str), "<")
-        self._add_constant("left_key", Any, None)
-        self._add_constant("right_text", (str), ">")
-        self._add_constant("right_key", Any, None)
-        self._add_constant("offset_perc", NvVector2, NvVector2(2,2))
+    def _add_params(self):
+        super()._add_params()
+        self._add_param("on_content_change", (type(None), Callable), None)
+        self._add_param("current_index", int, 0)
+        self._add_param("button_padding", int, 10)
+        self._add_param("arrow_width", int, 30)
+        self._add_param("left_text", (str), "<")
+        self._add_param("left_key", Any, None)
+        self._add_param("right_text", (str), ">")
+        self._add_param("right_key", Any, None)
+        self._add_param("offset_perc", NvVector2, NvVector2(2,2))
 
     def _init_booleans(self):
         super()._init_booleans()
@@ -102,8 +94,8 @@ class ElementSwitcher(Widget):
     @property
     def _button_hovered(self): return self.button_left.hover_state in [HoverState.HOVERED, HoverState.CLICKED] or self.button_right.hover_state in [HoverState.HOVERED, HoverState.CLICKED]
     
-    def logic_update(self):
-        super().logic_update()
+    def _logic_update(self):
+        super()._logic_update()
         with contextlib.suppress(Exception):
             if not self._global_hovered: return
             if keyboard.is_fdown(self.left_key):
@@ -166,20 +158,20 @@ class ElementSwitcher(Widget):
     
     def _resize_buttons(self):
         self._shape_buttons_radius(self.rely(0.5))
-        self.button_left.resize(self._resize_ratio)
-        self.button_right.resize(self._resize_ratio)
+        self.button_left._resize(self._resize_ratio)
+        self.button_right._resize(self._resize_ratio)
 
-    def resize(self, resize_ratio: NvVector2):
-        super().resize(resize_ratio)
+    def _resize(self, resize_ratio: NvVector2):
+        super()._resize(resize_ratio)
         self._position_buttons()
         self._resize_buttons()
         self._delayed_button_update = True
         
     @property
-    def current_index(self): return self._current_index
+    def current_index(self): return self.get_param_strict("current_index").value
     @current_index.setter
     def current_index(self, index: int):
-        self._current_index = index
+        self.set_param_value("current_index", index)
         self._changed = True
         self._delayed_button_update = True
         if self.on_content_change: 
@@ -247,8 +239,8 @@ class ElementSwitcher(Widget):
     def _set_master_coordinates(self, button: Button):
         button.absolute_coordinates = self.absolute_coordinates + button.coordinates
     
-    def primary_draw(self):
-        super().primary_draw()
+    def _primary_draw(self):
+        super()._primary_draw()
         if self._changed:
             self.button_left.surface = self.surface
             self.button_right.surface = self.surface 
@@ -279,4 +271,4 @@ class ElementSwitcher(Widget):
         self.button_left.draw()
         self.button_right.draw()
 
-    def clone(self): return ElementSwitcher(self._lazy_kwargs['size'], copy.deepcopy(self._lazy_kwargs['elements']), copy.deepcopy(self.style), **self.constant_kwargs)
+    def clone(self): return ElementSwitcher(self._template['size'], copy.deepcopy(self._template['elements']), copy.deepcopy(self.style), **self.constant_kwargs)

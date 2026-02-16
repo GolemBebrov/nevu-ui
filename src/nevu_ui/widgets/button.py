@@ -1,32 +1,24 @@
 import copy
-
-from typing import NotRequired, Unpack, Callable
+from typing import Unpack, Callable
 
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.widgets import Label, LabelKwargs
+from nevu_ui.widgets import Label, ButtonKwargs
 from nevu_ui.style import Style, default_style
 
-class ButtonKwargs(LabelKwargs):
-    is_active: NotRequired[bool]
-    throw_errors: NotRequired[bool]
-
 class Button(Label):
-    throw_errors: bool
-    is_active: bool
-    
     def __init__(self, function: Callable, text: str, size: NvVector2 | list, style: Style = default_style, **constant_kwargs: Unpack[ButtonKwargs]):
         super().__init__(text, size, style, **constant_kwargs)
         self.function = function
         
     def _init_booleans(self):
         super()._init_booleans()
-        self.clickable = True
-        self.hoverable = True
-        
-    def _add_constants(self):
-        super()._add_constants()
-        self._add_constant("is_active", bool, True)
-        self._add_constant("throw_errors", bool, False)
+    
+    def _add_params(self):
+        super()._add_params()
+        self._add_param("is_active", bool, True)
+        self._add_param("throw_errors", bool, False)
+        self._change_param_default("hoverable", True)
+        self._change_param_default("clickable", True)
 
     def _on_click_system(self):
         super()._on_click_system()
@@ -36,4 +28,4 @@ class Button(Label):
                 if self.throw_errors: raise e
                 else: print(e)
                 
-    def clone(self): return Button(self.function, self._lazy_kwargs['text'], self._lazy_kwargs['size'], copy.deepcopy(self.style), **self.constant_kwargs)
+    def _create_clone(self): return Button(self.function, self._template['text'], self._template['size'], copy.deepcopy(self.style), **self.constant_kwargs)

@@ -1,25 +1,12 @@
 import copy
+from typing import Unpack
 
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.nevuobj.nevuobj import NevuObject
-from nevu_ui.widgets import WidgetKwargs, Widget
 from collections.abc import Callable
 from nevu_ui.core.enums import EventType
-
-from typing import Any, TypedDict, NotRequired, Unpack, Union
-
-
-from nevu_ui.style import (
-    Style, default_style
-)
-
-class RectCheckBoxKwargs(WidgetKwargs):
-    function: NotRequired[Callable | None]
-    on_toogle: NotRequired[Callable | None]
-    toogled: NotRequired[bool]
-    active: NotRequired[bool]
-    active_rect_factor: NotRequired[Union[float, int]]
-    active_factor: NotRequired[Union[float, int]]
+from nevu_ui.widgets import RectCheckBoxKwargs, Widget
+from nevu_ui.style import Style, default_style
 
 class RectCheckBox(Widget):
     function: Callable | None
@@ -29,42 +16,46 @@ class RectCheckBox(Widget):
         
     def _init_booleans(self):
         super()._init_booleans()
-        self._toogled = False
         self._supports_tuple_borderradius = False
         
-    def _add_constants(self):
-        super()._add_constants()
-        self._add_constant("function", (type(None), Callable), None)
-        self._add_constant_link("on_toggle", "function")
-        self._add_constant("toggled", bool, False)
-        self._add_constant_link("active", "toggled")
-        self._add_constant("active_rect_factor", (float, int), 0.8)
-        self._add_constant_link("active_factor", "active_rect_factor")
+    def _add_params(self):
+        super()._add_params()
+        self._add_param("function", (type(None), Callable), None)
+        self._add_param_link("on_toggle", "function")
+        self._add_param("toggled", bool, False)
+        self._add_param_link("active", "toggled")
+        self._add_param("active_rect_factor", (float, int), 0.8)
+        self._add_param_link("active_factor", "active_rect_factor")
+        self._change_param_default("hoverable", True)
 
     @property
     def active_rect_factor(self):
-        return self._active_rect_factor
+        return self.get_param_strict("active_rect_factor").value
     
     @active_rect_factor.setter
     def active_rect_factor(self, value: float | int):
-        self._active_rect_factor = value
+        self.set_param_value("active_rect_factor", value)
         self._changed = True
 
-    @property
-    def toogled(self):
-        return self._toogled
+    def _change(self):
+        self._on_style_change()
     
-    @toogled.setter
-    def toogled(self,value: bool):
-        self._toogled = value
+    @property
+    def toggled(self):
+        return self.get_param_strict("toggled").value
+    
+    @toggled.setter
+    def toggled(self,value: bool):
+        self.set_param_value("toggled", value)
         self._changed = True
+        self.clear_surfaces()
         if self.function: self.function(value)
         if hasattr(self, "cache"):
             self.clear_texture()
         
     def secondary_draw_content(self):
         super().secondary_draw_content()
-        if self._changed and self._toogled:
+        if self._changed and self.toggled:
             margin = (self._csize * (1 - self.active_rect_factor)) / 2
             margin.to_round()
             offset = NvVector2(margin.x, margin.y)
@@ -82,12 +73,13 @@ class RectCheckBox(Widget):
             self.clear_texture()
             
     def _on_click_system(self):
-        self.toogled = not self.toogled
+        self.toggled = not self.toggled
         super()._on_click_system()
+        
     
     def _create_clone(self):
-        self.constant_kwargs['events'] = self._events.copy()
-        return self.__class__(self._lazy_kwargs['size'].x, copy.deepcopy(self.style), **self.constant_kwargs) # type: ignore
+        self.constant_kwargs['events'] = self.get_param_strict("events").value.copy()
+        return self.__class__(self._template['size'].x, copy.deepcopy(self.style), **self.constant_kwargs) # type: ignore
     
     def _on_copy_system(self, clone: NevuObject): # type: ignore
         super()._on_copy_system(clone, no_cache=True)

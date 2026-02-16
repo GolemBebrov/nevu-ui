@@ -1,35 +1,19 @@
-import copy
 import pygame
+import pyray as rl
+from typing import Unpack
 
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.widgets import Widget, WidgetKwargs
 from nevu_ui.utils import mouse
 from nevu_ui.widgets.progress_bar import ProgressBar
+from nevu_ui.core.state import nevu_state
 from nevu_ui.core.enums import Align, ConstantLayer
 from nevu_ui.color import TupleColorRole, PairColorRole
-
-from typing import Any, TypedDict, NotRequired, Unpack, Union
-
-from nevu_ui.style import (
-    Style, default_style
-)
-
-class SliderKwargs(WidgetKwargs):
-    start: NotRequired[Union[int, float]]
-    end: NotRequired[Union[int, float]]
-    step: NotRequired[Union[int, float]]
-    current_value: NotRequired[Any]
-    progress_style: NotRequired[Style | None]
-    padding_x: NotRequired[int]
-    padding_y: NotRequired[int]
-    tuple_role: NotRequired[TupleColorRole]
-    bar_pair_role: NotRequired[PairColorRole]
+from nevu_ui.widgets import Widget, SliderKwargs
+from nevu_ui.fast.nvrect import NvRect
+from nevu_ui.style import Style, default_style
 
 class Slider(Widget):
     progress_style: Style
-    start: float | int
-    end: float | int
-    step: float | int
     padding_x: int
     padding_y: int
     tuple_role: TupleColorRole
@@ -49,15 +33,20 @@ class Slider(Widget):
         self._create_font()
     
     def _on_progress_bar_change(self):
-        self.progress_bar.surface.fill((0,0,0,0))
-        self._create_surf()
+        if nevu_state.window.is_dtype.raylib:
+            rl.begin_texture_mode(self.progress_bar.surface)
+            nevu_state.window.display.clear(rl.BLANK)
+            rl.end_texture_mode()
+        else:
+            self.progress_bar.surface.fill((0,0,0,0))
+            self._create_surf()
     
     def create_progress_bar(self):
         assert self.surface
-        self.progress_bar_surf = self.surface.copy()
+        
         progress_style = self.progress_style or self.style
-        self.progress_bar = ProgressBar(self.size, progress_style, min_value = self.start, max_value = self.end, value = self.current_value, inline=True, alt = self.alt, role=self.bar_pair_role, z=-999)
-        self.progress_bar.surface = self.progress_bar_surf
+        self.progress_bar = ProgressBar(self.size, progress_style, min_value = self.start, max_value = self.end, value = self.current_value, alt = self.alt, role=self.bar_pair_role, z=-999)
+        
         self.progress_bar._on_change_system = self._on_progress_bar_change
         self.progress_bar._on_value_change_system = self._on_progress_bar_change
         self.progress_bar._init_start()
@@ -75,11 +64,20 @@ class Slider(Widget):
     def _init_objects(self):
         super()._init_objects()
         self.progress_bar_surf = None
-    
+        
+    def _on_hover_system(self):
+        super()._on_hover_system()
+        self.progress_bar._hover()
+        self._create_surf()
+    def _on_unhover_system(self):
+        super()._on_unhover_system()
+        self.progress_bar._unhover()
+        self._create_surf()
     def _on_click_system(self):
         super()._on_click_system()
         self.dragging = True
         self.progress_bar._click()
+        self._create_surf()
     def _on_keyup_system(self):
         super()._on_keyup_system()
         self.dragging = False
@@ -89,34 +87,42 @@ class Slider(Widget):
         self.dragging = False
         self.progress_bar._kup_abandon()
     
-    def _add_constants(self):
-        super()._add_constants()
-        self._add_constant("start", (int, float), 0, layer = ConstantLayer.Top)
-        self._add_constant("end", (int, float), 100, layer = ConstantLayer.Top)
-        self._add_constant("step", (int, float), 1)
-        self._add_constant("current_value", (int, float), 0, self.current_value_getter, self.current_value_setter, layer=ConstantLayer.Top)
-        self._add_constant("progress_style", (Style, type(None)), None)
-        self._add_constant("padding_x", int, 10)
-        self._add_constant("padding_y", int, 10)
-        self._add_constant("tuple_role", TupleColorRole, TupleColorRole.INVERSE_PRIMARY)
-        self._add_constant("bar_pair_role", PairColorRole, PairColorRole.BACKGROUND)
-     
+    def _add_params(self):
+        super()._add_params()
+        self._add_param("start", (int, float), 0)
+        self._add_param("end", (int, float), 100)
+        self._add_param("step", (int, float), 1)
+        self._add_param("current_value", (int, float), 0, layer=ConstantLayer.Lazy)
+        self._add_param("progress_style", (Style, type(None)), None)
+        self._add_param("padding_x", int, 10)
+        self._add_param("padding_y", int, 10)
+        self._add_param("tuple_role", TupleColorRole, TupleColorRole.INVERSE_PRIMARY)
+        self._add_param("bar_pair_role", PairColorRole, PairColorRole.BACKGROUND)
+    
+    @property
+    def start(self): return self.get_param_strict("start").value
+    @property
+    def end(self): return self.get_param_strict("end").value
+    @property
+    def step(self): return self.get_param_strict("step").value
+    
     def _on_style_change_additional(self):
         super()._on_style_change_additional()
         if hasattr(self, "progress_bar"): self.progress_bar._changed = True
         
-    def current_value_getter(self) -> float | int:
-        return self.progress_bar.value if hasattr(self, "progress_bar") else 0
-
-    def current_value_setter(self, new_value: float | int):
-        if hasattr(self, "progress_bar"): 
+    @property
+    def current_value(self) -> float | int:
+        return self.progress_bar.value if hasattr(self, "progress_bar") and self.progress_bar else 0
+    @current_value.setter
+    def current_value(self, new_value: float | int):
+        if hasattr(self, "progress_bar") and self.progress_bar: 
             self.progress_bar.set_progress_by_value(new_value)
             self._changed = True
         else:
             self._constant_current_val = new_value
     
-    def logic_update(self):
-        super().logic_update()
+    def _logic_update(self):
+        super()._logic_update()
         if not self.active: return
         if self._constant_current_val and hasattr(self, "progress_bar"):
             self.current_value = self._constant_current_val
@@ -146,20 +152,33 @@ class Slider(Widget):
             self.current_value = value
             self._create_font()
             
-    def primary_draw(self): pass
+    def _primary_draw(self): pass
     
     def _create_surf(self):
-        assert self.surface and self.progress_bar_surf
+        assert self.surface and self.progress_bar.surface
         if not (self._text_surface or self._text_rect):
             self._create_font()
+        assert self._text_surface, self._text_rect
         self.clear_texture()
-        self.surface.fill((0,0,0,0))
-        self.surface.blit(self.progress_bar_surf, (0,0))
-        self.surface.blit(self._text_surface, self._text_rect)
+        self.adjust_text_rect()
+        if nevu_state.window.is_dtype.raylib:
+            display = nevu_state.window.display
+            assert nevu_state.window.is_raylib(display)
+            
+            rl.begin_texture_mode(self.surface)
+            display.clear(rl.BLANK)
+            display.blit(self.progress_bar.surface.texture, (0,0))
+            display.blit(self._text_surface.texture, self._text_rect)
+            rl.end_texture_mode()
+        else:
+            self.surface.fill((0,0,0,0))
+            self.surface.blit(self.progress_bar.surface, (0,0))
+            self.surface.blit(self._text_surface, self._text_rect)
         
     def _create_font(self):
         #print(self.style.colortheme.get_tuple(self.tuple_role))
-        self.renderer.bake_text(str(round(self.progress_bar.progress*100)), style=self.progress_bar.style, color=self.style.colortheme.get_tuple(self.tuple_role))
+        print(str(round(self.current_value)))
+        self.renderer.bake_text(str(round(self.current_value)), style=self.progress_bar.style, color=self.style.colortheme.get_tuple(self.tuple_role))
     
     def _after_state_change_system(self):
         super()._after_state_change_system()
@@ -178,7 +197,7 @@ class Slider(Widget):
             if not self._text_surface:
                 self._create_font()
             assert self._text_surface and self._text_rect
-            self.adjust_text_rect()
+            
             self._create_surf()
     
     def adjust_text_rect(self):
@@ -202,13 +221,12 @@ class Slider(Widget):
             case Align.BOTTOM: 
                 pady = -self.padding_y - border_size.y
         
-        assert isinstance(self._text_rect, pygame.Rect)
+        if isinstance(self._text_rect, tuple):
+            self._text_rect = NvRect(*self._text_rect)
         self._text_rect.move_ip(padx, pady)
     
-    def resize(self, resize_ratio: NvVector2):
-        super().resize(resize_ratio)
+    def _resize(self, resize_ratio: NvVector2):
+        super()._resize(resize_ratio)
         assert self.surface
         self._create_font()
-        self.progress_bar_surf = self.surface.copy()
-        self.progress_bar.resize(resize_ratio)
-        self.progress_bar.surface = self.progress_bar_surf
+        self.progress_bar._resize(resize_ratio)

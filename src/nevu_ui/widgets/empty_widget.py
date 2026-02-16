@@ -8,4 +8,4 @@ class EmptyWidget(Widget):
     def __init__(self, size: NvVector2 | list, **constant_kwargs: Unpack[WidgetKwargs]):
         super().__init__(size, default_style, **constant_kwargs)
     def draw(self): pass
-    def clone(self): return EmptyWidget(self._lazy_kwargs['size'], **self.constant_kwargs)
+    def clone(self): return EmptyWidget(self._template['size'], **self.constant_kwargs)

@@ -1,28 +1,16 @@
-import copy
 import pygame
 import math
-
-from typing import (
-    NotRequired, Unpack, Union
-)
+from typing import Unpack
+import pyray as rl
 
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.widgets import Widget, WidgetKwargs
+from nevu_ui.core.enums import ConstantLayer
+from nevu_ui.core.state import nevu_state
 from nevu_ui.color import PairColorRole
 from nevu_ui.style import Style, default_style
-from nevu_ui.core.enums import ConstantLayer
-
-class ProgressBarKwargs(WidgetKwargs):
-    min_value: NotRequired[Union[int, float]]
-    min: NotRequired[Union[int, float]]
-    max_value: NotRequired[Union[int, float]]
-    max: NotRequired[Union[int, float]]
-    value: NotRequired[Union[int, float]]
-    color_pair_role: NotRequired[PairColorRole]
-    role: NotRequired[PairColorRole]
+from nevu_ui.widgets import Widget, ProgressBarKwargs
 
 class ProgressBar(Widget):
-    min_value: int | float
     max_value: int | float
     _current_value: int | float
     color_pair_role: PairColorRole
@@ -63,15 +51,15 @@ class ProgressBar(Widget):
         self._changed_value = False
         self._supports_tuple_borderradius = False
     
-    def _add_constants(self):
-        super()._add_constants()
-        self._add_constant("min_value", (int, float), 0, layer=ConstantLayer.Top)
-        self._add_constant_link("min", "min_value")
-        self._add_constant("max_value", (int, float), 100, layer=ConstantLayer.Top)
-        self._add_constant_link("max", "max_value")
-        self._add_constant("value", (int, float), 0, getter=self.value_getter, setter=self.value_setter, layer=ConstantLayer.Top)
-        self._add_constant("color_pair_role", PairColorRole, PairColorRole.BACKGROUND)
-        self._add_constant_link("role", "color_pair_role")
+    def _add_params(self):
+        super()._add_params()
+        self._add_param("min_value", (int, float), 0, layer=ConstantLayer.Top)
+        self._add_param_link("min", "min_value")
+        self._add_param("max_value", (int, float), 100, layer=ConstantLayer.Top)
+        self._add_param_link("max", "max_value")
+        self._add_param("value", (int, float), 0, getter=self.value_getter, setter=self.value_setter, layer=ConstantLayer.Top)
+        self._add_param("color_pair_role", PairColorRole, PairColorRole.BACKGROUND)
+        self._add_param_link("role", "color_pair_role")
         
     @property
     def progress(self): return self._progress
@@ -79,15 +67,29 @@ class ProgressBar(Widget):
     def progress(self, value):
         self._progress = value
         self.value = self.min_value + (self.max_value - self.min_value) * self._progress
-        
+    
+    @property
+    def min_value(self): return self.get_param_strict("min_value").value
+    @min_value.setter
+    def min_value(self, value): self.set_param_value("min_value", value)
+    @property
+    def max_value(self): return self.get_param_strict("max_value").value
+    @max_value.setter
+    def max_value(self, value): self.set_param_value("max_value", value)
+    @property
+    def value(self): return self.get_param_strict("value").value
+    @value.setter
+    def value(self, value): self.set_param_value("value", value)
+    
     def set_progress_by_value(self, value: int | float):
+        print(value)
+        print(self.min_value, self.max_value)
         self.progress = (value - self.min_value) / (self.max_value - self.min_value)
+        print(self.progress)
         
-    def value_getter(self): return self._current_value
+    def value_getter(self): return self.get_param_strict("value").value
     def value_setter(self, value): 
-        #if hasattr(self, "_current_value") and self._current_value == value:  WARNING: not work as expected
-        #    return "Hui sosi pyaniy checker tipov"
-        self._current_value = value
+        self.get_param_strict("value").value = value
         self._changed_value = True
         if not hasattr(self, "_progress"):
             self.set_progress_by_value(value)
@@ -111,18 +113,34 @@ class ProgressBar(Widget):
     def _alt_subtheme_progress(self):
         return self.style.colortheme.get_pair(self.color_pair_role).oncolor
     
-    def primary_draw(self):
-        super().primary_draw()
+    def _primary_draw(self):
+        super()._primary_draw()
         if self._changed and self.surface:
-            self.bgsurface = pygame.Surface(self.surface.get_size(), pygame.SRCALPHA)
-            self.bgsurface.blit(self.surface, (0,0))
-            self.surface.fill((0,0,0,0))
+            if nevu_state.window.is_dtype.raylib:
+                if self.bgsurface: rl.unload_render_texture(self.bgsurface)
+                self.bgsurface = rl.load_render_texture(self.surface.texture.width, self.surface.texture.height)
+                rl.begin_texture_mode(self.bgsurface)
+                nevu_state.window.display.clear(rl.BLANK)
+                nevu_state.window.display.blit(self.surface.texture, (0,0))
+                rl.end_texture_mode()
+            else:
+                self.bgsurface = pygame.Surface(self.surface.get_size(), pygame.SRCALPHA)
+                self.bgsurface.blit(self.surface, (0,0))
+                self.surface.fill((0,0,0,0))
             self._changed_value = True
             self.clear_texture()
     
     def _create_surface(self, bar_surf, coords):
         assert self.surface
         self.clear_texture()
+        if nevu_state.window.is_dtype.raylib:
+            rl.begin_texture_mode(self.surface)
+            nevu_state.window.display.clear(rl.BLANK)
+            nevu_state.window.display.blit(self.bgsurface.texture, (0,0))
+            nevu_state.window.display.blit(bar_surf.texture, coords)
+            rl.end_texture_mode()
+            rl.unload_render_texture(bar_surf)
+            return
         self.surface.blit(self.bgsurface, (0,0))
         self.surface.blit(bar_surf, coords)
     
@@ -134,8 +152,10 @@ class ProgressBar(Widget):
         size = NvVector2(math.ceil(inner_vec.x * self.progress) + 2, inner_vec.y + 2)
         bw = math.ceil(self.relm(self.style.borderwidth))
         radius = self.relm(self.style.borderradius) - bw
-        min_side = min(self._rsize.x, self._rsize.y) / 2
-        radius = min(min_side,max(radius, 0))
+        min_side = min(self._rsize.x // 2, self._rsize.y // 2)
+        print("ZOOOOOOPAAAAAAA ", min_side, radius)
+        radius = min(min_side, max(radius, 0))
+        print(radius)
         
         y_decrease = 0
         if size.x / 2 < radius:
@@ -144,6 +164,9 @@ class ProgressBar(Widget):
         
         if size.x <= 0 or size.y <= 0: return
         
+        if isinstance(radius, int | float):
+            radius = min(size.x / 2, size.y / 2, radius)
+            radius = tuple((radius, radius, radius, radius))
         surf = self.renderer._create_surf_base(
             size, 
             override_color=self._subtheme_progress, 
