@@ -1,36 +1,38 @@
 import pygame 
-import moderngl
-import numpy as np
-
-from pygame._sdl2.video import (
-    Window as SDL2Window, Renderer, Texture
-)
-
+import pyray as rl
+from pygame._sdl2.video import (Window as SDL2Window, Renderer, Texture)
 from nevu_ui.color.color import ColorAnnotation
-from nevu_ui.core.state import nevu_state
+from nevu_ui.fast.shaders import SdfShader, BorderShader
+from nevu_ui.fast.nvrect import NvRect
+
+class DisplayAnnotation:
+    RectLike = tuple[int, int, int, int] | list[int]
+    CoordLike = tuple[int, int] | RectLike
+    ColorLike = ColorAnnotation.RGBLikeColor
+    RadLike = tuple[float, float, float, float] | tuple[int, int, int, int]
 
 class DisplayBase:
     def __init__(self, root): self.root = root
+    def begin_frame(self): pass
     def get_rect(self): raise NotImplementedError
     def get_size(self): raise NotImplementedError
     def get_width(self): raise NotImplementedError
     def get_height(self): raise NotImplementedError
-    def blit(self, source, dest: pygame.Rect | tuple[int, int]): raise NotImplementedError
+    def blit(self, source, dest): raise NotImplementedError
     def clear(self, color: ColorAnnotation.RGBLikeColor = (0, 0, 0)): raise NotImplementedError
     def fill(self, color: ColorAnnotation.RGBLikeColor): self.clear(color)
     def update(self): raise NotImplementedError
+    def load_image(self, path: str): raise NotImplementedError
+    def end_frame(self): pass
 
 class DisplaySdl(DisplayBase):
-    def __init__(self, title, size, root, **kwargs):
+    def __init__(self, title: str, size: DisplayAnnotation.CoordLike, root, **kwargs):
         super().__init__(root)
         resizable = kwargs.get('resizable', False)
-        self.window = SDL2Window(title, size, resizable=resizable)
+        self.window = SDL2Window(title, (size[0], size[1]), resizable=resizable)
         self.renderer = Renderer(self.window, accelerated=True, target_texture=True)
         self.surface = self.window.get_surface()
-
-    def get_rect(self):
-        return pygame.Rect(0, 0, *self.get_size())
-    
+    def get_rect(self): return pygame.Rect(0, 0, *self.get_size())
     def get_size(self): return self.window.size
     def get_width(self): return self.window.size[0]
     def get_height(self): return self.window.size[1]
@@ -56,114 +58,113 @@ class DisplaySdl(DisplayBase):
     def create_texture_target(self, width, height):
         return Texture(self.renderer, size=(width, height), target=True)
 
-class DisplayGL(DisplayBase):
-    def __init__(self, title, size, root, **kwargs):
+    def load_image(self, path: str): return pygame.image.load(path)
+
+class DisplayRayLib(DisplayBase):
+    def __init__(self, title, size, root, **kwargs): 
         super().__init__(root)
-        flags = pygame.OPENGL | pygame.DOUBLEBUF
         if kwargs.get('resizable', False):
-            flags |= pygame.RESIZABLE
-
-        pygame.display.set_caption(title)
-        pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 3)
-        pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 3)
-        pygame.display.gl_set_attribute(pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE)
-
-        self.surface = pygame.display.set_mode(size, flags)
-        self.renderer = moderngl.create_context()
-        self.last_used = None
-
-        self.program = self.renderer.program(
-            vertex_shader='''
-                #version 330
-                in vec2 in_vert;
-                out vec2 v_text;
-                uniform vec2 u_pos;
-                uniform vec2 u_size;
-                uniform vec2 u_resolution;
-                void main() {
-                    vec2 pos = in_vert * u_size + u_pos;
-                    vec2 ndc = pos / u_resolution * 2.0 - 1.0;
-                    gl_Position = vec4(ndc.x, -ndc.y, 0.0, 1.0);
-                    v_text = in_vert;
-                }''',
-            fragment_shader='''
-                #version 330
-                in vec2 v_text;
-                out vec4 f_color;
-                uniform sampler2D u_texture;
-                uniform vec2 u_tex_pos;
-                uniform vec2 u_tex_size;
-                void main() {
-                    f_color = texture(u_texture, u_tex_pos + v_text * u_tex_size);
-                }''')
-        prog = self.program
-        self.u_resolution = prog['u_resolution']
-        self.u_pos = prog['u_pos']
-        self.u_size = prog['u_size']
-        self.u_texture = prog['u_texture']
-        self.u_tex_pos = prog['u_tex_pos']
-        self.u_tex_size = prog['u_tex_size']
-        
-        self.u_texture.value = 0
-        self.u_resolution.value = self.get_size()
-        quad_buffer = np.array([
-            0.0, 0.0,
-            1.0, 0.0,
-            0.0, 1.0,
-            1.0, 1.0], dtype='f4')
-
-        self.vbo = self.renderer.buffer(quad_buffer)
-        self.vao = self.create_vao()
-
-    def create_vao(self):
-        return self.renderer.vertex_array(self.program, [(self.vbo, '2f', 'in_vert')])
-    def get_rect(self): return pygame.Rect(0, 0, *self.get_size())
-    def get_size(self):
-        return nevu_state.window.size if nevu_state.window else self.surface.get_size()
-    def get_width(self): return self.get_size()[0]
-    def get_height(self): return self.get_size()[1]
-    def use(self, fbo: moderngl.Framebuffer ):
-        self.last_used = fbo
-        fbo.use()
-
-    def blit_selected_texture(self, x, y, width, height, tex_x=0.0, tex_y=0.0, tex_width=1.0, tex_height=1.0):
-        self.u_pos.value = (x, y)
-        self.u_size.value = (width, height)
-        self.u_tex_pos.value = (tex_x, 1 - tex_y)
-        self.u_tex_size.value = (tex_width, -tex_height)
-        self.u_resolution.value = self.get_size()
-        self.renderer.screen.use()
-        self.vao.render(moderngl.TRIANGLE_STRIP)
-    def blit(self, nevu_surface, dest):
-        texture = nevu_surface.texture
-        if not isinstance(dest, pygame.Rect):
-            if len(dest) == 4:
-                dest = pygame.Rect(dest)
-            elif len(dest) == 2:
-                dest = pygame.Rect(dest, (0, 0))
-        if dest.size == (0, 0):
-            dest.size = texture.size
-        texture.use(0)
-        self.blit_selected_texture(dest.x, dest.y, dest.w, dest.h, 0.0, 0.0, 1.0, 1.0)
-
-    def clear_normalized(self, color = (0, 0, 0)):
-        if color:
-            normalized_color = (color[0] / 255.0, color[1] / 255.0, color[2] / 255.0)
-            self.renderer.clear(*normalized_color)
-        else: self.renderer.clear()
-    def clear(self, color: tuple[float, float, float] | tuple[float, float, float, float] = (0, 0, 0, 1)): #type: ignore
-        if len(color) == 4: r, g, b, a = color
-        elif len(color) == 3: 
-            r, g, b = color
-            a = 1
-        else: raise ValueError("Invalid color format")
-        self.renderer.clear(r, g, b, a)
-    def fill(self, color = None): self.clear_normalized(color)
+            rl.set_config_flags(rl.ConfigFlags.FLAG_WINDOW_RESIZABLE)
+        rl.init_window(int(size[0]), int(size[1]), title)
+        self._sdf_shader = rl.load_shader_from_memory(SdfShader.VERTEX_SHADER, SdfShader.FRAGMENT_SHADER)
+        self._sdf_locs = {
+            "texture0": rl.get_shader_location(self._sdf_shader, "texture0"),
+            "colDiffuse": rl.get_shader_location(self._sdf_shader, "colDiffuse"),
+            "rectSize": rl.get_shader_location(self._sdf_shader, "rectSize"),
+            "radius": rl.get_shader_location(self._sdf_shader, "radius"),
+            }
+        rl.set_shader_value(self._sdf_shader, self._sdf_locs['colDiffuse'], rl.Vector4(1.0, 1.0, 1.0, 1.0), rl.ShaderUniformDataType.SHADER_UNIFORM_VEC4)
+        self._border_shader = rl.load_shader_from_memory(BorderShader.VERTEX_SHADER, BorderShader.FRAGMENT_SHADER)
+        self._border_locs = {
+            "texture0": rl.get_shader_location(self._border_shader, "texture0"),
+            "colDiffuse": rl.get_shader_location(self._border_shader, "colDiffuse"),
+            "rectSize": rl.get_shader_location(self._border_shader, "rectSize"),
+            "radius": rl.get_shader_location(self._border_shader, "radius"),
+            "borderColor": rl.get_shader_location(self._border_shader, "borderColor"),
+            "thickness": rl.get_shader_location(self._border_shader, "thickness"),
+        }
+        rl.set_shader_value(self._border_shader, self._border_locs['colDiffuse'], rl.Vector4(1.0, 1.0, 1.0, 1.0), rl.ShaderUniformDataType.SHADER_UNIFORM_VEC4)
     
-    def update(self):
-        self.u_resolution.value = self.get_size()
-        self.renderer.viewport = (0, 0, *self.get_size())
-        pygame.display.flip()
+    def blit(self, source: rl.Texture, dest: DisplayAnnotation.RectLike, flip = True, color: DisplayAnnotation.ColorLike | rl.Color = rl.WHITE, angle: int | float | None = None): 
+        if isinstance(color, tuple) and len(color) == 3:
+            color = (*color, 255)
+        self.blit_rect_pro(source, (dest[0], dest[1], source.width, source.height), flip, color, angle)
+        
+    def blit_rect_pro(self, source: rl.Texture, dest: DisplayAnnotation.RectLike, flip = True, color: DisplayAnnotation.ColorLike | rl.Color = rl.WHITE, angle: int | float | None = None, source_rect: DisplayAnnotation.RectLike | None = None):
+        if source_rect: source_rec = source_rect
+        elif flip: source_rec = (0, 0, source.width, -source.height)
+        else: source_rec = (0, 0, source.width, source.height)
+        angle = angle or 0.0
+        rl.begin_blend_mode(rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+        rl.draw_texture_pro(source, source_rec, dest, (0,0), angle, color)
+        rl.end_blend_mode()
+    
+    def blit_rect_vec(self, source: rl.Texture, coordinates: DisplayAnnotation.CoordLike, flip = True, color: DisplayAnnotation.ColorLike | rl.Color = rl.WHITE, source_rect: DisplayAnnotation.RectLike | None = None): 
+        if source_rect: source_rec = source_rect
+        elif flip: source_rec = (0, 0, source.width, -source.height)
+        else: source_rec = (0, 0, source.width, source.height)
+        rl.begin_blend_mode(rl.BlendMode.BLEND_ALPHA)
+        rl.draw_texture_rec(source, source_rec, coordinates, color)
+        rl.end_blend_mode()
+    
+    def _begin_sdf(self, width, height, radii):
+        rl.begin_blend_mode(rl.BlendMode.BLEND_ALPHA)
+        rl.begin_shader_mode(self._sdf_shader)
+        size_vec = rl.Vector2(width, height)
+        rl.set_shader_value(self._sdf_shader, self._sdf_locs['rectSize'], size_vec, rl.ShaderUniformDataType.SHADER_UNIFORM_VEC2)
+        radii_vec = rl.Vector4(*radii)
+        rl.set_shader_value(self._sdf_shader, self._sdf_locs['radius'], radii_vec, rl.ShaderUniformDataType.SHADER_UNIFORM_VEC4)
+        
+    def _end_shader(self): 
+        rl.end_shader_mode()
+        rl.end_blend_mode()
+    
+    def blit_sdf(self, source: rl.Texture, dest: DisplayAnnotation.RectLike, radii: DisplayAnnotation.RadLike, flip = True):
+        self._begin_sdf(dest[2], dest[3], radii)
+        self.blit_rect_pro(source, dest, flip)
+        self._end_shader()
+    
+    def blit_sdf_vec(self, source: rl.Texture, coordinates: DisplayAnnotation.CoordLike, radii: DisplayAnnotation.RadLike, flip = True):
+        self._begin_sdf(source.width, source.height, radii)
+        self.blit_rect_vec(source, coordinates, flip)
+        self._end_shader()
+
+    def _begin_borders(self, width, height, radii, border_color, thickness):
+        rl.begin_blend_mode(rl.BlendMode.BLEND_ALPHA)
+        rl.begin_shader_mode(self._border_shader)
+        rl.set_shader_value(self._border_shader, self._border_locs['rectSize'], rl.Vector2(width, height), rl.ShaderUniformDataType.SHADER_UNIFORM_VEC2)
+        rl.set_shader_value(self._border_shader, self._border_locs['radius'], rl.Vector4(*radii), rl.ShaderUniformDataType.SHADER_UNIFORM_VEC4)
+        r, g, b, a = 255, 255, 255, 255
+        if hasattr(border_color, 'r'): 
+            r, g, b, a = border_color.r, border_color.g, border_color.b, border_color.a
+        elif len(border_color) >= 3:
+            r, g, b = border_color[0], border_color[1], border_color[2]
+            if len(border_color) > 3: a = border_color[3]
+        b_color_vec = rl.Vector4(r / 255.0, g / 255.0, b / 255.0, a / 255.0)
+        rl.set_shader_value(self._border_shader, self._border_locs['borderColor'], b_color_vec, rl.ShaderUniformDataType.SHADER_UNIFORM_VEC4)
+        thickness_ptr = rl.ffi.new("int *", int(thickness))
+        rl.set_shader_value(self._border_shader, self._border_locs['thickness'], thickness_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_INT)
+        
+        
+    def blit_borders(self, source: rl.Texture, dest_rect: DisplayAnnotation.RectLike, radii: DisplayAnnotation.RadLike, border_color: DisplayAnnotation.ColorLike, thickness: int, flip = True):
+        self._begin_borders(dest_rect[2], dest_rect[3], radii, border_color, thickness)
+        self.blit_rect_pro(source, dest_rect, flip)
+        self._end_shader()
+        
+    def blit_borders_vec(self, source: rl.Texture, coordinates: DisplayAnnotation.CoordLike, radii: DisplayAnnotation.RadLike, border_color: DisplayAnnotation.ColorLike, thickness: int, flip = True):
+        self._begin_borders(source.width, source.height, radii, border_color, thickness)
+        self.blit_rect_vec(source, coordinates, flip)
+        self._end_shader()
+        
+    def get_width(self): return rl.get_screen_width()
+    def get_height(self): return rl.get_screen_height()
+    def get_rect(self): return NvRect(0, 0, *self.get_size())
+    def get_size(self): return (rl.get_screen_width(), rl.get_screen_height())
+    def clear(self, color: DisplayAnnotation.ColorLike = (0, 0, 0)): rl.clear_background(color)
+    def begin_frame(self): rl.begin_drawing()
+    def update(self): pass
+    def end_frame(self): rl.end_drawing()
+    def load_image(self, path: str): return rl.load_texture(path)
     
 class DisplayClassic(DisplayBase):
     def __init__(self, title, size, root, flags = 0, **kwargs):
@@ -177,5 +178,5 @@ class DisplayClassic(DisplayBase):
     def clear(self, color: ColorAnnotation.RGBLikeColor = (0, 0, 0)): self.window.fill(color)
     def update(self): pygame.display.update()
     def flip(self): pygame.display.flip()
-    def blit(self, source, dest: pygame.Rect): #type: ignore
-        self.window.blit(source, dest)
+    def blit(self, source, dest: DisplayAnnotation.CoordLike): self.window.blit(source, dest)
+    def load_image(self, path: str): return pygame.image.load(path)
