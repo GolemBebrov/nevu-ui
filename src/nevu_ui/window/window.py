@@ -1,22 +1,33 @@
 import sys
-import pygame
 from typing import TypeGuard
 from warnings import deprecated
+import pygame
+import pyray as rl
 
 from nevu_ui.core.state import nevu_state
 from nevu_ui.struct.base import standart_config
 from nevu_ui.core.classes import ConfigType
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.fast.zsystem import ZSystem, ZRequest
-from nevu_ui.core.enums import ResizeType, EventType
+from nevu_ui.core.enums import ResizeType, EventType, Backend
 from nevu_ui.overlay import overlay
 
 from nevu_ui.window.display import (
-    DisplayClassic, DisplaySdl, DisplayBase, DisplayGL
+    DisplayClassic, DisplaySdl, DisplayBase, DisplayRayLib
 )
 from nevu_ui.utils import (
-    mouse, keyboard, time, NevuEvent
+    keyboard, time, NevuEvent, set_mouse, mouse, set_keyboard
 )
+
+class _IsNamespace:
+    def __init__(self, master):
+        self.master = master
+    @property
+    def pygame(self): return isinstance(self.master._display, DisplayClassic)
+    @property
+    def sdl(self): return isinstance(self.master._display, DisplaySdl)
+    @property
+    def raylib(self): return isinstance(self.master._display, DisplayRayLib)
 
 class Window:
     _display: DisplayBase
@@ -30,10 +41,13 @@ class Window:
         crop_height = height - (width * ratio.y / ratio.x)
         return default[0], crop_height
     
-    def __init__(self, size, minsize=(10, 10), title="pygame window", resizable = True, ratio: NvVector2 | None = None, resize_type: ResizeType = ResizeType.CropToRatio, _gpu_mode = False, open_gl_mode  = False):
-        self._gpu_mode = _gpu_mode
-        self._open_gl_mode = open_gl_mode
-        if _gpu_mode and self._open_gl_mode: self._gpu_mode = False
+    def _unsupported_back_error(self, name: str):
+        return TypeError(f"Backend {name} is not supported!")
+    
+    def __init__(self, size, minsize=(10, 10), title="pygame window", resizable = True, ratio: NvVector2 | None = None, resize_type: ResizeType = ResizeType.CropToRatio, backend: Backend = Backend.Pygame):
+        self.is_dtype = _IsNamespace(self)
+        self._backend = backend
+        
         self._debouncing_limit = 0.1
         self._debouncing_limit_counter = 0
 
@@ -44,7 +58,8 @@ class Window:
         self._init_lists(ratio, size, minsize)
         self._init_graphics()
         
-        self._clock = pygame.time.Clock()
+        if not self.is_dtype.raylib:
+            self._clock = pygame.time.Clock()
         self._events: list[NevuEvent] = []
         nevu_state.current_events = []
 
@@ -54,17 +69,20 @@ class Window:
         self._selected_context_menu = None
         self._next_update_dirty_rects = []
         self.z_system = ZSystem()
-        self._set_nevu_state()
+        self._reset_nevu_state()
+        self._init_globals()
 
-    def _set_nevu_state(self):
+    def _init_globals(self):
+        global mouse, keyboard
+        set_mouse(self._backend)
+        set_keyboard(self._backend)
+    def _reset_nevu_state(self):
         nevu_state.window = self
-        if self._gpu_mode or self._open_gl_mode:
-            assert isinstance(self._display, (DisplaySdl, DisplayGL))
-            nevu_state.renderer = self._display.renderer #type: ignore
-            if isinstance(self._display, DisplayGL): nevu_state._renderer_type = "opengl"
-            else: nevu_state._renderer_type = "sdl"
-        else: nevu_state._renderer_type = "classic"
         nevu_state.z_system = self.z_system
+        nevu_state.backend = self._backend
+        match self._backend:
+            case Backend.Sdl: nevu_state.renderer = self._display.renderer #type: ignore
+            case _: nevu_state.renderer = None
         
     def _init_lists(self, ratio, size, minsize):
         ratio = NvVector2(0, 0) if ratio is None else NvVector2(ratio)
@@ -77,18 +95,26 @@ class Window:
         self._crop_height_offset = 0
         self._offset = NvVector2(0, 0)
         
+    def _get_kwargs(self):
+        kwargs = {"title": self.title, "size": self.size, "root": self}
+        match self._backend:
+            case Backend.Pygame:
+                flags = pygame.RESIZABLE if self.resizable else 0
+                flags |= pygame.HWSURFACE | pygame.DOUBLEBUF
+                kwargs['flags'] = flags
+            case Backend.Sdl | Backend.RayLib:
+                kwargs['resizable'] = self.resizable
+
+        return kwargs
+    
     def _init_graphics(self):
-        kwargs = {}
-        if not self._gpu_mode and not self._open_gl_mode:
-            flags = pygame.RESIZABLE if self.resizable else 0
-            flags |= pygame.HWSURFACE | pygame.DOUBLEBUF
-            self._display = DisplayClassic(self.title, self.size.to_tuple(), root = self, flags = flags)
-        elif not self._open_gl_mode:
-            if self.resizable: kwargs['resizable'] = True
-            self._display = DisplaySdl(self.title, [int(self.size[0]), int(self.size[1])], root = self, **kwargs)
-        else:
-            if self.resizable: kwargs['resizable'] = True
-            self._display = DisplayGL(self.title, [int(self.size[0]), int(self.size[1])], root = self, **kwargs)
+        kwargs = self._get_kwargs()
+        back_to_class = {
+            Backend.Pygame: DisplayClassic,
+            Backend.Sdl: DisplaySdl,
+            Backend.RayLib: DisplayRayLib
+        }
+        self._display = back_to_class[self._backend](**kwargs)
         
     @property
     @deprecated("Please use 'window.display' instead")
@@ -96,7 +122,7 @@ class Window:
     @property
     def display(self) -> DisplayBase: return self._display
     
-    def is_gl(self, display) -> TypeGuard[DisplayGL]: return isinstance(self._display, DisplayGL)
+    def is_raylib(self, display) -> TypeGuard[DisplayRayLib]: return isinstance(self._display, DisplayRayLib)
     def is_sdl(self, display) -> TypeGuard[DisplaySdl]: return isinstance(self._display, DisplaySdl)
     def is_legacy(self, display) -> TypeGuard[DisplayClassic]: return isinstance(self._display, DisplayClassic) 
     
@@ -106,34 +132,53 @@ class Window:
         current_w, current_h = self._display.get_size()
         target_ratio = self._ratio or self._original_size
         self._crop_width_offset, self._crop_height_offset = self.cropToRatio(current_w, current_h, target_ratio)
-        self._offset = NvVector2(self._crop_width_offset // 2, self._crop_height_offset // 2)
+        self._offset = NvVector2(self._crop_width_offset / 2, self._crop_height_offset / 2)
 
     def add_request(self, z_request: ZRequest): self.z_system.add(z_request)
     def mark_dirty(self): self.z_system.mark_dirty()
     
-    def update(self, events, fps: int = 60):
+    def begin_frame(self):
+        """Use this method only for raylib backend"""
+        self.display.begin_frame()
+    def end_frame(self):
+        """Use this method only for raylib backend"""
+        self.display.end_frame()
+        
+    def update(self, events = None, fps: int = 60):
         self._next_update_dirty_rects.clear()
-        self.display.clear()
+        #self.display.clear()
         nevu_state.current_events = events
         
         self._update_utils(events)
-        for event in events:
-            if event.type == pygame.QUIT:
-                pygame.quit()
+        if not self.is_dtype.raylib:
+            events = events or pygame.event.get()
+            for event in events:
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                    
+                if event.type == pygame.VIDEORESIZE and self.resize_type != ResizeType.ResizeFromOriginal:
+                    w, h = event.w, event.h
+                    self.size = NvVector2(w, h)
+                    self._debouncing_limit_counter = 0
+            self._clock.tick(fps)
+        else:
+            if rl.window_should_close():
+                rl.close_window()
                 sys.exit()
-                
-            if event.type == pygame.VIDEORESIZE and self.resize_type != ResizeType.ResizeFromOriginal:
-                w, h = event.w, event.h
-                self.size = NvVector2(w, h)
+            if rl.is_window_resized():
+                self.size = NvVector2(rl.get_screen_width(), rl.get_screen_height())
                 self._debouncing_limit_counter = 0
+            
         if 0 <= self._debouncing_limit_counter < self._debouncing_limit:
             self._debouncing_limit_counter += 1 * time.dt
         if self._debouncing_limit_counter >= self._debouncing_limit:
             self._resize()
             self._debouncing_limit_counter = -1
-        self._clock.tick(fps)
+        
         self.z_system.cycle(mouse.pos, mouse.left_fdown, mouse.left_up, mouse.any_wheel, mouse.wheel_down)
         self._event_cycle(EventType.Update)
+        self.display.update()
 
     def _resize(self):
         if self.resize_type == ResizeType.CropToRatio:
@@ -144,12 +189,13 @@ class Window:
         else: self._event_cycle(EventType.Resize, self.size)
     
     def draw_overlay(self):
-        if self._gpu_mode:
-            texture = overlay.get_result_sdl(self.size)
-        elif not self._open_gl_mode and not self._gpu_mode:
-            texture = overlay.get_result(self.size)
-        else:
-            texture = overlay.get_result(self.size)
+        match self._backend:
+            case Backend.Pygame:
+                texture = overlay.get_result(self.size)
+            case Backend.Sdl:
+                texture = overlay.get_result_sdl(self.size)
+            case _:
+                raise self._unsupported_back_error(self._backend.value)
         self.display.blit(texture, (0, 0))
         
     def _update_utils(self, events):
@@ -159,12 +205,14 @@ class Window:
         
     @property
     def offset(self): return self._offset
+    
     @property
     def title(self): return self._title
     @title.setter
     def title(self, text:str):
         self._title = text
         pygame.display.set_caption(self._title)
+        
     @property
     def ratio(self): return self._ratio
     @ratio.setter
@@ -181,19 +229,15 @@ class Window:
             if event._type == type: event(*args, **kwargs)
 
     @property
-    def rel(self):
-        render_width = self.size[0] - self._crop_width_offset
-        render_height = self.size[1] - self._crop_height_offset
-        return NvVector2(render_width / self._original_size[0], render_height / self._original_size[1])
+    def rel(self): return NvVector2((self.size - self._offset * 2) / self.original_size)
 
 class ConfiguredWindow(Window):
     def __init__(self):
         size = standart_config.win_config["size"]
         display_type = standart_config.win_config["display"]
-        gpu_mode = display_type == ConfigType.Window.Display.Sdl
-        gl_mode = display_type == ConfigType.Window.Display.Opengl
+        display_type = ConfigType.Window.Display(display_type)
         ratio = standart_config.win_config["ratio"]
         title = standart_config.win_config["title"]
         resizeable = standart_config.win_config["resizable"]
         #fps = standart_config.win_config["fps"] TODO
-        super().__init__(title=title, size=size, _gpu_mode = gpu_mode, open_gl_mode = gl_mode, resize_type=ResizeType.CropToRatio, ratio = ratio, resizable = resizeable)
+        super().__init__(title=title, size=size, resize_type=ResizeType.CropToRatio, backend=display_type, ratio = ratio, resizable = resizeable)
