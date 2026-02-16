@@ -3,6 +3,21 @@ from enum import Enum, auto, StrEnum, IntEnum
 #Svalka
 #faputa approved
 
+class PressType(IntEnum):
+    Still = 0
+    Fdown = 1
+    Down = 2
+    Up = 3
+    
+    WheelDown = -10
+    WheelUp = 10
+    WheelStill = 5
+
+class Backend(StrEnum):
+    Pygame = "pygame"
+    Sdl = "sdl" 
+    Opengl = "opengl"
+    RayLib = "raylib"
 
 class Align(Enum):
     CENTER = auto()
@@ -94,6 +109,9 @@ class CacheType(Enum):
     Scaled_Gradient = auto()
     Background = auto()
     Texture = auto()
+    #NEW FUCKING RL cache
+    RlFont = auto()
+    RlTexture = auto()
 
 class CacheName(StrEnum):
     MAIN = "main"
