@@ -43,6 +43,7 @@ class ColorTheme:
     outline: tuple
     inverse_surface: ColorPair
     inverse_primary: tuple
+    name: str = "Unnamed"
 
     def get_subtheme(self, role: SubThemeRole) -> ColorSubTheme:
         assert isinstance(role, SubThemeRole), f"role must be SubThemeRole, {role} given"
