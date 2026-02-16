@@ -10,10 +10,12 @@ cimport cython
 import pygame
 from libc.math cimport sqrt
 
+
+@cython.final
+@cython.freelist(32)
 cdef class NvVector2:
-    
     @staticmethod
-    cdef inline NvVector2 new(double x, double y):
+    cdef inline NvVector2 new(float x, float y):
         cdef NvVector2 vec = NvVector2.__new__(NvVector2)
         vec.x = x
         vec.y = y
@@ -72,7 +74,7 @@ cdef class NvVector2:
         else:
             raise IndexError("Vector index out of range")
 
-    def __setitem__(self, int index, double value):
+    def __setitem__(self, int index, float value):
         if index == 0:
             self.x = value
         elif index == 1:
@@ -89,7 +91,7 @@ cdef class NvVector2:
         return NvVector2.new(self.x - other.x, self.y - other.y)
 
     @cython.ccall
-    cdef inline NvVector2 _mul_scalar(self, double val):
+    cdef inline NvVector2 _mul_scalar(self, float val):
         return NvVector2.new(self.x * val, self.y * val)
 
     @cython.ccall
@@ -115,25 +117,25 @@ cdef class NvVector2:
         return self
 
     def __imul__(self, NvVector2 other):
-        return self._imul(other)
+        return self._imul(other) # type: ignore
     
     def __isub__(self, NvVector2 other):
-        return self._isub(other)
+        return self._isub(other) # type: ignore
 
     def __iadd__(self, NvVector2 other):
-        return self._iadd(other)
+        return self._iadd(other) # type: ignore
 
     def __add__(self, NvVector2 other):
-        return self._add(other)
+        return self._add(other) # type: ignore
 
     def __sub__(self, NvVector2 other):
-        return self._sub(other)
+        return self._sub(other) # type: ignore
 
     def __mul__(self, other):
         if isinstance(other, NvVector2):
-            return self._mul_vector(other)
+            return self._mul_vector(other) # type: ignore
         elif isinstance(other, (int, float)):
-            return self._mul_scalar(other)
+            return self._mul_scalar(other) # type: ignore
         else:
             return NotImplemented
 
@@ -191,10 +193,13 @@ cdef class NvVector2:
     def get_neg(self):
         return NvVector2.new(-self.x, -self.y)
 
+    def get_int_tuple(self):
+        return (int(self.x), int(self.y))
+
     def to_pygame(self):
         return pygame.Vector2(self.x, self.y)
     
-    def copy(self):
+    cpdef NvVector2 copy(self):
         return NvVector2.new(self.x, self.y)
 
     def __copy__(self):
@@ -217,11 +222,11 @@ cdef class NvVector2:
 
     @property
     def length(self):
-        return sqrt(self.x * self.x + self.y * self.y)
+        return sqrt(self.x * self.x + self.y * self.y) # type: ignore
     
     def normalize(self):
-            cdef double l = sqrt(self.x * self.x + self.y * self.y)
-            cdef double inv_l
+            cdef float l = sqrt(self.x * self.x + self.y * self.y) # type: ignore
+            cdef float inv_l
             
             if l == 0: 
                 return NvVector2.new(0.0, 0.0)
@@ -230,8 +235,8 @@ cdef class NvVector2:
             return NvVector2.new(self.x * inv_l, self.y * inv_l)
     
     def normalize_ip(self):
-        cdef double l = sqrt(self.x * self.x + self.y * self.y)
-        cdef double inv_l
+        cdef float l = sqrt(self.x * self.x + self.y * self.y) # type: ignore
+        cdef float inv_l
         
         if l > 0: 
             inv_l = 1.0 / l
@@ -240,13 +245,13 @@ cdef class NvVector2:
         return self
     
     def distance_to(self, NvVector2 other):
-        cdef double dx = self.x - other.x
-        cdef double dy = self.y - other.y
-        return sqrt(dx * dx + dy * dy)
+        cdef float dx = self.x - other.x
+        cdef float dy = self.y - other.y
+        return sqrt(dx * dx + dy * dy) # type: ignore
 
     def distance_squared_to(self, NvVector2 other):
-        cdef double dx = self.x - other.x
-        cdef double dy = self.y - other.y
+        cdef float dx = self.x - other.x
+        cdef float dy = self.y - other.y
         return dx * dx + dy * dy
 
     def dot(self, NvVector2 other):
