@@ -1,7 +1,10 @@
 import pygame
 import copy
+import pyray as rl
 from pygame._sdl2 import Texture
 from functools import partial
+from typing import Unpack
+
 from nevu_ui.nevuobj import NevuObject
 from nevu_ui.window import Window
 from nevu_ui.layouts import LayoutType
@@ -12,9 +15,11 @@ from nevu_ui.rendering.shader import convert_surface_to_gl_texture
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.size.rules import SizeRule
 from nevu_ui.rendering.background_renderer import BackgroundRenderer
+from nevu_ui.rendering.background_renderer_rl import BackgroundRendererRayLib
 from nevu_ui.core.enums import HoverState
 from nevu_ui.utils import Cache, NevuEvent
-from nevu_ui.style import Style, default_style
+from nevu_ui.style import Style, default_style, StyleKwargs
+from nevu_ui.fast.logic.fast_logic import relm_helper, rel_helper, mass_rel_helper, vec_rel_helper
 
 from nevu_ui.core.enums import (
     Quality, CacheType, EventType
@@ -25,6 +30,7 @@ class MenuRendererProxy:
         self.menu = menu
         self.clickable = False
         self.hoverable = False
+        
     @property
     def _draw_borders(self): return True
     @property
@@ -49,10 +55,12 @@ class MenuLayoutProxy:
 class Menu:
     def __init__(self, window: Window | None, size: list | tuple | NvVector2, style: Style = default_style, alt: bool = False, layout = None): 
         self._absolute_coordinates = NvVector2(0,0)
+        self.alt = alt
         self._init_primary(window, style)
-        if not self.window: return
+        if not self._window: return
         self._renderer_proxy = MenuRendererProxy(self)
-        self._renderer = BackgroundRenderer(self._renderer_proxy) 
+        if self._window.is_dtype.raylib: self._renderer = BackgroundRendererRayLib(self._renderer_proxy) #type: ignore
+        else: self._renderer = BackgroundRenderer(self._renderer_proxy) #type: ignore
         self._borrow_from_nevuobj()
         self._borrow_from_widget()
         self._borrow_from_layout()
@@ -63,42 +71,50 @@ class Menu:
         self._init_dirty_rects()
         if layout: self.layout = layout
     
+    def relx(self, num: int | float, min: int | None = None, max: int| None = None) -> int | float:
+        return rel_helper(num, self._resize_ratio.x, min, max)
+
+    def rely(self, num: int | float, min: int | None = None, max: int| None = None) -> int | float:
+        return rel_helper(num, self._resize_ratio.y, min, max)
+
+    def relm(self, num: int | float, min: int | None = None, max: int | None = None) -> int | float:
+        return relm_helper(num, self._resize_ratio.x, self._resize_ratio.y, -1.0, -1.0)
+    
+    def rel(self, mass: NvVector2, vector: bool = True) -> NvVector2:  
+        return vec_rel_helper(mass, self._resize_ratio.x, self._resize_ratio.y) # type: ignore
+    
     def _borrow_from_nevuobj(self):
-        self.rel = partial(NevuObject.rel, self)
-        self.relm = partial(NevuObject.relm, self) 
-        self.relx = partial(NevuObject.relm, self)
-        self.rely = partial(NevuObject.relm, self) 
+        pass
     def _borrow_from_widget(self):
-        self.clear_surfaces = partial(Widget.clear_surfaces, self) #type: ignore
-        self.clear_all = partial(Widget.clear_all, self) #type: ignore
+        self._clear_surfaces = partial(Widget.clear_surfaces, self) #type: ignore
+        self._clear_all = partial(Widget.clear_all, self) #type: ignore
     def _borrow_from_layout(self):
         self._layout_proxy = MenuLayoutProxy(self)
-        self._convert_item_coord = partial(LayoutType._convert_item_coord, self._layout_proxy)
-        self._parse_fillx = partial(LayoutType._parse_fillx, self._layout_proxy)
-        self._parse_gcx = partial(LayoutType._parse_gcx, self._layout_proxy)
-        self._parse_vx =  partial(LayoutType._parse_vx, self._layout_proxy)
-        self._percent_helper = partial(LayoutType._percent_helper) #
-        self.read_item_coords = partial(LayoutType.read_item_coords, self._layout_proxy)
+        self._convert_item_coord = partial(LayoutType._convert_item_coord, self._layout_proxy) #type: ignore
+        self._parse_fillx = partial(LayoutType._parse_fillx, self._layout_proxy) #type: ignore
+        self._parse_gcx = partial(LayoutType._parse_gcx, self._layout_proxy) #type: ignore
+        self._parse_vx =  partial(LayoutType._parse_vx, self._layout_proxy) #type: ignore
+        self._percent_helper = partial(LayoutType._percent_helper)
+        self._read_item_coords = partial(LayoutType.read_item_coords, self._layout_proxy) #type: ignore
     def _borrow_func(self, func, master = None):
-        master = master or self
-        return partial(func, master)
+        return partial(func, master or self)
     
     @property
     def _texture(self): return self.cache.get_or_exec(CacheType.Texture, self.convert_texture)
     
     def convert_texture(self, surf = None):
         if nevu_state.renderer is None: raise ValueError("Window not initialized!")
-        surface = surf or self.surface
-        assert self.window, "Window not initialized!"
-        if self.window._gpu_mode and not self.window._open_gl_mode:
+        surface = surf or self._surface
+        assert self._window, "Window not initialized!"
+        if self._window.is_dtype.sdl:
             texture = Texture(nevu_state.renderer, (self.size*self._resize_ratio).to_tuple(), target=True) #type: ignore
             nevu_state.renderer.target = texture
             ntext = Texture.from_surface(nevu_state.renderer, surface) #type: ignore
             nevu_state.renderer.blit(ntext, pygame.Rect(0,0, *(self.size*self._resize_ratio).to_tuple()))
             nevu_state.renderer.target = None
-        elif self.window._open_gl_mode:
-            texture = convert_surface_to_gl_texture(self.window._display.renderer, surface) #type: ignore
-            raise ValueError("OpenGL is not supported for now Sowwy >W<")
+        elif self._window.is_dtype.raylib:
+            #texture = convert_surface_to_gl_texture(self._window._display.renderer, surface) #type: ignore
+            raise ValueError("Raylib texture conversion is not supported for now Sowwy >W<")
         return texture #type: ignore
     
     def _update_size(self): return (self.size * self._resize_ratio).to_pygame()
@@ -108,13 +124,18 @@ class Menu:
         result = self.cache.get_or_exec(CacheType.RelSize, self._update_size)
         return result or [0, 0]
     
+    def _clear_rl_specific(self):
+        if self._window.is_dtype.raylib and self.cache.get(CacheType.Scaled_Background):
+            rl.unload_render_texture(self.cache.get(CacheType.Scaled_Background)) #type: ignore
+        Widget._clear_rl_specific(self) #type: ignore
+    
     def _init_primary(self, window: Window | None, style: Style):
-        self.window = window
+        self._window = window
         self.window_surface = None
         self.cache = Cache()
         self.quality = Quality.Decent
         self.style = style
-        if self.window: self.window.add_event(NevuEvent(self, self.resize, EventType.Resize))
+        if self._window: self._window.add_event(NevuEvent(self, self._resize, EventType.Resize))
 
     def _init_size(self, size: list | tuple | NvVector2):
         initial_size = list(size) #type: ignore
@@ -127,7 +148,7 @@ class Menu:
         self.size = NvVector2(initial_size)
         self.coordinates = NvVector2()
         self._resize_ratio = NvVector2(1, 1)
-        self._layout = None
+        self._layout: LayoutType | None = None
 
     def _init_secondary(self):
         self._changed = True
@@ -139,7 +160,7 @@ class Menu:
         self.will_resize = False
 
     def _init_tertiary(self, size):
-        self.first_window_size = self.window.size if self.window else NvVector2(0, 0)
+        self.first_window_size = self._window.size if self._window else NvVector2(0, 0)
         self.first_size = size
         self.first_coordinates = NvVector2(0, 0)
         self._opened_sub_menu = None
@@ -155,15 +176,8 @@ class Menu:
 
     def _init_dirty_rects(self):
         self._dirty_rects = []
-        if self.window:
-            self.window._next_update_dirty_rects.append(pygame.Rect(0, 0, *self.size))
-    
-    def read_item_coords(self, item: NevuObject):
-        w_size = item._lazy_kwargs['size']
-        x, y = w_size
-        x, is_x_rule = self._convert_item_coord(x, 0)
-        y, is_y_rule = self._convert_item_coord(y, 1)
-        item._lazy_kwargs['size'] = [x,y]
+        if self._window:
+            self._window._next_update_dirty_rects.append(pygame.Rect(0, 0, *self.size))
         
     def _proper_load_layout(self):
         if not self._layout: return
@@ -180,6 +194,7 @@ class Menu:
     
     @property
     def _background(self):
+        # sourcery skip: assign-if-exp, inline-immediately-returned-variable, lift-return-into-if
         result1 = lambda: self._renderer._generate_background(sdf=True, only_content=True)
         if nevu_state.renderer: result = lambda: self.convert_texture(result1())
         else: result = result1
@@ -197,9 +212,10 @@ class Menu:
     def absolute_coordinates(self) -> NvVector2: return self._absolute_coordinates
     @absolute_coordinates.setter
     def absolute_coordinates(self, coordinates: NvVector2):
-        if self.window is None: raise ValueError("Window is not initialized!")
-        self._absolute_coordinates = self.rel(coordinates) + self.window._offset
-    def abs_coordinates_update(self): self.absolute_coordinates = self.coordinates
+        if self._window is None: raise ValueError("Window is not initialized!")
+        #print(coordinates, self._window._offset)
+        self._absolute_coordinates = coordinates + self._window._offset
+    def _abs_coordinates_update(self): self.absolute_coordinates = self.coordinates
         
     def open_submenu(self, menu, style: Style|None = None, *args):
         assert isinstance(menu, Menu)
@@ -211,38 +227,45 @@ class Menu:
     def close_submenu(self): self._opened_sub_menu = None
         
     def _update_surface(self):
-        if self.style.borderradius>0:self.surface = pygame.Surface(self._pygame_size, pygame.SRCALPHA)
-        else: self.surface = pygame.Surface(self._pygame_size)
-        if self.style.transparency: self.surface.set_alpha(self.style.transparency)
+        if self._window.is_dtype.raylib:
+            if hasattr(self, '_surface'): 
+                rl.unload_render_texture(self._surface)
+            self._surface = rl.load_render_texture(*(self.size*self._resize_ratio).get_int_tuple())
+            return
+        if self.style.borderradius>0:self._surface = pygame.Surface(self._pygame_size, pygame.SRCALPHA)
+        else: self._surface = pygame.Surface(self._pygame_size)
+        if self.style.transparency: self._surface.set_alpha(self.style.transparency)
 
-    def resize(self, size: NvVector2):
-        self.clear_surfaces()
+    def _resize(self, size: NvVector2):
+        self._clear_surfaces()
         self._changed = True
+        self.cache.clear_selected(whitelist = [CacheType.RelSize])
         self._resize_ratio = NvVector2([size[0] / self.first_window_size[0], size[1] / self.first_window_size[1]])
-        if self.window is None: raise ValueError("Window is not initialized!")
+        if self._window is None: raise ValueError("Window is not initialized!")
         if self.isrelativeplaced:
-            assert self.relative_percent_x and self.relative_percent_y
-            self.coordinates = NvVector2(
-                (self.window.size[0] - self.window._crop_width_offset) / 100 * self.relative_percent_x - self.size[0] / 2,
-                (self.window.size[1] - self.window._crop_height_offset) / 100 * self.relative_percent_y - self.size[1] / 2)
+            window_size = self._window.size - NvVector2(self._window._crop_width_offset, self._window._crop_height_offset)
+            target_pos = window_size * (NvVector2(self.relative_percent_x, self.relative_percent_y) / 100) #type: ignore
+            widget_center_offset = self.rel(self.size) / 2
 
-        self.abs_coordinates_update()
+            self.coordinates = target_pos - widget_center_offset
+        self._abs_coordinates_update()
         self._update_surface()
         
         if self._layout:
-            self._layout.resize(self._resize_ratio)
-            self._layout.coordinates = NvVector2(self.rel(self.size, vector=True) / 2 - self.rel(self._layout.size,vector=True) / 2)
+            self._layout._resize(self._resize_ratio)
+            self._layout.coordinates = NvVector2(self.rel(self.size - self._layout.size) / 2)
             self._layout.update()
             self._layout.draw()
-        if self.style.transparency: self.surface.set_alpha(self.style.transparency)
+            
+        if self.style.transparency: self._surface.set_alpha(self.style.transparency) #type: ignore
 
     def _resize_with_ratio(self, ratio: NvVector2):
-        self.clear_surfaces()
+        self._clear_surfaces()
         self._changed = True
         self._resize_ratio = ratio
-        self.abs_coordinates_update()
-        if self.style.transparency: self.surface.set_alpha(self.style.transparency)
-        if self._layout: self._layout.resize(self._resize_ratio)
+        self._abs_coordinates_update()
+        if self.style.transparency: self._surface.set_alpha(self.style.transparency) #type: ignore
+        if self._layout: self._layout._resize(self._resize_ratio)
         
     @property
     def style(self) -> Style: return self._style
@@ -252,21 +275,34 @@ class Menu:
     def apply_style_to_layout(self, style: Style):
         self._changed = True
         self.style = style
+        self.cache.clear()
+        self._init_subtheme(self.alt)
         if self._layout: self._layout.apply_style_to_childs(style)
-        
+    
+    def apply_style_patch_to_layout(self, **patch: Unpack[StyleKwargs]):
+        self._changed = True
+        self.style = self.style(**patch)
+        self.cache.clear()
+        self._init_subtheme(self.alt)
+        if self._layout: self._layout.apply_style_patch_to_childs(**patch)
+    
     @property
     def layout(self): return self._layout
     @layout.setter
     def layout(self, layout):
-        assert self.window, "Window is not set!"
+        assert self._window, "Window is not set!"
         if layout._can_be_main_layout:
-            self.read_item_coords(layout)
-            layout._master_z_handler = self.window.z_system
+            if self._layout: self._layout.kill()
+            self._read_item_coords(layout)
+            layout._master_z_handler = self._window.z_system
             layout._init_start()
             layout._connect_to_menu(self)
             layout.first_parent_menu = self
-            layout._boot_up()
             layout.coordinates = NvVector2(self.size[0]/2 - layout.size[0]/2, self.size[1]/2 - layout.size[1]/2)
+            layout.absolute_coordinates = layout.coordinates + self.absolute_coordinates
+            layout._boot_up()
+            
+            layout._resize(self._resize_ratio)
             self._layout = layout
         else: raise ValueError(f"Layout {type(layout).__name__} can't be main")
         
@@ -275,58 +311,61 @@ class Menu:
         
     def set_coordinates(self, x: int, y: int):
         self.coordinates = NvVector2(x, y)
-        self.abs_coordinates_update()
-        
-        self.isrelativeplaced = False
-        self.relative_percent_x = None
-        self.relative_percent_y = None
-        self.first_coordinates = self.coordinates
+        self._on_set_coordinates(False, None, None)
         
     def set_coordinates_relative(self, percent_x: int, percent_y: int):
-        if self.window is None: raise ValueError("Window is not initialized!")
-        self.coordinates = NvVector2([(self.window.size[0]-self.window._crop_width_offset)/100*percent_x-self.size[0]/2,
-                                    (self.window.size[1]-self.window._crop_height_offset)/100*percent_y-self.size[1]/2])
-        self.abs_coordinates_update()
-        self.isrelativeplaced = True
-        self.relative_percent_x = percent_x
-        self.relative_percent_y = percent_y
+        if self._window is None: raise ValueError("Window is not initialized!")
+        self.coordinates = NvVector2([(self._window.size[0]-self._window._crop_width_offset)/100*percent_x-self.size[0]/2,
+                                    (self._window.size[1]-self._window._crop_height_offset)/100*percent_y-self.size[1]/2])
+        self._on_set_coordinates(True, percent_x, percent_y)
+
+    def _on_set_coordinates(self, arg0, arg1, arg2):
+        self._abs_coordinates_update()
+        self.isrelativeplaced = arg0
+        self.relative_percent_x = arg1
+        self.relative_percent_y = arg2
         self.first_coordinates = self.coordinates
 
     def draw(self):
-        if not self.enabled or not self.window: return
+        if not self.enabled or not self._window: return
+        assert self._surface
         scaled_bg = self.cache.get_or_exec(CacheType.Scaled_Background, self._background)
         if nevu_state.renderer:
-            if self.window._gpu_mode:
+            if self._window.is_dtype.sdl:
                 assert isinstance(scaled_bg, Texture)
                 if self._layout is not None:
                     nevu_state.renderer.target = self._texture
                     nevu_state.renderer.blit(scaled_bg, self.get_rect())
                     self._layout.draw()
                     nevu_state.renderer.target = None
-                self.window._display.blit(self._texture, self.absolute_coordinates.to_int().to_tuple())
+                self._window._display.blit(self._texture, self.absolute_coordinates.to_int().to_tuple()) #type: ignore
                 if self._opened_sub_menu:
                     for item in self._args_menus_to_draw: item.draw()
                     self._opened_sub_menu.draw()
                 return 
             
-            elif self.window._open_gl_mode:
-                if self._layout is not None:
-                    self.window._display.set_target(self._texture)
-                    self.window._display.blit(scaled_bg, self.get_rect())
-                    self._layout.draw()
-                    self.window._display.set_target(None)
-                self.window._display.blit(self._texture, self.absolute_coordinates.to_int().to_tuple())
-                if self._opened_sub_menu:
-                    for item in self._args_menus_to_draw: item.draw()
-                    self._opened_sub_menu.draw()
-                return
+        elif self._window.is_dtype.raylib:
+            if self._layout is not None:
+                self._layout._rl_predraw_widgets()
+                rl.begin_texture_mode(self._surface) #type: ignore
+                #rl.begin_blend_mode(rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+                rl.clear_background(rl.BLANK)
+                self._window.display.blit(scaled_bg.texture, (0, 0))
+                self._layout.draw()
+                #rl.end_blend_mode()
+                rl.end_texture_mode()
+            self._window._display.blit(self._surface.texture, self.absolute_coordinates.get_int_tuple()) #type: ignore
+            if self._opened_sub_menu:
+                for item in self._args_menus_to_draw: item.draw()
+                self._opened_sub_menu.draw()
+            return
             
         if scaled_bg:
-            self.surface.blit(scaled_bg, (0, 0))
+            self._surface.blit(scaled_bg, (0, 0))
         
         if self._layout is not None:
             self._layout.draw() 
-        self.window._display.blit(self.surface, self.absolute_coordinates.to_int().to_tuple())
+        self._window._display.blit(self._surface, self.absolute_coordinates.get_int_tuple()) #type: ignore
         
         if self._opened_sub_menu:
             for item in self._args_menus_to_draw: item.draw()
@@ -334,11 +373,11 @@ class Menu:
 
     def update(self):
         if not self.enabled: return
-        if self.window is None: return
-        assert isinstance(self.window, Window)
+        if self._window is None: return
+        assert isinstance(self._window, Window)
         
         if len(self._dirty_rects) > 0:
-            self.window._next_update_dirty_rects.extend(self._dirty_rects)
+            self._window._next_update_dirty_rects.extend(self._dirty_rects)
             self._dirty_rects = []
             
         assert isinstance(self._opened_sub_menu, (Menu, type(None)))
@@ -346,8 +385,13 @@ class Menu:
             self._opened_sub_menu.update()
             return
         if self._layout: 
-            self._layout.master_coordinates = self._layout.coordinates + self.window.offset
+            #print(self._layout.get_param_strict("id").value)
+           # if self._layout.get_param_strict("id").value == "scr":
+                
+              #  print(self._layout.coordinates + self.absolute_coordinates)
+            self._layout.absolute_coordinates = self._layout.coordinates + self.absolute_coordinates
             self._layout.update(nevu_state.current_events)
+           # print("updata")
         
     def get_rect(self) -> pygame.Rect: return pygame.Rect((0,0), self.size * self._resize_ratio)
     
@@ -356,19 +400,20 @@ class Menu:
         
         if self._layout:
             self._layout.kill()
-            for item in self._layout._all_items:
+            for item in self._layout._all_items():
                 item.kill()
             self._layout = None
-            
-        if self._opened_sub_menu:
+        
+        if hasattr(self, '_opened_sub_menu') and self._opened_sub_menu:
             self._opened_sub_menu.kill()
             self._opened_sub_menu = None
 
-        for item in self._args_menus_to_draw: item.kill()
-        
-        self._args_menus_to_draw.clear()
+        if hasattr(self, '_args_menus_to_draw'):
+            for item in self._args_menus_to_draw: item.kill()
+            self._args_menus_to_draw.clear()
+            
         self.cache.clear()
-        self.surface = None
-        self.window = None
+        self._surface = None
+        self._window = None
         
         if nevu_state.window: nevu_state.window.z_system.mark_dirty()
