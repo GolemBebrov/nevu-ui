@@ -220,14 +220,9 @@ class ScrollableBase(LayoutType, ABC):
     def _is_widget_drawable_optimized(self, item: NevuObject):
         rect1 = item.get_nvrect()
         rect2 = self.get_nvrect()
-        #print(item)
-        #print(rect1, rect2)
-        #print(rect1.collide_rect(rect2))
-        #print(item.coordinates, item.absolute_coordinates)
         return rect1.collide_rect(rect2)
     
     def _rl_predraw_widgets(self):
-        #super()._rl_predraw_widgets()
         for item in self.collided_items:
             if self.is_layout(item):
                 item._rl_predraw_widgets()
@@ -238,15 +233,8 @@ class ScrollableBase(LayoutType, ABC):
     
     def _secondary_draw(self):
         super()._secondary_draw()
-        #print("start_draw", self.collided_items)
-        #print(self.items, self.collided_items)
-        #for item in self.items:
-        #    if item.get_param_strict("id").value == "secret_test":
-        #        print(item.get_nvrect())
-        #        print(self.get_nvrect())
         for item in self.collided_items:
             assert isinstance(item, (Widget, LayoutType))
-            #print("draw widget", item)
             self._draw_widget(item)
             
         if self.actual_max_main > 0:
@@ -254,8 +242,6 @@ class ScrollableBase(LayoutType, ABC):
     
     def _base_light_update(self, add_x: int | float = 0, add_y: int | float = 0, items = None):
         assert self.first_parent_menu, self._unconnected_layout_error(items or self.collided_items)
-        #if self.get_param_strict("id").value == "secret_test":
-            #print(self.items)
         _light_update_helper(
             items or self.items,
             self.cached_coordinates or [],
@@ -263,7 +249,6 @@ class ScrollableBase(LayoutType, ABC):
             NvVector2(add_x, add_y))
 
     def secondary_update(self): 
-        #print(self.cached_coordinates, self.items)
         super().secondary_update()
         if self.actual_max_main > 0:
             old_percentage = self.scroll_bar.percentage
