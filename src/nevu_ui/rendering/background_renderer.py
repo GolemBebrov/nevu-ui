@@ -3,10 +3,10 @@ import weakref
 
 from nevu_ui.color import Color
 from typing import TYPE_CHECKING
-if TYPE_CHECKING: from nevu_ui.nevuobj import NevuObject
+if TYPE_CHECKING: from nevu_ui.widgets import Widget
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.style import Style
-from nevu_ui.rendering import AlphaBlit, Gradient
+from nevu_ui.rendering import AlphaBlit, GradientPygame
 
 from nevu_ui.core.enums import (
     _QUALITY_TO_RESOLUTION, CacheType, HoverState, Align
@@ -22,15 +22,15 @@ class _DrawNamespace:
         self._renderer = renderer
         
     @property
-    def root(self) -> NevuObject: return self._renderer.root
+    def root(self) -> Widget: return self._renderer.root
     
     @property
     def style(self): return self.root.style
     
-    def gradient(self, surface: pygame.Surface, transparency = None, style: Style | None = None) -> Gradient:
+    def gradient(self, surface: pygame.Surface, transparency = None, style: Style | None = None) -> GradientPygame:
         style = style or self.style
         assert style
-        assert isinstance(style.gradient, Gradient), "Gradient not set"
+        assert isinstance(style.gradient, GradientPygame), "Gradient not set"
         if transparency is None or transparency >= 255:
             gr = style.gradient
         else:
@@ -72,13 +72,13 @@ class _DrawNamespace:
     
 class BackgroundRenderer:
     __slots__ = ["_root", "draw"]
-    def __init__(self, root: NevuObject):
+    def __init__(self, root: Widget):
         #assert isinstance(root, NevuObject), "Root must be NevuObject"
         self._root = weakref.proxy(root) 
         self.draw = _DrawNamespace(self)
         
     @property
-    def root(self): return self._root
+    def root(self) -> Widget: return self._root
     
     def _draw_gradient(self):
         root = self.root
@@ -103,9 +103,9 @@ class BackgroundRenderer:
         
         if not standstill:
             hover_state = root._hover_state
-            if hover_state == HoverState.CLICKED and not root.fancy_click_style and root.clickable: 
+            if hover_state == HoverState.CLICKED and not root.get_param_strict("fancy_click_style") and root.get_param_strict("clickable"): 
                 color = Color.lighten(color, 0.2)
-            elif hover_state == HoverState.HOVERED and root.hoverable: 
+            elif hover_state == HoverState.HOVERED and root.get_param_strict("hoverable"): 
                 color = Color.darken(color, 0.2)
         
         if override_color: color = override_color
@@ -133,7 +133,7 @@ class BackgroundRenderer:
         width = width or style.borderwidth * avg_scale_factor
         
         r_radius = self.draw._round_radius(radius)
-        r_width = round(width)
+        r_width = max(1, round(width))
 
         if sdf: 
             result = self.draw.create_clear(tuple_size, flags = pygame.SRCALPHA)
@@ -156,7 +156,7 @@ class BackgroundRenderer:
     
     def _generate_background(self, sdf = True, only_content = False): 
         root = self.root
-        style = root._style
+        style = root.style
         cache = root.cache
         rounded_size = root._csize.to_round()
         tuple_size = rounded_size.to_tuple()
@@ -171,7 +171,10 @@ class BackgroundRenderer:
         if only_content:
             if border_width > 0:
                 correct_mask = self._create_surf_base(rounded_size, sdf = False)
-                offset = NvVector2(2,2)
+                if border_width * (root._resize_ratio.x + root._resize_ratio.y) * 0.5 > 1.5:
+                    offset = NvVector2(2,2)
+                else:
+                    offset = NvVector2(1,1)
                 mask_surf = cache.get_or_exec(CacheType.Surface, lambda: self._create_surf_base(rounded_size - offset, sdf = False, _clipped=True))
             else:
                 mask_surf = correct_mask = self._create_surf_base(rounded_size, sdf = True)
@@ -265,7 +268,7 @@ class BackgroundRenderer:
         size = size or root._csize
         assert size
 
-        renderFont = root.get_font(override_font_size) 
+        renderFont = root.get_pygame_font(override_font_size) 
         line_height = renderFont.get_linesize()
 
         if words_indent:
