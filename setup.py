@@ -47,6 +47,27 @@ def get_extensions():
             extra_link_args=l_opts,
         ),
         Extension(
+            "nevu_ui.fast.nvrect.nvrect",
+            ["src/nevu_ui/fast/nvrect/nvrect.pyx"],
+            include_dirs=[numpy.get_include()],
+            extra_compile_args=c_opts,
+            extra_link_args=l_opts,
+        ),
+        Extension(
+            "nevu_ui.fast.nvparam.nvparam",
+            ["src/nevu_ui/fast/nvparam/nvparam.pyx"],
+            extra_compile_args=c_opts,
+            extra_link_args=l_opts,
+            include_dirs=[numpy.get_include()]
+        ),
+        Extension(
+            "nevu_ui.fast.nevucobj.nevucobj",
+            ["src/nevu_ui/fast/nevucobj/nevucobj.pyx"],
+            extra_compile_args=c_opts,
+            extra_link_args=l_opts,
+            include_dirs=[numpy.get_include()]
+        ),
+        Extension(
             "nevu_ui.fast.logic.fast_logic",
             ["src/nevu_ui/fast/logic/fast_logic.pyx"],
             extra_compile_args=c_opts,
