@@ -13,11 +13,12 @@ class ScrollableRow(ScrollableBase):
     def _sec_coord(self, coordinates: NvVector2): return coordinates.y
     @property
     def _main_axis(self): return 0
-    def _add_constants(self):
-        super()._add_constants()
-        self.append_key = pygame.K_LEFT
-        self.descend_key = pygame.K_RIGHT
-        self._change_constant_default("basic_alignment", Align.TOP)
+    
+    def _add_params(self):
+        super()._add_params()
+        self._change_param_default("append_key", pygame.K_LEFT)
+        self._change_param_default("descend_key", pygame.K_RIGHT)
+        self._change_param_default("basic_alignment", Align.TOP)
 
     def _parse_align(self, align: Align): return align in (Align.TOP, Align.BOTTOM, Align.CENTER)
 
@@ -35,33 +36,19 @@ class ScrollableRow(ScrollableBase):
         
     def _set_item_main(self, item: NevuObject, align: Align):
         container_height, widget_height = self.rely(self.size[1]), self.rely(item.size[1])
-        padding = self.rely(self.padding)
+        padding = self.rely(self.get_param_strict("spacing").value)
 
         match align:
             case Align.TOP: item.coordinates.y = self._coordinates.y + padding
             case Align.BOTTOM: item.coordinates.y = self._coordinates.y + (container_height - widget_height - padding)
             case Align.CENTER: item.coordinates.y = self._coordinates.y + (container_height / 2 - widget_height / 2)
 
-    def base_light_update(self, items = None): # type: ignore
-        super().base_light_update(-self.get_offset(), 0, items = items)
-
-    def _regenerate_coordinates(self):
-        self.cached_coordinates = []
-        self._regenerate_max_values()
-        pad = self.relx(self.padding)
-        padding_offset = pad
-        for i, item in enumerate(self.items):
-            align = self.widgets_alignment[i]
-            self._set_item_main(item, align)
-            item.coordinates.x = self._coordinates.x + padding_offset
-            self.cached_coordinates.append(item.coordinates.copy())
-            item.absolute_coordinates = self._get_item_master_coordinates(item)
-            padding_offset += item._csize.x + pad
-        super()._regenerate_coordinates()
+    def _base_light_update(self, items = None): # type: ignore
+        super()._base_light_update(-self.get_offset(), 0, items = items)
         
     def _regenerate_max_values(self):
         assert nevu_state.window, "Window is not initialized"
-        pad = self.relx(self.padding)
+        pad = self.relx(self.get_param_strict("spacing").value)
         total_content_width = pad
         for item in self.items:
             total_content_width += item._csize.x + pad
@@ -70,12 +57,6 @@ class ScrollableRow(ScrollableBase):
         antirel = nevu_state.window.rel
         self.actual_max_main = max(0, (total_content_width - visible_width) / antirel.x)
 
-    def _restart_coordinates(self):
-        self.max_main = self.padding
-        self.actual_max_main = 0
-
     def get_relative_vector_offset(self) -> NvVector2: return NvVector2(self.relx(self.get_offset()), 0)
 
-    def add_item(self, item: NevuObject, alignment: Align = Align.TOP): super().add_item(item, alignment)
-
-    def clone(self): return ScrollableRow(self._lazy_kwargs['size'], copy.deepcopy(self.style), self._lazy_kwargs['content'], **self.constant_kwargs)
+    def clone(self): return ScrollableRow(self._template['size'], copy.deepcopy(self.style), self._template['content'], **self.constant_kwargs)
