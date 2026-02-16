@@ -54,23 +54,18 @@ def get_rect_helper_cached_pygame(
 ) -> pygame.Rect: ...
 
 def logic_update_helper(
-    optimized_dirty_rect: bool,
     csize: NvVector2,
     master_coordinates: NvVector2,
-    dirty_rect: List[pygame.Rect],
     dr_coordinates_old: NvVector2,
-    first_update: bool,
-    first_update_functions: List[Callable[[], None]],
     resize_ratio: NvVector2,
     z_system: Any
-) -> Tuple[NvVector2, bool]: ...
+): ...
 
 def _light_update_helper(
     items: List[Any],
     cached_coordinates: List[NvVector2],
     coordinatesMW: NvVector2,
     add_vector: NvVector2,
-    resize_ratio: NvVector2,
 ) -> None: ...
 
 def collide_vector(
