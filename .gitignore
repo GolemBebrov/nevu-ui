@@ -22,3 +22,5 @@ test/
 *.egg-info /
 
 *.html
+
+*.pkl
