@@ -1,6 +1,6 @@
 cimport numpy as np
 from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2
-
+from nevu_ui.fast.nevucobj.nevucobj cimport NevuCobject
 cdef class ZRequest:
     cdef object _link_ref
     cdef public object on_hover_func
@@ -10,6 +10,7 @@ cdef class ZRequest:
     cdef public object on_keyup_func
     cdef public object on_keyup_abandon_func
     cdef object __weakref__
+    cdef object get_link(self)
 
 cdef class ZSystem:
     cdef list _registered_requests
@@ -21,8 +22,9 @@ cdef class ZSystem:
     cdef np.ndarray rects_data
     cdef np.ndarray z_indices
 
+    cdef void c_mark_dirty(self) nogil
     cdef void _reset_arrays(self)
-    cpdef add(self, ZRequest z_request)
+    cpdef void add(self, ZRequest z_request)
     cdef void _rebuild_arrays(self)
     cpdef mark_dirty(self)
     cpdef list get_active_requests(self)

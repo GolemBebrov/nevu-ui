@@ -45,7 +45,7 @@ cpdef object _create_outlined_rounded_rect_sdf(tuple size, int radius, float wid
     cdef uint8_t g = color[1]
     cdef uint8_t b = color[2]
 
-    cdef float center_x = (w - 1) * 0.5
+    cdef float center_x = (w - 1) * 0.5 
     cdef float center_y = (h - 1) * 0.5
     
     cdef float centerline_w = ((w - width) - 2.0 * center_radius - 1.0) * 0.5
