@@ -1,1 +1,2 @@
-from .nevuobj import NevuObject, NevuObjectKwargs
+from .nevuobj import NevuObject
+from .typehints import NevuObjectKwargs, NevuObjectTemplate

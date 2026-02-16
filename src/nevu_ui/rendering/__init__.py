@@ -1,4 +1,4 @@
 from .blit import AlphaBlit, ReverseAlphaBlit
-from .gradient import Gradient
+from .gradient import GradientPygame
 from .shader import Shader
-__all__ = ["AlphaBlit", "ReverseAlphaBlit", "Gradient", "Shader"]
+__all__ = ["AlphaBlit", "ReverseAlphaBlit", "GradientPygame", "Shader"]

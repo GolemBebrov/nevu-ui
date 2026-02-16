@@ -5,14 +5,14 @@ from .column import Column
 from .scrollable_base import ScrollableKwargs
 from .scrollable_column import ScrollableColumn
 from .scrollable_row import ScrollableRow
-from .int_picker_grid import IntPickerGrid
+from .int_picker_grid import ColorPicker
 from .pages import Pages
 from .gallery_pages import Gallery_Pages
 from .stack_base import StackBase
 from .stack_row import StackRow
 from .stack_column import StackColumn
 from .checkbox_group import CheckBoxGroup
-
+from .typehints import LayoutTemplate, GridTemplate, Grid1xTemplate, AlignTemplate
 __all__ = [
-    'LayoutType', 'Grid', 'Row', 'Column', 'ScrollableColumn', 'ScrollableRow', 'IntPickerGrid', 'Pages', 'Gallery_Pages', 'StackRow', 'StackColumn', 'CheckBoxGroup'
+    'LayoutType', 'Grid', 'Row', 'Column', 'ScrollableColumn', 'ScrollableRow', 'ColorPicker', 'Pages', 'Gallery_Pages', 'StackRow', 'StackColumn', 'CheckBoxGroup'
 ]
