@@ -1,6 +1,8 @@
 from enum import StrEnum
 from dataclasses import dataclass
+from typing import Any
 from typing import TYPE_CHECKING
+from nevu_ui.core.enums import Backend
 if TYPE_CHECKING:
     from nevu_ui.fast.nvvector2 import NvVector2
     
@@ -27,10 +29,8 @@ class ConfigType():
             Small = (600, 300)
             Medium = (800, 600)
             Big = (1600, 800)
-        class Display(StrEnum):
-            Classic = "classic"
-            Sdl = "sdl"
-            Opengl = "opengl"
+            
+        Display = Backend
 
         class Utils:
             All = ["keyboard", "mouse", "time"]
@@ -53,11 +53,21 @@ class TooltipType:
         
     @dataclass
     class Custom():
-        ratio: NvVector2
+        ratio: Any
         title: str = ""
     
     @dataclass
     class BigCustom():
-        ratio: NvVector2
+        ratio: Any
         title: str = ""
         content: str = ""
+    
+class DictAccessMixin:
+    def __getitem__(self, key):
+        try: return getattr(self, key)
+        except AttributeError as e:
+            raise KeyError(key) from e
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
+    def get(self, key, default=None):
+        return getattr(self, key, default)
