@@ -1,14 +1,16 @@
+import pyray as rl
 import pygame
 import numpy as np
 
 from nevu_ui.color import Color
 from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.fast import GradientShader
 
 from nevu_ui.core import (
     LinearSide, RadialPosition, GradientType, GradientConfig
 )
 
-class Gradient:
+class GradientPygame:
     def __init__(self, colors: list[tuple[int, int, int]], type: GradientType = GradientType.Linear, direction: GradientConfig = LinearSide.Right, transparency = None):
         self.colors = self._validate_colors(colors)
         if len(self.colors) < 2:
@@ -34,7 +36,7 @@ class Gradient:
     def _validate_radial_direction(self):
         if self.direction not in RadialPosition: raise ValueError(f"Radial gradient direction '{self.direction}' is not supported.")
 
-    def with_transparency(self, transparency): return Gradient(self.colors, self.type, self.direction, transparency)
+    def with_transparency(self, transparency): return GradientPygame(self.colors, self.type, self.direction, transparency)
 
     def apply_gradient(self, surface):
         gradient_surface = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
@@ -148,4 +150,102 @@ class Gradient:
                 new_direction = mapping.get(self.direction) # type: ignore
         if new_direction is None:
             raise ValueError(f"Inversion for direction '{self.direction}' is not supported.")
-        return Gradient(list(reversed(self.colors)), self.type, new_direction, self.transparency)
+        return GradientPygame(list(reversed(self.colors)), self.type, new_direction, self.transparency)
+
+class GradientRaylib(GradientPygame):
+    _shader = None
+    _locs = {}
+    _blank_texture = None 
+
+    def __init__(self, colors, type=GradientType.Linear, direction=LinearSide.Right, transparency=None):
+        super().__init__(colors, type, direction, transparency)
+        self._ensure_resources()
+
+    @staticmethod
+    def from_pygame(pygame_gradient: GradientPygame):
+        return GradientRaylib(pygame_gradient.colors, pygame_gradient.type, pygame_gradient.direction, pygame_gradient.transparency)
+    
+    @classmethod
+    def _ensure_resources(cls):
+        if cls._shader is None:
+            cls._shader = rl.load_shader_from_memory(GradientShader.VERTEX_SHADER, GradientShader.FRAGMENT_SHADER)
+            
+            if cls._shader.id == 0:
+                print("ERROR: Shader failed to compile!")
+            
+            cls._locs = {
+                'gradientType': rl.get_shader_location(cls._shader, "gradientType"),
+                'direction': rl.get_shader_location(cls._shader, "direction"),
+                'colors': rl.get_shader_location(cls._shader, "colors"),
+                'colorCount': rl.get_shader_location(cls._shader, "colorCount"),
+                'alpha': rl.get_shader_location(cls._shader, "alpha"),
+                'size': rl.get_shader_location(cls._shader, "size"),
+            }
+
+        if cls._blank_texture is None:
+            img = rl.gen_image_color(1, 1, rl.WHITE)
+            cls._blank_texture = rl.load_texture_from_image(img)
+            rl.unload_image(img)
+
+    def _get_direction_int(self):
+        if self.type == GradientType.Linear:
+            mapping = {
+                LinearSide.Right: 0, LinearSide.Left: 1,
+                LinearSide.Bottom: 2, LinearSide.Top: 3,
+                LinearSide.BottomRight: 4, LinearSide.TopLeft: 5,
+                LinearSide.TopRight: 6, LinearSide.BottomLeft: 7
+            }
+            return mapping.get(self.direction, 0) # type: ignore
+        elif self.type == GradientType.Radial:
+            mapping = {
+                RadialPosition.Center: 0,
+                RadialPosition.TopCenter: 1, RadialPosition.TopLeft: 2, RadialPosition.TopRight: 3,
+                RadialPosition.BottomCenter: 4, RadialPosition.BottomLeft: 5, RadialPosition.BottomRight: 6
+            }
+            return mapping.get(self.direction, 0) # type: ignore
+        return 0
+
+    def generate_texture(self, width: int, height: int) -> rl.Texture:
+        colors_flat = []
+        for c in self.colors:
+            colors_flat.extend([c[0]/255.0, c[1]/255.0, c[2]/255.0])
+        
+        gradient_type_int = 0 if self.type == GradientType.Linear else 1
+        direction_int = self._get_direction_int()
+        alpha_val = (self.transparency / 255.0) if self.transparency is not None else 1.0
+        
+        grad_type_ptr = rl.ffi.new("int *", gradient_type_int)
+        dir_ptr = rl.ffi.new("int *", direction_int)
+        count_ptr = rl.ffi.new("int *", len(self.colors))
+        alpha_ptr = rl.ffi.new("float *", float(alpha_val))
+        colors_ptr = rl.ffi.new("float[]", colors_flat)
+        size_ptr = rl.ffi.new("float[]", [float(width), float(height)])
+
+        assert self._shader and self._blank_texture
+        
+        rl.set_shader_value(self._shader, self._locs['gradientType'], grad_type_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_INT)
+        rl.set_shader_value(self._shader, self._locs['direction'], dir_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_INT)
+        rl.set_shader_value(self._shader, self._locs['colorCount'], count_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_INT)
+        rl.set_shader_value(self._shader, self._locs['alpha'], alpha_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_FLOAT)
+        rl.set_shader_value_v(self._shader, self._locs['colors'], colors_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_VEC3, len(self.colors))
+        rl.set_shader_value(self._shader, self._locs['size'], size_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_VEC2)
+
+        target = rl.load_render_texture(width, height)
+        
+        rl.begin_texture_mode(target)
+        rl.clear_background(rl.BLANK)
+        rl.begin_shader_mode(self._shader)
+        
+        source_rec = rl.Rectangle(0, 0, 1, 1)
+        dest_rec = rl.Rectangle(0, 0, width, height)
+        rl.draw_texture_pro(self._blank_texture, source_rec, dest_rec, rl.Vector2(0,0), 0.0, rl.WHITE)
+        
+        rl.end_shader_mode()
+        rl.end_texture_mode()
+
+        image = rl.load_image_from_texture(target.texture)
+        final_texture = rl.load_texture_from_image(image)
+        
+        rl.unload_image(image)          
+        rl.unload_render_texture(target)
+        return final_texture
