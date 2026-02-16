@@ -22,25 +22,27 @@ class _TooltipBase:
         self.style = style
         self.title = title
         self._cached_surf = None
-    def adapted_coords(self, master: NevuObject):
-        add_coords = mouse.pos - master.absolute_coordinates
-        pos = master.absolute_coordinates + add_coords
-        return mouse.pos
+        
+    def adapted_coords(self): return mouse.pos
+    
     def get_surf(self, renderer: BackgroundRenderer, alt): 
         if not self._cached_surf:
             self._cached_surf = self._get_surf_content(renderer, alt)
         return self._cached_surf
+    
     def resize(self, ratio: NvVector2): 
         self.ratio = ratio
         self._cached_surf = None
+        
     def _get_surf_content(self, renderer: BackgroundRenderer, alt):
         br = self.style.borderradius
         if isinstance(br, tuple|list):
             br = max(br)
         surf = renderer._create_surf_base(self._csize, radius = br, sdf=True, override_color=self.style.colortheme.get_subtheme(SubThemeRole.TERTIARY).oncontainer, alt = alt)
-        title_surf, title_rect , _ = renderer.bake_text(self.title, style=self.style, size = self._csize, outside=True, outside_rect = surf.get_rect(), override_font_size=self.style.font_size) #type: ignore
+        title_surf, title_rect , _ = renderer.bake_text(self.title, style=self.style, size = self._csize, outside=True, outside_rect = surf.get_rect(), override_font_size=self.style.fontsize) #type: ignore
         surf.blit(title_surf, title_rect)
         return surf
+    
     @property
     def _csize(self): return self.size * self.ratio
 
@@ -49,6 +51,7 @@ class _ExtendedTooltipBase(_TooltipBase):
     def __init__(self, title: str, content, style: Style = default_style):
         super().__init__(title, style)
         self.content = content 
+        
     def _get_surf_content(self, renderer: BackgroundRenderer, alt = False):
         br = self.style.borderradius
         if isinstance(br, tuple|list):
@@ -107,7 +110,7 @@ class Tooltip():
 
     def adapted_coords(self): 
         assert self.master, "Tooltip is not connected to NevuObject!"
-        return self._data.adapted_coords(self.master)
+        return self._data.adapted_coords()
         
     @property
     def size(self): return self._data.size
@@ -132,7 +135,6 @@ class Tooltip():
     def _off(self, *args):
         if overlay.has_element(self):
             overlay.remove_element(self)
-        
     def _on(self, *args):
         assert self.master and self.master.renderer, "Tooltip is not connected to NevuObject!"
         overlay.change_element(self, self.get_surf(self.master.renderer, self.alt), self.adapted_coords(), 2, strict=False)

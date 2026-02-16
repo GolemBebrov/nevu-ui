@@ -21,3 +21,7 @@ class SizeUnit:
         return self._create_rule(other_value)
     def __mul__(self, other_value):
         return self._create_rule(other_value)
+    def __rmod__(self, other_value):
+        return self._create_rule(other_value)
+    def __mod__(self, other_value):
+        return self._create_rule(other_value)
