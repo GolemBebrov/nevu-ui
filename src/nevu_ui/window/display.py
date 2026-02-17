@@ -85,12 +85,12 @@ class DisplayRayLib(DisplayBase):
         }
         rl.set_shader_value(self._border_shader, self._border_locs['colDiffuse'], rl.Vector4(1.0, 1.0, 1.0, 1.0), rl.ShaderUniformDataType.SHADER_UNIFORM_VEC4)
     
-    def blit(self, source: rl.Texture, dest: DisplayAnnotation.RectLike, flip = True, color: DisplayAnnotation.ColorLike | rl.Color = rl.WHITE, angle: int | float | None = None): 
+    def blit(self, source: rl.Texture, dest: DisplayAnnotation.RectLike, flip = True, color: DisplayAnnotation.ColorLike = rl.WHITE, angle: int | float | None = None): 
         if isinstance(color, tuple) and len(color) == 3:
             color = (*color, 255)
         self.blit_rect_pro(source, (dest[0], dest[1], source.width, source.height), flip, color, angle)
         
-    def blit_rect_pro(self, source: rl.Texture, dest: DisplayAnnotation.RectLike, flip = True, color: DisplayAnnotation.ColorLike | rl.Color = rl.WHITE, angle: int | float | None = None, source_rect: DisplayAnnotation.RectLike | None = None):
+    def blit_rect_pro(self, source: rl.Texture, dest: DisplayAnnotation.RectLike, flip = True, color: DisplayAnnotation.ColorLike = rl.WHITE, angle: int | float | None = None, source_rect: DisplayAnnotation.RectLike | None = None):
         if source_rect: source_rec = source_rect
         elif flip: source_rec = (0, 0, source.width, -source.height)
         else: source_rec = (0, 0, source.width, source.height)
@@ -99,7 +99,7 @@ class DisplayRayLib(DisplayBase):
         rl.draw_texture_pro(source, source_rec, dest, (0,0), angle, color)
         rl.end_blend_mode()
     
-    def blit_rect_vec(self, source: rl.Texture, coordinates: DisplayAnnotation.CoordLike, flip = True, color: DisplayAnnotation.ColorLike | rl.Color = rl.WHITE, source_rect: DisplayAnnotation.RectLike | None = None): 
+    def blit_rect_vec(self, source: rl.Texture, coordinates: DisplayAnnotation.CoordLike, flip = True, color: DisplayAnnotation.ColorLike = rl.WHITE, source_rect: DisplayAnnotation.RectLike | None = None): 
         if source_rect: source_rec = source_rect
         elif flip: source_rec = (0, 0, source.width, -source.height)
         else: source_rec = (0, 0, source.width, source.height)

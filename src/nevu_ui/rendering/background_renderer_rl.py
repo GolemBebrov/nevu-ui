@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 import weakref
 import pyray as rl
