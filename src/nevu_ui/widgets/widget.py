@@ -263,10 +263,13 @@ class Widget(NevuObject):
             self.cache.set(CacheType.Image, pygame.transform.scale(img, self._csize))
         except Exception: self.cache.clear_selected(whitelist = [CacheType.Image])
 
-    def _main_subtheme_content(self): return self._subtheme.color
-    def _main_subtheme_border(self): return self._subtheme.oncolor
-    def _alt_subtheme_content(self): return self._subtheme.container
-    def _alt_subtheme_border(self):return self._subtheme.oncontainer
+    @property
+    def font_role(self): return self.style.font_role or self.get_param_strict("font_role").value
+    
+    def _main_subtheme_content(self): return self._subtheme.oncontainer
+    def _main_subtheme_border(self): return self._subtheme.container
+    def _alt_subtheme_content(self): return self._subtheme.oncolor
+    def _alt_subtheme_border(self):return self._subtheme.color
     def _main_subtheme_font(self): return self.style.colortheme.get_pair(self.font_role).color
     def _alt_subtheme_font(self): return self.style.colortheme.get_pair(self.font_role).oncolor
     

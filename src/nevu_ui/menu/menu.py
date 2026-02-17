@@ -36,9 +36,9 @@ class MenuRendererProxy:
     @property
     def _hover_state(self): return HoverState.UN_HOVERED
     @property
-    def subtheme_content(self): return self.menu._subtheme_content
+    def subtheme_content(self): return self.menu._subtheme_content()
     @property
-    def subtheme_border(self): return self.menu._subtheme_border
+    def subtheme_border(self): return self.menu._subtheme_border()
     def __getattr__(self, name): return getattr(self.menu, name)
 
 class MenuLayoutProxy:
@@ -133,6 +133,7 @@ class Menu:
         self.cache = Cache()
         self.quality = Quality.Decent
         self.style = style
+        self._subtheme_role = self.style.subtheme_role or SubThemeRole.PRIMARY
         if self._window: self._window.add_event(NevuEvent(self, self._resize, EventType.Resize))
 
     def _init_size(self, size: list | tuple | NvVector2):
@@ -162,7 +163,7 @@ class Menu:
         self.first_size = size
         self.first_coordinates = NvVector2(0, 0)
         self._opened_sub_menu = None
-        self._subtheme_role = SubThemeRole.PRIMARY
+
 
     def _init_subtheme(self, alt):
         if not alt:
@@ -181,14 +182,10 @@ class Menu:
         if not self._layout: return
         self._layout._boot_up()
         
-    @property
-    def _main_subtheme_content(self): return self._subtheme.color
-    @property
-    def _main_subtheme_border(self): return self._subtheme.oncolor
-    @property
-    def _alt_subtheme_content(self): return self._subtheme.container
-    @property
-    def _alt_subtheme_border(self): return self._subtheme.oncontainer
+    def _main_subtheme_content(self): return self._subtheme.oncolor
+    def _main_subtheme_border(self): return self._subtheme.color
+    def _alt_subtheme_content(self): return self._subtheme.oncontainer
+    def _alt_subtheme_border(self): return self._subtheme.container
     
     @property
     def _background(self):
