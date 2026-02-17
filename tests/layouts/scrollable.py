@@ -1,6 +1,7 @@
 import nevu_ui as ui
 from nevu_ui.size.units import *
 import pygame
+import pyray as rl
 from basic import NevuTest
 from nevu_ui.overlay.tooltip import _SmallTooltip, Tooltip
 from nevu_ui.core.classes import TooltipType
@@ -13,10 +14,10 @@ class TestScrollable(NevuTest):
     def _seset(self):
         self.widget.tooltip.size = self.widget.size * 0.2
     def add_to_layout(self):
-        self.widget: ui.Widget = self.showcase_widgets[0]
+        #self.widget: ui.Widget = self.showcase_widgets[0]
         widget = ui.Widget(ui.NvVector2(300,300))
-        widget._lazy_kwargs['size'] = [100*vw, 100*vh]
-        self.widget.tooltip = Tooltip(TooltipType.BigCustom(ui.NvVector2(0.3, 0.4), "Выбор персонажа...", "Выберите персонажа \n1. - Фапута 3. - Наначи \n2. - Бондрюд 4. - Декстер морган"), self.widget.style)
+        #widget._template['size'] = [100*vw, 100*vh]
+       # self.widget.tooltip = Tooltip(TooltipType.BigCustom(ui.NvVector2(0.3, 0.4), "Выбор персонажа...", "Выберите персонажа \n1. - Фапута 3. - Наначи \n2. - Бондрюд 4. - Декстер морган"), self.widget.style)
         #self.widget.add_first_update_action(self._seset)
         #self.do_fps_test = True
         self._dirty_mode = False
@@ -27,11 +28,12 @@ class TestScrollable(NevuTest):
         a = zip([ui.Align.CENTER] * len(self.showcase_widgets), self.showcase_widgets)
         a = list(a)
         a.append((ui.Align.CENTER, ui.Button(self.add, "add", [50*vw,33*vh])))
+        a.append((ui.Align.CENTER, ui.Label("add", [50*vw,33*vh], hoverable=True, clickable=True)))
         #a.append((ui.Align.CENTER, ui.ScrollableRow([100*ui.fill, 100*ui.vh], content = a.copy())))
         self.test_menu.layout = \
-        ui.ScrollableColumn([100*fill, 100*vh], wheel_scroll_power=1, scrollbar_perc=ui.NvVector2(2,5),
+        ui.ScrollableColumn([100*fill, 100*fill], wheel_scroll_power=1, scrollbar_perc=ui.NvVector2(2,5), borders=True,border_color=(255,0,0),border_name="scrollable",
                 z = -1,
-                content = a
+                content = a,
                 )
         self.scrollable = self.test_menu.layout
         #self.scrollable._test_debug_print = True
@@ -51,28 +53,27 @@ class TestScrollable(NevuTest):
             anim = anims.Shake(10, [0,0], [0,100], anims.AnimationType.POSITION)
             item.animation_manager.add_continuous_animation(anim)
             #print(item)
-    def _get_coords_toltip(self):
-        if ui.mouse.left_fdown:
-            self.show_tooltip = self.widget.get_rect().collidepoint(ui.mouse.pos)
-            if self.show_tooltip:
-                ui.overlay.change_element("tooltip", self.widget.tooltip.get_surf(self.widget.renderer), self.widget.tooltip.adapted_coords(), 2, strict=False)
-            else: ui.overlay.remove_element("tooltip")
     def on_draw(self):
+        #print(ui.time.fps)
         super().on_draw()
         if self.size_mult > 3:
             self.size_znak = -1
         elif self.size_mult < 0.5:
             self.size_znak = 1
+        rl.draw_fps(10,10)
+        #$self.window.display.clear(rl.BLANK)
+        #rl.draw_fps(10,10)
         #print(self.widget._events.content)
         #self._get_coords_toltip()
         #ui.overlay.change_action("tooltip", self.widget.tooltip.get_surf(self.widget.renderer), self.widget.absolute_coordinates, 2)
-        self.window.draw_overlay()
+        #print(len(self.scrollable.collided_items))
+        #self.window.draw_overlay()
         self.size_mult += self.size_znak * ui.time.delta_time
         for i, item in enumerate(self.scrollable.items):
             if isinstance(item, ui.ElementSwitcher):
                 #self.scrollable.items[i] = self.create_new_hohol(self.size_test * self.size_mult)
                 self.scrollable._boot_up()
-        #print(ui.get_color("my-color"))
+        #print(ui.get_all_colors())
     #self.test_widget.surface = self.window.surface
     #a = self.test_widget.renderer._create_surf_base((500,500), radius = 20)
         #self.window.surface.fill(ui.default_style.colortheme.get_subtheme(ui.SubThemeRole.SECONDARY).color)

@@ -5,10 +5,10 @@ pygame.init()
 
 class Game(ui.Manager):
     def __init__(self):
-        window = ui.Window((800, 600), title = "My Game", _gpu_mode = True, resize_type=ui.ResizeType.CropToRatio, ratio = ui.NvVector2(8,6))
+        window = ui.Window((800, 600), title = "My Game", backend=ui.Backend.RayLib, resize_type=ui.ResizeType.CropToRatio, ratio = ui.NvVector2(8,6))
         super().__init__(window)
         self.fps = 75
-        self.menu_style = ui.Style(fontsize=32, borderradius = 20, borderwidth=2, colortheme=ui.ColorThemeLibrary.synthwave_dark)
+        self.menu_style = ui.Style(fontsize=32, borderradius = 20, borderwidth=2, colortheme=ui.ColorThemeLibrary.github_dark, fontname="tests/vk_font.ttf")
         self.current_menu = self._create_menu_first()
         self.current_menu.layout = self._create_entry_layout()
         
@@ -28,7 +28,7 @@ class Game(ui.Manager):
         
     def on_draw(self):
         self.current_menu.draw()
-        self.window.draw_overlay()
+        #self.window.draw_overlay()
     def on_update(self, events):
         self.current_menu.update()
 

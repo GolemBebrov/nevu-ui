@@ -3,11 +3,11 @@ import pygame
 
 def create_test_instances():
     ui.default_style = ui.default_style(colortheme=ui.ColorThemeLibrary.gruvbox_light)
-    test_window = ui.Window((300,300), title="Test Window", resize_type=ui.ResizeType.CropToRatio, ratio=ui.NvVector2(1,1), _gpu_mode = True)
-    test_widget = ui.RectCheckBox(50 ,ui.default_style(borderradius=999, borderwidth=0 ),single_instance=False, active_rect_factor=0.9, alt=True)#ui.Button(lambda: print("pressed"), "Nevu UI!", (100, 100), ui.default_style(borderwidth=10, borderradius = 15),single_instance=False)
-    tooglegroup = ui.CheckBoxGroup([test_widget], True)
-    tooglegroup.on_checkbox_toggled_single = lambda checkbox: print(checkbox.toogled or checkbox is None)
-    tooglegroup.on_checkbox_toggled = lambda checkbox: print(checkbox)
+    test_window = ui.Window((300,300), title="Test Window", resize_type=ui.ResizeType.CropToRatio, ratio=ui.NvVector2(1,1))
+    test_widget = ui.RectCheckBox(50 ,ui.default_style(borderradius=999, borderwidth=0 ), active_rect_factor=0.9, alt=True)#ui.Button(lambda: print("pressed"), "Nevu UI!", (100, 100), ui.default_style(borderwidth=10, borderradius = 15),single_instance=False)
+    tooglegroup = ui.CheckBoxGroup([test_widget], single_selection=True)
+    tooglegroup.on_single_toggled = lambda checkbox: print(checkbox)
+    #tooglegroup.on_multiple_toggled = lambda checkbox: print(checkbox)
     
     test_widget.active_rect_factor = 0.1
     test_widget.subtheme_role = ui.SubThemeRole.ERROR
@@ -51,3 +51,32 @@ class NevuTest(ui.Manager):
 #to create test:
 #   1. Override add_to_layout
 #   2. Run it via manager.run()
+
+#import nevu_ui as ui #Импортируем Nevu UI
+#import pygame
+#
+#import pyray as rl
+#pygame.init()
+#class MyGame(ui.Manager): #Создаем базу нашего приложения
+#    def __init__(self):
+#        window = ui.Window((400, 300), title = "My Game", ratio=ui.NvVector2(4, 3), backend=ui.Backend.RayLib) #Создаем окно
+#        super().__init__(window) #инициализируем менеджер
+#        self.fps = 999999999
+#        buton = ui.Button(lambda: print("КПОНКА!"), "Кнопка", [50*ui.fill,33*ui.fill], ui.Style(fontname="tests/vk_font.ttf"), single_instance=True)
+#        buton.animation_manager.add_continuous_animation(ui.animations.Shake(3, [0,0], [0,100], ui.animations.AnimationType.POSITION))
+#        self.menu = ui.Menu(self.window, [100%ui.vw, 100%ui.vh], #Создаем меню
+#                            layout= ui.Grid([100%ui.vw, 100%ui.vh], row=3, column=3, #Создаем макет grid
+#                                            content = { 
+#                                                (2, 2):buton  #Создаем кнопку
+#                                            }
+#                                            )
+#                            )
+#    def on_draw(self):
+#        self.menu.draw() #рисуем меню
+#        rl.draw_fps(10, 10)
+#    def on_update(self, events):
+#        self.menu.update() #обновляем меню
+#        #print(ui.time.fps)
+#
+#game = MyGame()
+#game.run() #Запускаем готовое приложение

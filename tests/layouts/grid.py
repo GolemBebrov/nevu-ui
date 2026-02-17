@@ -6,7 +6,7 @@ pygame.init()
 class TestGrid(NevuTest):
     def add(self):
         self.grid.add_items({
-            (2,2):self.showcase_widgets[2], 
+            (2,2):self.showcase_widgets[0], 
             
         })
         #self.grid.items[-1].primary_draw = lambda: None

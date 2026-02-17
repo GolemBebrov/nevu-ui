@@ -10,7 +10,7 @@ class InputGrid(NevuTest):
         self.fps = 99999999
         input_box: ui.Input = self.showcase_widgets[2]
         input_box._lazy_kwargs['size'] = [ui.Fill(100), ui.Fill(100)]
-        input_box.style = ui.default_style(borderradius=15, borderwidth=3, fontsize=12)
+        input_box.style = ui.default_style(borderradius=15, borderwidth=3, fontsize=22)
         self.test_menu.layout = \
         ui.Grid([ui.Fill(100), ui.Fill(100)], x=3,y=3,
                 content={

@@ -18,12 +18,12 @@ lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do e
 def create_test_instances():
     ui.default_style = ui.default_style(colortheme=ui.StateVariable(ui.ColorThemeLibrary.pastel_rose_light, ui.ColorThemeLibrary.material3_dark, ui.ColorThemeLibrary.pastel_rose_light))
     ui.apply_config("structure_test.json")
-    test_window = ui.ConfiguredWindow()
-    #test_window = ui.Window((300,300), title="Test Window", resize_type=ui.ResizeType.CropToRatio, ratio=ui.NvVector2(1,1), _gpu_mode=True)
-    widgets_style = ui.default_style(borderradius=(100,50,0,25), borderwidth=5, colortheme=ui.ColorThemeLibrary.github_dark)
-    widgets_style2 = widgets_style(colortheme=ui.ColorThemeLibrary.pastel_rose_light)
+    #test_window = ui.ConfiguredWindow()
+    test_window = ui.Window((1600,900), title="Test Window", resize_type=ui.ResizeType.CropToRatio, ratio=ui.NvVector2(16,9), backend=ui.Backend.RayLib)
+    widgets_style = ui.default_style(borderradius=(100,50,0,25), borderwidth=5, colortheme=ui.ColorThemeLibrary.github_dark, fontname="tests/vk_font.ttf")
+    widgets_style2 = widgets_style(colortheme=ui.StateVariable(ui.ColorThemeLibrary.pastel_rose_light, ui.ColorThemeLibrary.material3_dark, ui.ColorThemeLibrary.pastel_rose_light))
     test_menu = ui.Menu(test_window,[100*vw, 100*vh],widgets_style(borderradius=10,borderwidth=0))
-    
+    test_menu.set_coordinates_relative(50, 50)
     widgets_size = [75*vw, 35*vh]
     widgets_size_small = [75*vw, 15*vh]
     widgets_size_fixed = [300, 100]
@@ -34,11 +34,11 @@ def create_test_instances():
     checkbox_group.on_single_toggled = checkboxgroup_wrapper
     
     #widgets
-    widget = ui.Widget(style=widgets_style, clickable=True, size=widgets_size, single_instance=True)
-    widget.animation_manager.add_continuous_animation(ui.animations.EaseInSine(6, [0,0], [0,100], ui.animations.AnimationType.POSITION))
+    widget = ui.Widget(style=widgets_style, clickable=True, size=widgets_size, )#single_instance=True)
+    #widget.animation_manager.add_continuous_animation(ui.animations.EaseInSine(6, [0,0], [0,100], ui.animations.AnimationType.POSITION))
     widget.subtheme_role = ui.SubThemeRole.ERROR
     
-    label = ui.Label(lorem_ipsum, size=widget_kwargs["size"], style="rodina")
+    label = ui.Label(lorem_ipsum, size=widget_kwargs["size"], style=ui.Style(fontname="tests/vk_font.ttf"))
     input_box = ui.Input(**widget_kwargs, placeholder = "Input!", multiple=True, tooltip = Tooltip(TooltipType.Medium("Выбор персонажа...", "Выберите персонажа \n1. - Фапута 3. - Наначи \n2. - Бондрюд 4. - Декстер морган"), widgets_style(text_align_x=ui.Align.LEFT)))
     
     #composable | checkboxgroup example
@@ -51,7 +51,7 @@ def create_test_instances():
     #rect_checkbox_row.borders = True
     #rect_checkbox_row.border_name = "RectCheckBox Row"
     
-    for item in rect_checkbox_row._lazy_kwargs["content"].values():
+    for item in rect_checkbox_row._template["content"].values():
         assert isinstance(item, ui.RectCheckBox)
         checkbox_group.add_checkbox(item)
     
@@ -60,11 +60,12 @@ def create_test_instances():
     progress_bar = ui.ProgressBar(**widget_kwargs, value = 50)
     
     
-    slider_bar = ui.Slider(widgets_size, widgets_style(text_align_x = ui.StateVariable(ui.Align.CENTER, ui.Align.RIGHT, ui.Align.LEFT), fontsize=45), start = 0, end = 100, step = 1, current_value = 50, tuple_role = ui.TupleColorRole.INVERSE_PRIMARY, bar_pair_role=ui.PairColorRole.SURFACE_VARIANT, tooltip=Tooltip(TooltipType.Small("Это страшная кнопка"*10), widgets_style2), single_instance=True)# alt = True)
+    slider_bar = ui.Slider(widgets_size, widgets_style2(text_align_x = ui.StateVariable(ui.Align.CENTER, ui.Align.RIGHT, ui.Align.LEFT), fontsize=45), start = 0, end = 100, step = 1, current_value = 50, tuple_role = ui.TupleColorRole.INVERSE_PRIMARY, bar_pair_role=ui.PairColorRole.SURFACE_VARIANT, tooltip=Tooltip(TooltipType.Small("Это страшная кнопка"*10), widgets_style2), single_instance=True)# alt = True)
     #element = element_swither.find("fruit_1")
-    showcase_widgets = [widget, label, input_box, rect_checkbox_row, element_swither, progress_bar, slider_bar]
+    showcase_widgets = [widget, label, progress_bar, slider_bar]
     
     return test_window, test_menu, showcase_widgets#, showcase_layouts
+
 
 class NevuTest(ui.Manager):
     def __init__(self):
@@ -88,10 +89,10 @@ class NevuTest(ui.Manager):
         super().on_draw()
         self.test_menu.draw()
     def on_update(self, events = None):
-        super().on_update(events)
         self.test_menu.update()
         if self.do_fps_test:
-            print(f"Debug: FPS-{ui.time.fps}")
+            #print(f"Debug: FPS-{ui.time.fps}")
+            pass
         if self.print_debug_fps:
             if self.frame > self.start_of_check:
                 if self.frame < self.start_of_check + self.middle_items:
@@ -106,12 +107,13 @@ class NevuTest(ui.Manager):
             if len(self.middle_list) != 0: 
                 print(f'frame: {self.frame} avg fps:{int(sum(self.middle_list)/len(self.middle_list))}')
             self.frame += 1
+        super().on_update(events)
     def _after_draw(self):
         super()._after_draw()
-        if self.draw_cursor:
-            surf = pygame.Surface((10,10))
-            pygame.draw.circle(surf, (255,0,0), (0,0), 5)
-            self.window._display.blit(surf, pygame.rect.Rect(*pygame.mouse.get_pos(), 10, 10))
+        #if self.draw_cursor:
+            #surf = pygame.Surface((10,10))
+            #pygame.draw.circle(surf, (255,0,0), (0,0), 5)
+           # self.window._display.blit(surf, pygame.rect.Rect(*pygame.mouse.get_pos(), 10, 10))
 
 #to create test:
 #   1. Override add_to_layout

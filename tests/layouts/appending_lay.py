@@ -11,7 +11,7 @@ class TestAppending(NevuTest):
             ui.StackRow(spacing = 40,single_instance=False, content = 
             [(ui.Align.CENTER, self.showcase_widgets[0]),
              (ui.Align.CENTER, self.showcase_widgets[1]),
-             (ui.Align.CENTER, self.showcase_widgets[2]),]
+             (ui.Align.CENTER, self.showcase_widgets[0]),]
             )
         print("STARTED APPENDING", self.appending_layout_h._lazy_kwargs)
         self.test_menu.layout = \

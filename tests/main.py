@@ -7,7 +7,7 @@ pygame.init()
 
 class Mygame(ui.Manager):
     def __init__(self):
-        self.window = ui.Window((400,400), resize_type=ui.ResizeType.CropToRatio ,ratio=ui.NvVector2(1,1), _gpu_mode=True)
+        self.window = ui.Window((400,400), resize_type=ui.ResizeType.CropToRatio ,ratio=ui.NvVector2(1,1), backend=ui.Backend.RayLib)
         super().__init__(self.window)
         self.fps = 75999999999999999 #Задаем нуженый fps
         self._dirty_mode = False #Для тольео оптимизации(не рекомендуется включать)
@@ -15,11 +15,11 @@ class Mygame(ui.Manager):
          #Создаем окно
         main_style = ui.Style( #Гланый стиль
             borderradius=10, borderwidth=2,
-            fontname="tests/vk_font.ttf", gradient=ui.Gradient(colors=[ui.Color.AQUA,(100,100,100)],type=ui.GradientType.Linear,direction=ui.LinearSide.Right))
+            fontname="tests/vk_font.ttf", gradient=ui.GradientPygame(colors=[ui.Color.AQUA,(100,100,100)],type=ui.GradientType.Linear,direction=ui.LinearSide.Right))
         style_mini_font = main_style( #Подстиль
             fontsize=15, borderradius=(5,0,0,5),  
-            borderwidth=4, gradient=ui.Gradient(colors=[ui.Color.REBECCAPURPLE,ui.Color.mix(ui.Color.AQUA,ui.Color.REBECCAPURPLE)],type=ui.GradientType.Linear,direction=ui.LinearSide.Top))
-    
+            borderwidth=4, gradient=ui.GradientPygame(colors=[ui.Color.REBECCAPURPLE,ui.Color.mix(ui.Color.AQUA,ui.Color.REBECCAPURPLE)],type=ui.GradientType.Linear,direction=ui.LinearSide.Top))
+
         b = ui.Button(lambda: print("Button 1"), "Test Chamber", [50*ui.fill,11*ui.fill], style=style_mini_font(borderradius=5, borderwidth=2, fontsize=10), words_indent=True, alt=True) #Создаем кнопку
         i = ui.Input([100*ui.fill,30*ui.fill],style_mini_font(borderradius=30,borderwidth=0,fontname="tests/vk_font.ttf"),"","Введите", alt=True, multiple=True) #Создаем инпут
         conf = i.constant_kwargs.copy()
@@ -46,7 +46,7 @@ class Mygame(ui.Manager):
         gridmenu._boot_up()
 
         self.menu = ui.menu.Menu(self.window,(100*ui.vw,100*ui.vh),
-                style = main_style(borderradius=20,borderwidth=1, gradient=ui.Gradient(colors=[ui.Color.BLACK, ui.Color.PURPLE],type=ui.GradientType.Linear,direction=ui.LinearSide.Bottom)), alt=False, 
+                style = main_style(borderradius=20,borderwidth=1, gradient=ui.GradientPygame(colors=[ui.Color.BLACK, ui.Color.PURPLE],type=ui.GradientType.Linear,direction=ui.LinearSide.Bottom)), alt=False, 
                 layout = ui.Grid([100*ui.fill,100*ui.fill],x=3,y=3, 
                          content = {
                          (2,1.2): gridmenu,

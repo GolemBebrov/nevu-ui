@@ -24,12 +24,12 @@ class TestScrollable(NevuTest):
                                                     2 :self.test_widget,
                                                     3 :self.test_widget,})),
                 (ui.Align.CENTER, self.test_widget),
-                (ui.Align.CENTER, self.test_hard_widget),
+                #(ui.Align.CENTER, self.test_hard_widget),
                 (ui.Align.CENTER, self.test_inner_layout),
                 (ui.Align.CENTER, self.test_widget),
                 (ui.Align.CENTER, self.test_widget),
                 (ui.Align.CENTER, tetete_progressbar),
-                (ui.Align.CENTER, nyachechevitsya),
+               # (ui.Align.CENTER, nyachechevitsya),
                 
             ]
             )
