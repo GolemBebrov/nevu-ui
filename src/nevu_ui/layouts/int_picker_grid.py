@@ -95,4 +95,7 @@ class ColorPicker(Grid):
             item.text = str(color[i])
             
     def _create_clone(self):
-        return ColorPicker(amount_of_colors=self.amount_of_colors, title=self.title, **self.constant_kwargs.copy())
+        kwargs = self.constant_kwargs.copy()
+        if "x" in kwargs: del kwargs["x"]
+        if "y" in kwargs: del kwargs["y"]
+        return ColorPicker(amount_of_colors=self.amount_of_colors, title=self.title, **kwargs)
