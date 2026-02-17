@@ -5,13 +5,11 @@ from pygame._sdl2 import Texture
 from functools import partial
 from typing import Unpack
 
-from nevu_ui.nevuobj import NevuObject
 from nevu_ui.window import Window
 from nevu_ui.layouts import LayoutType
 from nevu_ui.widgets import Widget
 from nevu_ui.color import SubThemeRole
 from nevu_ui.core.state import nevu_state
-from nevu_ui.rendering.shader import convert_surface_to_gl_texture
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.size.rules import SizeRule
 from nevu_ui.rendering.background_renderer import BackgroundRenderer

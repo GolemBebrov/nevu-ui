@@ -1,20 +1,20 @@
 import pygame
 import weakref
 
-from nevu_ui.color import Color
 from typing import TYPE_CHECKING
-if TYPE_CHECKING: from nevu_ui.widgets import Widget
+if TYPE_CHECKING: from nevu_ui.nevuobj import NevuObject
+
+from nevu_ui.color import Color
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.style import Style
 from nevu_ui.rendering import AlphaBlit, GradientPygame
+from nevu_ui.fast.shapes import _create_rounded_rect_surface_optimized, transform_into_outlined_rounded_rect
 
 from nevu_ui.core.enums import (
-    _QUALITY_TO_RESOLUTION, CacheType, HoverState, Align
+    CacheType, HoverState, Align
 )
 
-from nevu_ui.fast.shapes import (
-    _create_rounded_rect_surface_optimized, _create_outlined_rounded_rect_sdf, transform_into_outlined_rounded_rect
-)
+
 
 class _DrawNamespace:
     __slots__ = ["_renderer"]
@@ -22,7 +22,7 @@ class _DrawNamespace:
         self._renderer = renderer
         
     @property
-    def root(self) -> Widget: return self._renderer.root
+    def root(self) -> NevuObject: return self._renderer.root
     
     @property
     def style(self): return self.root.style
@@ -72,13 +72,13 @@ class _DrawNamespace:
     
 class BackgroundRenderer:
     __slots__ = ["_root", "draw"]
-    def __init__(self, root: Widget):
+    def __init__(self, root: NevuObject):
         #assert isinstance(root, NevuObject), "Root must be NevuObject"
         self._root = weakref.proxy(root) 
         self.draw = _DrawNamespace(self)
         
     @property
-    def root(self) -> Widget: return self._root
+    def root(self) -> NevuObject: return self._root
     
     def _draw_gradient(self):
         root = self.root
@@ -114,7 +114,7 @@ class BackgroundRenderer:
         radius = self.draw._mult_radius(style.borderradius, avg_scale_factor) if radius is None else radius
         r_radius = self.draw._round_radius(radius)
         
-        if sdf: surf.blit(_create_rounded_rect_surface_optimized(tuple_size, r_radius, color), (0, 0))
+        if sdf: surf.blit(_create_rounded_rect_surface_optimized(tuple_size, r_radius, color), (0, 0)) #type: ignore
         else:
             r_radius = self.draw._normalize_radius(r_radius, _clipped = _clipped)
             #!to normalize with sdf
@@ -160,33 +160,30 @@ class BackgroundRenderer:
         cache = root.cache
         rounded_size = root._csize.to_round()
         tuple_size = rounded_size.to_tuple()
-        
+
         border_width = style.borderwidth
         coords = (0,0) if border_width <= 0 else (1,1)
-        
+
         mask_surf = None
         correct_mask = None
         offset = NvVector2(0,0)
-
+        
         if only_content:
             if border_width > 0:
                 correct_mask = self._create_surf_base(rounded_size, sdf = False)
-                if border_width * (root._resize_ratio.x + root._resize_ratio.y) * 0.5 > 1.5:
-                    offset = NvVector2(2,2)
-                else:
-                    offset = NvVector2(1,1)
+                offset = NvVector2(2, 2) if border_width * (root._resize_ratio.x + root._resize_ratio.y) > 1.5 / 0.5 else NvVector2(1, 1)
                 mask_surf = cache.get_or_exec(CacheType.Surface, lambda: self._create_surf_base(rounded_size - offset, sdf = False, _clipped=True))
             else:
                 mask_surf = correct_mask = self._create_surf_base(rounded_size, sdf = True)
 
         final_surf = pygame.Surface(tuple_size, flags = pygame.SRCALPHA)
-        
+
         content_surf = None
         if style.gradient:
             content_surf = cache.get_or_exec(CacheType.Scaled_Gradient, lambda: self._scale_gradient(rounded_size - offset))
         elif style.bgimage:
             content_surf = cache.get_or_exec(CacheType.Scaled_Image, lambda: self._scale_image(rounded_size - offset))
-        
+
         if only_content:
             if content_surf:
                 assert correct_mask, "Invalid correct_mask"
@@ -197,7 +194,7 @@ class BackgroundRenderer:
                 final_surf.blit(mask_surf, coords)
         elif content_surf:
             final_surf.blit(content_surf, (0,0))
-            
+
         if border_width > 0:
             cache_type = CacheType.Borders
             if border := cache.get_or_exec(cache_type, lambda: self._create_outlined_rect(rounded_size, sdf = sdf)):
@@ -260,15 +257,15 @@ class BackgroundRenderer:
         root = self.root
         style = style or root.style
         assert style
-        
+
         alignx = style.text_align_x
         aligny = style.text_align_y
-        
+
         color = color or root.subtheme_font
         size = size or root._csize
         assert size
 
-        renderFont = root.get_pygame_font(override_font_size) 
+        renderFont = root.get_pygame_font(override_font_size)
         line_height = renderFont.get_linesize()
 
         if words_indent:
@@ -277,26 +274,26 @@ class BackgroundRenderer:
         else:
             words = list(text)
             marg = ""
-            
+
         is_cropped = False
         lines = self._split_words(words, renderFont, size.x, marg)
-        
+
         if not unlimited_y:
             while len(lines) * line_height > size.y:
                 lines.pop(-1)
                 is_cropped = True
-                
+
         baked_text = "\n".join(lines)
 
         if is_cropped and not unlimited_y:
             baked_text = f"{baked_text[:-3]}..."
 
         text_surface: pygame.Surface = renderFont.render(baked_text, True, color)
-        
+
         if outside and outside_rect: container_rect = outside_rect
         elif root.inline: container_rect = pygame.Rect(root.coordinates.to_round().to_tuple(), root._csize.to_round())
         else: container_rect = root.surface.get_rect()
-            
+
         text_rect = text_surface.get_rect()
 
         if alignx == Align.LEFT: text_rect.left = container_rect.left
@@ -308,7 +305,6 @@ class BackgroundRenderer:
 
         if outside:
             return text_surface, text_rect, baked_text
-        else:
-            root._text_surface = text_surface
-            root._text_rect = text_rect
-            root._text_baked = baked_text
+        root._text_surface = text_surface # type: ignore
+        root._text_rect = text_rect # type: ignore
+        root._text_baked = baked_text # type: ignore

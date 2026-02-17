@@ -2,8 +2,9 @@ from . import animations
 from . import utils
 from . import size
 
-from .menu import Menu
 from .nevuobj import NevuObject
+from .menu import Menu
+
 from .ui_manager import Manager
 from .fast import NvVector2
 from .rendering import GradientPygame

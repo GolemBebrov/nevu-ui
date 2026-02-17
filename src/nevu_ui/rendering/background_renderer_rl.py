@@ -1,19 +1,22 @@
-from typing import TYPE_CHECKING
-if TYPE_CHECKING: from nevu_ui.widgets import Widget
 import math
-from nevu_ui.core.enums import (
-    _QUALITY_TO_RESOLUTION, CacheType, HoverState, Align
-)
-from nevu_ui.color import Color
 import weakref
+import pyray as rl
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING: from nevu_ui.nevuobj import NevuObject
+
+from nevu_ui.color import Color
 from nevu_ui.window.display import DisplayRayLib
-from nevu_ui.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.style import Style
-import pyray as rl
 from nevu_ui.core.state import nevu_state
 from nevu_ui.core.enums import CacheType, Align
 from nevu_ui.rendering.gradient import GradientRaylib, GradientPygame
+
+from nevu_ui.core.enums import (
+    CacheType, HoverState, Align
+)
+
 class _DrawNamespaceRayLib:
     __slots__ = ["_renderer"]
     def __init__(self, renderer):
@@ -45,12 +48,12 @@ class _DrawNamespaceRayLib:
 class BackgroundRendererRayLib:
     __slots__ = ["_renderer"]
     __slots__ = ["_root", "draw"]
-    def __init__(self, root: Widget):
+    def __init__(self, root: NevuObject):
         self._root = weakref.proxy(root) 
         self.draw = _DrawNamespaceRayLib(self)
         
     @property
-    def root(self) -> Widget: return self._root
+    def root(self) -> NevuObject: return self._root
     
     def _create_surf_base(self, size = None, alt = False, radius = None, standstill = False, override_color = None, sdf = False, _clipped = False): 
         assert nevu_state.window
