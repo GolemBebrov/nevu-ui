@@ -76,7 +76,7 @@ class Style:
             "colortheme": ["colortheme", lambda value: self.parse_type(value, ColorTheme)],
             "gradient": ["gradient", lambda value: self.parse_type(value, GradientPygame)],
             "color_role": ["color_role", lambda value: self.parse_type(value, SubThemeRole)],
-            "subtheme_role": ["color_role", lambda value: self.parse_type(value, SubThemeRole)],
+            "subtheme_role": ["subtheme_role", lambda value: self.parse_type(value, SubThemeRole)],
             "font_role": ["font_role", lambda value: self.parse_type(value, PairColorRole)],
         }
         self._curr_state = HoverState.UN_HOVERED
@@ -103,7 +103,7 @@ class Style:
             self.add_style_parameter(name, paramether, checker_lambda)
         
     def _init_basic(self):
-        self.colortheme = copy.copy(ColorThemeLibrary.material3_dark)
+        self.colortheme = copy.copy(ColorThemeLibrary.material3_blue)
         self.borderwidth = 1
         self.borderradius = 0
         self.fontname = "Arial"
@@ -115,6 +115,7 @@ class Style:
         self.gradient = None
         self.color_role = None
         self.font_role = None
+        self.subtheme_role = None
     
     def add_style_parameter(self, name: str, attribute_name: str, checker_lambda):
         self.kwargs_dict[name] = (attribute_name, checker_lambda)
