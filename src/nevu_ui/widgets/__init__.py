@@ -1,7 +1,7 @@
 #TypedDicts
 from .typehints import WidgetKwargs, LabelKwargs, ButtonKwargs, RectCheckBoxKwargs, InputKwargs, ElementSwitcherKwargs, ProgressBarKwargs, SliderKwargs
 #Templates
-from .typehints import WidgetTemplate, LabelTemplate, ButtonTemplate, RectCheckBoxTemplate, InputTemplate, ElementSwitcherTemplate, ProgressBarTemplate, SliderTemplate
+from .typehints import WidgetTemplate, LabelTemplate, ButtonTemplate, ElementSwitcherTemplate
 #Widgets
 from .widget import Widget
 from .label import Label
