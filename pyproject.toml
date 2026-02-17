@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nevu-ui"
-version = "0.7.0.post1" 
+version = "0.7.0.post2" 
 authors = [
   { name="GolemNikidastrov", email="bebrovgolem@gmail.com" },
 ]
