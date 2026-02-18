@@ -129,11 +129,11 @@ pygame.init()
 class MyGame(ui.Manager): #Создаем базу нашего приложения
     def __init__(self):
         super().__init__(ui.Window((400, 300), title = "My Game")) #Инициализируем менеджер
-        style = ui.Style(borderradius=20, colortheme=ui.ColorThemeLibrary.material3_teal) #Создаем Style (необязательно)
+        style = ui.Style(borderradius=20, colortheme=ui.ColorThemeLibrary.material3_dark) #Создаем Style (необязательно)
         self.menu = ui.Menu(self.window, [100%ui.vw, 100%ui.vh], style = style, #Создаем меню
                             layout= ui.Grid([100%ui.vw, 100%ui.vh], row=3, column=3, #Создаем макет grid
                                             content = { 
-                                                (2, 2): ui.Button(lambda: print("You clicked!"), "КНОПКА!", [50%ui.fill, 50%ui.gc], style) #Создаем кнопку
+                                                (2, 2): ui.Button(lambda: print("You clicked!"), "КНОПКА!", [50%ui.fill, 50%ui.gc], style=style) #Создаем кнопку
                                             }
                                             )
                             )
@@ -154,10 +154,10 @@ pygame.init()
 
 window = ui.Window((400, 300), title = "My Game") #Создаем окно
 
-menu = ui.Menu(window, [100*ui.vw, 100*ui.vh]) #Создаем меню
-
-layout = ui.Grid([100*ui.vw, 100*ui.vh], row=3, column=3) #Создаем макет grid
-layout.add_item(ui.Button(lambda: print("You clicked!"), "Button", [50*ui.fill,33*ui.fill]), x = 2, y = 2) #Создаем кнопку
+style = ui.Style(borderradius=20, colortheme=ui.ColorThemeLibrary.material3_dark) #Создаем Style
+menu = ui.Menu(window, [100%ui.vw, 100%ui.vh], style=style) #Создаем меню
+layout = ui.Grid([100%ui.vw, 100%ui.vh], row=3, column=3) #Создаем макет grid
+layout.add_item(ui.Button(lambda: print("You clicked!"), "КНОПКА!", [50%ui.fill, 50%ui.gc], style=style), x = 2, y = 2) #Создаем кнопку
 
 menu.layout = layout #Задаем макет меню
 
