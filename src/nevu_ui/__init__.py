@@ -60,5 +60,5 @@ __all__ = [
     "animations", "utils", "size"
 ]
 
-version = "0.7.0" #okabe 1.048596% based, lelush buryatskiy povelevae bagi uydite
+version = "0.7.1" #okabe 1.048596% based, lelush buryatskiy povelevae bagi uydite
 print(f"nevu-ui {version}")
