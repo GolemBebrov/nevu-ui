@@ -1,34 +1,35 @@
-from . import animations
+from . import presentation
+from . import core
+from . import components
 from . import utils
-from . import size
 
-from .nevuobj import NevuObject
+from .components.nevuobj import NevuObject
 from .menu import Menu
 
-from .ui_manager import Manager
+from .manager import Manager
 from .fast import NvVector2
 from .rendering import GradientPygame
 from .core.state import nevu_state
-from .struct import apply_config, get_style, get_color, get_all_styles, get_all_colors
+from .json_parser import apply_config, get_style, get_color, get_all_styles, get_all_colors
 from .overlay import overlay, Tooltip
 
-from .size.units import (
+from .core.size.units import (
     SizeRule, PercentSizeRule, SizeUnit, Fill, FillW, FillH, Vh, Vw, Gc, Gcw, Gch, fill, fillw, fillh, vh, vw, gc, gcw, gch, px, Px, cfill, cfillw, cfillh, cvh, cvw, cgc, cgcw, cgch
 )
-from .color import (
+from .presentation.color import (
     Color, ColorTheme, ColorSubTheme, ColorPair, ColorThemeLibrary, SubThemeRole, PairColorRole, TupleColorRole
 )
-from .style import (
+from .presentation.style import (
     Style, default_style, StateVariable
 )
 from .core.enums import (
     Align, Quality, HoverState, LinearSide, RadialPosition, GradientType, CacheName, CacheType, EventType, Backend
 )
 from .core.classes import TooltipType
-from .widgets import (
+from .components.widgets import (
     Widget, Label, Button, EmptyWidget, RectCheckBox, Image, Gif, Input, MusicPlayer, ElementSwitcher, Element, ProgressBar, Slider
 )
-from .layouts import (
+from .components.layouts import (
     LayoutType, Grid, Row, Column, ScrollableColumn, ScrollableRow, ColorPicker, Pages, Gallery_Pages, StackRow, StackColumn, CheckBoxGroup
 )
 from .utils import (

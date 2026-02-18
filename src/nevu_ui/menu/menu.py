@@ -6,17 +6,17 @@ from functools import partial
 from typing import Unpack
 
 from nevu_ui.window import Window
-from nevu_ui.layouts import LayoutType
-from nevu_ui.widgets import Widget
-from nevu_ui.color import SubThemeRole
+from nevu_ui.components.layouts import LayoutType
+from nevu_ui.components.widgets import Widget
+from nevu_ui.presentation.color import SubThemeRole
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.size.rules import SizeRule
-from nevu_ui.rendering.background_renderer import BackgroundRenderer
-from nevu_ui.rendering.background_renderer_rl import BackgroundRendererRayLib
+from nevu_ui.core.size.rules import SizeRule
+from nevu_ui.rendering.pygame.renderer import BackgroundRendererPygame
+from nevu_ui.rendering.raylib.renderer import BackgroundRendererRayLib
 from nevu_ui.core.enums import HoverState
 from nevu_ui.utils import Cache, NevuEvent
-from nevu_ui.style import Style, default_style, StyleKwargs
+from nevu_ui.presentation.style import Style, default_style, StyleKwargs
 from nevu_ui.fast.logic.fast_logic import relm_helper, rel_helper, mass_rel_helper, vec_rel_helper
 
 from nevu_ui.core.enums import (
@@ -58,7 +58,7 @@ class Menu:
         if not self._window: return
         self._renderer_proxy = MenuRendererProxy(self)
         if self._window.is_dtype.raylib: self._renderer = BackgroundRendererRayLib(self._renderer_proxy) #type: ignore
-        else: self._renderer = BackgroundRenderer(self._renderer_proxy) #type: ignore
+        else: self._renderer = BackgroundRendererPygame(self._renderer_proxy) #type: ignore
         self._borrow_from_nevuobj()
         self._borrow_from_widget()
         self._borrow_from_layout()

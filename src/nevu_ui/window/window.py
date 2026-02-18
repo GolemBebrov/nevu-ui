@@ -5,7 +5,7 @@ import pygame
 import pyray as rl
 
 from nevu_ui.core.state import nevu_state
-from nevu_ui.struct.base import standart_config
+from nevu_ui.json_parser.base import standart_config
 from nevu_ui.core.classes import ConfigType
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.fast.zsystem import ZSystem, ZRequest

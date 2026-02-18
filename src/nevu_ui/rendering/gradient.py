@@ -2,7 +2,7 @@ import pyray as rl
 import pygame
 import numpy as np
 
-from nevu_ui.color import Color
+from nevu_ui.presentation.color import Color
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.fast import GradientShader
 

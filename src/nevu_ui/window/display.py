@@ -1,7 +1,7 @@
 import pygame 
 import pyray as rl
 from pygame._sdl2.video import (Window as SDL2Window, Renderer, Texture)
-from nevu_ui.color.color import ColorAnnotation
+from nevu_ui.presentation.color.color import ColorAnnotation
 from nevu_ui.fast.shaders import SdfShader, BorderShader
 from nevu_ui.fast.nvrect import NvRect
 

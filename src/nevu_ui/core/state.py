@@ -6,7 +6,7 @@ from nevu_ui.core.enums import Backend
 if TYPE_CHECKING:
     from nevu_ui.window import Window
     from nevu_ui.fast.zsystem import ZSystem
-    from nevu_ui.ui_manager import Manager
+    from nevu_ui.manager import Manager
 
 class NevuState:
     __slots__ = ["tooltip_active", "dirty_mode", "window", "manager", "current_events", "current_dirty_rects", "z_system", "renderer", "backend"]

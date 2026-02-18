@@ -2,16 +2,16 @@ from __future__ import annotations
 import pygame
 import weakref
 
-from nevu_ui.style import Style, default_style
+from nevu_ui.presentation.style import Style, default_style
 from nevu_ui.core.classes import TooltipType
 from nevu_ui.fast.nvvector2 import NvVector2
 from typing import TYPE_CHECKING
-if TYPE_CHECKING: from nevu_ui.nevuobj.nevuobj import NevuObject
+if TYPE_CHECKING: from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.utils import NevuEvent, mouse, time
 from nevu_ui.core.enums import EventType, HoverState, Malign
 from nevu_ui.overlay import overlay
-from nevu_ui.color import SubThemeRole
-from nevu_ui.rendering.background_renderer import BackgroundRenderer
+from nevu_ui.presentation.color import SubThemeRole
+from nevu_ui.rendering.pygame.renderer import BackgroundRendererPygame
 
 class _TooltipBase:
     __slots__ = ('ratio', 'pos', 'size', 'style', 'title', '_cached_surf', 'initial_ratio')
@@ -26,7 +26,7 @@ class _TooltipBase:
         
     def adapted_coords(self): return mouse.pos
     
-    def get_surf(self, renderer: BackgroundRenderer, alt): 
+    def get_surf(self, renderer: BackgroundRendererPygame, alt): 
         if not self._cached_surf:
             self._cached_surf = self._get_surf_content(renderer, alt)
         return self._cached_surf
@@ -35,7 +35,7 @@ class _TooltipBase:
         self.ratio = ratio
         self._cached_surf = None
         
-    def _get_surf_content(self, renderer: BackgroundRenderer, alt):
+    def _get_surf_content(self, renderer: BackgroundRendererPygame, alt):
         br = self.style.borderradius
         if isinstance(br, tuple|list):
             br = max(br)
@@ -53,7 +53,7 @@ class _ExtendedTooltipBase(_TooltipBase):
         super().__init__(title, style)
         self.content = content 
         
-    def _get_surf_content(self, renderer: BackgroundRenderer, alt = False):
+    def _get_surf_content(self, renderer: BackgroundRendererPygame, alt = False):
         br = self.style.borderradius
         if isinstance(br, tuple|list):
             br = max(br)
