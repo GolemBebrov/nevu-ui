@@ -98,7 +98,7 @@ class BackgroundRendererRayLib:
         cache = root.cache
         rounded_size = root._csize.to_round()
         tuple_size = rounded_size.get_int_tuple()
-        print("asdasd",rounded_size)
+        #print("asdasd",rounded_size)
         
         content_text = cache.get_or_exec(CacheType.Surface, lambda: self._create_surf_base(rounded_size))
         final_surf = rl.load_render_texture(*tuple_size)
@@ -106,7 +106,7 @@ class BackgroundRendererRayLib:
         assert content_text
         assert nevu_state.window.is_raylib(display)
         rl.begin_texture_mode(final_surf)
-        print(style.borderradius)
+        #print(style.borderradius)
         if isinstance(style.borderradius, int|float):
             borderradius = [root.relm(style.borderradius)]*4
         else:

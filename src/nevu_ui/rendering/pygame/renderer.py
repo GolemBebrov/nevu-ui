@@ -58,6 +58,15 @@ class _DrawNamespace:
         else:
             return round(radius)
     
+    def _check_radius(self, radius: tuple[int,int,int,int], size: NvVector2):
+        halfsize = size * 0.5
+        correct_radius = []
+        for item in radius:
+            if item > halfsize.x: correct_radius.append(halfsize.x)
+            elif item > halfsize.y: correct_radius.append(halfsize.y)
+            else: correct_radius.append(item)
+        return tuple(correct_radius)
+        
     def _mult_radius(self, radius: int | float | tuple, mult: float):
         if isinstance(radius, tuple):
             return tuple(map(lambda x: x * mult, radius))
@@ -133,7 +142,9 @@ class BackgroundRendererPygame:
         radius = radius or self.draw._mult_radius(style.borderradius, avg_scale_factor)
         width = width or style.borderwidth * avg_scale_factor
         
+        if isinstance(radius, (int, float)): radius = (radius, radius, radius, radius)
         r_radius = self.draw._round_radius(radius)
+        r_radius = self.draw._check_radius(r_radius, needed_size)
         r_width = max(1, round(width))
 
         if sdf: 

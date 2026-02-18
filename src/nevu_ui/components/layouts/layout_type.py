@@ -248,7 +248,6 @@ class LayoutType(NevuObject):
     def _on_item_add(self, item: NevuObject): pass
 
     def _item_add(self, item: NevuObject):
-        print(item.get_param_strict("single_instance"), item)
         if not item.get_param_strict("single_instance").value: item = item.clone()
         if self.is_layout(item): 
             item._connect_to_layout(self)
