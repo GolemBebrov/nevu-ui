@@ -11,7 +11,7 @@ from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.fast.zsystem import ZSystem, ZRequest
 from nevu_ui.core.enums import ResizeType, EventType, Backend
 from nevu_ui.overlay import overlay
-
+from nevu_ui.fast.nvrect import NvRect
 from nevu_ui.window.display import (
     DisplayClassic, DisplaySdl, DisplayBase, DisplayRayLib
 )
@@ -54,6 +54,7 @@ class Window:
         self.resize_type = resize_type
         self.resizable = resizable
         self._title = title
+        self._cached_overlay = None
         
         self._init_lists(ratio, size, minsize)
         self._init_graphics()
@@ -80,6 +81,7 @@ class Window:
         nevu_state.window = self
         nevu_state.z_system = self.z_system
         nevu_state.backend = self._backend
+        nevu_state.overlay = overlay
         match self._backend:
             case Backend.Sdl: nevu_state.renderer = self._display.renderer #type: ignore
             case _: nevu_state.renderer = None
@@ -189,13 +191,10 @@ class Window:
         else: self._event_cycle(EventType.Resize, self.size)
     
     def draw_overlay(self):
-        match self._backend:
-            case Backend.Pygame:
-                texture = overlay.get_result(self.size)
-            case Backend.Sdl:
-                texture = overlay.get_result_sdl(self.size)
-            case _:
-                raise self._unsupported_back_error(self._backend.value)
+        texture = overlay.get_result(self.size) 
+        if self.is_dtype.raylib: 
+            texture = texture.texture
+            
         self.display.blit(texture, (0, 0))
         
     def _update_utils(self, events):
@@ -231,6 +230,8 @@ class Window:
     @property
     def rel(self): return NvVector2((self.size - self._offset * 2) / self.original_size)
 
+    def get_nvrect(self): return NvRect(0, 0, self.size[0], self.size[1])
+    
 class ConfiguredWindow(Window):
     def __init__(self):
         size = standart_config.win_config["size"]
