@@ -20,12 +20,12 @@ class Button(Label):
         self._change_param_default("hoverable", True)
         self._change_param_default("clickable", True)
 
-    def _on_click_system(self):
-        super()._on_click_system()
+    def _on_keyup_system(self):
+        super()._on_keyup_system()
         if self.function and self.is_active:
             try: self.function()
             except Exception as e:
                 if self.throw_errors: raise e
-                else: print(e)
+                else: print(f"Error in Button(id = {self.id}, text = {self.text!r}) function: {e}")
                 
     def _create_clone(self): return Button(self.function, self._template['text'], self._template['size'], copy.deepcopy(self.style), **self.constant_kwargs)
