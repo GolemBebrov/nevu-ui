@@ -13,6 +13,7 @@ from cpython.object cimport PyObject
 cimport cython
 from nevu_ui.fast.logic.fast_logic cimport relm_helper, rel_helper, mass_rel_helper, vec_rel_helper, get_nvrect_helper
 from nevu_ui.fast.nvrect.nvrect cimport NvRect
+
 @cython.freelist(32)
 cdef class NevuCobject:
     def __cinit__(self, *args, **kwargs):
