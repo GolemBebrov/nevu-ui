@@ -6,6 +6,8 @@ from typing import Any, Unpack, NotRequired
 from nevu_ui.fast.logic import _light_update_helper
 from nevu_ui.components.widgets import Widget
 from nevu_ui.components.nevuobj import NevuObject
+from nevu_ui.core.enums import HoverState
+from nevu_ui.utils import Keys
 from nevu_ui.components.layouts.typehints import AlignTemplate
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.fast.logic.fast_logic import collide_vector
@@ -38,7 +40,7 @@ class ScrollableBase(LayoutType, ABC):
     scrollbar_perc: NvVector2
     content_type = list[tuple[Align, NevuObject]]
     basic_alignment: Align
-    
+        
     class ScrollBar(Widget):
         def __init__(self, size, style, orientation: ScrollBarType, master: ScrollableBase | None = None, **constant_kwargs: Unpack[ScrollableKwargs]):
             super().__init__(size, style, **constant_kwargs)
@@ -56,9 +58,6 @@ class ScrollableBase(LayoutType, ABC):
             self._change_param_default("hoverable", True)
             self._change_param_default("subtheme_role", SubThemeRole.PRIMARY)
         
-        def _primary_update(self, events: list | None = None):
-            super()._primary_update(events)
-        
         def _init_numerical(self):
             super()._init_numerical()
             self._percentage = 0.0
@@ -70,9 +69,9 @@ class ScrollableBase(LayoutType, ABC):
 
         def _init_lists(self):
             super()._init_lists()
-            self.offset = NvVector2(0, 0)
-            self.track_start_coordinates = NvVector2(0, 0)
-            self.track_path = NvVector2(0, 0)
+            self.track_start_local = NvVector2(0, 0)
+            self.track_start_abs = NvVector2(0, 0)   
+            self.track_length = NvVector2(0, 0)
 
         def _orientation_to_int(self):
             return 1 if self.orientation == ScrollBarType.Vertical else 0
@@ -80,41 +79,41 @@ class ScrollableBase(LayoutType, ABC):
         @property
         def percentage(self) -> float:
             axis = self._orientation_to_int()
+            movable_area = self.track_length[axis] - self._csize[axis]
+            if movable_area <= 0: return 0.0
             
-            scaled_track_path_val = (self.track_path[axis] * self._resize_ratio[axis]) - self._csize[axis]
-            if scaled_track_path_val == 0: return 0.0
+            current_distance = self.coordinates[axis] - self.track_start_local[axis]
             
-            start_coord = self.track_start_coordinates[axis] - self.offset[axis]
-            current_path = self.coordinates[axis] - start_coord
-            
-            perc = (current_path / scaled_track_path_val) * 100
+            perc = (current_distance / movable_area) * 100.0
             return max(0.0, min(perc, 100.0))
 
         @percentage.setter
         def percentage(self, value: float | int):
             axis = self._orientation_to_int()
-            
             self._percentage = max(0.0, min(float(value), 100.0))
-            scaled_track_path = (self.track_path * self._resize_ratio) - self._csize
-            start_coord = self.track_start_coordinates[axis] - self.offset[axis]
             
-            if scaled_track_path[axis] == 0:
-                self.coordinates[axis] = start_coord; return
+            movable_area = self.track_length[axis] - self._csize[axis]
+            
+            if movable_area <= 0:
+                self.coordinates[axis] = self.track_start_local[axis]
+                return
 
-            path_to_add = scaled_track_path[axis] * (self._percentage / 100)
-            self.coordinates[axis] = start_coord + path_to_add
+            path_to_add = movable_area * (self._percentage / 100.0)
+            self.coordinates[axis] = self.track_start_local[axis] + path_to_add
         
-        def set_scroll_params(self, track_start_abs, track_path, offset: NvVector2):
-            self.track_path = track_path
-            self.track_start_coordinates = track_start_abs
-            self.offset = offset
+        def set_scroll_params(self, start_local: NvVector2, start_abs: NvVector2, length: NvVector2):
+            self.track_start_local = start_local
+            self.track_start_abs = start_abs
+            self.track_length = length
 
         def _on_click_system(self):
             super()._on_click_system()
             self.scrolling = True
+
         def _on_keyup_system(self):
             super()._on_keyup_system()
             self.scrolling = False
+
         def _on_keyup_abandon_system(self):
             super()._on_keyup_abandon_system()
             self.scrolling = False
@@ -124,10 +123,10 @@ class ScrollableBase(LayoutType, ABC):
             axis = self._orientation_to_int()
 
             if self.scrolling:
-                scaled_track_path_val = (self.track_path[axis] * self._resize_ratio[axis]) - self.rel(self.size)[axis]
-                if scaled_track_path_val != 0:
-                    mouse_relative_to_track = mouse.pos[axis] - self.track_start_coordinates[axis] + (nevu_state.window.offset*3)[axis]
-                    self.percentage = (mouse_relative_to_track / scaled_track_path_val) * 100
+                movable_area = self.track_length[axis] - self._csize[axis]
+                if movable_area > 0:
+                    mouse_distance = mouse.pos[axis] - self.track_start_abs[axis]
+                    self.percentage = (mouse_distance / movable_area) * 100.0
             else:
                 self.percentage = self._percentage
 
@@ -300,14 +299,18 @@ class ScrollableBase(LayoutType, ABC):
 
     def _logic_update(self):
         super()._logic_update()
+        
         inverse = -1 if self.inverted_scrolling else 1
+        if self.hover_state == HoverState.UN_HOVERED: return
         with contextlib.suppress(Exception):
             if keyboard.is_fdown(self.append_key):
-                self.scroll_bar.move_by_percents(self.arrow_scroll_power * -inverse)
-                self._scroll_needs_update = True
+                self.scroll_bar._percentage += self.arrow_scroll_power * -inverse
+                #self.scroll_bar.move_by_percents(self.arrow_scroll_power * -inverse)
+                #self._scroll_needs_update = True
             if keyboard.is_fdown(self.descend_key):
-                self.scroll_bar.move_by_percents(self.arrow_scroll_power * inverse)
-                self._scroll_needs_update = True
+                self.scroll_bar._percentage += self.arrow_scroll_power * inverse
+                #self.scroll_bar.move_by_percents(self.arrow_scroll_power * inverse)
+                #self._scroll_needs_update = True
             
     def _on_scroll_system(self, side: bool):
         super()._on_scroll_system(side)
@@ -315,20 +318,19 @@ class ScrollableBase(LayoutType, ABC):
 
         if self.inverted_scrolling: direction *= -1
         
-        self.scroll_bar.move_by_percents(self.wheel_scroll_power * direction)
+        self.scroll_bar._percentage += self.wheel_scroll_power * direction
         self._scroll_needs_update = True
 
     def _update_scroll_bar(self):
         if not self.first_parent_menu: return
         assert self.first_parent_menu._window
-        track_start, track_path_main = self.absolute_coordinates, self._main_coord(self.size)
-        offset = NvVector2(self.first_parent_menu._window._crop_width_offset, self.first_parent_menu._window._crop_height_offset) if self.first_parent_menu._window else NvVector2(0,0)
-        start_coords = NvVector2()
-        start_coords[abs(self._main_axis - 1)] = self._sec_coord(self._global_coordinates + self.rel(self.size - self.scroll_bar.size))
-        start_coords[self._main_axis] = self._main_coord(track_start) + self._global_coordinates[self._main_axis] + offset[self._main_axis] / 2
-        track_path = NvVector2(0, track_path_main)
-        offset[self._main_axis] += self._global_coordinates[self._main_axis]
-        self.scroll_bar.set_scroll_params(start_coords, track_path, offset)
+        local_start = NvVector2()
+        local_start[abs(self._main_axis - 1)] = self._sec_coord(self.absolute_coordinates + self.rel(self.size - self.scroll_bar.size))
+        local_start[self._main_axis] = self._main_coord(self.absolute_coordinates) 
+        abs_start = self.absolute_coordinates
+        track_length = NvVector2(0, 0)
+        track_length[self._main_axis] = self._main_coord(self.size) * self._resize_ratio[self._main_axis]
+        self.scroll_bar.set_scroll_params(local_start, abs_start, track_length)
 
     def _resize(self, resize_ratio: NvVector2):
         old_scrbar_perc = self.scroll_bar.percentage

@@ -6,6 +6,7 @@ from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.components.layouts.scrollable_base import ScrollableBase
 from nevu_ui.fast.logic.fast_logic import collide_horizontal
 from nevu_ui.core.state import nevu_state
+from nevu_ui.utils import Keys
 from nevu_ui.core.enums import Align, ScrollBarType
 
 class ScrollableRow(ScrollableBase):
@@ -16,8 +17,8 @@ class ScrollableRow(ScrollableBase):
     
     def _add_params(self):
         super()._add_params()
-        self._change_param_default("append_key", pygame.K_LEFT)
-        self._change_param_default("descend_key", pygame.K_RIGHT)
+        self._change_param_default("append_key", Keys.Left)
+        self._change_param_default("descend_key", Keys.Right)
         self._change_param_default("basic_alignment", Align.TOP)
 
     def _parse_align(self, align: Align): return align in (Align.TOP, Align.BOTTOM, Align.CENTER)

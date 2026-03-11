@@ -5,6 +5,7 @@ from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.components.layouts.scrollable_base import ScrollableBase
 from nevu_ui.fast.logic.fast_logic import collide_vertical
+from nevu_ui.utils import Keys
 from nevu_ui.core.state import nevu_state
 from nevu_ui.core.enums import Align, ScrollBarType
 
@@ -16,8 +17,8 @@ class ScrollableColumn(ScrollableBase):
     
     def _add_params(self):
         super()._add_params()
-        self._change_param_default("append_key", pygame.K_UP)
-        self._change_param_default("descend_key", pygame.K_DOWN)
+        self._change_param_default("append_key", Keys.Up)
+        self._change_param_default("descend_key", Keys.Down)
         self._change_param_default("basic_alignment", Align.LEFT)
 
     def _parse_align(self, align: Align): return align in (Align.LEFT, Align.RIGHT, Align.CENTER)
@@ -29,7 +30,8 @@ class ScrollableColumn(ScrollableBase):
         return self.ScrollBar(size, self.style, ScrollBarType.Vertical, self)
 
     def _get_scrollbar_coordinates(self) -> NvVector2:
-        return NvVector2(self.coordinates.x + self.relx(self.size.x - self.scroll_bar.size.x), self.scroll_bar.coordinates.y)
+        adds = self.coordinates
+        return NvVector2(self.coordinates.x + self.relx(self.size.x - self.scroll_bar.size.x), (self._csize.y-self.scroll_bar._csize.y)/100*self.scroll_bar.percentage+adds.y)
 
     def _set_item_main(self, item: NevuObject, align: Align):
         container_width, widget_width = self._csize.x, item._csize.x
