@@ -6,6 +6,8 @@ from .keyboard import  keyboard, set_keyboard
 from .convertor import Convertor
 from .event import NevuEvent, Event
 from .input_type import InputType
+from .raylib_utills import load_image, load_image_texture, load_font
+from .keys import Keys
 __all__ = [
     'nvvector2_legacy', 'Cache', 'Time', 'time', 'keyboard', 'Convertor', 'NevuEvent', 'Event', 'InputType'
 ]
