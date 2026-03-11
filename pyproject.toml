@@ -24,7 +24,8 @@ dependencies = [
     "pygame-ce>=2.3.0", 
     "numpy",
     "Pillow",
-    "raylib"
+    "raylib",
+    "typing_extensions"
 ]
 
 [project.urls]
