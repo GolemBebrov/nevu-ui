@@ -3,19 +3,19 @@ import pygame
 import weakref
 
 from typing import TYPE_CHECKING
-if TYPE_CHECKING: from nevu_ui.components.nevuobj import NevuObject
+if TYPE_CHECKING: 
+    from nevu_ui.components.nevuobj import NevuObject
+    from nevu_ui.presentation.style import Style
 
 from nevu_ui.presentation.color import Color
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.presentation.style import Style
-from nevu_ui.rendering import AlphaBlit, GradientPygame
+from nevu_ui.rendering.pygame.gradient import GradientPygame
+from nevu_ui.rendering.blit import AlphaBlit
 from nevu_ui.fast.shapes import _create_rounded_rect_surface_optimized, transform_into_outlined_rounded_rect
 
 from nevu_ui.core.enums import (
     CacheType, HoverState, Align
 )
-
-
 
 class _DrawNamespace:
     __slots__ = ["_renderer"]
@@ -277,7 +277,7 @@ class BackgroundRendererPygame:
         size = size or root._csize
         assert size
 
-        renderFont = root.get_pygame_font(override_font_size)
+        renderFont = root._get_pygame_font(override_font_size)
         line_height = renderFont.get_linesize()
 
         if words_indent:
