@@ -1,12 +1,16 @@
+import io
 import pygame
 from pygame._sdl2 import Texture
 from typing import Any
 
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.core.state import nevu_state
+from nevu_ui.core.enums import Backend, OvItemType
+import pyray as rl
 
 class OverlayManager:
-    PipelineItem = tuple[pygame.Surface, NvVector2, int | float]
+    SurfaceType = pygame.Surface | Any
+    PipelineItem = tuple[SurfaceType, NvVector2, int | float, OvItemType]
     layer_type = float | int
     def __init__(self):
         self.pipeline: dict[str, OverlayManager.PipelineItem] = {}
@@ -15,12 +19,10 @@ class OverlayManager:
 
     def _init_markers(self):
         self._rendered = False
-        self._rendered_sdl = False
         self._sorted = False
     
     def _init_cache(self):
-        self._rendered_cache: pygame.Surface = None #type: ignore
-        self._rendered_sdl_cache = None
+        self._rendered_cache: Any | None = None
         self._sorted_cache = {}
         self._cached_size = None
 
@@ -30,18 +32,17 @@ class OverlayManager:
     
     def mark_undone(self):
         self._rendered = False
-        self.mark_sdl_undone()
-    
-    def mark_sdl_undone(self):
-        self._rendered_sdl = False
     
     def mark_all(self):
         self.mark_unsorted()
         self.mark_undone()
-        self.mark_sdl_undone()
 
     def add_element(self, name, surface, coordinates: NvVector2, layer: layer_type = 0):
-        self.pipeline[name] = (surface, coordinates, layer)
+        self.pipeline[name] = (surface, coordinates, layer, OvItemType.Texture)
+        self.mark_all()
+    
+    def add_draw_call(self, name, func, coordinates: NvVector2, layer: layer_type = 0):
+        self.pipeline[name] = (func, coordinates, layer, OvItemType.DrawCall)
         self.mark_all()
     
     def _validate_strict(self, name: Any, strict: bool, function = None):
@@ -54,34 +55,36 @@ class OverlayManager:
             self.mark_all()
         else: self._validate_strict(name, strict)
     
-    def change_element(self, name: Any, surface, coordinates: NvVector2, layer: layer_type = 0, strict: bool = False):
+    def change_element(self, name: Any, surface, coordinates: NvVector2, layer: layer_type = 0, strict: bool = False, type: OvItemType | None = None):
         if self.has_element(name):
-            self.pipeline[name] = (surface, coordinates, layer)
+            self.pipeline[name] = (surface, coordinates, layer, type or self.pipeline[name][3])
             self.mark_all()
         else: self._validate_strict(name, strict, lambda: self.add_element(name, surface, coordinates, layer))
     
-    def change_coordinates(self, name: Any, coordinates: NvVector2, strict: bool = False):
+    def change_coordinates(self, name: Any, coordinates: NvVector2, strict: bool = False, type: OvItemType | None = None):
         if self.has_element(name):
             curr_item = self.pipeline[name]
-            self.pipeline[name] = (curr_item[0], coordinates, curr_item[2])
+            self.pipeline[name] = (curr_item[0], coordinates, curr_item[2], type or self.pipeline[name][3])
             self.mark_all()
-        else: self._validate_strict(name, strict, lambda: print(f"Element {name} not found and cannot be changed")) #TODO потом, в 0.9
+        else: self._validate_strict(name, strict, lambda: print(f"Element {name} not found and cannot be changed"))
     
-    def change_layer(self, name: Any, layer: layer_type, strict: bool = False):
+    def change_layer(self, name: Any, layer: layer_type, strict: bool = False, type: OvItemType | None = None):
         if self.has_element(name):
             curr_item = self.pipeline[name]
-            self.pipeline[name] = (curr_item[0], curr_item[1], layer)
+            self.pipeline[name] = (curr_item[0], curr_item[1], layer, type or self.pipeline[name][3])
             self.mark_all()
-        else: self._validate_strict(name, strict, lambda: print(f"Element {name} not found and cannot be changed")) #TODO!!!!!!
+        else: self._validate_strict(name, strict, lambda: print(f"Element {name} not found and cannot be changed"))
     
-    def change_surface(self, name: Any, surface: pygame.Surface, strict: bool = False):
+    def change_surface(self, name: Any, surface: pygame.Surface, strict: bool = False, type: OvItemType | None = None):
         if self.has_element(name):
             curr_item = self.pipeline[name]
-            self.pipeline[name] = (surface, curr_item[1], curr_item[2])
+            self.pipeline[name] = (surface, curr_item[1], curr_item[2], type or self.pipeline[name][3])
             self.mark_all() 
-        else: self._validate_strict(name, strict, lambda: print(f"Element {name} not found and cannot be changed")) #Totya(#TODO#!#!#1!!!!!!)
+        else: self._validate_strict(name, strict, lambda: print(f"Element {name} not found and cannot be changed"))
     
     def has_element(self, name): return name in self.pipeline
+    def get_element(self, name, default = None): return self.pipeline.get(name, default)
+    def get_element_strict(self, name): return self.pipeline[name] 
     
     @property
     def sorted_pipeline(self):
@@ -90,38 +93,82 @@ class OverlayManager:
             self._sorted_cache = sorted(self.pipeline.items(), key=lambda x: x[1][2])
         return self._sorted_cache
     
-    def draw_pipeline(self, surface: pygame.Surface):
-        if surface.size != self._cached_size:
+    def draw_pipeline(self, surface: Any):
+        assert nevu_state.window
+        if self._get_surf_size(surface) != self._cached_size:
             self.mark_undone()
-            self._cached_size = surface.size
+            self._cached_size = self._get_surf_size(surface)
+            
         if self._rendered:
-            surface.blit(self._rendered_cache, (0,0))
+            if nevu_state.window.is_dtype.raylib:
+                display = nevu_state.window.display
+                assert nevu_state.window.is_raylib(display)
+                rl.begin_texture_mode(surface)
+                display.blit(self._rendered_cache, (0,0))
+                rl.end_texture_mode()
+            else: surface.blit(self._rendered_cache, (0,0))
             return
-        for element in self.sorted_pipeline:
-            surf = element[1][0]
-            coords: NvVector2 = element[1][1]
-            surface.blit(surf, coords.to_tuple())
-    
+        
+        if not nevu_state.window.is_dtype.raylib:
+            for element in self.sorted_pipeline:
+                surf = element[1][0]
+                coords: NvVector2 = element[1][1]
+                surface.blit(surf, coords.to_tuple())
+        else:
+            rl.begin_texture_mode(surface)
+            display = nevu_state.window.display
+            assert nevu_state.window.is_raylib(display)
+            for element in self.sorted_pipeline:
+                surf = element[1][0]
+                coords: NvVector2 = element[1][1]
+                if element[1][3] == OvItemType.DrawCall:
+                    func = element[1][0]
+                    func()
+                else:
+                    display.blit(surf.texture, coords.to_tuple())
+            rl.end_texture_mode()
+            
     def get_result(self, size):
-        if size != self._cached_size:
+        if size.get_int_tuple() != self._cached_size:
             self.mark_undone()
             self._cached_size = size
-        if self._rendered: return self._rendered_cache
-        result = pygame.Surface(size, flags = pygame.SRCALPHA)
+        if self._rendered: 
+            for element in self.sorted_pipeline:
+                if element[1][3] == OvItemType.DrawCall:
+                    func = element[1][0]
+                    func()
+                    
+            return self._rendered_cache
+        result = self._get_result_surface(size)
         self.draw_pipeline(result)
+        if nevu_state.window.is_dtype.raylib and self._rendered_cache: 
+            rl.unload_render_texture(self._rendered_cache)
+        result = self._finish_result(result)
         self._rendered_cache = result
         self._rendered = True
         return result
+
+    def _get_surf_size(self, surface):
+        match nevu_state.window._backend:
+            case Backend.Pygame | Backend.Sdl: return surface.size
+            case Backend.RayLib: return (surface.texture.width, surface.texture.height)
     
-    def get_result_sdl(self, size):
-        assert nevu_state.renderer, "Renderer not initialized!"
-        if size != self._cached_size:
-            self.mark_sdl_undone()
-            self._cached_size = size
-        if self._rendered_sdl: return self._rendered_sdl_cache
-        result = self._rendered_cache if self._rendered else self.get_result(size)
-        texture_result = Texture.from_surface(nevu_state.renderer, result)
-        self._rendered_sdl_cache = texture_result
-        return texture_result
+    def _finish_result(self, result):
+        match nevu_state.window._backend:
+            case Backend.Pygame | Backend.RayLib: return result
+            case Backend.Sdl: return Texture.from_surface(nevu_state.renderer, result)
+    
+    def _get_result_surface(self, size):
+        match nevu_state.window._backend:
+            case Backend.Pygame | Backend.Sdl:
+                return pygame.Surface(size, flags = pygame.SRCALPHA)
+            case Backend.RayLib:
+                txture = rl.load_render_texture(int(size[0]), int(size[1]))
+                rl.set_texture_filter(txture.texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
+                #rl.set_texture_wrap(txture.texture, rl.TextureWrap.TEXTURE_WRAP_CLAMP)
+                rl.begin_texture_mode(txture)
+                nevu_state.window.display.clear(rl.BLANK)
+                rl.end_texture_mode()
+                return txture
 
 overlay = OverlayManager()
