@@ -19,27 +19,27 @@ class ColorThemeLibrary:
 
     ocean_light = ColorTheme(
         name = "Ocean Light",
-        primary=ColorSubTheme(color=Color.STEELBLUE, oncolor=Color.WHITE, container=Color.LIGHTBLUE, oncontainer=Color.DARKSLATEBLUE),
-        secondary=ColorSubTheme(color=Color.MEDIUMAQUAMARINE, oncolor=Color.BLACK, container=Color.PALEGREEN, oncontainer=Color.DARKGREEN),
-        tertiary=ColorSubTheme(color=Color.SADDLEBROWN, oncolor=Color.BLACK, container=Color.WHEAT, oncontainer=Color.SADDLEBROWN),
-        error=ColorSubTheme(color=Color.TOMATO, oncolor=Color.WHITE, container=Color.MISTYROSE, oncontainer=Color.DARKRED),
-        background=ColorPair(color=Color.ALICEBLUE, oncolor=Color.DARKSLATEGRAY),
-        surface=ColorPair(color=Color.WHITE, oncolor=Color.DARKSLATEGRAY),
-        surface_variant=ColorPair(color=Color.POWDERBLUE, oncolor=Color.SLATEGRAY),
-        outline=Color.LIGHTSLATEGRAY,
-        inverse_surface=ColorPair(color=Color.DARKSLATEGRAY, oncolor=Color.WHITE), inverse_primary=Color.SKYBLUE)
+        primary=ColorSubTheme(color=Color.SteelBlue, oncolor=Color.White, container=Color.LightBlue, oncontainer=Color.DarkSlateBlue),
+        secondary=ColorSubTheme(color=Color.MediumAquamarine, oncolor=Color.Black, container=Color.PaleGreen, oncontainer=Color.DarkGreen),
+        tertiary=ColorSubTheme(color=Color.SaddleBrown, oncolor=Color.Black, container=Color.Wheat, oncontainer=Color.SaddleBrown),
+        error=ColorSubTheme(color=Color.Tomato, oncolor=Color.White, container=Color.MistyRose, oncontainer=Color.DarkRed),
+        background=ColorPair(color=Color.AliceBlue, oncolor=Color.DarkSlateGray),
+        surface=ColorPair(color=Color.White, oncolor=Color.DarkSlateGray),
+        surface_variant=ColorPair(color=Color.PowderBlue, oncolor=Color.SlateGray),
+        outline=Color.LightSlateGray,
+        inverse_surface=ColorPair(color=Color.DarkSlateGray, oncolor=Color.White), inverse_primary=Color.SkyBlue)
 
     synthwave_dark = ColorTheme(
         name = "Synthwave Dark",
-        primary=ColorSubTheme(color=Color.DEEPPINK, oncolor=Color.WHITE, container=(99, 0, 57), oncontainer=Color.PINK),
-        secondary=ColorSubTheme(color=Color.CYAN, oncolor=Color.BLACK, container=(0, 77, 77), oncontainer=Color.AQUAMARINE),
-        tertiary=ColorSubTheme(color=Color.YELLOW, oncolor=Color.BLACK, container=(102, 91, 0), oncontainer=Color.LIGHTYELLOW),
-        error=ColorSubTheme(color=Color.ORANGERED, oncolor=Color.WHITE, container=(150, 40, 0), oncontainer=Color.ALICEBLUE),
-        background=ColorPair(color=(21, 2, 53), oncolor=Color.LAVENDER),
-        surface=ColorPair(color=(36, 17, 68), oncolor=Color.LAVENDER),
-        surface_variant=ColorPair(color=Color.DARKSLATEBLUE, oncolor=Color.THISTLE),
-        outline=Color.SLATEBLUE,
-        inverse_surface=ColorPair(color=Color.LAVENDER, oncolor=(21, 2, 53)), inverse_primary=Color.MAGENTA)
+        primary=ColorSubTheme(color=Color.DeepPink, oncolor=Color.White, container=(99, 0, 57), oncontainer=Color.Pink),
+        secondary=ColorSubTheme(color=Color.Cyan, oncolor=Color.Black, container=(0, 77, 77), oncontainer=Color.Aquamarine),
+        tertiary=ColorSubTheme(color=Color.Yellow, oncolor=Color.Black, container=(102, 91, 0), oncontainer=Color.LightYellow),
+        error=ColorSubTheme(color=Color.OrangeRed, oncolor=Color.White, container=(150, 40, 0), oncontainer=Color.AliceBlue),
+        background=ColorPair(color=(21, 2, 53), oncolor=Color.Lavender),
+        surface=ColorPair(color=(36, 17, 68), oncolor=Color.Lavender),
+        surface_variant=ColorPair(color=Color.DarkSlateBlue, oncolor=Color.Thistle),
+        outline=Color.SlateBlue,
+        inverse_surface=ColorPair(color=Color.Lavender, oncolor=(21, 2, 53)), inverse_primary=Color.Magenta)
 
     catppuccin_latte = ColorTheme(
         name = "Catppuccin Latte",
@@ -215,15 +215,15 @@ class ColorThemeLibrary:
 
     pastel_rose_light = ColorTheme(
         name = "Pastel Rose Light",
-        primary=ColorSubTheme(color=Color.ROYALBLUE, oncolor=Color.WHITE, container=Color.LIGHTSTEELBLUE, oncontainer=Color.DARKBLUE),
-        secondary=ColorSubTheme(color=Color.MEDIUMPURPLE, oncolor=Color.WHITE, container=Color.PLUM, oncontainer=Color.DARKVIOLET),
-        tertiary=ColorSubTheme(color=Color.SEAGREEN, oncolor=Color.WHITE, container=Color.MEDIUMSEAGREEN, oncontainer=Color.DARKGREEN),
-        error=ColorSubTheme(color=Color.CRIMSON, oncolor=Color.WHITE, container=Color.LIGHTPINK, oncontainer=Color.DARKRED),
-        background=ColorPair(color=Color.WHITESMOKE, oncolor=Color.BLACK),
-        surface=ColorPair(color=Color.GHOSTWHITE, oncolor=Color.BLACK),
-        surface_variant=ColorPair(color=Color.LIGHTGRAY, oncolor=Color.DARKSLATEGRAY),
-        outline=Color.SLATEGRAY,
-        inverse_surface=ColorPair(color=Color.DARKSLATEGRAY, oncolor=Color.WHITESMOKE), inverse_primary=Color.CORNFLOWERBLUE)
+        primary=ColorSubTheme(color=Color.RoyalBlue, oncolor=Color.White, container=Color.LightSteelBlue, oncontainer=Color.DarkBlue),
+        secondary=ColorSubTheme(color=Color.MediumPurple, oncolor=Color.White, container=Color.Plum, oncontainer=Color.DarkViolet),
+        tertiary=ColorSubTheme(color=Color.SeaGreen, oncolor=Color.White, container=Color.MediumSeaGreen, oncontainer=Color.DarkGreen),
+        error=ColorSubTheme(color=Color.Crimson, oncolor=Color.White, container=Color.LightPink, oncontainer=Color.DarkRed),
+        background=ColorPair(color=Color.WhiteSmoke, oncolor=Color.Black),
+        surface=ColorPair(color=Color.GhostWhite, oncolor=Color.Black),
+        surface_variant=ColorPair(color=Color.LightGray, oncolor=Color.DarkSlateGray),
+        outline=Color.SlateGray,
+        inverse_surface=ColorPair(color=Color.DarkSlateGray, oncolor=Color.WhiteSmoke), inverse_primary=Color.CornflowerBlue)
     
     neon_cyber_dark = ColorTheme(
         name = "Neon Cyber Dark",
