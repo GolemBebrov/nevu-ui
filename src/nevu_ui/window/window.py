@@ -1,6 +1,6 @@
 import sys
 from typing import TypeGuard
-from warnings import deprecated
+from typing_extensions import deprecated
 import pygame
 import pyray as rl
 

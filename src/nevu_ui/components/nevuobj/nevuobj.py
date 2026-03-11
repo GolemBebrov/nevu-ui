@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from warnings import deprecated
+from typing_extensions import deprecated
 import pygame
 import math
 import copy

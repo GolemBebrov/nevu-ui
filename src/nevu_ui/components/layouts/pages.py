@@ -1,4 +1,4 @@
-from warnings import deprecated
+from typing_extensions import deprecated
 
 @deprecated("Pages is deprecated")
 class Pages:

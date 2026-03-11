@@ -1,5 +1,5 @@
 import pygame
-from warnings import deprecated
+from typing_extensions import deprecated
 from pygame._sdl2 import Texture, Image
 import pyray as rl
 
