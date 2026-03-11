@@ -18,6 +18,7 @@ class WidgetKwargs(NevuObjectKwargs):
     font_role: NotRequired[PairColorRole]
     _draw_borders: NotRequired[bool]
     _draw_content: NotRequired[bool]
+    ripple_effect: NotRequired[bool]
 
 class LabelKwargs(WidgetKwargs):
     words_indent: NotRequired[bool]

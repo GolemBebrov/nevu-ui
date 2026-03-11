@@ -266,6 +266,9 @@ cdef class NvRect:
         return self
 
     #Python methods
+    def get_int_tuple(self):
+        return (int(self.x), int(self.y), int(self.w), int(self.h))
+
     def get_tuple(self):
         return (self.x, self.y, self.w, self.h)
         

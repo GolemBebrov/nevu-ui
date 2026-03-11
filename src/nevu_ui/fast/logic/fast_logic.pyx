@@ -11,6 +11,7 @@ import cython
 cimport cython
 import numpy as np
 cimport numpy as np
+from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.nvrect.nvrect cimport NvRect
 from libc.math cimport round as c_round
 from nevu_ui.fast.nevucobj.nevucobj cimport NevuCobject
@@ -24,7 +25,7 @@ cdef inline float _rel_corner_helper_c(float result, float c_min, float c_max, b
     return result
 
 cdef inline float _rel_helper_c(float num, float resize_ratio, float c_min, float c_max, bint has_min, bint has_max) nogil:
-    cdef float result = c_round(num * resize_ratio)
+    cdef float result = num * resize_ratio
     return _rel_corner_helper_c(result, c_min, c_max, has_min, has_max)
 
 cpdef float rel_helper(float num, float resize_ratio, float min_val, float max_val):
@@ -37,7 +38,7 @@ cpdef float rel_helper(float num, float resize_ratio, float min_val, float max_v
 cpdef float relm_helper(float num, float resize_ratio_x, float resize_ratio_y, float min_val, float max_val):
     cdef bint has_min = min_val != -1.0
     cdef bint has_max = max_val != -1.0
-    cdef float result = c_round(num * ((resize_ratio_x + resize_ratio_y) * 0.5))
+    cdef float result = num * ((resize_ratio_x + resize_ratio_y) * 0.5)
     cdef float c_min = min_val if has_min else 0.0
     cdef float c_max = max_val if has_max else 0.0
     return _rel_corner_helper_c(result, c_min, c_max, has_min, has_max)

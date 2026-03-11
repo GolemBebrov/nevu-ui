@@ -6,7 +6,7 @@ from typing import Any
 from nevu_ui.core.classes import ConfigType
 from nevu_ui.json_parser import check
 from nevu_ui.json_parser import standart_config
-from nevu_ui.presentation.style import default_style, Style
+from nevu_ui.presentation.style import Style
 
 class ApplierBuffer:
     def __init__(self) -> None:
@@ -167,7 +167,7 @@ def check_style(key, value):
     is_lazy = False
     for param, _val in value.items():
         param = param.lower().replace("_", "").strip()
-        result = default_style.parameters_dict.get(param)
+        result = Style().parameters_dict.get(param)
         
         if not result and param != "extends":
             return False, f"{param} is not in Style parameters"

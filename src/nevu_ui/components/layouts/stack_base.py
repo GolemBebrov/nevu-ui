@@ -92,8 +92,8 @@ class StackBase(LayoutType, ABC):
         super().secondary_update()
         self._base_light_update()
     
-    def _secondary_draw(self):
-        super()._secondary_draw()
+    def secondary_draw_content(self):
+        super().secondary_draw_content()
         for item in self.items:
             assert isinstance(item, (Widget, LayoutType))
             if not item.booted:

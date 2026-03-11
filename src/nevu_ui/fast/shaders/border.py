@@ -29,7 +29,7 @@ uniform vec4 colDiffuse;
 uniform vec2 rectSize; 
 uniform vec4 radius;       
 uniform vec4 borderColor; 
-uniform int thickness;   
+uniform float thickness;
 
 float calculate_dist(vec2 p, vec2 b, vec4 r)
 {
@@ -45,13 +45,12 @@ void main()
     vec2 p = fragTexCoord * rectSize - halfSize;
     
     float d = calculate_dist(p, halfSize, radius);
-    float distChange = fwidth(d); 
     
-    float alphaShape = 1.0 - smoothstep(0.0, distChange, d);
-
-    float th = float(thickness); 
+    float distChange = length(vec2(dFdx(d), dFdy(d))); 
     
-    float borderMix = smoothstep(-th - distChange, -th, d);
+    float alphaShape = 1.0 - smoothstep(-distChange, 0.0, d);
+    
+    float borderMix = smoothstep(-thickness - distChange, -thickness, d);
 
     vec4 texColor = texture(texture0, fragTexCoord) * fragColor * colDiffuse;
     vec4 resultColor = mix(texColor, borderColor, borderMix);
