@@ -190,7 +190,7 @@ class Menu:
     @property
     def _background(self):
         # sourcery skip: assign-if-exp, inline-immediately-returned-variable, lift-return-into-if
-        result1 = lambda: self._renderer._generate_background(sdf=True, only_content=True)
+        result1 = lambda: self._renderer._generate_background(sdf=True)
         if nevu_state.renderer: result = lambda: self.convert_texture(result1())
         else: result = result1
         return result
@@ -226,6 +226,7 @@ class Menu:
             if hasattr(self, '_surface'): 
                 rl.unload_render_texture(self._surface)
             self._surface = rl.load_render_texture(*(self.size*self._resize_ratio).get_int_tuple())
+            rl.set_texture_filter(self._surface.texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
             return
         if self.style.borderradius>0:self._surface = pygame.Surface(self._pygame_size, pygame.SRCALPHA)
         else: self._surface = pygame.Surface(self._pygame_size)
@@ -345,11 +346,13 @@ class Menu:
                 rl.begin_texture_mode(self._surface) #type: ignore
                 #rl.begin_blend_mode(rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
                 rl.clear_background(rl.BLANK)
-                self._window.display.blit(scaled_bg.texture, (0, 0))
+                self._window.display.blit_rect_vec(scaled_bg.texture, (0, 0), mode = rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
                 self._layout.draw()
                 #rl.end_blend_mode()
                 rl.end_texture_mode()
-            self._window._display.blit(self._surface.texture, self.absolute_coordinates.get_int_tuple()) #type: ignore
+            display = self._window.display
+            assert self._window.is_raylib(display)
+            display.blit_rect_vec(self._surface.texture, self.absolute_coordinates.get_int_tuple(), mode=rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
             if self._opened_sub_menu:
                 for item in self._args_menus_to_draw: item.draw()
                 self._opened_sub_menu.draw()
@@ -395,8 +398,6 @@ class Menu:
         
         if self._layout:
             self._layout.kill()
-            for item in self._layout._all_items():
-                item.kill()
             self._layout = None
         
         if hasattr(self, '_opened_sub_menu') and self._opened_sub_menu:
@@ -406,8 +407,11 @@ class Menu:
         if hasattr(self, '_args_menus_to_draw'):
             for item in self._args_menus_to_draw: item.kill()
             self._args_menus_to_draw.clear()
-            
-        self.cache.clear()
+        
+        self._clear_rl_specific()
+        self._clear_all()
+        if nevu_state.window.is_dtype.raylib:
+            rl.unload_render_texture(self._surface)
         self._surface = None
         self._window = None
         
