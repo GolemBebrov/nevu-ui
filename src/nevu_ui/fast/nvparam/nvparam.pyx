@@ -22,11 +22,18 @@ cdef class NvParam:
         self.getter = getter
         self.setter = setter
     
-    cpdef bint check(self, value):
+    cpdef bool check(self, value):
         return isinstance(value, self.type)
     
     cpdef void set(self, value):
-        if self.setter != None: print(self.name,self.setter(value))
+        cdef object new_value
+        if self.setter != None: 
+            new_value = self.setter(value)
+            if new_value != None:
+                self.value = new_value
+                return
+        if not self.check(value):
+            raise TypeError(f"Parameter '{self.name}' must be of type '{self._get_cool_error_message()}', but got '{value} ({type(value).__name__})'.")
         self.value = value
         
     cpdef object get(self):
@@ -36,5 +43,11 @@ cdef class NvParam:
     def __repr__(self) -> str:
         return f"NvParam(name={self.name}, layer={self.layer}, value={self.value}, default={self.default}, type={self.type}, getter={self.getter}, setter={self.setter})"
     
+    def __str__(self) -> str:
+        return f"{self.name}: {self.value}"
+    
+    def _get_cool_error_message(self):
+        return f"{self.type.__name__ if not isinstance(self.type, tuple) else ', '.join([t.__name__ for t in self.type])}"
+
     cpdef void reset(self):
         self.value = self.default 

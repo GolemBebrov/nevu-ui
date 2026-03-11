@@ -8,7 +8,7 @@ cdef class NvParam:
     
     @staticmethod
     cdef NvParam new(str name, int layer, object value, object default, object type, object getter, object setter)
-    cpdef bint check(self, value)
+    cpdef bool check(self, value)
     cpdef void reset(self)
     cpdef void set(self, value)
     cpdef object get(self)
