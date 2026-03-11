@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from warnings import deprecated
 import pygame
+import math
 import copy
 import difflib
 import weakref
@@ -316,33 +317,44 @@ class NevuObject(NevuCobject):
     def _get_animation_value(self, animation_type: AnimationType):
         return self.animation_manager.get_current_value(animation_type)
 
-    def get_pygame_font(self, override_size = None):
-        font_size = int(self.relm(override_size or self.style.fontsize))
-        return (pygame.font.SysFont(self.style.fontname, font_size) if self.style.fontname == "Arial" 
-            else pygame.font.Font(self.style.fontname, font_size))
+    def get_font_size(self, override_size = None):
+        result = self.relm(override_size or self.style.fontsize)
+        if nevu_state.window.is_dtype.raylib: result *= 1.25
+        return result
     
-    def get_raylib_font(self, override_size=None) -> rl.Font:
-        font_size = self.relm(override_size or self.style.fontsize)
+    def _get_pygame_font(self, override_size = None):
+        font_size = round(self.get_font_size(override_size))
+        return (pygame.font.SysFont(self.style.fontname, font_size) if self.style.fontname == "Arial" or self.style.fontname is None 
+        else pygame.font.Font(self.style.fontname, font_size))
+    
+    def _get_raylib_font(self, override_size=None) -> rl.Font:
+        font_size = self.get_font_size(override_size)
         
         def _load_font_with_cyrillic():
             codepoints = list(range(32, 127)) + list(range(1024, 1104)) + [1025, 1105]
             glyph_count = len(codepoints)
             c_array = rl.ffi.new("int[]", codepoints)
             c_ptr = rl.ffi.cast("int *", c_array)
-            return rl.load_font_ex(self.style.fontname, round(font_size), c_ptr, glyph_count)
+            if self.style.fontname == "Arial": return rl.get_font_default()
+            else:
+                return rl.load_font_ex(self.style.fontname, round(font_size), c_ptr, glyph_count)
 
         return self.cache.get_or_exec(CacheType.RlFont, _load_font_with_cyrillic) #type: ignore
+    
+    def get_font(self, override_size=None):
+        if nevu_state.window.is_dtype.raylib: return self._get_raylib_font(override_size)
+        else: return self._get_pygame_font(override_size)
     
     @property
     def max_borderradius(self): return min(self._rsize.x, self._rsize.y) / 2
 
     @property
     def _rsize(self) -> NvVector2:
-        bw = self.relm(self.style.borderwidth)
-        return self._csize - (NvVector2(bw, bw)) * 2
+        bw = math.ceil(self.relm(self.style.borderwidth))
+        return self._csize - (NvVector2(bw, bw) * 3)
 
     @property
-    def _rsize_marg(self) -> NvVector2: return self._csize - self._rsize 
+    def _rsize_marg(self) -> NvVector2: return (self._csize - self._rsize) / 2
 
     def _subtheme_role_getter(self): return self._subtheme_role
     
@@ -663,11 +675,6 @@ class NevuObject(NevuCobject):
         self._clear_z_request()
 
         if hasattr(self, 'renderer'): self.renderer = None
-
-        if hasattr(self, 'items') and isinstance(self.items, list):
-            for item in list(self.items):
-                if hasattr(item, 'kill'): item.kill()
-            self.items.clear()
 
         if hasattr(self, '_sended_z_link') and self._sended_z_link and nevu_state.window:
             nevu_state.window.z_system.mark_dirty()
