@@ -87,6 +87,13 @@ def get_extensions():
             include_dirs=[numpy.get_include()],
             extra_compile_args=c_opts,
             extra_link_args=l_opts,
+        ),
+        Extension(
+            "nevu_ui.fast.raylib.nevu_raylib",
+            ["src/nevu_ui/fast/raylib/nevu_raylib.pyx"],
+            include_dirs=[numpy.get_include()],
+            extra_compile_args=c_opts,
+            extra_link_args=l_opts,
         )
     ]
 
