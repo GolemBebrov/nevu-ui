@@ -156,19 +156,20 @@ class Slider(Widget):
     
     def _create_surf(self):
         assert self.surface and self.progress_bar.surface
-        if not (self._text_surface or self._text_rect):
-            self._create_font()
-        assert self._text_surface, self._text_rect
+        args = self._create_font()
         self.clear_texture()
         self.adjust_text_rect()
         if nevu_state.window.is_dtype.raylib:
             display = nevu_state.window.display
             assert nevu_state.window.is_raylib(display)
-            
             rl.begin_texture_mode(self.surface)
             display.clear(rl.BLANK)
-            display.blit(self.progress_bar.surface.texture, (0,0))
-            display.blit(self._text_surface.texture, self._text_rect)
+            display.blit_rect_vec(self.progress_bar.surface.texture, (0,0), mode=rl.BlendMode.BLEND_ALPHA)
+            nvrect = NvRect(args[2])
+            nvrect = self.adjust_text_rect(nvrect)
+            args = list(args)
+            args[2] = nvrect.get_int_tuple()[0:2]
+            rl.draw_text_ex(*args)
             rl.end_texture_mode()
         else:
             self.surface.fill((0,0,0,0))
@@ -176,10 +177,12 @@ class Slider(Widget):
             self.surface.blit(self._text_surface, self._text_rect)
         
     def _create_font(self):
-        #print(self.style.colortheme.get_tuple(self.tuple_role))
-        print(str(round(self.current_value)))
-        self.renderer.bake_text(str(round(self.current_value)), style=self.progress_bar.style, color=self.style.colortheme.get_tuple(self.tuple_role))
-    
+        ext_kwargs = {}
+        if nevu_state.window.is_dtype.raylib:
+            ext_kwargs["render"] = False
+        args = self.renderer.bake_text(str(round(self.current_value)), style=self.progress_bar.style, color=self.style.colortheme.get_tuple(self.tuple_role), **ext_kwargs)
+        return args
+     
     def _after_state_change_system(self):
         super()._after_state_change_system()
         self._create_font()
@@ -196,13 +199,12 @@ class Slider(Widget):
             assert self.surface
             if not self._text_surface:
                 self._create_font()
-            assert self._text_surface and self._text_rect
-            
             self._create_surf()
     
-    def adjust_text_rect(self):
-        assert self._text_rect
-        if self.style.text_align_x == Align.CENTER and self.style.text_align_y == Align.CENTER: return
+    def adjust_text_rect(self, rect = None):
+        result_rect = rect or self._text_rect
+        result_rect = NvRect(result_rect)
+        if self.style.text_align_x == Align.CENTER and self.style.text_align_y == Align.CENTER: return rect
         
         padx = 0
         pady = 0
@@ -221,9 +223,13 @@ class Slider(Widget):
             case Align.BOTTOM: 
                 pady = -self.padding_y - border_size.y
         
-        if isinstance(self._text_rect, tuple):
-            self._text_rect = NvRect(*self._text_rect)
-        self._text_rect.move_ip(padx, pady)
+        if isinstance(result_rect, tuple):
+            result_rect = NvRect(*result_rect)
+        result_rect.move_ip(padx, pady)
+        if rect is None:
+            self._text_rect = result_rect
+        else:
+            return result_rect
     
     def _resize(self, resize_ratio: NvVector2):
         super()._resize(resize_ratio)

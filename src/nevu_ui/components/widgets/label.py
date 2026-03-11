@@ -1,5 +1,6 @@
 import copy
 from typing import Unpack
+import pyray as rl
 
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.core import nevu_state
@@ -37,7 +38,7 @@ class Label(Widget):
     def _fast_bake_text(self):
         if not nevu_state.window.is_dtype.raylib: 
             self.bake_text(self._text, False, self.words_indent, self.style.text_align_x, self.style.text_align_y, color = self.subtheme_font)
-        else: self.renderer.bake_text(self._text, False, self.words_indent, self.style, color = self.subtheme_font, modify=self.surface)
+        else: self.renderer.bake_text(self._text, False, self.words_indent, self.style, color = self.subtheme_font)
     def _resize(self, resize_ratio: NvVector2):
         super()._resize(resize_ratio)
         self._changed = True
@@ -50,6 +51,11 @@ class Label(Widget):
             self._fast_bake_text()
             if self._text_surface and self._text_rect and not nevu_state.window.is_dtype.raylib:
                 self.surface.blit(self._text_surface, self._text_rect)
+            elif self._text_surface and self._text_rect:
+                rl.begin_texture_mode(self.surface)
+                #nevu_state.window.display.clear(rl.BLANK)
+                nevu_state.window.display.blit_rect_vec(self._text_surface.texture, (self._text_rect[0], self._text_rect[1]), mode = rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+                rl.end_texture_mode()
             #elif self._text_surface and self._text_rect and nevu_state.window.is_dtype.raylib:
                 #rl.begin_texture_mode(self.surface)
                 #nevu_state.window.display.blit(self._text_surface.texture, (self._text_rect.x, self._text_rect.y))

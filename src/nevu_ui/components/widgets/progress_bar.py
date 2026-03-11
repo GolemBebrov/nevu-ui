@@ -81,10 +81,7 @@ class ProgressBar(Widget):
     def value(self, value): self.set_param_value("value", value)
     
     def set_progress_by_value(self, value: int | float):
-        print(value)
-        print(self.min_value, self.max_value)
         self.progress = (value - self.min_value) / (self.max_value - self.min_value)
-        print(self.progress)
         
     def value_getter(self): return self.get_param_strict("value").value
     def value_setter(self, value): 
@@ -120,7 +117,7 @@ class ProgressBar(Widget):
                 self.bgsurface = rl.load_render_texture(self.surface.texture.width, self.surface.texture.height)
                 rl.begin_texture_mode(self.bgsurface)
                 nevu_state.window.display.clear(rl.BLANK)
-                nevu_state.window.display.blit(self.surface.texture, (0,0))
+                nevu_state.window.display.blit_rect_vec(self.surface.texture, (0,0), mode = rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
                 rl.end_texture_mode()
             else:
                 self.bgsurface = pygame.Surface(self.surface.get_size(), pygame.SRCALPHA)
@@ -135,8 +132,8 @@ class ProgressBar(Widget):
         if nevu_state.window.is_dtype.raylib:
             rl.begin_texture_mode(self.surface)
             nevu_state.window.display.clear(rl.BLANK)
-            nevu_state.window.display.blit(self.bgsurface.texture, (0,0))
-            nevu_state.window.display.blit(bar_surf.texture, coords)
+            nevu_state.window.display.blit_rect_vec(self.bgsurface.texture, (0,0), mode = rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+            nevu_state.window.display.blit_rect_vec(bar_surf.texture, coords, mode = rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
             rl.end_texture_mode()
             rl.unload_render_texture(bar_surf)
             return
@@ -147,8 +144,8 @@ class ProgressBar(Widget):
         super().secondary_draw_content()
         if not (self._changed_value) or self.progress < 0: return
         self._changed_value = False
-        inner_vec = self._csize - self._rsize_marg
-        size = NvVector2(math.ceil(inner_vec.x * self.progress) + 2, inner_vec.y + 2)
+        inner_vec = self._rsize
+        size = NvVector2(math.ceil(inner_vec.x * self.progress), inner_vec.y)
         bw = math.ceil(self.relm(self.style.borderwidth))
         radius = self.relm(self.style.borderradius) - bw
         min_side = min(self._rsize.x // 2, self._rsize.y // 2)
@@ -164,12 +161,16 @@ class ProgressBar(Widget):
         if isinstance(radius, int | float):
             radius = min(size.x / 2, size.y / 2, radius)
             radius = tuple((radius, radius, radius, radius))
-        surf = self.renderer._create_surf_base(
-            size, 
-            override_color=self._subtheme_progress, 
-            radius=radius, sdf = True)
-        
-        coords = (self._rsize_marg/2) - NvVector2(1,1)
+            
+        color = self._subtheme_progress
+        if len(color) == 3: color = (*color, 255)
+        adds = {}
+        if nevu_state.window.is_dtype.raylib:
+            adds["blitmode"] = rl.BlendMode.BLEND_ALPHA_PREMULTIPLY
+        surf = self.renderer._create_surf_base(size, override_color=color, radius=radius, **adds)#blitmode=rl.BlendMode.BLEND_ALPHA, sdfmode=rl.BlendMode.BLEND_ALPHA)
+        if nevu_state.window.is_dtype.raylib:
+            rl.set_texture_filter(surf.texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
+        coords = (self._rsize_marg)
         coords.y += y_decrease
         assert self.surface
         

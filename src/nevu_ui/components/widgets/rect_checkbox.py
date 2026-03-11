@@ -1,3 +1,4 @@
+import pyray as rl
 import copy
 from typing import Unpack
 
@@ -7,6 +8,7 @@ from collections.abc import Callable
 from nevu_ui.core.enums import EventType
 from nevu_ui.components.widgets import RectCheckBoxKwargs, Widget
 from nevu_ui.presentation.style import Style, default_style
+from nevu_ui.core.state import nevu_state
 
 class RectCheckBox(Widget):
     function: Callable | None
@@ -56,7 +58,7 @@ class RectCheckBox(Widget):
     def secondary_draw_content(self):
         super().secondary_draw_content()
         if self._changed and self.toggled:
-            margin = (self._csize * (1 - self.active_rect_factor)) / 2
+            margin = (self._csize * (1 - self.active_rect_factor))
             margin.to_round()
             offset = NvVector2(margin.x, margin.y)
             self.clear_texture()
@@ -67,8 +69,19 @@ class RectCheckBox(Widget):
             
             inner_radius = (self.style.borderradius - self.relm(self.style.borderwidth / 2))
             
-            inner_surf = self.renderer._create_surf_base(active_size, True, self.relm(inner_radius), sdf=True)
+            ext_kwargs = {}
+            if nevu_state.window.is_dtype.raylib:
+                ext_kwargs["blitmode"] = rl.BlendMode.BLEND_ALPHA
             
+            inner_surf = self.renderer._create_surf_base(active_size, True, self.relm(inner_radius), sdf=True, **ext_kwargs)
+            
+            if nevu_state.window.is_dtype.raylib:
+                rl.set_texture_filter(inner_surf.texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
+                rl.begin_texture_mode(self.surface)
+                nevu_state.window.display.blit_rect_vec(inner_surf.texture, offset.get_int_tuple(), mode = rl.BlendMode.BLEND_ALPHA)
+                rl.end_texture_mode()
+                rl.unload_render_texture(inner_surf)
+                return
             self.surface.blit(inner_surf, offset)
             self.clear_texture()
             
