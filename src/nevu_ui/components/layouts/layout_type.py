@@ -2,6 +2,7 @@ from __future__ import annotations
 import copy
 import pygame
 from itertools import chain
+import pyray as rl
 
 from typing import (
     TypeGuard, Iterator, Unpack, NotRequired, Any, TYPE_CHECKING
@@ -14,6 +15,7 @@ from nevu_ui.fast.logic import _light_update_helper
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.core.state import nevu_state
 from nevu_ui.core.enums import ConstantLayer
+from nevu_ui.core.classes import BorderConfig
 from nevu_ui.components.nevuobj import NevuObject, NevuObjectKwargs
 from nevu_ui.components.layouts.typehints import LayoutTemplate
 
@@ -26,15 +28,13 @@ from nevu_ui.presentation.style import (
 )
 
 class LayoutTypeKwargs(NevuObjectKwargs):
-    border_color: NotRequired[tuple]
-    borders: NotRequired[bool]
-    border_name: NotRequired[str]
+    borders: NotRequired[BorderConfig]
     
 class LayoutType(NevuObject):
     items: list[NevuObject]
     floating_items: list[NevuObject]
     content_type = list
-    border_color: tuple
+    borders: BorderConfig | None
     layout: LayoutType | None
     menu: Menu | None
     
@@ -52,8 +52,25 @@ class LayoutType(NevuObject):
         assert isinstance(item, NevuObject), f"Can't use _get_item_master_coordinates on {type(item)}"
         assert self.first_parent_menu, self._unconnected_layout_error(item)
         return item.coordinates + self.first_parent_menu.absolute_coordinates #+ NvVector2(self.first_parent_menu._window._crop_width_offset, self.first_parent_menu._window._crop_height_offset)
+    
+    def _rl_border_draw_call(self):
+        if not self.get_nvrect().collide_rect(nevu_state.window.get_nvrect()): return
+        norm_size = self._csize.to_round().get_int_tuple()
+        abs_coords = self.absolute_coordinates.to_round()
+        #nevu_state.window.display.clear(rl.BLANK)
+        if len(self.borders.color) == 3: self.borders.color = (*self.borders.color, 255)
+        rl.draw_rectangle_lines_ex([*abs_coords, *norm_size], self.relm(self.borders.width), self.borders.color)
+        if self.borders.name:
+            if self.borders.font:
+                rl.draw_text_ex(self.borders.font, self.borders.name or "", abs_coords.get_int_tuple(), self.borders.font.baseSize, 0, self.borders.color)
+            else:
+                rl.draw_text(self.borders.name or "", *abs_coords.get_int_tuple(), 20, self.borders.color)
 
     def _rl_predraw_widgets(self):
+        if self.borders and self._need_update_overlay:
+            self._need_update_overlay = False
+            abs_coords = self.absolute_coordinates.to_round()
+            overlay.add_draw_call(self, self._rl_border_draw_call, abs_coords, -1)
         for item in self._all_items():
             if self.is_layout(item):
                 item._rl_predraw_widgets()
@@ -72,7 +89,11 @@ class LayoutType(NevuObject):
         if not nevu_state.window.is_dtype.raylib:
             item.draw()
             if self.is_layout(item): return
-        
+        else:
+            if self.is_layout(item): 
+                item.draw()
+                return
+            
         coordinates = item.coordinates.xy
         if multiply: coordinates *= multiply
         if add: coordinates += add
@@ -87,10 +108,12 @@ class LayoutType(NevuObject):
             assert isinstance(self.surface, pygame.Surface), "Cant use _draw_widget with uninitialized surface"
             self.surface.blit(item.surface, coordinates.to_tuple()) #type: ignore
         elif nevu_state.window.is_dtype.raylib:
+            rl.begin_scissor_mode(*self.coordinates.get_int_tuple(), *self._csize.get_int_tuple())
             display = nevu_state.window.display
             assert nevu_state.window.is_raylib(display)
-            display.blit_rect_vec(item.surface.texture, coordinates.get_int_tuple()) #type: ignore
-
+            display.blit_rect_vec(item.surface.texture, coordinates.get_int_tuple(), mode = rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
+            rl.end_scissor_mode()
+            
     def _boot_up(self):
         self.booted = True
         for item in self._all_items():
@@ -120,19 +143,20 @@ class LayoutType(NevuObject):
     def _init_booleans(self):
         super()._init_booleans()
         self._can_be_main_layout = True
+        self._need_update_overlay = True
         
     def _init_objects(self):
         super()._init_objects()
         self.first_parent_menu = None
         self.menu = None
         self.layout = None
-        self.surface: pygame.Surface | None = None
+        self._last_border_name = None
     
     def _add_params(self):
         super()._add_params()
-        self._add_param("border_name", str, "", layer=ConstantLayer.Complicated)
-        self._add_param("borders", bool, False, layer=ConstantLayer.Complicated)
-        self._add_param("border_color", tuple, (255, 255, 255))
+        #self._add_param("border_name", str, "", layer = ConstantLayer.Complicated)# setter = self._border_name_setter)
+        #self._add_param("borders", bool, False, layer = ConstantLayer.Basic)
+        self._add_param("borders", BorderConfig | type(None), None, layer = ConstantLayer.Complicated, setter=self._borders_setter)
     
     def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None):
         super()._lazy_init(size)
@@ -151,25 +175,20 @@ class LayoutType(NevuObject):
             self.first_parent_menu.absolute_coordinates if self.first_parent_menu else NvVector2(),
             NvVector2(add_x, add_y))
 
-
     def _coordinates_setter(self, coordinates: NvVector2):
-        self.add_next_frame_action(self._clear_cached_coordinates_noregen)
+        self._clear_cached_coordinates_noregen()
         return True
-
-    @property
-    def borders(self): return self.get_param_strict("borders").value
-    @borders.setter
-    def borders(self, value: bool): self.set_param_value("borders", value)
-    @property
-    def border_name(self) -> str: return self.get_param_strict("border_name").value
-    @border_name.setter
-    def border_name(self, name: str):
-        self.set_param_value("border_name", name)
-        if self.first_parent_menu:
-            try:
-                self.border_font = pygame.sysfont.SysFont("Arial", int(self.relx(self.first_parent_menu._style.fontsize)))
-                self.border_font_surface = self.border_font.render(self.get_param_strict("border_name").value, True, self.border_color)
-            except Exception as e: print(f"Error with border_name: {e}")
+    
+    def _borders_setter(self, value: BorderConfig):
+        if not value.font: return
+        if nevu_state.window.is_dtype.raylib:
+            rlfont: rl.Font = value.font
+            if not hasattr(rlfont, "glyphCount"):
+                raise ValueError("font must be a raylib font")
+        else:
+            pgfont: pygame.font.Font = value.font
+            if not isinstance(pgfont, pygame.font.Font):
+                raise ValueError("font must be a pygame font")
     
     @staticmethod
     def _percent_helper(size, value): return size / 100 * value
@@ -227,18 +246,17 @@ class LayoutType(NevuObject):
     def _resize(self, resize_ratio: NvVector2):
         super()._resize(resize_ratio)
         self.cached_coordinates = None
+        self._border_font_surface = None
+        self._need_update_overlay = True
         for item in self._all_items():
             assert isinstance(item, (Widget, LayoutType))
             item._resize(self._resize_ratio)
-        self.border_name = self.border_name
 
     def _clear_cached_coordinates_noregen(self):
         self.cached_coordinates = None
     
     def _clear_cached_coordinates(self):
-        self._regenerate_coordinates()
-        if self.layout is None: return
-        self.layout._regenerate_coordinates()
+        pass
 
     @staticmethod
     def is_layout(item: NevuObject) -> TypeGuard[LayoutType]: return isinstance(item, LayoutType)
@@ -302,32 +320,35 @@ class LayoutType(NevuObject):
                 item.cache.clear()
             elif self.is_layout(item): 
                 item.apply_style_patch_to_childs(**patch)
-
+                
     def _primary_draw(self):
         super()._primary_draw()
-        if self.borders and not nevu_state.window.is_dtype.raylib:
+        if self.borders and self._need_update_overlay and not nevu_state.window.is_dtype.raylib:
             assert self.surface
             assert nevu_state.window
-           
-            if nevu_state.window.is_legacy(nevu_state.window.display):
-                if hasattr(self, "border_font_surface") and self.border_font_surface:
-                    #print(self.border_font_surface.size)
-                    self.surface.blit(self.border_font_surface, [self.coordinates[0], self.coordinates[1] - self.border_font_surface.get_height()])
-                    pygame.draw.rect(self.surface, self.border_color, [self.coordinates[0], self.coordinates[1], self._csize.x, self._csize.y], 1)
+            if not self.borders.font:
+                self.border_font = pygame.sysfont.SysFont("Arial", int(self.relx(self.first_parent_menu._style.fontsize)))
             else:
-                surf = pygame.Surface(self._csize.to_tuple(), flags = pygame.SRCALPHA)
-                surf.fill((0,0,0,0))
-                if hasattr(self, "border_font_surface"):
-                    surf.blit(self.border_font_surface, [0, 0])
-                    pygame.draw.rect(surf, self.border_color, [0, 0, self._csize.x, self._csize.y], 1)
-                overlay.change_element(self, surf, self._global_coordinates, -1)
+                self.border_font = self.borders.font
+            self._border_font_surface = self.border_font.render(self.borders.name, True, self.borders.color)
+            #self.surface.blit(self._border_font_surface, [self.coordinates[0], self.coordinates[1] - self._border_font_surface.get_height()])
+            #pygame.draw.rect(self.surface, self.borders.color, [self.coordinates[0], self.coordinates[1], self._csize.x, self._csize.y], 1)
+            #elif nevu_state.window.is_dtype.sdl:
+            surf = pygame.Surface(self._csize.to_tuple(), flags = pygame.SRCALPHA)
+            surf.fill((0,0,0,0))
+            if hasattr(self, "border_font_surface"):
+                surf.blit(self._border_font_surface, [0, 0])
+                pygame.draw.rect(surf, self.borders.color, [0, 0, self._csize.x, self._csize.y], 1)
+            overlay.add_element(self, surf, self.absolute_coordinates.to_round(), -1)
+                
         for item in self.floating_items:
             self._draw_widget(item, self.rel(item.coordinates))
 
     def _logic_update(self):
         super()._logic_update()
         if overlay.has_element(self):
-            overlay.change_coordinates(self, self.absolute_coordinates)
+            if overlay.get_element_strict(self)[1] != self.absolute_coordinates.to_round():
+                overlay.change_coordinates(self, self.absolute_coordinates)
         if self.menu:
             self.surface = self.menu._surface #type: ignore
         elif self.layout: 
@@ -371,3 +392,16 @@ class LayoutType(NevuObject):
     
     def _create_clone(self):
         return self.__class__(self._template['size'], copy.deepcopy(self.style), copy.deepcopy(self._template['content']), **self.constant_kwargs)
+    
+    def kill(self):
+        super().kill()
+        for item in self._all_items():
+            item.kill()
+        if self._template.content:
+            content = self._template.content
+            if isinstance(content, dict):
+                for item in content.values(): item.kill()
+            elif isinstance(content, list):
+                for item in content:
+                    if isinstance(item, tuple): item[-1].kill()
+        self.items.clear()
