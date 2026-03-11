@@ -109,7 +109,8 @@ class CacheType(Enum):
     Scaled_Gradient = auto()
     Background = auto()
     Texture = auto()
-    #NEW FUCKING RL cache
+    
+    #NEW FUKING RL cache
     RlFont = auto()
     RlTexture = auto()
 
@@ -153,3 +154,7 @@ class HoverState(Enum):
     UN_HOVERED = auto()
     HOVERED = auto()
     CLICKED = auto()
+
+class OvItemType(Enum):
+    Texture = auto()
+    DrawCall = auto()
