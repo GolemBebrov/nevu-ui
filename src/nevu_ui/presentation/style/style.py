@@ -1,8 +1,9 @@
+from __future__ import annotations
 import copy
-from typing import TypedDict, TypeVar, NotRequired, Unpack, Generic
+from typing import TypedDict, TypeVar, NotRequired, Unpack, Generic, TYPE_CHECKING
 
 from nevu_ui.core.enums import Align, HoverState
-from nevu_ui.rendering import GradientPygame
+from nevu_ui.rendering.pygame.gradient import GradientPygame
 
 from nevu_ui.presentation.color import (
     Color, ColorThemeLibrary, ColorTheme, SubThemeRole, PairColorRole
