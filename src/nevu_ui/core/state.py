@@ -3,13 +3,15 @@ from typing import TYPE_CHECKING
 from pygame._sdl2 import Renderer
 from nevu_ui.core.enums import Backend
 
+
 if TYPE_CHECKING:
     from nevu_ui.window import Window
     from nevu_ui.fast.zsystem import ZSystem
     from nevu_ui.manager import Manager
+    from nevu_ui.overlay import OverlayManager
 
 class NevuState:
-    __slots__ = ["tooltip_active", "dirty_mode", "window", "manager", "current_events", "current_dirty_rects", "z_system", "renderer", "backend"]
+    __slots__ = ["tooltip_active", "dirty_mode", "window", "manager", "current_events", "current_dirty_rects", "z_system", "renderer", "backend", "overlay"]
     def __init__(self): self.reset()
         
     def reset(self):
@@ -18,10 +20,11 @@ class NevuState:
         self.current_events: list | None = None
         self.current_dirty_rects: list | None = None
         
-        self.window: Window | None = None
+        self.window: Window = None #type: ignore
         self.z_system: ZSystem | None = None
         self.manager: Manager | None = None
         self.renderer: Renderer | None = None
+        self.overlay: OverlayManager | None = None
 
         self.backend: Backend | None = None
     
