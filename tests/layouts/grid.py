@@ -21,27 +21,27 @@ class TestGrid(NevuTest):
         #self.print_debug_fps = True
         self.fps = 99999999999
         self.test_menu.layout = \
-        ui.Grid([ui.Fill(100), ui.Fill(100)], x=3,y=3,
+        ui.Grid([ui.FillH(100), ui.FillH(100)], x=6,y=6,
                 content={
-                    (2,1): self.showcase_widgets[0],
+                    (2,6): self.showcase_widgets[0],
+                    (1,6): self.showcase_widgets[0],
+                    (3,6): self.showcase_widgets[0],
+                    (4,6): self.showcase_widgets[0],
+                    (5,6): self.showcase_widgets[0],
+                    (6,6): self.showcase_widgets[0],
+                    
+                    (2,5): self.showcase_widgets[0],
+                    (2,4): self.showcase_widgets[0],
+                    
+                    (5,5): self.showcase_widgets[0],
+                    (5,4): self.showcase_widgets[0],
+                    (3.5,3): ui.Label("GEOMETRIA", size=[40*ui.vw,100*ui.gc], style=ui.Style(fontname="tests/vk_font.ttf", gradient=ui.Gradient([ui.Color.REBECCAPURPLE, ui.Color.BLACK], type=ui.GradientType.Linear, direction=ui.LinearSide.Left),fontsize=50)),
                     #(1,2): self.showcase_widgets[1],
-                    (2,3): ui.Button(self.add, "add", [50*ui.fill,33*ui.fill]),
                     }
                 )
         self.grid = self.test_menu.layout
-        self.grid.skip_add_check = True
     def on_update(self, events=None):
         super().on_update(events)
-        
-        self.a += 1
-        if self.a > 2:
-            self.add()
-            self.a = 0
-            print(f"fps: {ui.time.fps}")
-            print(len(self.test_menu.layout.items))
-            self.b += 1
-        if self.b > 300:
-            sys.exit(0)
         #print(self.test_hard_widget.text)
 ts = TestGrid()
 ts.run()

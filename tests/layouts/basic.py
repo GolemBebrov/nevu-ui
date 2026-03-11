@@ -1,6 +1,7 @@
 import nevu_ui as ui
 import pygame
-from nevu_ui.size.units import *
+import pyray as rl
+from nevu_ui.core.size.units import *
 from nevu_ui.overlay.tooltip import _SmallTooltip, Tooltip
 from nevu_ui.core.classes import TooltipType
 def checkboxgroup_wrapper(checkbox: ui.RectCheckBox | None):
@@ -19,10 +20,11 @@ def create_test_instances():
     ui.default_style = ui.default_style(colortheme=ui.StateVariable(ui.ColorThemeLibrary.pastel_rose_light, ui.ColorThemeLibrary.material3_dark, ui.ColorThemeLibrary.pastel_rose_light))
     ui.apply_config("structure_test.json")
     #test_window = ui.ConfiguredWindow()
-    test_window = ui.Window((1600,900), title="Test Window", resize_type=ui.ResizeType.CropToRatio, ratio=ui.NvVector2(16,9), backend=ui.Backend.RayLib)
-    widgets_style = ui.default_style(borderradius=(100,50,0,25), borderwidth=5, colortheme=ui.ColorThemeLibrary.github_dark, fontname="tests/vk_font.ttf")
+    test_window = ui.Window((1600,900), title="Test Window", resize_type=ui.ResizeType.CropToRatio, ratio=ui.NvVector2(16,9), backend=ui.Backend.Pygame)
+    widgets_style = ui.default_style(borderradius=(100,50,0,25), borderwidth=5, colortheme=ui.ColorThemeLibrary.github_dark, fontname="tests/vk_font.ttf", fontsize=64)
     widgets_style2 = widgets_style(colortheme=ui.StateVariable(ui.ColorThemeLibrary.pastel_rose_light, ui.ColorThemeLibrary.material3_dark, ui.ColorThemeLibrary.pastel_rose_light))
-    test_menu = ui.Menu(test_window,[100*vw, 100*vh],widgets_style(borderradius=10,borderwidth=0))
+    wstyle3 = widgets_style(gradient=ui.Gradient([(ui.Color.White, 1.2), (ui.Color.with_alpha(ui.Color.Teal, 150), 1)], ui.GradientType.Linear, ui.LinearSide.BottomLeft), borderradius=50)
+    test_menu = ui.Menu(test_window,[100*vw, 100*vh],widgets_style(borderradius=10,borderwidth=0, bgimage="tests/test3.jpg"))
     test_menu.set_coordinates_relative(50, 50)
     widgets_size = [75*vw, 35*vh]
     widgets_size_small = [75*vw, 15*vh]
@@ -34,15 +36,16 @@ def create_test_instances():
     checkbox_group.on_single_toggled = checkboxgroup_wrapper
     
     #widgets
-    widget = ui.Widget(style=widgets_style, clickable=True, size=widgets_size, )#single_instance=True)
+    print(ui.gradient_queue((ui.Color.White, 70), (ui.Color.Red, 30)))
+    widget = ui.Button(lambda: None, "some button",style=wstyle3, clickable=True, hoverable=True, size=[50*ui.vw, 20*ui.vh], font_role=ui.PairColorRole.BACKGROUND)#single_instance=True)
     #widget.animation_manager.add_continuous_animation(ui.animations.EaseInSine(6, [0,0], [0,100], ui.animations.AnimationType.POSITION))
     widget.subtheme_role = ui.SubThemeRole.ERROR
     
-    label = ui.Label(lorem_ipsum, size=widget_kwargs["size"], style=ui.Style(fontname="tests/vk_font.ttf"))
+    label = ui.Label("Frutiger Aero Label \n(not really)", size=widget_kwargs["size"], style=wstyle3(borderradius=250), font_role=ui.PairColorRole.BACKGROUND, clickable=True)
     input_box = ui.Input(**widget_kwargs, placeholder = "Input!", multiple=True, tooltip = Tooltip(TooltipType.Medium("Выбор персонажа...", "Выберите персонажа \n1. - Фапута 3. - Наначи \n2. - Бондрюд 4. - Декстер морган"), widgets_style(text_align_x=ui.Align.LEFT)))
     
-    #composable | checkboxgroup example
-    rect_checkbox_row = ui.Row([90*fill, 35*fill], x = 3, single_instance=True, borders=True, border_name="RectCheckBox Row", border_color=(255,0,0),
+    #composable | checkboxgroup example фапута одаброяет
+    rect_checkbox_row = ui.Row([90*fill, 35*fill], x = 3, single_instance=True, borders=ui.BorderConfig(name="CheckBoxRow", color=(255,0,0), font=ui.load_font("tests/vk_font.ttf", 20)),
                             content = {
                                 1: ui.RectCheckBox(id = "check_box1", size = 35, style = widgets_style(borderradius=17)), 
                                 2.2: ui.RectCheckBox(id = "check_box2", size = 35, style = widgets_style),
@@ -56,20 +59,20 @@ def create_test_instances():
         checkbox_group.add_checkbox(item)
     
     
-    element_swither = ui.ElementSwitcher(**widget_kwargs, elements = ["ooo","an apple", "nom nom", "mehhh"])
-    progress_bar = ui.ProgressBar(**widget_kwargs, value = 50)
+    element_swither = ui.ElementSwitcher(**widget_kwargs, elements = ["ooo","an apple", "nom nom", "mehhh"], clickable=True)
+    progress_bar = ui.ProgressBar(widgets_size, wstyle3(borderradius=widgets_style2.borderradius), value = 50, color_pair_role=ui.PairColorRole.SURFACE_VARIANT, clickable=True)
     
     
     slider_bar = ui.Slider(widgets_size, widgets_style2(text_align_x = ui.StateVariable(ui.Align.CENTER, ui.Align.RIGHT, ui.Align.LEFT), fontsize=45), start = 0, end = 100, step = 1, current_value = 50, tuple_role = ui.TupleColorRole.INVERSE_PRIMARY, bar_pair_role=ui.PairColorRole.SURFACE_VARIANT, tooltip=Tooltip(TooltipType.Small("Это страшная кнопка"*10), widgets_style2), single_instance=True)# alt = True)
     #element = element_swither.find("fruit_1")
-    showcase_widgets = [widget, label, progress_bar, slider_bar]
-    
-    return test_window, test_menu, showcase_widgets#, showcase_layouts
+    showcase_widgets = [widget, label, progress_bar, input_box, slider_bar, element_swither, rect_checkbox_row]
+    styles = [widgets_style, widgets_style2, wstyle3]
+    return test_window, test_menu, showcase_widgets, styles#, showcase_layouts
 
 
 class NevuTest(ui.Manager):
     def __init__(self):
-        self.window, self.test_menu, self.showcase_widgets = create_test_instances()
+        self.window, self.test_menu, self.showcase_widgets, self.styles = create_test_instances()
         super().__init__(self.window)
         self.do_fps_test = False
         self._dirty_mode = False
@@ -118,3 +121,5 @@ class NevuTest(ui.Manager):
 #to create test:
 #   1. Override add_to_layout
 #   2. Run it via manager.run()
+#   3. Enjoy :)
+
