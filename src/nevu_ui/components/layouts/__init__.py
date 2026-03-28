@@ -1,4 +1,4 @@
-from .layout_type import LayoutType, LayoutTypeKwargs
+from .layout_base import LayoutType, LayoutTypeKwargs
 from .grid.base import GridKwargs_uni, GridKwargs_rc, GridKwargs_xy
 from .grid import Grid, Row, Column
 from .scrollable.base import ScrollableKwargs
