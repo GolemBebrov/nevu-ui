@@ -17,7 +17,7 @@ from nevu_ui.core.state import nevu_state
 from nevu_ui.json_parser.base import standart_config
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.overlay.tooltip import Tooltip
-from nevu_ui.presentation.animations import AnimationType, AnimationManager
+from nevu_ui.presentation.animations import AnimationManager
 from nevu_ui.core.size.rules import Px, SizeRule
 from nevu_ui.utils import Cache, NevuEvent
 from nevu_ui.components.nevuobj.typehints import NevuObjectKwargs, NevuObjectTemplate
@@ -26,7 +26,7 @@ from nevu_ui.fast.logic import (
     get_rect_helper_pygame, get_rect_helper
 )
 from nevu_ui.core.enums import (
-    HoverState, EventType, CacheType, ConstantLayer
+    HoverState, EventType, CacheType, ConstantLayer, AnimationType
 )
 
 global_counter = 0
@@ -147,9 +147,9 @@ class NevuObject(NevuCobject):
         #print(self._find_param("events").setter)
         self._add_param("z", int, 0)
         self._add_param_link("depth", "z")
-        self._add_param("tooltip", Tooltip | type(None), None, getter=self._tooltip_getter, layer=ConstantLayer.Lazy)
+        self._add_param("tooltip", Tooltip | type(None), None, layer=ConstantLayer.Lazy)
         self._add_param("subtheme_role", SubThemeRole, SubThemeRole.TERTIARY, getter=self._subtheme_role_getter, setter=self._subtheme_role_setter, layer=ConstantLayer.Complicated)
-        
+
     def _add_param_link(self, link_name: str, name: str): 
         self._param_links[link_name] = name
 
@@ -273,9 +273,19 @@ class NevuObject(NevuCobject):
         self._init_constant_layer(ConstantLayer.Lazy, **self.constant_kwargs)
         
     def _lazy_init(self, size):
+        print("lazied", self)
         self.size = size if isinstance(size, NvVector2) else NvVector2(size)
         self.original_size = self.size.copy()
-
+        self.add_first_update_action(self._reset_tooltip)
+        
+    def _reset_tooltip(self): 
+        
+        #self.tooltip = self.get_param("tooltip").value if self.get_param("tooltip") else None
+        if self.constant_kwargs.get("tooltip"):
+            self.tooltip = self.constant_kwargs.get("tooltip")
+            
+        print(self.get_param("tooltip").value)
+    
     def _handle_size_rules(self, number: SizeRule | int | float) -> SizeRule | int | float:
         if isinstance(number, SizeRule):
             if type(number) == Px: return number.value
@@ -318,14 +328,14 @@ class NevuObject(NevuCobject):
         return self.animation_manager.get_current_value(animation_type)
 
     def get_font_size(self, override_size = None):
-        result = self.relm(override_size or self.style.fontsize)
+        result = self.relm(override_size or self.style.font_size)
         if nevu_state.window.is_dtype.raylib: result *= 1.25
         return result
     
     def _get_pygame_font(self, override_size = None):
         font_size = round(self.get_font_size(override_size))
-        return (pygame.font.SysFont(self.style.fontname, font_size) if self.style.fontname == "Arial" or self.style.fontname is None 
-        else pygame.font.Font(self.style.fontname, font_size))
+        return (pygame.font.SysFont(self.style.font_name, font_size) if self.style.font_name == "Arial" or self.style.font_name is None 
+        else pygame.font.Font(self.style.font_name, font_size))
     
     def _get_raylib_font(self, override_size=None) -> rl.Font:
         font_size = self.get_font_size(override_size)
@@ -335,9 +345,9 @@ class NevuObject(NevuCobject):
             glyph_count = len(codepoints)
             c_array = rl.ffi.new("int[]", codepoints)
             c_ptr = rl.ffi.cast("int *", c_array)
-            if self.style.fontname == "Arial": return rl.get_font_default()
+            if self.style.font_name == "Arial": return rl.get_font_default()
             else:
-                return rl.load_font_ex(self.style.fontname, round(font_size), c_ptr, glyph_count)
+                return rl.load_font_ex(self.style.font_name, round(font_size), c_ptr, glyph_count)
 
         return self.cache.get_or_exec(CacheType.RlFont, _load_font_with_cyrillic) #type: ignore
     
@@ -350,7 +360,7 @@ class NevuObject(NevuCobject):
 
     @property
     def _rsize(self) -> NvVector2:
-        bw = math.ceil(self.relm(self.style.borderwidth))
+        bw = math.ceil(self.relm(self.style.border_width))
         return self._csize - (NvVector2(bw, bw) * 3)
 
     @property
@@ -370,6 +380,11 @@ class NevuObject(NevuCobject):
     
     @property
     def tooltip(self): return self.get_param_strict("tooltip").value
+    
+    def _tooltip_setter(self, value: Tooltip | None):
+        if value:
+            value.connect_to_master(self)
+            
     @tooltip.setter
     def tooltip(self, value: Tooltip | None): 
         self.get_param_strict("tooltip").value = value
@@ -427,10 +442,13 @@ class NevuObject(NevuCobject):
 
     @property
     def style(self) -> Style: return self._style
+    
+    
     @style.setter
     def style(self, style: Style):
         self._changed = True
         self._style = copy.copy(style)
+        if hasattr(self, "_on_style_change") and self._on_style_change: self._on_style_change()
 
 #=== Zsystem functions ===
 
