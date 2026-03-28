@@ -260,8 +260,9 @@ class ScrollableBase(LayoutType, ABC):
         for item in self.collided_items:
             item.update() 
         if self._scroll_needs_update:
-            self._recollide_items()
             self._update_scroll_bar()
+            self._recollide_items()
+            
             self._scroll_needs_update = False 
         if self.actual_max_main > 0:
             self.scroll_bar.coordinates = self._get_scrollbar_coordinates() # type: ignore

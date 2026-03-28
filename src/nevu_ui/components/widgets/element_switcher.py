@@ -36,7 +36,7 @@ class Elements:
                     continue
                 elif not isinstance(item, str):
                     if isinstance(item, (list, tuple)) and len(item) == 2:
-                        element_pair = [str(item[0]), str(item[1]) if item[1] else None]
+                        element_pair = [str(item[0]), item[1] if item[1] else None]
                     else:
                         element_pair = [str(item), None]
                 else:
@@ -82,7 +82,7 @@ class ElementSwitcher(Widget):
         
     def _lazy_init(self, size: NvVector2 | list, elements: list[Element] | None = None):
         super()._lazy_init(size)
-        elements = elements or []
+        elements: list[Element] = elements or []
         self.elements = Elements.create(*elements)
         self.renderer.bake_text(self.current_element_text)
         self._create_buttons()
@@ -106,20 +106,25 @@ class ElementSwitcher(Widget):
                 self.next()
     
     def _change_style_rad(self, style: Style, norad_idx: tuple[int, int], rad_idx: tuple[int, int], offset: int | float):
-        if isinstance(style.borderradius, tuple):
-            br = list(style.borderradius)
+        if isinstance(style.border_radius, tuple):
+            br = list(style.border_radius)
             br[norad_idx[0]], br[norad_idx[1]] = 0, 0
             br[rad_idx[0]], br[rad_idx[1]] = br[rad_idx[0]] - offset, br[rad_idx[1]] - offset
         else:
             br = [0]*4
-            br[rad_idx[0]], br[rad_idx[1]] = style.borderradius - offset, style.borderradius - offset # type: ignore
-        style.borderradius = tuple(br) # type: ignore
+            br[rad_idx[0]], br[rad_idx[1]] = style.border_radius - offset, style.border_radius - offset # type: ignore
+        style.border_radius = tuple(br) # type: ignore
+    
+    def _on_style_change_additional(self):
+        super()._on_style_change_additional()
+        if not self.booted: return
+        self._shape_buttons_radius(self.relm(self.style.border_width))
     
     def _shape_buttons_radius(self, offset: int | float):
         button_style = self.style(borderwidth=0)
         button_style_left = button_style()
         button_style_right = button_style()
-        border_offset = self.relm(self.style.borderwidth) 
+        border_offset = self.relm(self.style.border_width) 
         idx1, idx2 = (2, 1), (0, 3)
         self._change_style_rad(button_style_left, idx1, idx2, offset*2) 
         self._change_style_rad(button_style_right, idx2, idx1, offset*2) 
@@ -129,9 +134,9 @@ class ElementSwitcher(Widget):
     def _create_buttons(self):
         button_size = (NvVector2(self._get_arrow_width(), self._rsize.y) / 100 * (NvVector2(100,100) - self.offset_perc)).to_round()
         self.button_offset = NvVector2(self._get_arrow_width(), self._rsize.y) - button_size
-        self.button_left = Button(self.previous, self.left_text, button_size, self.style, z = self.z + 1, inline = True, fancy_click_style = False, alt = self.alt) #type: ignore
+        self.button_left = Button(self.previous, self.left_text, button_size, self.style, z = self.z + 1, inline = True,throw_errors=True, fancy_click_style = False, alt = self.alt) #type: ignore
         self.button_right = Button(self.next, self.right_text, button_size, self.style, z = self.z + 1, inline = True, fancy_click_style = False, alt = self.alt)
-        self._shape_buttons_radius(self.relm(self.style.borderwidth))
+        self._shape_buttons_radius(self.relm(self.style.border_width))
         self._start_button(self.button_left)
         self._start_button(self.button_right)
         self._delayed_button_update = True
@@ -156,10 +161,10 @@ class ElementSwitcher(Widget):
         self.button_right.coordinates = NvVector2(right_offset_x, offset.y)
     
     def _get_arrow_width(self):
-        return round(self.relx((self.size.x - self.style.borderwidth*2) / 100 * self.arrow_width))
+        return round(self.relx((self.size.x - self.style.border_width*2) / 100 * self.arrow_width))
     
     def _resize_buttons(self):
-        self._shape_buttons_radius(self.relm(self.style.borderwidth))
+        self._shape_buttons_radius(self.relm(self.style.border_width))
         self.button_left._resize(self._resize_ratio)
         self.button_right._resize(self._resize_ratio)
 
@@ -177,7 +182,7 @@ class ElementSwitcher(Widget):
         self._changed = True
         self._delayed_button_update = True
         if self.on_content_change: 
-            self.on_content_change(self.current_element_text)
+            self.on_content_change(self.current_element_text, self.current_element.id)
         
     @property
     def current_element(self):

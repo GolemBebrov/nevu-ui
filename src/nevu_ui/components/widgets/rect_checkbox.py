@@ -67,7 +67,7 @@ class RectCheckBox(Widget):
             active_size.x = max(1, int(active_size.x))
             active_size.y = max(1, int(active_size.y))
             
-            inner_radius = (self.style.borderradius - self.relm(self.style.borderwidth / 2))
+            inner_radius = (self.style.border_radius - self.relm(self.style.border_width / 2))
             
             ext_kwargs = {}
             if nevu_state.window.is_dtype.raylib:

@@ -37,7 +37,7 @@ class Label(Widget):
 
     def _fast_bake_text(self):
         if not nevu_state.window.is_dtype.raylib: 
-            self.bake_text(self._text, False, self.words_indent, self.style.text_align_x, self.style.text_align_y, color = self.subtheme_font)
+            self.bake_text(self._text, False, self.words_indent, self.style.align_x, self.style.align_y, color = self.subtheme_font)
         else: self.renderer.bake_text(self._text, False, self.words_indent, self.style, color = self.subtheme_font)
     def _resize(self, resize_ratio: NvVector2):
         super()._resize(resize_ratio)

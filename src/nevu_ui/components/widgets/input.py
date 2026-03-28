@@ -44,12 +44,12 @@ class Input(Widget):
     def _process_padding(self):
         def max_elem(a, b, name): return self._ensure_padding(max(a, b) / 2, name)
         base_padding = self.padding.copy()
-        if isinstance(self.style.borderradius, tuple):
-            for i, item in enumerate(self.style.borderradius):
+        if isinstance(self.style.border_radius, tuple):
+            for i, item in enumerate(self.style.border_radius):
                 base_padding[i] += item
         else:
             for i in range(len(base_padding)):
-                base_padding[i] += self.style.borderradius
+                base_padding[i] += self.style.border_radius
         max_left = max_elem(base_padding[0], base_padding[3], "left")
         max_right = max_elem(base_padding[1], base_padding[2], "right")
         max_top = max_elem(base_padding[0], base_padding[1], "top")
@@ -117,7 +117,7 @@ class Input(Widget):
         
     def _get_line_height(self):
         try:
-            if not hasattr(self, '_style') or not self.style.fontname: raise AttributeError("Font not ready")
+            if not hasattr(self, '_style') or not self.style.font_name: raise AttributeError("Font not ready")
             return self._get_pygame_font().get_height()
         except (pygame.error, AttributeError) as e: raise e
         
@@ -627,8 +627,8 @@ class Input(Widget):
                 text_x = int(lt_scrolled_vec.x)
                 avail_h = self._csize.y - lt_marg_vec.y - rb_marg_vec.y
                 text_y = int(lt_marg_vec.y + (avail_h - self._text_surface.texture.height) / 2)
-            src_rec = rl.Rectangle(0, 0, self._text_surface.texture.width, -self._text_surface.texture.height)
-            dest_pos = rl.Vector2(text_x, text_y)
+            src_rec = (0, 0, self._text_surface.texture.width, -self._text_surface.texture.height)
+            dest_pos = (text_x, text_y)
             rl.draw_texture_rec(self._text_surface.texture, src_rec, dest_pos, rl.WHITE)
             
             rl.end_scissor_mode() 

@@ -108,7 +108,7 @@ class Slider(Widget):
     
     def _on_style_change_additional(self):
         super()._on_style_change_additional()
-        if hasattr(self, "progress_bar"): self.progress_bar._changed = True
+        if hasattr(self, "progress_bar") and self.progress_bar: self.progress_bar._changed = True
         
     @property
     def current_value(self) -> float | int:
@@ -204,20 +204,20 @@ class Slider(Widget):
     def adjust_text_rect(self, rect = None):
         result_rect = rect or self._text_rect
         result_rect = NvRect(result_rect)
-        if self.style.text_align_x == Align.CENTER and self.style.text_align_y == Align.CENTER: return rect
+        if self.style.align_x == Align.CENTER and self.style.align_y == Align.CENTER: return rect
         
         padx = 0
         pady = 0
         
         border_size = self._rsize_marg / 2
         
-        match self.style.text_align_x:
+        match self.style.align_x:
             case Align.LEFT:
                 padx = self.padding_x + border_size.x
             case Align.RIGHT: 
                 padx = -self.padding_x - border_size.x
         
-        match self.style.text_align_y:
+        match self.style.align_y:
             case Align.TOP:
                 pady = self.padding_y + border_size.y
             case Align.BOTTOM: 
