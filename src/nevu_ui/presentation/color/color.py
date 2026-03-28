@@ -203,8 +203,8 @@ class Color:
     @staticmethod
     def rgb_to_hsl(color: Annotations.rgb_color) -> Annotations.hsl_color:
         """Converts RGB (0-255) to HSL (0-1)."""
-        assert is_rgb(color), "Invalid RGB color format."
-        r, g, b = color
+        assert is_rgb_like(color), "Invalid RGB color format."
+        r, g, b, a = color if is_rgba(color) else (color[0], color[1], color[2], 255)
         h, l, s = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
         return (h, l, s)
 
