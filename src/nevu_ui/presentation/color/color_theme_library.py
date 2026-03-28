@@ -1,9 +1,18 @@
+from dataclasses import dataclass
+
 from .color import Color
 from .color_theme import (
     ColorTheme, ColorSubTheme, ColorPair
 )
 
-class ColorThemeLibrary:
+class TrackThemeNamesMeta(type):
+    def __new__(cls, name, bases, namespace):
+        theme_names =[key for key in namespace.keys() if not key.startswith('_')]
+        namespace['_names'] = theme_names
+        return super().__new__(cls, name, bases, namespace)
+
+@dataclass
+class ColorThemeLibrary(metaclass=TrackThemeNamesMeta):
     material3_light = ColorTheme(
         name = "Material3 Light",
         primary=ColorSubTheme(color=(103, 80, 164), oncolor=(255, 255, 255), container=(234, 221, 255), oncontainer=(33, 0, 93)),
