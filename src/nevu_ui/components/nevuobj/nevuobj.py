@@ -273,7 +273,7 @@ class NevuObject(NevuCobject):
         self._init_constant_layer(ConstantLayer.Lazy, **self.constant_kwargs)
         
     def _lazy_init(self, size):
-        print("lazied", self)
+       # print("lazied", self)
         self.size = size if isinstance(size, NvVector2) else NvVector2(size)
         self.original_size = self.size.copy()
         self.add_first_update_action(self._reset_tooltip)
@@ -284,7 +284,7 @@ class NevuObject(NevuCobject):
         if self.constant_kwargs.get("tooltip"):
             self.tooltip = self.constant_kwargs.get("tooltip")
             
-        print(self.get_param("tooltip").value)
+        #print(self.get_param("tooltip").value)
     
     def _handle_size_rules(self, number: SizeRule | int | float) -> SizeRule | int | float:
         if isinstance(number, SizeRule):
