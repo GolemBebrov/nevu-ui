@@ -102,17 +102,19 @@ class LayoutType(NevuObject):
         
         if nevu_state.window.is_dtype.sdl: 
             if not hasattr(item, 'texture'): return
-            assert item.texture
-            nevu_state.renderer.blit(item.texture, pygame.Rect((coordinates).to_tuple(), item._csize.to_tuple())) #type: ignore
+            if not item._sdl2_texture: return
+            assert item._sdl2_texture
+            nevu_state.renderer.blit(item._sdl2_texture, pygame.Rect((coordinates).to_tuple(), item._csize.to_tuple())) #type: ignore
         elif nevu_state.window.is_dtype.pygame:
             assert isinstance(self.surface, pygame.Surface), "Cant use _draw_widget with uninitialized surface"
             self.surface.blit(item.surface, coordinates.to_tuple()) #type: ignore
         elif nevu_state.window.is_dtype.raylib:
-            rl.begin_scissor_mode(*self.coordinates.get_int_tuple(), *self._csize.get_int_tuple())
+            #rl.begin_scissor_mode(*self.coordinates.get_int_tuple(), *self._csize.get_int_tuple())
             display = nevu_state.window.display
             assert nevu_state.window.is_raylib(display)
-            display.blit_rect_vec(item.surface.texture, coordinates.get_int_tuple(), mode = rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
-            rl.end_scissor_mode()
+            display.fast_blit_pro(item.surface.texture, coordinates.get_int_tuple(), flip = True)
+           # display.blit_rect_vec(item.surface.texture, coordinates.get_int_tuple(), mode = rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
+            #rl.end_scissor_mode()
             
     def _boot_up(self):
         self.booted = True
@@ -327,7 +329,7 @@ class LayoutType(NevuObject):
             assert self.surface
             assert nevu_state.window
             if not self.borders.font:
-                self.border_font = pygame.sysfont.SysFont("Arial", int(self.relx(self.first_parent_menu._style.fontsize)))
+                self.border_font = pygame.sysfont.SysFont("Arial", int(self.relx(self.first_parent_menu._style.font_size)))
             else:
                 self.border_font = self.borders.font
             self._border_font_surface = self.border_font.render(self.borders.name, True, self.borders.color)
