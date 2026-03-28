@@ -6,7 +6,10 @@ from typing import Any
 from nevu_ui.core.classes import ConfigType
 from nevu_ui.json_parser import check
 from nevu_ui.json_parser import standart_config
+from nevu_ui.core.enums import ConfigLoadType
 from nevu_ui.presentation.style import Style
+from nevu_ui.presentation.color.color_theme import ColorTheme, ColorSubTheme, ColorPair
+from nevu_ui.presentation.color.color_theme_library import ColorThemeLibrary
 
 class ApplierBuffer:
     def __init__(self) -> None:
@@ -27,7 +30,7 @@ def regen_buffers():
 
 #!WARNING:
 #!DO NOT change order.
-PROCESSING_ORDER = {"colors", "colorthemes", "styles", "window", "animations", "generated"}
+PROCESSING_ORDER =["colors", "colorthemes", "styles", "window", "animations", "generated"]
 
 def _apply_config(config: dict):
     veryold_time = time.time()
@@ -94,17 +97,98 @@ def lazy_cycle(buffer: ApplierBuffer):
         raise ValueError(f"Could not resolve style dependencies. Check for circular dependencies or missing styles: {remaining}")
 
 def _get_styles_from_verified_dict(styles_dict):
-    return {name: Style(**value) for name, value in styles_dict.items()}
+    styles = {}
+    for name, value in styles_dict.items():
+        kwargs = value.copy()
+        if "colortheme" in kwargs:
+            theme_name = kwargs["colortheme"]
+            theme_obj = colorthemes_buffer.final_init.get(theme_name)
+            if not theme_obj:
+                raise ValueError(f"Colortheme '{theme_name}' is not defined, but required in style '{name}'")
+            kwargs["colortheme"] = theme_obj
+            
+        styles[name] = Style(**kwargs)
+        
+    return styles
 
 #! Convertors !#
 def _style_convert_func():
     assert styles_buffer
     lazy_cycle(styles_buffer)
     return _get_styles_from_verified_dict(styles_buffer.final_init)
+
 def _color_convert_func():
     assert colors_buffer
     lazy_cycle(colors_buffer)
     return colors_buffer.final_init
+
+def _colortheme_convert_func():
+    assert colorthemes_buffer
+    assert colors_buffer
+    
+    lazy_cycle(colorthemes_buffer)
+    
+    result_themes = {}
+    default_color = (0, 0, 0, 255)
+    
+    def resolve_color(c):
+        if isinstance(c, str):
+            if c in colors_buffer.final_init:
+                return colors_buffer.final_init[c]
+            converted = _is_color_convertable(c)
+            if converted: return converted
+            return default_color
+        if _is_color_value(c):
+            return tuple(c)
+        return default_color
+
+    roles = {
+        "primary": ColorSubTheme, "secondary": ColorSubTheme, 
+        "tertiary": ColorSubTheme, "error": ColorSubTheme, 
+        "background": ColorPair, "surface": ColorPair, 
+        "surface_variant": ColorPair, "inverse_surface": ColorPair, 
+        "outline": tuple, "inverse_primary": tuple
+    }
+
+    for theme_name, theme_dict in colorthemes_buffer.final_init.items():
+        kwargs = {"name": theme_dict.get("name", theme_name)}
+        
+        for role, expected_type in roles.items():
+            val = theme_dict.get(role)
+
+            if val is None:
+                if expected_type == ColorSubTheme:
+                    kwargs[role] = ColorSubTheme(default_color, default_color, default_color, default_color)
+                elif expected_type == ColorPair:
+                    kwargs[role] = ColorPair(default_color, default_color)
+                else:
+                    kwargs[role] = default_color
+                continue
+            if expected_type == ColorSubTheme and isinstance(val, ColorSubTheme):
+                kwargs[role] = val
+                continue
+            if expected_type == ColorPair and isinstance(val, ColorPair):
+                kwargs[role] = val
+                continue
+            if expected_type == tuple and isinstance(val, tuple) and _is_color_value(val):
+                kwargs[role] = val
+                continue
+            is_single = isinstance(val, str) or _is_color_value(val)
+            if expected_type == tuple:
+                if is_single: kwargs[role] = resolve_color(val)
+                else: kwargs[role] = resolve_color(val[0])
+            elif expected_type == ColorPair:
+                kwargs[role] = ColorPair(resolve_color(val[0]), resolve_color(val[1]))
+            elif expected_type == ColorSubTheme:
+                kwargs[role] = ColorSubTheme(
+                    resolve_color(val[0]), resolve_color(val[1]), 
+                    resolve_color(val[2]), resolve_color(val[3])
+                )
+                
+        result_themes[theme_name] = ColorTheme(**kwargs)
+        
+    colorthemes_buffer.final_init = result_themes
+    return result_themes
 
 def _validate_substruct(key, is_any, substruct, validators):
     error_batch = []
@@ -162,27 +246,101 @@ def check_color(key, value):
         return True, f"Added {key} to lazy init"
     return False, f"Invalid format for color '{key}'"
 
+def check_colortheme(key, value):
+    assert colorthemes_buffer
+    if not isinstance(value, dict):
+        return False, f"Invalid format for colortheme '{key}'"
+    
+    key_validators = {
+        "primary": ColorSubTheme, "secondary": ColorSubTheme, 
+        "tertiary": ColorSubTheme, "error": ColorSubTheme, 
+        "background": ColorPair, "surface": ColorPair, 
+        "surface_variant": ColorPair, "inverse_surface": ColorPair, 
+        "outline": tuple, "inverse_primary": tuple, 
+        "name": str, "extends": str
+    }
+
+    for k, val in value.items():
+        if k not in key_validators:
+            return False, f"Unknown key '{k}' in colortheme '{key}'"
+        
+        expected_type = key_validators[k]
+        
+        if expected_type == str:
+            if not isinstance(val, str):
+                return False, f"Invalid type for {k}, expected string"
+            continue
+
+        is_single = isinstance(val, str) or _is_color_value(val)
+        
+        if expected_type == tuple:
+            if not is_single and not (isinstance(val, (list, tuple)) and len(val) == 1):
+                return False, f"Invalid format for {k}, expected 1 color (string or [r, g, b])"
+        elif expected_type == ColorPair:
+            if not isinstance(val, (list, tuple)) or is_single or len(val) != 2:
+                return False, f"Invalid format for {k}, expected 2 colors for ColorPair"
+        elif expected_type == ColorSubTheme:
+            if not isinstance(val, (list, tuple)) or is_single or len(val) != 4:
+                return False, f"Invalid format for {k}, expected 4 colors for ColorSubTheme"
+    extend_name = value.get("extends")
+    if extend_name:
+        if hasattr(ColorThemeLibrary, "_names") and extend_name in ColorThemeLibrary._names:
+            if extend_name not in colorthemes_buffer.final_init:
+                lib_theme = getattr(ColorThemeLibrary, extend_name)
+                colorthemes_buffer.final_init[extend_name] = {
+                    "name": lib_theme.name,
+                    "primary": lib_theme.primary,
+                    "secondary": lib_theme.secondary,
+                    "tertiary": lib_theme.tertiary,
+                    "error": lib_theme.error,
+                    "background": lib_theme.background,
+                    "surface": lib_theme.surface,
+                    "surface_variant": lib_theme.surface_variant,
+                    "inverse_surface": lib_theme.inverse_surface,
+                    "outline": lib_theme.outline,
+                    "inverse_primary": lib_theme.inverse_primary
+                }
+        colorthemes_buffer.lazy_init[key] = value
+    else:
+        colorthemes_buffer.final_init[key] = value
+        
+    return True, f"'{key}' added to colorthemes buffer"
+            
+
 def check_style(key, value):
     assert styles_buffer
     is_lazy = False
     for param, _val in value.items():
-        param = param.lower().replace("_", "").strip()
-        result = Style().parameters_dict.get(param)
+        param = param.strip()
+        if "_" in param:
+            if param.lower().replace("_", "") in ["extends", "colortheme"]:
+                param = param.lower().replace("_", "")
+        if param.startswith("="):
+            param = param.lower().replace("=", "").replace("_", "")
         
-        if not result and param != "extends":
-            return False, f"{param} is not in Style parameters"
-        elif param == "extends":
+        if param == "extends":
             is_lazy = True
             continue
+            
+        if param == "colortheme":
+            if not isinstance(_val, str):
+                return False, f"colortheme must be a string (theme name), got {type(_val)}"
+            continue
+        
+        result = Style().parameters_dict.get(param)
+        
+        if not result:
+            return False, f"{param} is not in Style parameters"
         
         param_name, validator = result #type: ignore
-        if not validator(_val)[0]: return False, f"{_val} is not valid for {param}"
+        if not validator(_val)[0]: 
+            return False, f"{_val} is not valid for {param}"
         
     if not is_lazy: styles_buffer.final_init[key] = value
     else: styles_buffer.lazy_init[key] = value
         
     return True, f"{value} is valid for {key}"
-    
+
 def _is_color_value(value):
     if not isinstance(value, (list, tuple)): return False
     if len(value) not in (3, 4): return False
@@ -216,12 +374,14 @@ structure_validators = {
     
     "styles": {Any: check_style},
     "colors": {Any: check_color},
+    "colorthemes": {Any: check_colortheme},
 }
     
 strategies = {
     "window": (ApplierStrategy.CollectDict, None),
     "styles": (ApplierStrategy.AddObjectDict, _style_convert_func),
     "colors": (ApplierStrategy.AddObjectDict, _color_convert_func), #Warning: pseudo custom object, actually its just tuple
+    "colorthemes": (ApplierStrategy.AddObjectDict, _colortheme_convert_func),
 }
 
 transform_to_basic_config = {
@@ -229,11 +389,28 @@ transform_to_basic_config = {
     "styles": "styles",
     "animations": "animations",
     "colors": "colors",
+    "colorthemes": "colorthemes"
 }
 
 #! Global functions
-def apply_config(file_name: str): _apply_config(json.load(open(file_name, "r")))
-def get_style(name: str, default = None): return standart_config.styles.get(name, default)
-def get_color(name: str, default = None): return standart_config.colors.get(name, default)
+def apply_config(file_name: str, load_type: ConfigLoadType = ConfigLoadType.Json): 
+    with open(file_name, "r", encoding="utf-8") as file:
+        if load_type == ConfigLoadType.Yaml:
+            try:
+                import yaml
+            except ImportError:
+                print("YAML is NOT installed, try installing it via 'pip install pyyaml' or skipping loading...")
+                return
+            config_data = yaml.safe_load(file)
+        elif load_type == ConfigLoadType.Json:
+            config_data = json.load(file)
+        else:
+            raise ValueError(f"Unknown load type: {load_type}")
+            
+    _apply_config(config_data)
+def get_style(name: str, default = None) -> Style | None: return standart_config.styles.get(name, default)
+def get_color(name: str, default = None) -> tuple | None: return standart_config.colors.get(name, default)
+def get_colortheme(name: str, default = None) -> ColorTheme | None: return standart_config.colorthemes.get(name, default)
+def get_all_colorthemes(): return standart_config.colorthemes
 def get_all_styles(): return standart_config.styles
 def get_all_colors(): return standart_config.colors

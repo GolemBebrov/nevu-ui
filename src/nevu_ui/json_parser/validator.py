@@ -94,11 +94,17 @@ def validate_window(window: Any):
         "utils": list,
         "fps": int,
         "resizable": bool,
-        "ratio": (list, tuple)
+        "ratio": (list, tuple),
     }
     return _validate_group(valid_items, window)
     
 def validate_animations(substruct: Any):
+    valid_items = {
+        Any: dict,
+    }
+    return _validate_group(valid_items, substruct)
+
+def validate_colorthemes(substruct: Any):
     valid_items = {
         Any: dict,
     }
@@ -126,7 +132,8 @@ valid_dict = {
     "animations": validate_animations,
     "colors": validate_colors,
     "styles": validate_styles,
-    "generated": validate_generated
+    "generated": validate_generated,
+    "colorthemes": validate_colorthemes
 }
 
 def add_validator(key: str, func):
