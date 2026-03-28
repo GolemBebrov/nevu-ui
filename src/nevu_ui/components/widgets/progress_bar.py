@@ -146,8 +146,8 @@ class ProgressBar(Widget):
         self._changed_value = False
         inner_vec = self._rsize
         size = NvVector2(math.ceil(inner_vec.x * self.progress), inner_vec.y)
-        bw = math.ceil(self.relm(self.style.borderwidth))
-        radius = self.relm(self.style.borderradius) - bw
+        bw = math.ceil(self.relm(self.style.border_width))
+        radius = self.relm(self.style.border_radius) - bw
         min_side = min(self._rsize.x // 2, self._rsize.y // 2)
         radius = min(min_side, max(radius, 0))
         
