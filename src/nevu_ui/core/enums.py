@@ -1,4 +1,6 @@
 from enum import Enum, auto, StrEnum, IntEnum
+from dataclasses import dataclass
+from typing import Callable
 
 #Svalka
 #faputa approved
@@ -19,12 +21,12 @@ class Backend(StrEnum):
     Opengl = "opengl"
     RayLib = "raylib"
 
-class Align(Enum):
-    CENTER = auto()
-    LEFT = auto()
-    RIGHT = auto()
-    TOP = auto()
-    BOTTOM = auto()
+class Align(StrEnum):
+    CENTER = "center"
+    LEFT = "left"
+    RIGHT = "right"
+    TOP = "top"
+    BOTTOM = "bottom"
 
 class Malign(Enum):
     """This is a mirror of Align with PascalCase"""
@@ -113,6 +115,8 @@ class CacheType(Enum):
     #NEW FUKING RL cache
     RlFont = auto()
     RlTexture = auto()
+    RlradTexture = auto()
+    RlfinalTexture = auto()
 
 class CacheName(StrEnum):
     MAIN = "main"
@@ -120,11 +124,11 @@ class CacheName(StrEnum):
     CUSTOM = "custom"
 
 class AnimationType(Enum):
-    COLOR = auto()
-    SIZE = auto()
-    POSITION = auto()
-    ROTATION = auto()
-    OPACITY = auto()
+    Color = auto()
+    Size = auto()
+    Position = auto()
+    Rotation = auto()
+    Opacity = auto()
     _not_used = auto()
 
 class EventType(Enum):
@@ -158,3 +162,26 @@ class HoverState(Enum):
 class OvItemType(Enum):
     Texture = auto()
     DrawCall = auto()
+    
+class ConfigLoadType(StrEnum):
+    Yaml = "yaml"
+    Json = "json"
+
+class RenderConfig(StrEnum):
+    Root = "root"
+    Style = "style"
+    DrawL1 = "draw_l1"
+    DrawL2 = "draw_l2"
+    DrawL3 = "draw_l3"
+    DrawL4 = "draw_l4"
+
+class _RenderArg:
+    pass
+
+class RenderArgs:
+    class DrawBase(_RenderArg): pass
+    class DrawText(_RenderArg): pass
+    class DrawEffects(_RenderArg): pass
+    @dataclass
+    class DrawCustom(_RenderArg):
+        custom_func: Callable 
