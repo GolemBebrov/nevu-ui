@@ -125,8 +125,8 @@ class MouseRayLib(MousePygame):
             
         for i, button in self._mouse_keys:
             self._states[i] = self._get_state(button, self._states[i])
-            
-        self._pos = NvVector2(rl.get_mouse_x(), rl.get_mouse_y())
+        screen_pos = rl.get_mouse_position() 
+        self._pos = NvVector2(screen_pos.x, screen_pos.y)
 
 def set_mouse(backend: Backend):
     assert isinstance(mouse, UnselectedMouse), "Mouse already selected"
