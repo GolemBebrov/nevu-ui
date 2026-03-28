@@ -1,6 +1,6 @@
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.core.enums import Align
-from nevu_ui.components.layouts import StackBase
+from nevu_ui.components.layouts.stack.base import StackBase
 
 class StackRow(StackBase):
     def _recalculate_size(self):

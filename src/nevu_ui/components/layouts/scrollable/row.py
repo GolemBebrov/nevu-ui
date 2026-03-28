@@ -3,7 +3,7 @@ import copy
 
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.components.layouts.scrollable_base import ScrollableBase
+from nevu_ui.components.layouts.scrollable.base import ScrollableBase
 from nevu_ui.fast.logic.fast_logic import collide_horizontal
 from nevu_ui.core.state import nevu_state
 from nevu_ui.utils import Keys

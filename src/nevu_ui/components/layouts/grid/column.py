@@ -4,7 +4,7 @@ from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2 
 from nevu_ui.presentation.style import Style, default_style
 
-from nevu_ui.components.layouts import (
+from nevu_ui.components.layouts.grid.base import (
     Grid, GridKwargs_uni, GridKwargs_rc, GridKwargs_xy
 )
 
