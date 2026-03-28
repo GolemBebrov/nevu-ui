@@ -107,7 +107,16 @@ class DisplayRayLib(DisplayBase):
         if isinstance(color, tuple) and len(color) == 3:
             color = (*color, 255)
         self.blit_rect_pro(source, (dest[0], dest[1], source.width, source.height), flip, color, angle)
-        
+    
+    def fast_blit(self, source: rl.Texture, dest: Annotations.dest_like, color: Annotations.rgba_color = Color.White): 
+        rl.draw_texture_v(source, dest, color)
+    
+    def fast_blit_pro(self, source: rl.Texture, dest: Annotations.dest_like, flip: bool = True, color: Annotations.rgba_color = Color.White):
+        if isinstance(color, tuple) and len(color) == 3:
+            color = (*color, 255)
+        h = -source.height if flip else source.height
+        draw_texture_rec(source, (0,0, source.width, h), dest, color)
+    
     def blit_rect_pro(self, source: rl.Texture, dest: Annotations.rect_like, flip = True, color: Annotations.rgba_color = Color.White, angle: int | float | None = None, source_rect: Annotations.rect_like | None = None, mode = None):
         if source_rect: source_rec = source_rect
         elif flip: source_rec = (0, 0, source.width, -source.height)
