@@ -78,3 +78,21 @@ class BorderConfig:
     color: tuple[int, int, int] | tuple[int, int, int, int] = (255, 255, 255, 255)
     name: str | None = None
     font: Any | None = None
+
+class Counter:
+    __slots__ = ('val', 'max_val', 'ended', '_initial_val')
+    def __init__(self, val: int | float, max_val: int | float | None = None):
+        self.val = val
+        self._initial_val = val
+        self.max_val = max_val or float("inf")
+        self.ended = False
+        
+    def inc(self, add: int | float = 1):
+        self.val += add
+        if self.max_val is not None and self.val > self.max_val: 
+            self.val = self.max_val
+            self.ended = True
+            
+    def reset(self, reset_value: int | float | None = None): 
+        self.val = reset_value or self._initial_val
+        self.ended = False
