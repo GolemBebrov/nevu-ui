@@ -127,7 +127,7 @@ cpdef void _light_update_helper(
         
         coords = <NvVector2>cached_coordinates[i] 
         if not(item.animation_manager.state == AnimationManagerState.IDLE or item.animation_manager.state == AnimationManagerState.ENDED):
-            raw_anim_val = item.animation_manager.get_animation_value(AnimationType.POSITION)
+            raw_anim_val = item.animation_manager.get_animation_value(AnimationType.Position)
         else:
             raw_anim_val = None
         if raw_anim_val is None:
