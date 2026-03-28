@@ -1,0 +1,117 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Nevu UI Config V1",
+    "type": "object",
+
+    "properties": {
+        "window": {
+            "type": "object",
+            "description": "Window initial settings",
+            "properties": {
+
+                "title": { 
+                    "type": "string", 
+                    "description": "title of the window" 
+                },
+
+                "size": { 
+                    "type": "array", 
+                    "items": { "type": "integer" },
+                    "minItems": 2, "maxItems": 2,
+                    "description": "Window size: [width, height]"
+                },
+
+                "display": { 
+                    "type": "string", 
+                    "enum": ["raylib", "pygame", "sdl"] 
+                },
+
+                "fps": {
+                    "description": "set default fps", 
+                    "type": "integer", "minimum": 1 
+                },
+
+                "resizable": {
+                    "description": "define if window need to resize",
+                    "type": "boolean" 
+                },
+
+                "utils": {
+                    "description": "define what utils you want to use", 
+                    "type": "array", "items": {"type": "string", "enum": ["keyboard", "mouse", "time"] }, 
+                    "minItems": 0, "maxItems": 3
+                },
+
+                "ratio": {
+                    "description": "define window ratio or set null for disabling ratio crop",
+                    "anyOf": [
+                        {"type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2},
+                        {"type": "null"}
+                    ]
+                    
+                }
+            }
+        },
+
+        "colors": {
+            "type": "object",
+            "description": "Define colors here",
+            "patternProperties": {
+                "^[a-zA-Z0-9_]+$": {
+                    "description": "new Color object",
+                    "anyOf":[
+                        { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 255 }, "minItems": 3, "maxItems": 4 },
+                        { "type": "string" }
+                    ]
+                }
+            }
+        },
+
+        "colorthemes": {
+            "type": "object",
+            "description": "Define custom ColorTheme objects here",
+            "patternProperties": {
+                "^[a-zA-Z0-9_]+$": {
+                    "type": "object",
+                    "description": "new ColorTheme object",
+                    "properties": {
+                        "extends": { "type": "string", "description": "ColorTheme name to extend" },
+                        "name": { "type": "string" },
+                        "primary": { "type": "array" },
+                        "background": { "type": "array" },
+                        "outline": { "type": "array" }
+                    }
+                }
+            }
+        },
+
+        "styles": {
+            "type": "object",
+            "description": "Define Style objects here",
+            "patternProperties": {
+                "^[a-zA-Z0-9_]+$": {
+                    "type": "object",
+                    "description": "new Style object",
+                    "properties": {
+                        "extends": { "type": "string" },
+                        "colortheme": { "type": "string" },
+                        "border_radius": { "type": "integer" },
+                        "br": {"description": "alias for border_radius", "type": "integer" },
+                        "border_width": { "type": "integer" },
+                        "bw": {"description": "alias for border_width", "type": "integer" },
+                        "font_size": { "type": "integer" },
+                        "font_name": { "type": "string" },
+                        "font_path": {"description": "alias for font_name", "type": "string" },
+                        "align_x": { "type": "string", "enum": ["left", "center", "right"] },
+                        "align_y": { "type": "string", "enum": ["top", "center", "bottom"] },
+                        "transparency": { "type": "integer", "minimum": 0, "maximum": 255 },
+                        "bg_image": { "type": "string" },
+                        "color_role": { "type": "string", "enum": ["primary", "secondary", "tertiary", "error"] },
+                        "subtheme_role": { "type": "string", "enum": ["primary", "secondary", "tertiary", "error"] },
+                        "font_role": { "type": "string", "enum": ["background", "surface", "surface_variant", "inverse_surface"] }
+                    }
+                }
+            }
+        }
+    }
+}
