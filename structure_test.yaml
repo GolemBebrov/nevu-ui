@@ -1,0 +1,70 @@
+# yaml-language-server: $schema=nevu_schema.json
+
+window:
+  title: Nevu UI
+  size: [1600, 900]
+  display: raylib
+  utils:
+    - keyboard
+    - mouse
+    - time
+  fps: 90
+  resizable: true
+  ratio: [16, 9]
+
+animations:
+  previev_animation:
+    type: position
+    class: linear
+    duration: 1000
+    from: [0, 0]
+    to: [100, 100]
+
+colors:
+  custom_black: [10, 10, 10]
+  custom_white: [240, 240, 240]
+
+colorthemes:
+  base_theme:
+    extends: "synthwave_dark"
+    name: "Base Light"
+    
+    primary: [[98, 0, 238], [255, 255, 255],[234, 221, 255], [33, 0, 93]]
+    secondary: ["custom_black", "custom_white", "200,200,200",[50, 50, 50]]
+    
+    background: [[255, 255, 255], "custom_black"]
+    surface: [[255, 255, 255],[0, 0, 0]]
+    
+    outline: [121, 116, 126]
+    inverse_primary: "custom_white"
+ 
+  dark_theme:
+    extends: "base_theme"
+    name: "Base Dark"
+    
+    background: ["custom_black", "custom_white"]
+    surface: [[28, 27, 31], [230, 225, 229]]
+    outline: [200, 200, 200]
+
+
+styles:
+  zov:
+    border_radius: 0
+    border_width: 10
+    colortheme: "dark_theme"
+  textzov:
+    border_radius: 10
+    border_width: 2
+    font_size: 50
+  zov123:
+    border_radius: 10
+    border_width: 2
+  rodina:
+    extends: textzov
+    border_radius: 0
+
+generated: true
+
+asdasdasd: asdasd
+
+jopa: 2
