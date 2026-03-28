@@ -41,17 +41,17 @@ T = TypeVar("T")
 type SVar[T] = T | StateVariable[T]
 
 class StyleKwargs(TypedDict):
-    borderradius: NotRequired[SVar[int | float | tuple]]
+    border_radius: NotRequired[SVar[int | float | tuple]]
     br: NotRequired[SVar[int]]
-    borderwidth: NotRequired[SVar[int]]
+    border_width: NotRequired[SVar[int]]
     bw: NotRequired[SVar[int]]
-    fontsize: NotRequired[SVar[int]]
-    fontname: NotRequired[SVar[str]]
-    fontpath: NotRequired[SVar[str]]
-    text_align_x: NotRequired[SVar[Align]]
-    text_align_y: NotRequired[SVar[Align]]
+    font_size: NotRequired[SVar[int]]
+    font_name: NotRequired[SVar[str]]
+    font_path: NotRequired[SVar[str]]
+    align_x: NotRequired[SVar[Align]]
+    align_y: NotRequired[SVar[Align]]
     transparency: NotRequired[SVar[int]]
-    bgimage: NotRequired[SVar[str]]
+    bg_image: NotRequired[SVar[str]]
     colortheme: NotRequired[SVar[ColorTheme]]
     gradient: NotRequired[SVar[GradientPygame]]
     font_role: NotRequired[SVar[PairColorRole]]
@@ -63,17 +63,17 @@ class Style:
         self._kwargs_for_copy = copy.deepcopy(kwargs)
         self.kwargs_dict = {}
         self.parameters_dict = {
-            "borderradius": ["borderradius", self._parse_br],
-            "br": ["borderradius", self._parse_int_min0],
-            "borderwidth": ["borderwidth", self._parse_int_min0],
-            "bw": ["borderwidth", self._parse_int_min0],
-            "fontsize": ["fontsize", lambda value: self.parse_int(value, min_restriction = 1)],
-            "fontname": ["fontname", self.parse_str],
-            "fontpath": ["fontname", self.parse_str],
-            "text_align_x": ["text_align_x", self._parse_align],
-            "text_align_y": ["text_align_y", self._parse_align],
+            "border_radius": ["border_radius", self._parse_br],
+            "br": ["border_radius", self._parse_int_min0],
+            "border_width": ["border_width", self._parse_int_min0],
+            "bw": ["border_width", self._parse_int_min0],
+            "font_size": ["font_size", lambda value: self.parse_int(value, min_restriction = 1)],
+            "font_name": ["font_name", self.parse_str],
+            "font_path": ["font_name", self.parse_str],
+            "align_x": ["align_x", self._parse_align],
+            "align_y": ["align_y", self._parse_align],
             "transparency": ["transparency", lambda value: self.parse_int(value, max_restriction = 255, min_restriction = 0)],
-            "bgimage": ["bgimage", self.parse_str],
+            "bg_image": ["bg_image", self.parse_str],
             "colortheme": ["colortheme", lambda value: self.parse_type(value, ColorTheme)],
             "gradient": ["gradient", lambda value: self.parse_type(value, GradientPygame)],
             "color_role": ["color_role", lambda value: self.parse_type(value, SubThemeRole)],
@@ -105,14 +105,14 @@ class Style:
         
     def _init_basic(self):
         self.colortheme = copy.copy(ColorThemeLibrary.material3_blue)
-        self.borderwidth = 1
-        self.borderradius = 0
-        self.fontname = "Arial"
-        self.fontsize = 20
-        self.text_align_x = Align.CENTER
-        self.text_align_y = Align.CENTER
+        self.border_width = 1
+        self.border_radius = 0
+        self.font_name = "Arial"
+        self.font_size = 20
+        self.align_x = Align.CENTER
+        self.align_y = Align.CENTER
         self.transparency = None
-        self.bgimage = None
+        self.bg_image = None
         self.gradient = None
         self.color_role = None
         self.font_role = None
@@ -160,7 +160,13 @@ class Style:
         for item_name, item_value in kwargs.items():
             dict_value = self.kwargs_dict.get(item_name.lower(), None)
             if dict_value is None:
-                continue
+                kwargs_dict = {key.replace("_", ""): value for key, value in self.kwargs_dict.items()}
+                if item_name not in kwargs_dict:
+                    if raise_errors:
+                        raise ValueError(f"Unknown attribute '{item_name}'")
+                    continue
+                else:
+                    dict_value = kwargs_dict[item_name]
             self._handle_single_item(item_name, item_value, dict_value, raise_errors)
 
     def _handle_single_item(self, item_name, item_value, dict_value, raise_errors: bool = False):
@@ -181,7 +187,7 @@ class Style:
                 end_value = checker_value if checker_value is not None else item_value
                 setattr(self, attribute_name, end_value)
             elif raise_errors:
-                raise ValueError(f"Incorrect value {item_name}")
+                raise ValueError(f"Incorrect value {item_value} for {item_name} of type {type(item_value).__name__}")
 
     def __getattribute__(self, name: str):
         try:
@@ -195,9 +201,12 @@ class Style:
         current_state_name = hstate_to_state[super().__getattribute__('_curr_state')]
         return item[current_state_name]
 
-    def __call__(self ,**kwargs: Unpack[StyleKwargs]):
+    def __call__(self, **kwargs: Unpack[StyleKwargs]):
         style = copy.copy(self)
-        style._handle_kwargs(**kwargs)
+        style._kwargs_for_copy = copy.deepcopy(self._kwargs_for_copy)
+        style._kwargs_for_copy.update(kwargs)
+        
+        style._handle_kwargs(raise_errors=True, **kwargs)
         style._curr_state = HoverState.UN_HOVERED
         return style
     
