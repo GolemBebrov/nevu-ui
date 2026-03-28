@@ -112,16 +112,16 @@ class BackgroundRendererPygame:
         color = root.subtheme_border if alt else root.subtheme_content
         
         if not standstill:
+            
             hover_state = root._hover_state
-            if hover_state == HoverState.CLICKED and not root.get_param_strict("fancy_click_style") and root.get_param_strict("clickable"): 
+            if hover_state == HoverState.CLICKED and not root.get_param_strict("fancy_click_style").value and root.get_param_strict("clickable").value: 
                 color = Color.lighten(color, 0.2)
-            elif hover_state == HoverState.HOVERED and root.get_param_strict("hoverable"): 
+            elif hover_state == HoverState.HOVERED and root.get_param_strict("hoverable").value: 
                 color = Color.darken(color, 0.2)
         
         if override_color: color = override_color
         avg_scale_factor = (root._resize_ratio.x + root._resize_ratio.y) * 0.5
-        
-        radius = self.draw._mult_radius(style.borderradius, avg_scale_factor) if radius is None else radius
+        radius = self.draw._mult_radius(style.border_radius, avg_scale_factor) if radius is None else radius
         r_radius = self.draw._round_radius(radius)
         
         if sdf: surf.blit(_create_rounded_rect_surface_optimized(tuple_size, r_radius, color), (0, 0)) #type: ignore
@@ -139,8 +139,8 @@ class BackgroundRendererPygame:
         tuple_size = needed_size.to_round().to_tuple()
         avg_scale_factor = (root._resize_ratio.x + root._resize_ratio.y) * 0.5
             
-        radius = radius or self.draw._mult_radius(style.borderradius, avg_scale_factor)
-        width = width or style.borderwidth * avg_scale_factor
+        radius = radius or self.draw._mult_radius(style.border_radius, avg_scale_factor)
+        width = width or style.border_width * avg_scale_factor
         
         if isinstance(radius, (int, float)): radius = (radius, radius, radius, radius)
         r_radius = self.draw._round_radius(radius)
@@ -158,11 +158,11 @@ class BackgroundRendererPygame:
     
     def _get_correct_mask(self, sdf=True, add = 0, radius = None): 
         root = self.root
-        radius = radius or root.relm(root.style.borderradius)
+        radius = radius or root.relm(root.style.border_radius)
         size = root._csize.to_round().copy()
         size -= NvVector2(add, add)
         if sdf: size -= NvVector2(2,2)
-        if root.style.borderwidth > 0: size -= NvVector2(2,2)
+        if root.style.border_width > 0: size -= NvVector2(2,2)
         
         return self._create_surf_base(size, root.alt, radius)
     
@@ -173,7 +173,7 @@ class BackgroundRendererPygame:
         rounded_size = root._csize.to_round()
         tuple_size = rounded_size.to_tuple()
 
-        border_width = style.borderwidth
+        border_width = style.border_width
         coords = (0,0) if border_width <= 0 else (1,1)
 
         mask_surf = None
@@ -193,7 +193,7 @@ class BackgroundRendererPygame:
         content_surf = None
         if style.gradient:
             content_surf = cache.get_or_exec(CacheType.Scaled_Gradient, lambda: self._scale_gradient(rounded_size - offset))
-        elif style.bgimage:
+        elif style.bg_image:
             content_surf = cache.get_or_exec(CacheType.Scaled_Image, lambda: self._scale_image(rounded_size - offset))
 
         if only_content:
@@ -219,8 +219,8 @@ class BackgroundRendererPygame:
     
     def _generate_image(self):
         root = self.root
-        assert root.style.bgimage, "Bgimage not set"
-        return self.draw.load_image(root.style.bgimage)
+        assert root.style.bg_image, "Bgimage not set"
+        return self.draw.load_image(root.style.bg_image)
 
     def min_size(self, size: NvVector2):  return (max(1, int(size.x)), max(1, int(size.y)))
     
@@ -265,13 +265,13 @@ class BackgroundRendererPygame:
         lines.append(current_line)
         return lines
     
-    def bake_text(self, text: str, unlimited_y: bool = False, words_indent: bool = False, style: Style | None = None, size: NvVector2 | None = None, color = None, outside = False, outside_rect = None, override_font_size = None):
+    def bake_text(self, text: str, unlimited_y: bool = False, words_indent: bool = False, style: Style | None = None, size: NvVector2 | None = None, color = None, outside = False, outside_rect = None, override_font_size = None, continuous = False):
         root = self.root
         style = style or root.style
         assert style
 
-        alignx = style.text_align_x
-        aligny = style.text_align_y
+        alignx = style.align_x
+        aligny = style.align_y
 
         color = color or root.subtheme_font
         size = size or root._csize
@@ -280,43 +280,51 @@ class BackgroundRendererPygame:
         renderFont = root._get_pygame_font(override_font_size)
         line_height = renderFont.get_linesize()
 
-        if words_indent:
-            words = text.strip().split()
-            marg = " "
+        if not continuous:
+            if words_indent:
+                words = text.strip().split()
+                marg = " "
+            else:
+                words = list(text)
+                marg = ""
+
+            is_cropped = False
+            lines = self._split_words(words, renderFont, size.x, marg)
+
+            if not unlimited_y:
+                while len(lines) * line_height > size.y:
+                    lines.pop(-1)
+                    is_cropped = True
+
+            baked_text = "\n".join(lines)
+
+            if is_cropped and not unlimited_y:
+                baked_text = f"{baked_text[:-3]}..."
+
+            text_surface: pygame.Surface = renderFont.render(baked_text, True, color)
+
+            if outside and outside_rect: container_rect = outside_rect
+            elif root.inline: container_rect = pygame.Rect(root.coordinates.to_round().to_tuple(), root._csize.to_round())
+            else: container_rect = root.surface.get_rect()
+
+            text_rect = text_surface.get_rect()
+
+            if alignx == Align.LEFT: text_rect.left = container_rect.left
+            elif alignx == Align.CENTER: text_rect.centerx = container_rect.centerx
+            elif alignx == Align.RIGHT: text_rect.right = container_rect.right
+            if aligny == Align.TOP: text_rect.top = container_rect.top
+            elif aligny == Align.CENTER: text_rect.centery = container_rect.centery
+            elif aligny == Align.BOTTOM: text_rect.bottom = container_rect.bottom
+
+            result_text_rect = text_rect    
         else:
-            words = list(text)
-            marg = ""
-
-        is_cropped = False
-        lines = self._split_words(words, renderFont, size.x, marg)
-
-        if not unlimited_y:
-            while len(lines) * line_height > size.y:
-                lines.pop(-1)
-                is_cropped = True
-
-        baked_text = "\n".join(lines)
-
-        if is_cropped and not unlimited_y:
-            baked_text = f"{baked_text[:-3]}..."
-
-        text_surface: pygame.Surface = renderFont.render(baked_text, True, color)
-
-        if outside and outside_rect: container_rect = outside_rect
-        elif root.inline: container_rect = pygame.Rect(root.coordinates.to_round().to_tuple(), root._csize.to_round())
-        else: container_rect = root.surface.get_rect()
-
-        text_rect = text_surface.get_rect()
-
-        if alignx == Align.LEFT: text_rect.left = container_rect.left
-        elif alignx == Align.CENTER: text_rect.centerx = container_rect.centerx
-        elif alignx == Align.RIGHT: text_rect.right = container_rect.right
-        if aligny == Align.TOP: text_rect.top = container_rect.top
-        elif aligny == Align.CENTER: text_rect.centery = container_rect.centery
-        elif aligny == Align.BOTTOM: text_rect.bottom = container_rect.bottom
+            result_text_rect = (0, 0)
+            baked_text= text
+            text_surface = renderFont.render(baked_text, True, color)
 
         if outside:
-            return text_surface, text_rect, baked_text
+            return text_surface, result_text_rect, baked_text
+        
         root._text_surface = text_surface # type: ignore
-        root._text_rect = text_rect # type: ignore
+        root._text_rect = result_text_rect # type: ignore
         root._text_baked = baked_text # type: ignore

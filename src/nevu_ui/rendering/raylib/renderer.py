@@ -55,38 +55,58 @@ class BackgroundRendererRayLib:
     @property
     def root(self) -> NevuObject: return self._root
     
-    def _create_surf_base(self, size = None, alt = False, radius = None, standstill = False, override_color = None, sdf = False, _clipped = False, blitmode = None): 
+    def _get_color_on_hover(self, color):
+        root = self.root
+        hover_state = root._hover_state
+        if hover_state == HoverState.CLICKED and not root.get_param_strict("fancy_click_style").value and root.get_param_strict("clickable").value: 
+            color = Color.lighten(color, 0.2)
+        elif hover_state == HoverState.HOVERED and root.get_param_strict("hoverable").value: 
+            color = Color.darken(color, 0.2)
+        return color
+    
+    def _create_surf_base(self, size = None, alt = False, radius = None, standstill = False, override_color = None, sdf = False, _clipped = False, blitmode = None, cached = False):
         assert nevu_state.window
         root = self.root
         size = size or root._csize 
         style = root._style
         color = root.subtheme_border if alt else root.subtheme_content
         if not standstill:
-            hover_state = root._hover_state
-            if hover_state == HoverState.CLICKED and not root.get_param_strict("fancy_click_style").value and root.get_param_strict("clickable").value: 
-                color = Color.lighten(color, 0.2)
-            elif hover_state == HoverState.HOVERED and root.get_param_strict("hoverable").value: 
-                color = Color.darken(color, 0.2)
+            color = self._get_color_on_hover(color)
         if override_color: color = override_color
         base_texture = rl.load_render_texture(int(size[0]), int(size[1]))
         if len(color) == 3: color = (*color, 255)
+        self._modify_to_surf_base(base_texture, size = size, alt = alt, radius = radius, override_color = color, sdf = sdf, _clipped = _clipped, blitmode = blitmode)
+        return base_texture
+    
+    def _modify_to_surf_base(self, texture, size = None, alt = False, radius = None, override_color = None, sdf = False, _clipped = False, blitmode = None, cached=False):
+        root = self.root
+        size = size or root._csize 
+        style = root._style
+        color = override_color or (root.subtheme_border if alt else root.subtheme_content)
+        if len(color) == 3: color = (*color, 255)
         if radius:
-            add_texture = rl.load_render_texture(int(size[0]), int(size[1]))
+            if cached:
+                if root._changed_size and root.cache.get(CacheType.RlradTexture):
+                    rl.unload_render_texture(root.cache.get(CacheType.RlradTexture))
+                    root.cache.clear_selected(whitelist = [CacheType.RlradTexture])
+                add_texture = root.cache.get_or_exec(CacheType.RlradTexture, lambda: rl.load_render_texture(int(size[0]), int(size[1])))
+            else:
+                add_texture = rl.load_render_texture(int(size[0]), int(size[1]))
+            assert add_texture
             rl.begin_texture_mode(add_texture)
             rl.begin_blend_mode(blitmode or rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
             nevu_state.window.display.clear(rl.BLANK) 
             nevu_state.window.display.clear(color)
             rl.end_blend_mode()
             rl.end_texture_mode()
-        rl.begin_texture_mode(base_texture)
+        rl.begin_texture_mode(texture)
         nevu_state.window.display.clear(rl.BLANK)
         if radius is None:
             nevu_state.window.display.clear(color)
         else:
             nevu_state.window.display.blit_sdf_vec(add_texture.texture, (0, 0), radius, mode = rl.BlendMode.BLEND_ALPHA)
-            rl.unload_render_texture(add_texture)
         rl.end_texture_mode()
-        return base_texture
+        return texture
     
     def _create_rect(self, size: tuple[int, int], radius = 0, color = Color.White):
         rtext = rl.load_render_texture(size[0], size[1])
@@ -100,13 +120,27 @@ class BackgroundRendererRayLib:
     def _create_outlined_rect(self, size = None, radius = None, width = None, sdf = False):
         return None
 
-    def _generate_background(self, sdf = True, only_content = False) -> rl.RenderTexture: 
+    def _generate_background(self, sdf = True, only_content = False, override_color = None, cached = False) -> rl.RenderTexture: 
         root = self.root
         style = root.style
         cache = root.cache
         rounded_size = root._csize.to_round()
         tuple_size = rounded_size.get_int_tuple()
         flip = True
+        add_color = NvRect(255,255,255,255)
+        
+        def normalize_add_color(color, add_color):
+            if len(color) == 3: color = (*color, 255)
+            if style.gradient: color_new = [color[i]  * (add_color[i] / 255) for i in range(4)]
+            else: color_new = self._get_color_on_hover(color)
+            return color_new
+        
+        new_color_pretendent = normalize_add_color(root.subtheme_border if root.alt else root.subtheme_content, add_color)
+        
+        if root._old_color is None:
+            root._old_color = new_color_pretendent
+        elif root._old_color != new_color_pretendent:
+            root._set_new_color(new_color_pretendent)
 
         if style.gradient:
             old_content_text = cache.get(CacheType.Scaled_Gradient)
@@ -114,35 +148,47 @@ class BackgroundRendererRayLib:
             if old_content_text is not content_text and old_content_text is not None:
                 rl.unload_texture(old_content_text)
             hoverstate = root._hover_state
-            add_color = NvRect(255,255,255,255)
-            def _add(value):
+            
+            def _add(value): 
                 for i in range(3): add_color[i] += value
             _add(-25)
             if hoverstate == HoverState.CLICKED and root.get_param_strict("clickable").value:
                 _add(-25)
             elif hoverstate == HoverState.HOVERED and root.get_param_strict("hoverable").value:
                 _add(25)
-        elif style.bgimage:
-            content_text = cache.get_or_exec(CacheType.Image, lambda: self.draw.load_image(style.bgimage, rounded_size.get_int_tuple()))
+        elif style.bg_image:
+            content_text = cache.get_or_exec(CacheType.Image, lambda: self.draw.load_image(style.bg_image, rounded_size.get_int_tuple()))
             add_color = NvRect(255,255,255,255)
             flip = False
         else:
-            content_text = cache.get_or_exec(CacheType.Surface, lambda: self._create_surf_base(rounded_size))
+            anim_color = None
+            if animate:=root.animate_color_change and root._color_anim_manager is not None:
+                    anim_color = root._color_anim_manager.get_animation_value("main")
+            if (root._changed_size and root.cache.get(CacheType.RlTexture)) or (anim_color and root.cache.get(CacheType.RlTexture)):
+                rl.unload_render_texture(root.cache.get(CacheType.RlTexture))
+                root.cache.clear_selected(whitelist = [CacheType.RlTexture])
+            content_text = cache.get_or_exec(CacheType.RlTexture, lambda: self._create_surf_base(rounded_size, override_color=anim_color))
             add_color = NvRect(255,255,255,255)
-        final_surf = rl.load_render_texture(*tuple_size)
+        if cached:
+            if root.cache.get(CacheType.RlfinalTexture) and root._changed_size:
+                rl.unload_render_texture(root.cache.get(CacheType.RlfinalTexture))
+                root.cache.clear_selected(whitelist = [CacheType.RlfinalTexture])
+            final_surf = root.cache.get_or_exec(CacheType.RlfinalTexture, lambda: rl.load_render_texture(*tuple_size))
+        else:
+            final_surf = rl.load_render_texture(*tuple_size)
         display = nevu_state.window.display
         assert content_text
         assert nevu_state.window.is_raylib(display)
         final_content_text = content_text.texture if hasattr(content_text, "texture") else content_text
         rl.begin_texture_mode(final_surf)
         nevu_state.window.display.clear(rl.BLANK)
-        if isinstance(style.borderradius, int|float):
-            borderradius = [root.relm(style.borderradius)]*4
+        if isinstance(style.border_radius, int|float):
+            borderradius = [root.relm(style.border_radius)]*4
         else:
-            borderradius = tuple(map(root.relm, style.borderradius))
-        if style.borderwidth > 0 and only_content:
-            display.blit_borders(final_content_text, (0, 0, tuple_size[0], tuple_size[1]), borderradius, root.subtheme_border, color=add_color.get_int_tuple(), thickness= root.relm(style.borderwidth), flip=flip, mode=rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-        elif style.borderwidth > 0 and not only_content:
+            borderradius = tuple(map(root.relm, style.border_radius))
+        if style.border_width > 0 and only_content:
+            display.blit_borders(final_content_text, (0, 0, tuple_size[0], tuple_size[1]), borderradius, root.subtheme_border, color=add_color.get_int_tuple(), thickness= root.relm(style.border_width), flip=flip, mode=rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+        elif style.border_width > 0 and not only_content:
             display.blit_sdf(final_content_text, (0, 0, tuple_size[0], tuple_size[1]), borderradius, flip=flip, mode=rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
         else:
             display.blit_rect_pro(final_content_text, (0, 0, tuple_size[0], tuple_size[1]), flip=flip, mode=rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
@@ -183,15 +229,15 @@ class BackgroundRendererRayLib:
         style = style or root.style
         assert style
         
-        alignx = style.text_align_x
-        aligny = style.text_align_y
+        alignx = style.align_x
+        aligny = style.align_y
         
         color = color or root.subtheme_font
         if len(color) == 3: color = (*color, 255)
         size = size or root._csize
         assert size
 
-        current_font_size = override_font_size or root.relm(style.fontsize)
+        current_font_size = override_font_size or root.relm(style.font_size)
         current_font_size = round(current_font_size * 1.25)
         renderFont = root._get_raylib_font() 
         
