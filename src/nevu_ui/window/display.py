@@ -1,6 +1,6 @@
 import pygame 
 import pyray as rl
-from pygame._sdl2.video import (Window as SDL2Window, Renderer, Texture)
+from pygame._sdl2.video import (Window as SDL2Window, Renderer, Texture, Image)
 from nevu_ui.core import Annotations
 from nevu_ui.presentation.color import Color
 from nevu_ui.fast.shaders import SdfShader, BorderShader
@@ -39,9 +39,15 @@ class DisplaySdl(DisplayBase):
     def blit(self, source, dest_rect): #type: ignore
         dest = dest_rect
         if isinstance(source, pygame.Surface):
-            source = Texture.from_surface(self.renderer, source)
+            source = Image(Texture.from_surface(self.renderer, source))
+        elif isinstance(source, Texture):
+            source = Image(source)
         if not isinstance(dest, pygame.Rect):
-            dest = pygame.Rect(dest, (source.width, source.height))
+            if len(dest) == 4: dest = pygame.Rect(*dest)
+            elif len(dest) == 2: 
+                if isinstance(dest[0], tuple|list): dest = pygame.Rect(*dest)
+                else:
+                    dest = pygame.Rect(*dest, source.texture.width, source.texture.height)
         self.renderer.blit(source, dest)
 
     def clear(self, color=None):
