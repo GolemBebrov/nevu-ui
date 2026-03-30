@@ -8,6 +8,7 @@ import weakref
 import pyray as rl
 from typing import Unpack, Any
 
+from nevu_ui.fast.nvrect.nvrect import NvRect
 from nevu_ui.presentation.style import Style
 from nevu_ui.fast.nevucobj import NevuCobject
 from nevu_ui.presentation.color import SubThemeRole
@@ -78,7 +79,7 @@ class NevuObject(NevuCobject):
         self._declare_constants(**constant_kwargs)
         
         #=== Constants L1 ===
-        self._init_constant_layer(ConstantLayer.Top, **constant_kwargs)
+        self._init_param_layer(ConstantLayer.Top, **constant_kwargs)
         
     #=== Basic Variables ===    
         #=== Booleans(Flags) ===
@@ -91,7 +92,7 @@ class NevuObject(NevuCobject):
         self._init_lists()
         
         #=== Constants L2 ===
-        self._init_constant_layer(ConstantLayer.Basic, **constant_kwargs)
+        self._init_param_layer(ConstantLayer.Basic, **constant_kwargs)
         
     #=== Complicated Variables ===
         #=== Style ===
@@ -101,17 +102,17 @@ class NevuObject(NevuCobject):
         self._init_objects()
         
         #=== Constants L3 ===
-        self._init_constant_layer(ConstantLayer.Complicated, **constant_kwargs)
+        self._init_param_layer(ConstantLayer.Complicated, **constant_kwargs)
         
         if __debug__:
             add_obj(self)
             weakref.finalize(self, del_obj, self.__class__.__name__)
     
 #=== ConstantEngine functions ===
-#INFO: ConstantEngine Version V4C
+#INFO: ConstantEngine Version V4.1C
 
     def _add_param(self, name, supported_classes: tuple | Any, default: Any, 
-                      getter: Callable | None = None, setter: Callable | None = None, layer = 1):
+                   getter: Callable | None = None, setter: Callable | None = None, layer = 1):
         super()._add_param(name, supported_classes, default, getter, setter, layer)
 
             
@@ -129,7 +130,7 @@ class NevuObject(NevuCobject):
         self.get_param_strict(name).default = default
     
     def _add_free_param(self, name, default: Any, layer = 1):
-        pass
+        raise NotImplementedError("Free parameters are not supported.")
     
     def _block_param(self, name: str):
         param_names = self._get_param_names()
@@ -137,14 +138,16 @@ class NevuObject(NevuCobject):
         self._blacklisted_params.append(name)
     
     def __getattr__(self, name: str):
+        #print("getting", name)
+        #if self.get_param(name) is None: print(f"{name} not found in {self.__class__.__name__}")
+        #else: print(f"{name} found in {self.__class__.__name__}")
         return self.get_param_value(name)
     
     def _add_params(self):
         self._add_param("id", (str, type(None)), None)
         self._add_param("floating", bool, False)
         self._add_param("single_instance", bool, False)
-        self._add_param("events", Events, Events(), getter=self._get_events, setter=self._set_events, layer=ConstantLayer.Basic)
-        #print(self._find_param("events").setter)
+        self._add_param("events", Events, Events(), setter=self._set_events, layer=ConstantLayer.Basic)
         self._add_param("z", int, 0)
         self._add_param_link("depth", "z")
         self._add_param("tooltip", Tooltip | type(None), None, layer=ConstantLayer.Lazy)
@@ -169,7 +172,7 @@ class NevuObject(NevuCobject):
             if current_layer != layer: continue
             if constant_name in processed: 
                 raise ValueError(f"Constant {name}({constant_name}) is already set.")
-            self._process_constant(name, constant_name, needed_types, value)
+            self._process_param(name, constant_name, needed_types, value)
             processed.add(constant_name)
     
     def _extract_param_data(self, name):
@@ -192,7 +195,7 @@ class NevuObject(NevuCobject):
             if isinstance(value, needed_type): return True
         return False
 
-    def _process_constant(self, name, param_name, needed_types, value):
+    def _process_param(self, name, param_name, needed_types, value):
         assert needed_types
         if param_name not in self._get_param_names():
             if param_name in self._blacklisted_params:
@@ -230,7 +233,7 @@ class NevuObject(NevuCobject):
     def _declare_constants(self, **kwargs):
         self._add_params()
         
-    def _init_constant_layer(self, layer, **kwargs):
+    def _init_param_layer(self, layer, **kwargs):
         self._preinit_params(layer)
         self._apply_params(layer, **kwargs)
             
@@ -270,7 +273,7 @@ class NevuObject(NevuCobject):
     
     def _lazy_init_wrapper(self, *args, **kwargs):
         self._lazy_init(*args, **kwargs)
-        self._init_constant_layer(ConstantLayer.Lazy, **self.constant_kwargs)
+        self._init_param_layer(ConstantLayer.Lazy, **self.constant_kwargs)
         
     def _lazy_init(self, size):
        # print("lazied", self)
@@ -279,12 +282,8 @@ class NevuObject(NevuCobject):
         self.add_first_update_action(self._reset_tooltip)
         
     def _reset_tooltip(self): 
-        
-        #self.tooltip = self.get_param("tooltip").value if self.get_param("tooltip") else None
         if self.constant_kwargs.get("tooltip"):
             self.tooltip = self.constant_kwargs.get("tooltip")
-            
-        #print(self.get_param("tooltip").value)
     
     def _handle_size_rules(self, number: SizeRule | int | float) -> SizeRule | int | float:
         if isinstance(number, SizeRule):
@@ -324,8 +323,8 @@ class NevuObject(NevuCobject):
     def add_next_frame_action(self, function):
         self._next_frame_functions.append(function)
 
-    def _get_animation_value(self, animation_type: AnimationType):
-        return self.animation_manager.get_current_value(animation_type)
+    def get_animation_value(self, animation_type: AnimationType):
+        return self.animation_manager.get_animation_value(animation_type)
 
     def get_font_size(self, override_size = None):
         result = self.relm(override_size or self.style.font_size)
@@ -336,8 +335,8 @@ class NevuObject(NevuCobject):
         font_size = round(self.get_font_size(override_size))
         return (pygame.font.SysFont(self.style.font_name, font_size) if self.style.font_name == "Arial" or self.style.font_name is None 
         else pygame.font.Font(self.style.font_name, font_size))
-    
-    def _get_raylib_font(self, override_size=None) -> rl.Font:
+
+    def _get_raylib_font(self, override_size = None) -> rl.Font:
         font_size = self.get_font_size(override_size)
         
         def _load_font_with_cyrillic():
@@ -351,7 +350,21 @@ class NevuObject(NevuCobject):
 
         return self.cache.get_or_exec(CacheType.RlFont, _load_font_with_cyrillic) #type: ignore
     
-    def get_font(self, override_size=None):
+    def _get_raylib_font_nocache(self, override_size = None) -> rl.Font:
+        font_size = self.get_font_size(override_size)
+        
+        def _load_font_with_cyrillic():
+            codepoints = list(range(32, 127)) + list(range(1024, 1104)) + [1025, 1105]
+            glyph_count = len(codepoints)
+            c_array = rl.ffi.new("int[]", codepoints)
+            c_ptr = rl.ffi.cast("int *", c_array)
+            if self.style.font_name == "Arial": return rl.get_font_default()
+            else:
+                return rl.load_font_ex(self.style.font_name, round(font_size), c_ptr, glyph_count)
+
+        return _load_font_with_cyrillic()
+    
+    def get_font(self, override_size = None):
         if nevu_state.window.is_dtype.raylib: return self._get_raylib_font(override_size)
         else: return self._get_pygame_font(override_size)
     
@@ -442,7 +455,6 @@ class NevuObject(NevuCobject):
 
     @property
     def style(self) -> Style: return self._style
-    
     
     @style.setter
     def style(self, style: Style):
@@ -575,6 +587,7 @@ class NevuObject(NevuCobject):
 
     def update(self, events: list | None = None):
         events = events or nevu_state.current_events
+        if not self._active or not self._visible: return
         self._primary_update(events)
         self.secondary_update()
         self._event_cycle(EventType.Update)
@@ -586,7 +599,6 @@ class NevuObject(NevuCobject):
         self._event_update(events)
         
     def _logic_update(self):
-        if not self._active or not self._visible: return
         if not self._sended_z_link and nevu_state.window != None:
             self._sended_z_link = True
             self._z_request = ZRequest(
