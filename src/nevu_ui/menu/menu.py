@@ -11,6 +11,8 @@ from nevu_ui.components.widgets import Widget
 from nevu_ui.presentation.color import SubThemeRole
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.fast.nvrect import NvRect
+from nevu_ui.fast.nvrendertex import NvRenderTexture
 from nevu_ui.core.size.rules import SizeRule
 from nevu_ui.rendering.pygame.renderer import BackgroundRendererPygame
 from nevu_ui.rendering.raylib.renderer import BackgroundRendererRayLib
@@ -19,6 +21,7 @@ from nevu_ui.presentation.color import Color
 from nevu_ui.utils import Cache, NevuEvent
 from nevu_ui.presentation.style import Style, default_style, StyleKwargs
 from nevu_ui.fast.logic.fast_logic import relm_helper, rel_helper, mass_rel_helper, vec_rel_helper
+from nevu_ui.fast.nvparam.nvparam import NvParam
 
 from nevu_ui.core.enums import (
     Quality, CacheType, EventType
@@ -33,6 +36,12 @@ class MenuRendererProxy:
         self.animate_color_change = False
         self._set_new_color = lambda *args: None
         self._changed_size = True
+        self._color_anim_manager = None
+        self.inline = False
+        self.animate_color_change = NvParam("Faputa Solo SOSU!!!!", -1999, False, False, bool, None, None) #Only False is used in here
+    def get_param_strict(self, name): return getattr(self, name)
+    @property
+    def alt(self): return NvParam("altushka", 9099, self.menu.alt, None, bool, None, None) #Only self.menu.alt is used in here
     @property
     def _draw_borders(self): return True
     @property
@@ -70,7 +79,6 @@ class Menu:
         self._init_secondary()
         self._init_tertiary(size)
         self._init_subtheme(alt)
-        self._init_dirty_rects()
         if layout: self.layout = layout
     
     def relx(self, num: int | float, min: int | None = None, max: int| None = None) -> int | float:
@@ -127,15 +135,12 @@ class Menu:
         return result or [0, 0]
     
     def _clear_rl_specific(self):
-        if self._window.is_dtype.raylib and self.cache.get(CacheType.Scaled_Background):
-            rl.unload_render_texture(self.cache.get(CacheType.Scaled_Background)) #type: ignore
         Widget._clear_rl_specific(self) #type: ignore
     
     def _init_primary(self, window: Window | None, style: Style):
         self._window = window
         self.window_surface = None
         self.cache = Cache()
-        self.quality = Quality.Decent
         self.style = style
         self._subtheme_role = self.style.subtheme_role or SubThemeRole.PRIMARY
         if self._window: self._window.add_event(NevuEvent(self, self._resize, EventType.Resize))
@@ -181,9 +186,6 @@ class Menu:
         else:
             self._subtheme_border = self._alt_subtheme_border
             self._subtheme_content = self._alt_subtheme_content
-
-    def _init_dirty_rects(self):
-        pass
         
     def _proper_load_layout(self):
         if not self._layout: return
@@ -215,7 +217,6 @@ class Menu:
     @absolute_coordinates.setter
     def absolute_coordinates(self, coordinates: NvVector2):
         if self._window is None: raise ValueError("Window is not initialized!")
-        #print(coordinates, self._window._offset)
         self._absolute_coordinates = coordinates + self._window._offset
     def _abs_coordinates_update(self): self.absolute_coordinates = self.coordinates
         
@@ -229,10 +230,9 @@ class Menu:
     def close_submenu(self): self._opened_sub_menu = None
         
     def _update_surface(self):
+        assert self._window
         if self._window.is_dtype.raylib:
-            if hasattr(self, '_surface'): 
-                rl.unload_render_texture(self._surface)
-            self._surface = rl.load_render_texture(*(self.size*self._resize_ratio).get_int_tuple())
+            self._surface = NvRenderTexture(self.size*self._resize_ratio)
             rl.set_texture_filter(self._surface.texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
             return
         if self.style.border_radius>0:self._surface = pygame.Surface(self._pygame_size, pygame.SRCALPHA)
@@ -274,8 +274,6 @@ class Menu:
     def style(self) -> Style: return self._style
     @style.setter
     def style(self, style: Style): 
-        print("setted style")
-        print(style.colortheme)
         self._style = copy.copy(style)
 
     def apply_style_to_layout(self, style: Style):
@@ -287,8 +285,6 @@ class Menu:
     
     def apply_style_patch_to_layout(self, **patch: Unpack[StyleKwargs]):
         self._changed = True
-        print("patch")
-        print(self._style(**patch).colortheme)
         self.style = self.style(**patch)
         self.cache.clear()
         self._init_subtheme(self.alt)
@@ -351,13 +347,12 @@ class Menu:
         assert self._window.is_raylib(display)
         if self._layout is not None:
             self._layout._rl_predraw_widgets()
-            rl.begin_texture_mode(self._surface) #type: ignore
-            nevu_state.window.display.clear(rl.BLANK) #type: ignore
-            display.blit_rect_vec(scaled_bg.texture, (0, 0), mode = rl.BlendMode.BLEND_ALPHA)
-            rl.begin_blend_mode(rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-            self._layout.draw()
-            rl.end_blend_mode()
-            rl.end_texture_mode()
+            with self._surface: #type: ignore
+                nevu_state.window.display.clear(Color.Blank)
+                display.blit_rect_vec(scaled_bg.texture, (0, 0), mode = rl.BlendMode.BLEND_ALPHA)
+                rl.begin_blend_mode(rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+                self._layout.draw()
+                rl.end_blend_mode()
         display.blit_rect_vec(self._surface.texture, self.absolute_coordinates.get_int_tuple(), mode=rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
     
     def _draw_pygame(self, scaled_bg: pygame.Surface):
@@ -365,7 +360,6 @@ class Menu:
         assert self._window.is_dtype.pygame, "Backend is not Pygame!"
         assert isinstance(self._surface, pygame.Surface), "_surface is not pygame surface!"
         self._surface.fill((0, 0, 0, 0))
-        #self._window._display.blit(scaled_bg, (0, 0))
         self._surface.blit(scaled_bg, (0, 0))
         if self._layout is not None: self._layout.draw() 
         
@@ -385,21 +379,18 @@ class Menu:
         if not self.enabled: return
         if self._window is None: return
         assert isinstance(self._window, Window)
-            
         assert isinstance(self._opened_sub_menu, (Menu, type(None)))
+        
         if self._opened_sub_menu:
             self._opened_sub_menu.update()
             return
         if self._layout: 
-            #print(self._layout.get_param_strict("id").value)
-           # if self._layout.get_param_strict("id").value == "scr":
-                
-              #  print(self._layout.coordinates + self.absolute_coordinates)
             self._layout.absolute_coordinates = self._layout.coordinates + self.absolute_coordinates
             self._layout.update(nevu_state.current_events)
-           # print("updata")
         
     def get_rect(self) -> pygame.Rect: return pygame.Rect((0,0), self.size * self._resize_ratio)
+    
+    def get_nvrect(self): return NvRect(NvVector2(), self.size*self._resize_ratio)
     
     def kill(self):
         self._enabled = False
@@ -418,8 +409,7 @@ class Menu:
         
         self._clear_rl_specific()
         self._clear_all()
-        if nevu_state.window.is_dtype.raylib:
-            rl.unload_render_texture(self._surface)
+        
         self._surface = None
         self._window = None
         
