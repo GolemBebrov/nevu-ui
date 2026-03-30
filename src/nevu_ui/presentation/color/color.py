@@ -27,6 +27,7 @@ class Color:
     Beige = (245, 245, 220, 255)
     Bisque = (255, 228, 196, 255)
     Black = (0, 0, 0, 255)
+    Blank = (0, 0, 0, 0)
     BlanchedAlmond = (255, 235, 205, 255)
     Blue = (0, 0, 255, 255)
     BlueViolet = (138, 43, 226, 255)
