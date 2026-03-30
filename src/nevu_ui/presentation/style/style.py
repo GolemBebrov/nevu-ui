@@ -3,7 +3,8 @@ import copy
 from typing import TypedDict, TypeVar, NotRequired, Unpack, Generic, TYPE_CHECKING
 
 from nevu_ui.core.enums import Align, HoverState
-from nevu_ui.rendering.pygame.gradient import GradientPygame
+if TYPE_CHECKING: 
+    from nevu_ui.rendering.pygame.gradient import GradientPygame
 
 from nevu_ui.presentation.color import (
     Color, ColorThemeLibrary, ColorTheme, SubThemeRole, PairColorRole
@@ -75,7 +76,7 @@ class Style:
             "transparency": ["transparency", lambda value: self.parse_int(value, max_restriction = 255, min_restriction = 0)],
             "bg_image": ["bg_image", self.parse_str],
             "colortheme": ["colortheme", lambda value: self.parse_type(value, ColorTheme)],
-            "gradient": ["gradient", lambda value: self.parse_type(value, GradientPygame)],
+            "gradient": ["gradient", lambda value: (True, None)],
             "color_role": ["color_role", lambda value: self.parse_type(value, SubThemeRole)],
             "subtheme_role": ["subtheme_role", lambda value: self.parse_type(value, SubThemeRole)],
             "font_role": ["font_role", lambda value: self.parse_type(value, PairColorRole)],
