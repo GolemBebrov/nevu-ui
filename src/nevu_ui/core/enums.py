@@ -114,9 +114,11 @@ class CacheType(Enum):
     
     #NEW FUKING RL cache
     RlFont = auto()
+    RlText = auto()
     RlTexture = auto()
     RlradTexture = auto()
     RlfinalTexture = auto()
+    RlBaseTexture = auto()
 
 class CacheName(StrEnum):
     MAIN = "main"
