@@ -11,7 +11,7 @@ from typing import (
 if TYPE_CHECKING: from nevu_ui.menu import Menu
 from nevu_ui.components.widgets import Widget
 from nevu_ui.overlay import overlay
-from nevu_ui.fast.logic import _light_update_helper
+from nevu_ui.fast.logic.fast_logic import _light_update_helper, rl_predraw_widgets
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.core.state import nevu_state
 from nevu_ui.core.enums import ConstantLayer
@@ -37,7 +37,6 @@ class LayoutType(NevuObject):
     borders: BorderConfig | None
     layout: LayoutType | None
     menu: Menu | None
-    
 
     def _all_items(self) -> Iterator[NevuObject]:
         return chain(self.items, self.floating_items)
@@ -57,26 +56,34 @@ class LayoutType(NevuObject):
         if not self.get_nvrect().collide_rect(nevu_state.window.get_nvrect()): return
         norm_size = self._csize.to_round().get_int_tuple()
         abs_coords = self.absolute_coordinates.to_round()
-        #nevu_state.window.display.clear(rl.BLANK)
-        if len(self.borders.color) == 3: self.borders.color = (*self.borders.color, 255)
-        rl.draw_rectangle_lines_ex([*abs_coords, *norm_size], self.relm(self.borders.width), self.borders.color)
-        if self.borders.name:
-            if self.borders.font:
-                rl.draw_text_ex(self.borders.font, self.borders.name or "", abs_coords.get_int_tuple(), self.borders.font.baseSize, 0, self.borders.color)
-            else:
-                rl.draw_text(self.borders.name or "", *abs_coords.get_int_tuple(), 20, self.borders.color)
+        borders: BorderConfig = self.get_param_strict("borders").value
+        if len(borders.color) == 3: borders.color = (*borders.color, 255)
+        rl.draw_rectangle_lines_ex([*abs_coords, *norm_size], self.relm(borders.width), borders.color)
+        if borders.name:
+            if borders.font: rl.draw_text_ex(borders.font, borders.name or "", abs_coords.get_int_tuple(), borders.font.baseSize, 0, borders.color)
+            else: rl.draw_text(borders.name or "", *abs_coords.get_int_tuple(), 20, borders.color)
 
     def _rl_predraw_widgets(self):
-        if self.borders and self._need_update_overlay:
+        if self.get_param_strict("borders").value and self._need_update_overlay:
             self._need_update_overlay = False
             abs_coords = self.absolute_coordinates.to_round()
             overlay.add_draw_call(self, self._rl_border_draw_call, abs_coords, -1)
-        for item in self._all_items():
-            if self.is_layout(item):
-                item._rl_predraw_widgets()
-            elif self.is_widget(item):
-                if item._changed:
-                    item.draw()
+        rl_predraw_widgets(self.items, self.is_layout, self.is_widget)
+    
+    def _draw_item_pygame(self, item: NevuObject, coordinates: NvVector2):
+        assert isinstance(self.surface, pygame.Surface), "Cant use _draw_widget with uninitialized surface"
+        self.surface.blit(item.surface, coordinates.to_tuple()) #type: ignore
+    
+    def _draw_item_sdl(self, item: NevuObject, coordinates: NvVector2):
+        if not hasattr(item, '_sdl2_texture'): return
+        if not item._sdl2_texture: return
+        assert item._sdl2_texture
+        nevu_state.window.display.blit(item._sdl2_texture, (coordinates.to_tuple(), item._csize.to_tuple())) #type: ignore
+    
+    def _draw_item_raylib(self, item: NevuObject, coordinates: NvVector2):
+        display = nevu_state.window.display
+        assert nevu_state.window.is_raylib(display)
+        display.fast_blit_pro(item.surface.texture, coordinates.get_int_tuple(), flip = True)
     
     def _draw_widget(self, item: NevuObject, multiply: NvVector2 | None = None, add: NvVector2 | None = None):
         assert isinstance(item, NevuObject), f"Cant use _draw_widget on {type(item)}"
@@ -85,37 +92,34 @@ class LayoutType(NevuObject):
             self.read_item_coords(item)
             self._start_item(item)
             return
-        
+
         if not nevu_state.window.is_dtype.raylib:
             item.draw()
             if self.is_layout(item): return
-        else:
-            if self.is_layout(item): 
-                item.draw()
-                return
-            
+        elif self.is_layout(item): 
+            item.draw()
+            return
+        
+        if not isinstance(item, Widget): return
+        
         coordinates = item.coordinates.xy
         if multiply: coordinates *= multiply
         if add: coordinates += add
         
+        self._draw_item(item, coordinates)
+    
+    def _draw_widget_optimized(self, item: NevuObject):
+        assert isinstance(item, NevuObject), f"Cant use _draw_widget on {type(item)}"
+        assert nevu_state.window, "Window not initialized!"
+        if not nevu_state.window.is_dtype.raylib:
+            item.draw()
+            if self.is_layout(item): return
+        elif self.is_layout(item): 
+            item.draw()
+            return
         if not isinstance(item, Widget): return
-        
-        if nevu_state.window.is_dtype.sdl: 
-            if not hasattr(item, 'texture'): return
-            if not item._sdl2_texture: return
-            assert item._sdl2_texture
-            nevu_state.renderer.blit(item._sdl2_texture, pygame.Rect((coordinates).to_tuple(), item._csize.to_tuple())) #type: ignore
-        elif nevu_state.window.is_dtype.pygame:
-            assert isinstance(self.surface, pygame.Surface), "Cant use _draw_widget with uninitialized surface"
-            self.surface.blit(item.surface, coordinates.to_tuple()) #type: ignore
-        elif nevu_state.window.is_dtype.raylib:
-            #rl.begin_scissor_mode(*self.coordinates.get_int_tuple(), *self._csize.get_int_tuple())
-            display = nevu_state.window.display
-            assert nevu_state.window.is_raylib(display)
-            display.fast_blit_pro(item.surface.texture, coordinates.get_int_tuple(), flip = True)
-           # display.blit_rect_vec(item.surface.texture, coordinates.get_int_tuple(), mode = rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
-            #rl.end_scissor_mode()
-            
+        self._draw_item(item, item.coordinates)
+    
     def _boot_up(self):
         self.booted = True
         for item in self._all_items():
@@ -153,6 +157,13 @@ class LayoutType(NevuObject):
         self.menu = None
         self.layout = None
         self._last_border_name = None
+        self._draw_item = lambda *args, **kwargs: None
+        if nevu_state.window.is_dtype.raylib:
+            self._draw_item = self._draw_item_raylib
+        elif nevu_state.window.is_dtype.pygame:
+            self._draw_item = self._draw_item_pygame
+        elif nevu_state.window.is_dtype.sdl:
+            self._draw_item = self._draw_item_sdl 
     
     def _add_params(self):
         super()._add_params()
@@ -325,7 +336,7 @@ class LayoutType(NevuObject):
                 
     def _primary_draw(self):
         super()._primary_draw()
-        if self.borders and self._need_update_overlay and not nevu_state.window.is_dtype.raylib:
+        if  self._need_update_overlay and not nevu_state.window.is_dtype.raylib and self.borders:
             assert self.surface
             assert nevu_state.window
             if not self.borders.font:
@@ -349,10 +360,13 @@ class LayoutType(NevuObject):
     def _logic_update(self):
         super()._logic_update()
         if overlay.has_element(self):
-            if overlay.get_element_strict(self)[1] != self.absolute_coordinates.to_round():
-                overlay.change_coordinates(self, self.absolute_coordinates)
+            abs_coordinates = self.absolute_coordinates
+            if overlay.get_element_strict(self)[1] != abs_coordinates.to_round():
+                overlay.change_coordinates(self, abs_coordinates)
+                
         if self.menu:
             self.surface = self.menu._surface #type: ignore
+            
         elif self.layout: 
             self.surface = self.layout.surface
             self.first_parent_menu = self.layout.first_parent_menu
@@ -380,7 +394,6 @@ class LayoutType(NevuObject):
     
     def _connect_to_menu(self, menu: Menu): self._connect_to_parent(("menu", menu), menu._surface, menu) #type: ignore
     def _connect_to_layout(self, layout: LayoutType):  self._connect_to_parent(("layout", layout), layout.surface, layout.first_parent_menu)
-        
         
     def get_item_by_id(self, id: str) -> NevuObject | None:
         if id is None: return None
