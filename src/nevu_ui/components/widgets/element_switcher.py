@@ -80,7 +80,7 @@ class ElementSwitcher(Widget):
         self.hoverable = False
         self._easy_mode = False
         
-    def _lazy_init(self, size: NvVector2 | list, elements: list[Element] | None = None):
+    def _lazy_init(self, size: NvVector2 | list, elements: list[Element] | None = None): # type: ignore
         super()._lazy_init(size)
         elements: list[Element] = elements or []
         self.elements = Elements.create(*elements)
@@ -121,7 +121,7 @@ class ElementSwitcher(Widget):
         self._shape_buttons_radius(self.relm(self.style.border_width))
     
     def _shape_buttons_radius(self, offset: int | float):
-        button_style = self.style(borderwidth=0)
+        button_style = self.style(border_width=0)
         button_style_left = button_style()
         button_style_right = button_style()
         border_offset = self.relm(self.style.border_width) 
@@ -182,7 +182,7 @@ class ElementSwitcher(Widget):
         self._changed = True
         self._delayed_button_update = True
         if self.on_content_change: 
-            self.on_content_change(self.current_element_text, self.current_element.id)
+            self.on_content_change(self.current_element_text, self.current_element.id) # type: ignore
         
     @property
     def current_element(self):
@@ -263,12 +263,10 @@ class ElementSwitcher(Widget):
             self._draw_buttons()
             assert self._text_surface is not None and self._text_rect is not None, "Text surface or rect is None"
             if nevu_state.window.is_dtype.raylib:
-                rl.begin_texture_mode(self.surface) #type: ignore
-                display = nevu_state.window.display
-                assert nevu_state.window.is_raylib(display)
-                
-                display.blit_rect_pro(self._text_surface.texture, self._text_rect, mode=rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-                rl.end_texture_mode()
+                with self.surface: #type: ignore
+                    display = nevu_state.window.display
+                    assert nevu_state.window.is_raylib(display)
+                    display.blit_rect_pro(self._text_surface.texture, self._text_rect, mode=rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
             else:
                 self.surface.blit(self._text_surface, self._text_rect) #type: ignore
             
