@@ -20,7 +20,6 @@ class Input(Widget):
     
     def __init__(self, size: NvVector2 | list, style: Style = default_style, default: str = "", placeholder: str = "", on_change_function = None, **constant_kwargs: Unpack[InputKwargs]):
         super().__init__(size, style, **constant_kwargs)
-        self._lazy_kwargs = {'size': size}
         self._entered_text = ""
         self.placeholder = placeholder
         self._on_change_fun = on_change_function
@@ -58,6 +57,9 @@ class Input(Widget):
         self.rb_margin += NvVector2(max_right, max_bottom)
         self._changed = True
 
+    @property
+    def multiple(self): return self.get_param_strict("multiple").value
+    
     def _ensure_padding(self, value, name):
         if value < 0:
             print(f"Warning: {name} padding with value: {value}, will be set to 0")
@@ -291,7 +293,6 @@ class Input(Widget):
         self._style = copy.deepcopy(style)
         if not self.booted: return
         self._changed = True
-        self._update_image()
         if hasattr(self,'_entered_text'):
             self._right_bake_text()
 
@@ -457,7 +458,7 @@ class Input(Widget):
         
         super()._event_update(events)
         def off_selection(self): self.selected = False; self._changed = True
-        if not self.is_active:
+        if not self.get_param_strict("is_active").value:
             if self.selected: off_selection(self)
             return
         prev_selected = self.selected
@@ -618,21 +619,20 @@ class Input(Widget):
             self.surface.blit(self._text_surface, self._text_rect)
             self.surface.set_clip(original_clip)
         elif nevu_state.window.is_dtype.raylib:
-            rl.begin_texture_mode(self.surface)
-            rl.begin_scissor_mode(int(lt_marg_vec.x), int(lt_marg_vec.y), int(clip.x), int(clip.y))
-            if self.multiple:
-                text_x = int(lt_scrolled_vec.x)
-                text_y = int(lt_scrolled_vec.y)
-            else:
-                text_x = int(lt_scrolled_vec.x)
-                avail_h = self._csize.y - lt_marg_vec.y - rb_marg_vec.y
-                text_y = int(lt_marg_vec.y + (avail_h - self._text_surface.texture.height) / 2)
-            src_rec = (0, 0, self._text_surface.texture.width, -self._text_surface.texture.height)
-            dest_pos = (text_x, text_y)
-            rl.draw_texture_rec(self._text_surface.texture, src_rec, dest_pos, rl.WHITE)
-            
-            rl.end_scissor_mode() 
-            rl.end_texture_mode()
+            with self.surface: #type: ignore
+                rl.begin_scissor_mode(int(lt_marg_vec.x), int(lt_marg_vec.y), int(clip.x), int(clip.y))
+                if self.multiple:
+                    text_x = int(lt_scrolled_vec.x)
+                    text_y = int(lt_scrolled_vec.y)
+                else:
+                    text_x = int(lt_scrolled_vec.x)
+                    avail_h = self._csize.y - lt_marg_vec.y - rb_marg_vec.y
+                    text_y = int(lt_marg_vec.y + (avail_h - self._text_surface.texture.height) / 2)
+                src_rec = (0, 0, self._text_surface.texture.width, -self._text_surface.texture.height)
+                dest_pos = (text_x, text_y)
+                rl.draw_texture_rec(self._text_surface.texture, src_rec, dest_pos, rl.WHITE)
+                
+                rl.end_scissor_mode() 
         if self.selected:
             cursor_visual = NvVector2()
             measure = self._get_measure()
@@ -661,15 +661,12 @@ class Input(Widget):
                 clip_rect_rl = (lt_marg_vec.x, lt_marg_vec.y, clip.x, clip.y)
                 
                 if rl.check_collision_recs(cursor_rect_rl, clip_rect_rl):
-                    rl.begin_texture_mode(self.surface)
-                    
-                    try: color = self._subtheme.oncolor
-                    except AttributeError: color = (0, 0, 0, 255)
-                    if len(color) == 3: color = (*color, 255)
-                    
-                    rl.draw_rectangle(int(cursor_visual.x), int(cursor_visual.y), cursor_width, cursor_height, color)
-                    
-                    rl.end_texture_mode()
+                    with self.surface: #type: ignore
+                        
+                        try: color = self._subtheme.oncolor
+                        except AttributeError: color = (0, 0, 0, 255)
+                        if len(color) == 3: color = (*color, 255)
+                        
+                        rl.draw_rectangle(int(cursor_visual.x), int(cursor_visual.y), cursor_width, cursor_height, color)
             
-    
-    def clone(self): return Input(self._lazy_kwargs['size'], copy.deepcopy(self.style), copy.copy(self._default_text), copy.copy(self.placeholder), self._on_change_fun, **self.constant_kwargs)
+    def _create_clone(self): return self.__class__(self._template['size'], copy.deepcopy(self.style), copy.copy(self._default_text), copy.copy(self.placeholder), self._on_change_fun, **self.constant_kwargs)
