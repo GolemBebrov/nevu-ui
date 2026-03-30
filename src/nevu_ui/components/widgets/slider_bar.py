@@ -4,6 +4,7 @@ from typing import Unpack
 
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.utils import mouse
+from nevu_ui.presentation.color import Color
 from nevu_ui.components.widgets.progress_bar import ProgressBar
 from nevu_ui.core.state import nevu_state
 from nevu_ui.core.enums import Align, ConstantLayer
@@ -34,9 +35,8 @@ class Slider(Widget):
     
     def _on_progress_bar_change(self):
         if nevu_state.window.is_dtype.raylib:
-            rl.begin_texture_mode(self.progress_bar.surface)
-            nevu_state.window.display.clear(rl.BLANK)
-            rl.end_texture_mode()
+            with self.progress_bar.surface: #type: ignore
+                nevu_state.window.display.clear(Color.Blank)
         else:
             self.progress_bar.surface.fill((0,0,0,0))
             self._create_surf()
@@ -162,19 +162,18 @@ class Slider(Widget):
         if nevu_state.window.is_dtype.raylib:
             display = nevu_state.window.display
             assert nevu_state.window.is_raylib(display)
-            rl.begin_texture_mode(self.surface)
-            display.clear(rl.BLANK)
-            display.blit_rect_vec(self.progress_bar.surface.texture, (0,0), mode=rl.BlendMode.BLEND_ALPHA)
-            nvrect = NvRect(args[2])
-            nvrect = self.adjust_text_rect(nvrect)
-            args = list(args)
-            args[2] = nvrect.get_int_tuple()[0:2]
-            rl.draw_text_ex(*args)
-            rl.end_texture_mode()
+            with self.surface: #type: ignore
+                display.clear(Color.Blank)
+                display.blit_rect_vec(self.progress_bar.surface.texture, (0,0), mode=rl.BlendMode.BLEND_ALPHA) #type: ignore
+                nvrect = NvRect(args[2]) #type: ignore
+                nvrect = self.adjust_text_rect(nvrect)
+                args = list(args) #type: ignore
+                args[2] = nvrect.get_int_tuple()[0:2] #type: ignore
+                rl.draw_text_ex(*args) #type: ignore
         else:
-            self.surface.fill((0,0,0,0))
-            self.surface.blit(self.progress_bar.surface, (0,0))
-            self.surface.blit(self._text_surface, self._text_rect)
+            self.surface.fill((0,0,0,0)) 
+            self.surface.blit(self.progress_bar.surface, (0,0)) #type: ignore
+            self.surface.blit(self._text_surface, self._text_rect) #type: ignore
         
     def _create_font(self):
         ext_kwargs = {}

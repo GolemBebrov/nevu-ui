@@ -76,13 +76,11 @@ class RectCheckBox(Widget):
             inner_surf = self.renderer._create_surf_base(active_size, True, self.relm(inner_radius), sdf=True, **ext_kwargs)
             
             if nevu_state.window.is_dtype.raylib:
-                rl.set_texture_filter(inner_surf.texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
-                rl.begin_texture_mode(self.surface)
-                nevu_state.window.display.blit_rect_vec(inner_surf.texture, offset.get_int_tuple(), mode = rl.BlendMode.BLEND_ALPHA)
-                rl.end_texture_mode()
-                rl.unload_render_texture(inner_surf)
+                rl.set_texture_filter(inner_surf.texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR) #type: ignore
+                with self.surface: #type: ignore
+                    nevu_state.window.display.blit_rect_vec(inner_surf.texture, offset.get_int_tuple(), mode = rl.BlendMode.BLEND_ALPHA) #type: ignore
                 return
-            self.surface.blit(inner_surf, offset)
+            self.surface.blit(inner_surf, offset) #type: ignore
             self.clear_texture()
             
     def _on_click_system(self):
