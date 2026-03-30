@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from nevu_ui.components.nevuobj import NevuObject
     from nevu_ui.presentation.style import Style
     from nevu_ui.rendering.gradient import GradientRaylib
+from nevu_ui.fast.nvrendertex import NvRenderTexture
 from nevu_ui.presentation.color import Color
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.fast.nvrect import NvRect
@@ -35,8 +36,8 @@ class _DrawNamespaceRayLib:
         gr: GradientRaylib = style.gradient
         return gr.generate_texture(coordinates[0], coordinates[1])
         
-    def create_clear(self, size) -> rl.RenderTexture:
-        return rl.load_render_texture(size[0], size[1])
+    def create_clear(self, size: NvVector2) -> NvRenderTexture:
+        return NvRenderTexture(size)
 
     def load_image(self, path: str, size: tuple[int, int]) -> rl.Texture:
         image = rl.load_image(path)
@@ -73,39 +74,43 @@ class BackgroundRendererRayLib:
         if not standstill:
             color = self._get_color_on_hover(color)
         if override_color: color = override_color
-        base_texture = rl.load_render_texture(int(size[0]), int(size[1]))
+        if cached:
+            if root._changed_size and root.cache.get(CacheType.RlBaseTexture):
+                root.cache.clear_selected(whitelist = [CacheType.RlBaseTexture])
+            base_texture = root.cache.get_or_exec(CacheType.RlBaseTexture, lambda: NvRenderTexture(NvVector2(*size)))
+        else:
+            base_texture = NvRenderTexture(NvVector2(*size))
         if len(color) == 3: color = (*color, 255)
-        self._modify_to_surf_base(base_texture, size = size, alt = alt, radius = radius, override_color = color, sdf = sdf, _clipped = _clipped, blitmode = blitmode)
+        self._modify_to_surf_base(base_texture, size = size, alt = alt, radius = radius, override_color = color, sdf = sdf, _clipped = _clipped, blitmode = blitmode, cached=cached)
         return base_texture
     
     def _modify_to_surf_base(self, texture, size = None, alt = False, radius = None, override_color = None, sdf = False, _clipped = False, blitmode = None, cached=False):
         root = self.root
         size = size or root._csize 
-        style = root._style
         color = override_color or (root.subtheme_border if alt else root.subtheme_content)
         if len(color) == 3: color = (*color, 255)
+        display = nevu_state.window.display
+        assert nevu_state.window.is_raylib(display)
+        
         if radius:
             if cached:
                 if root._changed_size and root.cache.get(CacheType.RlradTexture):
-                    rl.unload_render_texture(root.cache.get(CacheType.RlradTexture))
                     root.cache.clear_selected(whitelist = [CacheType.RlradTexture])
-                add_texture = root.cache.get_or_exec(CacheType.RlradTexture, lambda: rl.load_render_texture(int(size[0]), int(size[1])))
-            else:
-                add_texture = rl.load_render_texture(int(size[0]), int(size[1]))
+                add_texture = root.cache.get_or_exec(CacheType.RlradTexture, lambda: NvRenderTexture(NvVector2(*size)))
+            else: add_texture = NvRenderTexture(NvVector2(*size))
             assert add_texture
-            rl.begin_texture_mode(add_texture)
-            rl.begin_blend_mode(blitmode or rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-            nevu_state.window.display.clear(rl.BLANK) 
-            nevu_state.window.display.clear(color)
-            rl.end_blend_mode()
-            rl.end_texture_mode()
-        rl.begin_texture_mode(texture)
-        nevu_state.window.display.clear(rl.BLANK)
-        if radius is None:
-            nevu_state.window.display.clear(color)
-        else:
-            nevu_state.window.display.blit_sdf_vec(add_texture.texture, (0, 0), radius, mode = rl.BlendMode.BLEND_ALPHA)
-        rl.end_texture_mode()
+            with add_texture:
+                rl.begin_blend_mode(blitmode or rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+                display.clear(Color.Blank) 
+                display.clear(color)
+                rl.end_blend_mode()
+
+        with texture:
+            display.clear(Color.Blank)
+            if not radius:
+                display.clear(color)
+            else:
+                display.blit_sdf_vec(add_texture.texture, (0, 0), radius, mode = rl.BlendMode.BLEND_ALPHA) #type: ignore
         return texture
     
     def _create_rect(self, size: tuple[int, int], radius = 0, color = Color.White):
@@ -120,7 +125,7 @@ class BackgroundRendererRayLib:
     def _create_outlined_rect(self, size = None, radius = None, width = None, sdf = False):
         return None
 
-    def _generate_background(self, sdf = True, only_content = False, override_color = None, cached = False) -> rl.RenderTexture: 
+    def _generate_background(self, sdf = True, only_content = False, override_color = None, cached = False) -> NvRenderTexture: 
         root = self.root
         style = root.style
         cache = root.cache
@@ -135,12 +140,14 @@ class BackgroundRendererRayLib:
             else: color_new = self._get_color_on_hover(color)
             return color_new
         
-        new_color_pretendent = normalize_add_color(root.subtheme_border if root.alt else root.subtheme_content, add_color)
-        
-        if root._old_color is None:
-            root._old_color = new_color_pretendent
-        elif root._old_color != new_color_pretendent:
-            root._set_new_color(new_color_pretendent)
+        if not root.inline:
+            new_color_pretendent = normalize_add_color(root.subtheme_border if root.get_param_strict("alt").value else root.subtheme_content, add_color)
+            
+            old_color = root._old_color
+            if old_color is None:
+                root._old_color = new_color_pretendent #type: ignore
+            elif old_color != new_color_pretendent:
+                root._set_new_color(new_color_pretendent)
 
         if style.gradient:
             old_content_text = cache.get(CacheType.Scaled_Gradient)
@@ -156,43 +163,43 @@ class BackgroundRendererRayLib:
                 _add(-25)
             elif hoverstate == HoverState.HOVERED and root.get_param_strict("hoverable").value:
                 _add(25)
+                
         elif style.bg_image:
             content_text = cache.get_or_exec(CacheType.Image, lambda: self.draw.load_image(style.bg_image, rounded_size.get_int_tuple()))
-            add_color = NvRect(255,255,255,255)
             flip = False
+            
         else:
             anim_color = None
-            if animate:=root.animate_color_change and root._color_anim_manager is not None:
-                    anim_color = root._color_anim_manager.get_animation_value("main")
-            if (root._changed_size and root.cache.get(CacheType.RlTexture)) or (anim_color and root.cache.get(CacheType.RlTexture)):
-                rl.unload_render_texture(root.cache.get(CacheType.RlTexture))
-                root.cache.clear_selected(whitelist = [CacheType.RlTexture])
-            content_text = cache.get_or_exec(CacheType.RlTexture, lambda: self._create_surf_base(rounded_size, override_color=anim_color))
-            add_color = NvRect(255,255,255,255)
+            color_anim_manager = root._color_anim_manager
+            if root.get_param_strict("animate_color_change").value and color_anim_manager is not None:
+                anim_color = color_anim_manager.get_animation_value("main")
+            if (root._changed_size and cache.get(CacheType.RlTexture)) or (anim_color and cache.get(CacheType.RlTexture)): #type: ignore
+                cache.clear_selected(whitelist = [CacheType.RlTexture])
+            if override_color: anim_color = override_color
+            content_text = cache.get_or_exec(CacheType.RlTexture, lambda: self._create_surf_base(rounded_size, override_color=anim_color, cached=cached))
         if cached:
-            if root.cache.get(CacheType.RlfinalTexture) and root._changed_size:
-                rl.unload_render_texture(root.cache.get(CacheType.RlfinalTexture))
-                root.cache.clear_selected(whitelist = [CacheType.RlfinalTexture])
-            final_surf = root.cache.get_or_exec(CacheType.RlfinalTexture, lambda: rl.load_render_texture(*tuple_size))
-        else:
-            final_surf = rl.load_render_texture(*tuple_size)
-        display = nevu_state.window.display
+            if cache.get(CacheType.RlfinalTexture) and root._changed_size:
+                cache.clear_selected(whitelist = [CacheType.RlfinalTexture])
+            final_surf = cache.get_or_exec(CacheType.RlfinalTexture, lambda: NvRenderTexture(NvVector2(*tuple_size)))
+        else: final_surf = NvRenderTexture(NvVector2(*tuple_size))
+        
         assert content_text
+        display = nevu_state.window.display
         assert nevu_state.window.is_raylib(display)
         final_content_text = content_text.texture if hasattr(content_text, "texture") else content_text
-        rl.begin_texture_mode(final_surf)
-        nevu_state.window.display.clear(rl.BLANK)
-        if isinstance(style.border_radius, int|float):
-            borderradius = [root.relm(style.border_radius)]*4
-        else:
-            borderradius = tuple(map(root.relm, style.border_radius))
-        if style.border_width > 0 and only_content:
-            display.blit_borders(final_content_text, (0, 0, tuple_size[0], tuple_size[1]), borderradius, root.subtheme_border, color=add_color.get_int_tuple(), thickness= root.relm(style.border_width), flip=flip, mode=rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-        elif style.border_width > 0 and not only_content:
-            display.blit_sdf(final_content_text, (0, 0, tuple_size[0], tuple_size[1]), borderradius, flip=flip, mode=rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-        else:
-            display.blit_rect_pro(final_content_text, (0, 0, tuple_size[0], tuple_size[1]), flip=flip, mode=rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-        rl.end_texture_mode()
+        with final_surf: #type: ignore
+            nevu_state.window.display.clear(Color.Blank)
+        
+            if isinstance(style.border_radius, int | float): borderradius = [root.relm(style.border_radius)]*4
+            else: borderradius = tuple(map(root.relm, style.border_radius))
+                
+            if style.border_width > 0 and only_content:
+                display.blit_borders(final_content_text, (0, 0, tuple_size[0], tuple_size[1]), borderradius, root.subtheme_border, color=add_color.get_int_tuple(), thickness= root.relm(style.border_width), flip=flip, mode=rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+            elif style.border_width > 0 and not only_content:
+                display.blit_sdf(final_content_text, (0, 0, tuple_size[0], tuple_size[1]), borderradius, flip=flip, mode=rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+            else:
+                display.blit_rect_pro(final_content_text, (0, 0, tuple_size[0], tuple_size[1]), flip=flip, mode=rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+        assert final_surf
         return final_surf
 
     @staticmethod
@@ -224,7 +231,7 @@ class BackgroundRendererRayLib:
 
     def bake_text(self, text: str, unlimited_y: bool = False, words_indent: bool = False, 
                   style: Style | None = None, size: NvVector2 | None = None, 
-                  color = None, outside = False, outside_rect = None, override_font_size = None, modify: rl.RenderTexture | None = None, continuous = False, render = True):
+                  color = None, outside = False, outside_rect = None, override_font_size = None, modify: NvRenderTexture | None = None, continuous = False, render = True):
         root = self.root
         style = style or root.style
         assert style
@@ -237,9 +244,14 @@ class BackgroundRendererRayLib:
         size = size or root._csize
         assert size
 
-        current_font_size = override_font_size or root.relm(style.font_size)
-        current_font_size = round(current_font_size * 1.25)
-        renderFont = root._get_raylib_font() 
+        current_font_size = override_font_size or style.font_size
+        if override_font_size:
+            current_font_size = override_font_size*1.5
+            renderFont = root._get_raylib_font_nocache(current_font_size)
+        else:
+            renderFont = root.get_font(current_font_size)
+        current_font_size = renderFont.baseSize
+        assert renderFont
         
         spacing = 0
         if not continuous:
@@ -308,32 +320,37 @@ class BackgroundRendererRayLib:
             text_w = text_vec.x
             text_h = text_vec.y
         if outside:
-            return None, result_text_rect, baked_text_str
+            texture = NvRenderTexture(NvVector2(math.ceil(text_w), math.ceil(text_h)))
+            with texture:
+                rl.begin_blend_mode(rl.BlendMode.BLEND_ALPHA)
+                rl.clear_background(rl.BLANK) 
+                rl.draw_text_ex(renderFont, baked_text_str, (0, 0), current_font_size, spacing, color)
+                rl.end_blend_mode()
+            return texture, result_text_rect, baked_text_str
 
         if modify:
             assert nevu_state.window.is_raylib(nevu_state.window.display)
-            rl.begin_texture_mode(modify)
-            rl.begin_blend_mode(rl.BlendMode.BLEND_ALPHA)
-            rl.draw_text_ex(renderFont, baked_text_str, (result_text_rect[0], result_text_rect[1]), current_font_size, spacing, color)
-            rl.end_blend_mode()
-            rl.end_texture_mode()
+            with modify:
+                rl.begin_blend_mode(rl.BlendMode.BLEND_ALPHA)
+                rl.draw_text_ex(renderFont, baked_text_str, (result_text_rect[0], result_text_rect[1]), current_font_size, spacing, color)
+                rl.end_blend_mode()
             
             return
         
         if render:
-            target = rl.load_render_texture(math.ceil(text_w), math.ceil(text_h))
-            rl.set_texture_filter(target.texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
-            rl.set_texture_wrap(target.texture, rl.TextureWrap.TEXTURE_WRAP_CLAMP)
-            rl.begin_blend_mode(rl.BlendMode.BLEND_ALPHA)
-            rl.begin_texture_mode(target)
-            rl.clear_background(rl.BLANK) 
+            if root._changed_size:
+                root.cache.clear_selected(whitelist = [CacheType.RlText])
+            target = NvRenderTexture(NvVector2(math.ceil(text_w), math.ceil(text_h)))
+            assert target
+            #rl.set_texture_filter(target.texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
+            #rl.set_texture_wrap(target.texture, rl.TextureWrap.TEXTURE_WRAP_CLAMP)
             
-            rl.draw_text_ex(renderFont, baked_text_str, (0, 0), current_font_size, spacing, color)
-            
-            rl.end_texture_mode()
-            rl.end_blend_mode()
-            if root._text_surface:
-                rl.unload_render_texture(root._text_surface)
+            with target:
+                rl.begin_blend_mode(rl.BlendMode.BLEND_ALPHA)
+                rl.clear_background(rl.BLANK) 
+                rl.draw_text_ex(renderFont, baked_text_str, (0, 0), current_font_size, spacing, color)
+                rl.end_blend_mode()
+
             root._text_surface = target # type: ignore
         root._text_rect = result_text_rect # type: ignore
         root._text_baked = baked_text_str # type: ignore
