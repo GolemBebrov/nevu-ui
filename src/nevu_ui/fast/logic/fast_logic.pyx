@@ -75,38 +75,15 @@ cpdef tuple get_rect_helper_cached(NvVector2 master_coordinates, NvVector2 csize
 cpdef get_rect_helper_cached_pygame(NvVector2 master_coordinates, NvVector2 csize):
     return pygame.Rect(_get_rect_base_cached(master_coordinates.x, master_coordinates.y, csize.x, csize.y))
 
-ctypedef struct NvRectStruct:
-    float x
-    float y
-    float w
-    float h
-
-cdef inline bint is_nvrect_eq(NvRectStruct rect1, NvRectStruct rect2) nogil:
-    return rect1.x == rect2.x and rect1.y == rect2.y and rect1.w == rect2.w and rect1.h == rect2.h
-
-cpdef void logic_update_helper(
-    NvVector2 csize,
+cpdef void logic_update_helper (
     NvVector2 master_coordinates,
     NvVector2 dr_coordinates_old,
-    NvVector2 resize_ratio,
-    ZSystem z_system
-    ):
-    cdef NvRectStruct rect_new, rect_old
-    with nogil:
-        rect_new.x = master_coordinates.x
-        rect_new.y = master_coordinates.y
-        rect_new.w = csize.x
-        rect_new.h = csize.y
-        rect_old.x = dr_coordinates_old.x
-        rect_old.y = dr_coordinates_old.y
-        rect_old.w = csize.x
-        rect_old.h = csize.y
-
-        if is_nvrect_eq(rect_new, rect_old) == False:
+    ZSystem z_system):
+    with nogil: # type: ignore
+        if master_coordinates.x != dr_coordinates_old.x or master_coordinates.y != dr_coordinates_old.y:
             z_system.c_mark_dirty()
-        
-        dr_coordinates_old.x = master_coordinates.x
-        dr_coordinates_old.y = master_coordinates.y
+            dr_coordinates_old.x = master_coordinates.x
+            dr_coordinates_old.y = master_coordinates.y
 
 cpdef void _light_update_helper(
     list items,
@@ -114,20 +91,22 @@ cpdef void _light_update_helper(
     NvVector2 coordinatesMW,
     NvVector2 add_vector,
     ):
-    cdef Py_ssize_t n_items = len(items)
+    cdef Py_ssize_t n_items = len(items) # type: ignore
     
     cdef NevuCobject item 
     
-    cdef NvVector2 coords, anim_coords, coordinates
+    cdef NvVector2 coords, anim_coords, coordinates, correct_coords
 
-    cdef object raw_anim_val
+    cdef object raw_anim_val, animation_manager, animation_manager_state
 
     for i in range(n_items):
         item = items[i]
         
         coords = <NvVector2>cached_coordinates[i] 
-        if not(item.animation_manager.state == AnimationManagerState.IDLE or item.animation_manager.state == AnimationManagerState.ENDED):
-            raw_anim_val = item.animation_manager.get_animation_value(AnimationType.Position)
+        animation_manager = item.animation_manager
+        animation_manager_state = animation_manager.state # type: ignore
+        if not(animation_manager_state == AnimationManagerState.IDLE or animation_manager_state == AnimationManagerState.ENDED):
+            raw_anim_val = animation_manager.get_animation_value(AnimationType.Position) # type: ignore
         else:
             raw_anim_val = None
         if raw_anim_val is None:
@@ -136,15 +115,14 @@ cpdef void _light_update_helper(
             if isinstance(raw_anim_val, NvVector2):
                 anim_coords = <NvVector2>raw_anim_val
             else:
-                anim_coords = NvVector2(raw_anim_val)
+                anim_coords = NvVector2(raw_anim_val) # type: ignore
             
             correct_coords = coords._add(item.rel(anim_coords))
-            coordinates = correct_coords + add_vector
+            coordinates = correct_coords + add_vector # type: ignore
 
-        #print(item.get_param_strict("id").value)
         item.set_coordinates(coordinates)
         item.absolute_coordinates = coordinates._add(coordinatesMW)
-        item.update()
+        item.update() # type: ignore
 
 cpdef bint collide_horizontal(NvVector2 r1_tl, NvVector2 r1_br, NvVector2 r2_tl, NvVector2 r2_br):
     return r1_tl.x < r2_br.x and r1_br.x > r2_tl.x
@@ -174,3 +152,32 @@ cpdef _very_light_update_helper(
         
         item.set_coordinates(res)
         item.absolute_coordinates = _get_item_master_coordinates(item)
+
+cpdef void draw_widgets_optimized(
+    list items,
+    object draw_widget_func,
+    object start_item
+):
+    cdef Py_ssize_t n = len(items) # type: ignore
+    cdef NevuCobject item
+    for i in range(n):
+        item = items[i]
+        if not item.booted:
+            item.booted = True # type: ignore
+            item._boot_up() # type: ignore
+            start_item(item) # type: ignore
+        draw_widget_func(item) # type: ignore
+
+cpdef void rl_predraw_widgets(
+    list items,
+    object is_layout,
+    object is_widget,
+):
+    cdef Py_ssize_t n = len(items) # type: ignore
+    cdef NevuCobject item
+    for i in range(n):
+        item = items[i]
+        if is_layout(item): # type: ignore
+            item._rl_predraw_widgets() # type: ignore
+        elif is_widget(item): # type: ignore
+            if item._changed: item.draw() # type: ignore

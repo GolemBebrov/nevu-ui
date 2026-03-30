@@ -54,11 +54,21 @@ def get_rect_helper_cached_pygame(
 ) -> pygame.Rect: ...
 
 def logic_update_helper(
-    csize: NvVector2,
     master_coordinates: NvVector2,
     dr_coordinates_old: NvVector2,
-    resize_ratio: NvVector2,
     z_system: Any
+): ...
+
+def draw_widgets_optimized(
+    items: List[Any],
+    draw_widget_func: Callable,
+    start_item: Callable
+): ...
+
+def rl_predraw_widgets(
+    items: List[Any],
+    is_layout: Callable,
+    is_widget: Callable
 ): ...
 
 def _light_update_helper(

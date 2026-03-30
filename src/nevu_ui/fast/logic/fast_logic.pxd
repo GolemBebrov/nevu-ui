@@ -22,11 +22,21 @@ cpdef object get_rect_helper_cached_pygame(NvVector2 master_coordinates, NvVecto
 cdef NvRect get_nvrect_helper(NvVector2 master_coordinates, NvVector2 resize_ratio, NvVector2 size)
 
 cpdef void logic_update_helper(
-    NvVector2 csize,
     NvVector2 master_coordinates,
     NvVector2 dr_coordinates_old,
-    NvVector2 resize_ratio,
     ZSystem z_system
+)
+
+cpdef void draw_widgets_optimized(
+    list items,
+    object draw_widget_func,
+    object start_item
+)
+
+cpdef void rl_predraw_widgets(
+    list items,
+    object is_layout,
+    object is_widget,
 )
 
 cpdef void _light_update_helper(
