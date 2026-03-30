@@ -10,7 +10,7 @@ from nevu_ui.core.enums import HoverState
 from nevu_ui.utils import Keys
 from nevu_ui.components.layouts.typehints import AlignTemplate
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.fast.logic.fast_logic import collide_vector
+from nevu_ui.fast.logic.fast_logic import collide_vector, draw_widgets_optimized, rl_predraw_widgets
 from nevu_ui.presentation.color import SubThemeRole
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.logic.fast_logic import _very_light_update_helper
@@ -137,7 +137,10 @@ class ScrollableBase(LayoutType, ABC):
         def set_percents(self, percents: int | float):
             self.percentage = percents
             self.scrolling = False
-            
+        
+    @property
+    def inverted_scrolling(self) -> bool: return self.get_param_strict("inverted_scrolling").value
+       
     def __init__(self, size: NvVector2 | list, style: Style = default_style, content:  content_type | None = None, **constant_kwargs: Unpack[ScrollableKwargs]):
         super().__init__(size, style, content, **constant_kwargs)
     
@@ -223,22 +226,15 @@ class ScrollableBase(LayoutType, ABC):
         return rect1.collide_rect(rect2)
     
     def _rl_predraw_widgets(self):
-        for item in self.collided_items:
-            if self.is_layout(item):
-                item._rl_predraw_widgets()
-            elif self.is_widget(item):
-                item.draw()
+        rl_predraw_widgets(self.collided_items, self.is_layout, self.is_widget)
         if self.actual_max_main > 0:
             self.scroll_bar.draw()
     
     def _secondary_draw(self):
         super()._secondary_draw()
-        for item in self.collided_items:
-            assert isinstance(item, (Widget, LayoutType))
-            self._draw_widget(item)
-            
+        draw_widgets_optimized(self.collided_items, self._draw_widget_optimized, self._start_item)
         if self.actual_max_main > 0:
-            self._draw_widget(self.scroll_bar)
+            self._draw_widget_optimized(self.scroll_bar)
     
     def _base_light_update(self, add_x: int | float = 0, add_y: int | float = 0, items = None):
         assert self.first_parent_menu, self._unconnected_layout_error(items or self.collided_items)
@@ -303,15 +299,10 @@ class ScrollableBase(LayoutType, ABC):
         
         inverse = -1 if self.inverted_scrolling else 1
         if self.hover_state == HoverState.UN_HOVERED: return
-        with contextlib.suppress(Exception):
-            if keyboard.is_fdown(self.append_key):
-                self.scroll_bar._percentage += self.arrow_scroll_power * -inverse
-                #self.scroll_bar.move_by_percents(self.arrow_scroll_power * -inverse)
-                #self._scroll_needs_update = True
-            if keyboard.is_fdown(self.descend_key):
-                self.scroll_bar._percentage += self.arrow_scroll_power * inverse
-                #self.scroll_bar.move_by_percents(self.arrow_scroll_power * inverse)
-                #self._scroll_needs_update = True
+        if keyboard.is_fdown(self.get_param_strict("append_key").value):
+            self.scroll_bar._percentage += self.arrow_scroll_power * -inverse
+        if keyboard.is_fdown(self.get_param_strict("descend_key").value):
+            self.scroll_bar._percentage += self.arrow_scroll_power * inverse
             
     def _on_scroll_system(self, side: bool):
         super()._on_scroll_system(side)

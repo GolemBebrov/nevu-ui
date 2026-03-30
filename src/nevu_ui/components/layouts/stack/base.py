@@ -11,6 +11,7 @@ from nevu_ui.core.size.base import SizeRule
 from nevu_ui.components.widgets import Widget
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.fast.logic.fast_logic import draw_widgets_optimized
 from nevu_ui.core.enums import Align
 from nevu_ui.components.layouts import LayoutType, LayoutTypeKwargs
 from nevu_ui.presentation.style import Style, default_style
@@ -81,10 +82,8 @@ class StackBase(LayoutType, ABC):
     
     def _on_item_add(self, item: NevuObject):
         #print(self, item)
-        if not self.booted:
-            self.cached_coordinates = None
-            if self.layout: self.layout.cached_coordinates = None 
-            return
+        self.cached_coordinates = None
+        if self.layout: self.layout.cached_coordinates = None
         self._recalculate_size()
         if self.layout: self.layout._on_item_add(item)
         
@@ -94,13 +93,7 @@ class StackBase(LayoutType, ABC):
     
     def secondary_draw_content(self):
         super().secondary_draw_content()
-        for item in self.items:
-            assert isinstance(item, (Widget, LayoutType))
-            if not item.booted:
-                item.booted = True
-                item._boot_up()
-                self._start_item(item)
-            self._draw_widget(item)
+        draw_widgets_optimized(self.items, self._draw_widget_optimized, self._start_item)
             
     @property
     def spacing(self): return self.get_param_strict("spacing").value
@@ -110,6 +103,8 @@ class StackBase(LayoutType, ABC):
     def _regenerate_coordinates(self):
         super()._regenerate_coordinates()
         self._recalculate_size()
+        if self.layout:
+            self.layout.cached_coordinates = None
         self._recalculate_widget_coordinates()
     
     def _create_clone(self):
