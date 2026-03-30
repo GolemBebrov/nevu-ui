@@ -6,6 +6,7 @@ import weakref
 from nevu_ui.presentation.style import Style, default_style
 from nevu_ui.core.classes import TooltipType
 from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.fast.nvrect import NvRect
 from nevu_ui.core.state import nevu_state
 from typing import TYPE_CHECKING
 if TYPE_CHECKING: from nevu_ui.components.nevuobj import NevuObject
@@ -60,18 +61,20 @@ class _ExtendedTooltipBase(_TooltipBase):
         super().__init__(title, style)
         self.content = content 
         
-    def _get_surf_content(self, renderer: BackgroundRendererPygame, alt = False):
+    def _get_surf_content(self, renderer, alt = False):
         br = self.style.border_radius
         if isinstance(br, tuple|list):
             br = max(br)
         surf = renderer._create_surf_base(self._csize, radius = br, sdf=True, override_color=self.style.colortheme.get_subtheme(SubThemeRole.TERTIARY).oncolor, alt = alt)
         title_size = self._csize - NvVector2(0, self._csize.y / 1.3)
         content_size = self._csize - NvVector2(0, title_size.y)
-        title_rect = pygame.Rect(0,0,*title_size)
-        content_rect = pygame.Rect(0,0,*content_size)
+        title_rect = NvRect(0,0,*title_size)
+        content_rect = NvRect(0,0,*content_size)
         title_surf, title_rect , _ = renderer.bake_text(self.title, style=self.style, size = title_size, outside=True, outside_rect = title_rect, override_font_size=self.style.font_size) #type: ignore
         content_surf, content_rect, _ = renderer.bake_text(self.content, style=self.style, size = content_size, outside=True, outside_rect = content_rect, override_font_size=self.style.font_size) #type: ignore
-        content_rect.top+=title_size.y
+        content_rect = list(content_rect)
+        content_rect[0]+=title_size.y
+        content_rect = tuple(content_rect)
         surf.blit(title_surf, title_rect)
         surf.blit(content_surf, content_rect)
         return surf
