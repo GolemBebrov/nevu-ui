@@ -4,9 +4,12 @@ from dataclasses import dataclass
 from nevu_ui.presentation.style import Style
 from nevu_ui.presentation.color import PairColorRole, TupleColorRole
 from nevu_ui.components.nevuobj.typehints import NevuObjectKwargs, NevuObjectTemplate
+from nevu_ui.presentation.color import SubThemeRole
 
+#   ------------------
+#   === TypedDicts ===
+#   ------------------
 
-#=== TypedDicts ===
 class WidgetKwargs(NevuObjectKwargs):
     alt: NotRequired[bool]
     clickable: NotRequired[bool]
@@ -19,6 +22,9 @@ class WidgetKwargs(NevuObjectKwargs):
     _draw_borders: NotRequired[bool]
     _draw_content: NotRequired[bool]
     ripple_effect: NotRequired[bool]
+    animate_color_change: NotRequired[bool]
+    override_color: NotRequired[tuple | None]
+    subtheme_role: NotRequired[SubThemeRole]
 
 class LabelKwargs(WidgetKwargs):
     words_indent: NotRequired[bool]
@@ -75,20 +81,21 @@ class RectCheckBoxKwargs(WidgetKwargs):
     active_rect_factor: NotRequired[int | float]
     active_factor: NotRequired[int | float]
 
-#=== Templates ===
+#   -----------------
+#   === Templates ===
+#   -----------------
+
 @dataclass
-class WidgetTemplate(NevuObjectTemplate):
-    pass
+class WidgetTemplate(NevuObjectTemplate): pass
 
 @dataclass
 class LabelTemplate(WidgetTemplate):
     text: str 
 
 @dataclass
-class ButtonTemplate(LabelTemplate):
-    is_active: bool | None = None
-    throw_errors: bool | None = None
-
-@dataclass
 class ElementSwitcherTemplate(WidgetTemplate):
     elements: Any | list | None = None
+
+@dataclass
+class InputTemplate(WidgetTemplate):
+    text: str
