@@ -104,13 +104,15 @@
     * ```Cython```
     * ```numpy```
   * Для Запуска:
-    * ```pygame-ce>=2.3.0``` 
     * ```numpy```
     * ```Pillow```
-    * ```pyray```
+  * Дополнительные библиотеки:
+    * ```pygame-ce>=2.3.0``` 
+    * ```raylib```
+    * ```pyyaml```
  ## Установка через pip
  ```python 
- pip install nevu-ui
+ pip install nevu-ui[all]
  ```
 
 # Примеры

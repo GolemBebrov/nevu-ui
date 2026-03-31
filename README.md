@@ -102,13 +102,15 @@ Examples of declarativeness:
     * ```Cython```
     * ```numpy```
   * For Running:
-    * ```pygame-ce>=2.3.0```
     * ```numpy```
     * ```Pillow```
-    * ```pyray```
+  * Additional libraries:
+    * ```pygame-ce>=2.3.0``` 
+    * ```raylib```
+    * ```pyyaml```
  ## Installation via pip
  ```python
- pip install nevu-ui
+ pip install nevu-ui[all]
  ```
 
 # Examples
