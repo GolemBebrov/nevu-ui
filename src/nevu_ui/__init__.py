@@ -31,7 +31,7 @@ from .presentation.style import (
     Style, default_style, StateVariable
 )
 from .core.enums import (
-    Align, Quality, HoverState, LinearSide, RadialPosition, GradientType, CacheName, CacheType, EventType, Backend, ConfigLoadType
+    Align, Quality, HoverState, LinearSide, RadialPosition, GradientType, CacheName, CacheType, EventType, Backend, ConfigLoadType, AnimationType
 )
 from .core.classes import TooltipType, BorderConfig
 from .components.widgets import (
@@ -63,10 +63,10 @@ __all__ = [
     #===Style===
     "Style", "default_style", "StateVariable", "Gradient", "ConfigLoadType",
     #===Enums===
-    "Align", "LinearSide", "RadialPosition", "GradientType", "EventType", "ResizeType", "Backend",
+    "Align", "LinearSide", "RadialPosition", "GradientType", "EventType", "ResizeType", "Backend", "AnimationType",
     #===Submodules===
     "animations", "utils", "size"
 ]
 
-version = "0.7.3" #okabe 1.048596% based, lelush buryatskiy povelevae bagi uydite
+version = "0.7.4" #okabe 1.048596% based, lelush buryatskiy povelevae bagi uydite
 print(f"nevu-ui {version}")

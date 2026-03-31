@@ -1,4 +1,3 @@
-from . import nvvector2_legacy
 from .cache import Cache
 from .mouse import mouse, set_mouse
 from .time import Time, time
