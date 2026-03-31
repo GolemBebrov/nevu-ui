@@ -55,6 +55,6 @@ void main()
     vec4 texColor = texture(texture0, fragTexCoord) * fragColor * colDiffuse;
     vec4 resultColor = mix(texColor, borderColor, borderMix);
 
-    finalColor = vec4(resultColor.rgb, resultColor.a * alphaShape);
+    finalColor = vec4(resultColor.rgb * alphaShape, resultColor.a * alphaShape);
 }
 """

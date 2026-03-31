@@ -48,6 +48,6 @@ void main()
     float alpha = 1.0 - smoothstep(0.0, distChange, d);
 
     vec4 baseColor = texture(texture0, fragTexCoord) * fragColor * colDiffuse;
-    finalColor = vec4(baseColor.rgb, baseColor.a * alpha);
+    finalColor = vec4(baseColor.rgb * alpha, baseColor.a * alpha);
 }
 """
