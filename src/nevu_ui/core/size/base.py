@@ -4,8 +4,6 @@ class SizeRule:
         self.value = value
 class PercentSizeRule(SizeRule):
     def __init__(self, value: int | float) -> None:
-        if value < 0 or value > 100:
-            raise ValueError("percentage must be between 0 and 100")
         self.value = value
 
 class SizeUnit:
