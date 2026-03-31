@@ -5,7 +5,8 @@ from nevu_ui.presentation.animations.animation_base import Animation, ColorAnima
 from nevu_ui.core.enums import AnimationType, AnimationManagerState
 
 class AnimationManager:
-    def __init__(self):
+    __slots__ = ['_basic_set_of_animations', '_basic_animation_type_requirements', '_warn', '_start_animations', '_continuous_animations', '_transition_animations', 'transition_animation_easing', 'transition_time', 'state', '_running',]
+    def __init__(self, warn = True):
         self._basic_set_of_animations: dict[AnimationType | str, Animation|None] = {} #For annotationaaas !!
         
         self._basic_animation_type_requirements = {
@@ -16,6 +17,7 @@ class AnimationManager:
             AnimationType.Opacity: FloatAnimation,
         }
         
+        self._warn = warn
         self._start_animations = self._basic_set_of_animations.copy()
         self._continuous_animations = self._basic_set_of_animations.copy()
         self._transition_animations = self._basic_set_of_animations.copy()
@@ -91,7 +93,7 @@ class AnimationManager:
             case _: pass
     
     def _add_animation_template(self, animations_dict, animation_key: AnimationType | str, animation: Animation):
-        if animation_key in animations_dict:
+        if animation_key in animations_dict and self._warn:
             print(f"Warning: An animation of type {animation_key} already exists. It will be overwritten.")
         if animation_key in self._basic_animation_type_requirements and not isinstance(animation, self._basic_animation_type_requirements[animation_key]):
             raise ValueError(f"Animation of type {animation_key} must be of type {self._basic_animation_type_requirements[animation_key].__name__}")
