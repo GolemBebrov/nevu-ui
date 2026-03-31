@@ -8,7 +8,7 @@
 
 
 cimport cython
-import pygame
+import nevu_ui.core.modules as md
 from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2
 
 @cython.final
@@ -64,7 +64,7 @@ cdef class NvRect:
             self.h = 0.0
         elif nargs == 1:
             arg = args[0]
-            if isinstance(arg, pygame.Rect | NvRect):
+            if isinstance(arg, md.pygame.Rect | NvRect):
                 self.x = arg.x 
                 self.y = arg.y 
                 self.w = arg.w 
@@ -273,7 +273,7 @@ cdef class NvRect:
         return (self.x, self.y, self.w, self.h)
         
     def get_pygame_rect(self):
-        return pygame.Rect(self.x, self.y, self.w, self.h)
+        return md.pygame.Rect(self.x, self.y, self.w, self.h)
     
     cpdef bint collide_rect(self, NvRect other):
         return self.x < other.x + other.w and self.x + self.w > other.x and self.y < other.y + other.h and self.y + self.h > other.y

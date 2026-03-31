@@ -1,5 +1,6 @@
-import pygame
 import numpy as np
+
+import nevu_ui.core.modules as md
 
 from nevu_ui.presentation.color import Color
 from nevu_ui.core import Annotations
@@ -44,7 +45,7 @@ class GradientPygame:
         return GradientPygame(self.colors, self.type, self.direction, transparency)
 
     def apply_gradient(self, surface):
-        gradient_surface = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+        gradient_surface = md.pygame.Surface(surface.get_size(), md.pygame.SRCALPHA)
         
         if self.type == GradientType.Linear: 
             self._apply_linear_gradient(gradient_surface)
@@ -117,7 +118,7 @@ class GradientPygame:
             gradient_array = np.stack((r, g, b), axis=-1).astype(np.uint8)
             gradient_array = np.broadcast_to(gradient_array, surface.get_size() + (3,))
 
-        pygame.surfarray.blit_array(surface, gradient_array)
+        md.pygame.surfarray.blit_array(surface, gradient_array)
 
     def _get_radial_center(self, width, height):
         w_m, h_m = width - 1, height - 1
@@ -130,7 +131,7 @@ class GradientPygame:
             RadialPosition.BottomLeft: (0, h_m),
             RadialPosition.BottomRight: (w_m, h_m)
         }
-        return NvVector2(center_map.get(self.direction, (w_m * 0.5, h_m * 0.5)))
+        return NvVector2(center_map.get(self.direction, (w_m * 0.5, h_m * 0.5))) #type: ignore
 
     def _validate_colors(self, colors):
         if not isinstance(colors, (list, tuple)):
@@ -167,7 +168,7 @@ class GradientPygame:
                     LinearSide.TopRight: LinearSide.BottomLeft, LinearSide.BottomLeft: LinearSide.TopRight,
                     LinearSide.TopLeft: LinearSide.BottomRight, LinearSide.BottomRight: LinearSide.TopLeft
                 }
-                new_direction = mapping.get(self.direction)
+                new_direction = mapping.get(self.direction) #type: ignore
             elif self.type == GradientType.Radial:
                 mapping = {
                     RadialPosition.Center: RadialPosition.Center,
@@ -175,7 +176,7 @@ class GradientPygame:
                     RadialPosition.TopLeft: RadialPosition.BottomRight, RadialPosition.BottomRight: RadialPosition.TopLeft,
                     RadialPosition.TopRight: RadialPosition.BottomLeft, RadialPosition.BottomLeft: RadialPosition.TopRight
                 }
-                new_direction = mapping.get(self.direction)
+                new_direction = mapping.get(self.direction) #type: ignore
         if new_direction is None:
             raise ValueError(f"Inversion for direction '{self.direction}' is not supported.")
         return GradientPygame(list(reversed(self.colors)), self.type, new_direction, self.transparency)

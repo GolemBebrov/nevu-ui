@@ -4,7 +4,7 @@ from typing import Any
 
 from nevu_ui.fast.nvvector2.nvvector2 import NvVector2
 from nevu_ui.fast.nvparam.nvparam import NvParam
-from nevu_ui.animations.animation_manager import AnimationManager
+from nevu_ui.presentation.animations.animation_manager import AnimationManager
 from nevu_ui.fast.nvrect.nvrect import NvRect
 class NevuCobject:
     coordinates: NvVector2

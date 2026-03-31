@@ -1,12 +1,12 @@
 from __future__ import annotations
-import pygame
 import weakref
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING: 
     from nevu_ui.components.nevuobj import NevuObject
     from nevu_ui.presentation.style import Style
-
+    from pygame import Surface, Font
+import nevu_ui.core.modules as md
 from nevu_ui.presentation.color import Color
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.rendering.pygame.gradient import GradientPygame
@@ -23,12 +23,12 @@ class _DrawNamespace:
         self._renderer = renderer
         
     @property
-    def root(self) -> NevuObject: return self._renderer.root
+    def root(self) -> "NevuObject": return self._renderer.root
     
     @property
     def style(self): return self.root.style
     
-    def gradient(self, surface: pygame.Surface, transparency = None, style: Style | None = None) -> GradientPygame:
+    def gradient(self, surface: Surface, transparency = None, style: Style | None = None) -> GradientPygame:
         style = style or self.style
         assert style
         assert isinstance(style.gradient, GradientPygame), "Gradient not set"
@@ -38,19 +38,19 @@ class _DrawNamespace:
             gr = style.gradient.with_transparency(transparency)
         return gr.apply_gradient(surface)
 
-    def create_clear(self, size, flags) -> pygame.Surface:
-        surf = pygame.Surface(size, flags = flags)
+    def create_clear(self, size, flags) -> Surface:
+        surf = md.pygame.Surface(size, flags = flags)
         surf.fill((0,0,0,0))
         return surf
     
-    def load_image(self, path) -> pygame.Surface:
-        img = pygame.image.load(path)
+    def load_image(self, path) -> Surface:
+        img = md.pygame.image.load(path)
         img.convert_alpha()
         return img
     
-    def scale(self, surface: pygame.Surface | None, size: list | tuple) -> pygame.Surface | None:
+    def scale(self, surface: Surface | None, size: list | tuple) -> Surface | None:
         if surface is None: return
-        return pygame.transform.smoothscale(surface, size)
+        return md.pygame.transform.smoothscale(surface, size)
     
     def _round_radius(self, radius: int | float | tuple):
         if isinstance(radius, tuple):
@@ -96,7 +96,7 @@ class BackgroundRendererPygame:
         
         if not style.gradient: return
         
-        gradient = self.draw.create_clear(root._csize, flags = pygame.SRCALPHA)
+        gradient = self.draw.create_clear(root._csize, flags = md.pygame.SRCALPHA)
         self.draw.gradient(gradient, transparency = style.transparency)
         
         return gradient
@@ -107,7 +107,7 @@ class BackgroundRendererPygame:
         needed_size = size or root._csize
         tuple_size = needed_size.to_round().to_tuple()
         
-        surf = pygame.Surface(tuple_size, flags = pygame.SRCALPHA)
+        surf = md.pygame.Surface(tuple_size, flags = md.pygame.SRCALPHA)
         
         color = root.subtheme_border if alt else root.subtheme_content
         
@@ -128,7 +128,7 @@ class BackgroundRendererPygame:
         else:
             r_radius = self.draw._normalize_radius(r_radius, _clipped = _clipped)
             #!to normalize with sdf
-            pygame.draw.rect(surf, color, pygame.rect.Rect(0, 0, *tuple_size), 0, -1, r_radius[0], r_radius[1], r_radius[3], r_radius[2])
+            md.pygame.draw.rect(surf, color, md.pygame.rect.Rect(0, 0, *tuple_size), 0, -1, r_radius[0], r_radius[1], r_radius[3], r_radius[2])
         return surf
     
     def _create_outlined_rect(self, size = None, radius = None, width = None, sdf = False): 
@@ -144,16 +144,16 @@ class BackgroundRendererPygame:
         
         if isinstance(radius, (int, float)): radius = (radius, radius, radius, radius)
         r_radius = self.draw._round_radius(radius)
-        r_radius = self.draw._check_radius(r_radius, needed_size)
+        r_radius = self.draw._check_radius(r_radius, needed_size) #type: ignore
         r_width = max(1, round(width))
 
         if sdf: 
-            result = self.draw.create_clear(tuple_size, flags = pygame.SRCALPHA)
+            result = self.draw.create_clear(tuple_size, flags = md.pygame.SRCALPHA)
             transform_into_outlined_rounded_rect(result, r_radius, r_width, root.subtheme_border)
         else:
-            result = pygame.Surface(tuple_size, flags = pygame.SRCALPHA)
+            result = md.pygame.Surface(tuple_size, flags = md.pygame.SRCALPHA)
             r_radius = self.draw._normalize_radius(r_radius)
-            pygame.draw.rect(result, root.subtheme_border, pygame.rect.Rect(0, 0, *tuple_size), r_width, -1, r_radius[0], r_radius[1], r_radius[3], r_radius[2])
+            md.pygame.draw.rect(result, root.subtheme_border, md.pygame.rect.Rect(0, 0, *tuple_size), r_width, -1, r_radius[0], r_radius[1], r_radius[3], r_radius[2])
         return result
     
     def _get_correct_mask(self, sdf=True, add = 0, radius = None): 
@@ -188,7 +188,7 @@ class BackgroundRendererPygame:
             else:
                 mask_surf = correct_mask = self._create_surf_base(rounded_size, sdf = True)
 
-        final_surf = pygame.Surface(tuple_size, flags = pygame.SRCALPHA)
+        final_surf = md.pygame.Surface(tuple_size, flags = md.pygame.SRCALPHA)
 
         content_surf = None
         if style.gradient:
@@ -240,7 +240,7 @@ class BackgroundRendererPygame:
         return self.draw.scale(root.cache.get_or_exec(CacheType.Background, lambda: self._generate_background(sdf = sdf)), self.min_size(size))
     
     @staticmethod
-    def _split_words(words: list, font: pygame.font.Font, x, marg = " "):
+    def _split_words(words: list, font: Font, x, marg = " "):
         current_line = ""
         lines = []
         font_size = font.size
@@ -301,10 +301,10 @@ class BackgroundRendererPygame:
             if is_cropped and not unlimited_y:
                 baked_text = f"{baked_text[:-3]}..."
 
-            text_surface: pygame.Surface = renderFont.render(baked_text, True, color)
+            text_surface: Surface = renderFont.render(baked_text, True, color)
 
             if outside and outside_rect: container_rect = outside_rect
-            elif root.inline: container_rect = pygame.Rect(root.coordinates.to_round().to_tuple(), root._csize.to_round())
+            elif root.inline: container_rect = md.pygame.Rect(root.coordinates.to_round().to_tuple(), root._csize.to_round())
             else: container_rect = root.surface.get_rect()
 
             text_rect = text_surface.get_rect()

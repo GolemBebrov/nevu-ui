@@ -1,8 +1,7 @@
-import pygame
 import math
 from typing import Unpack
-import pyray as rl
 
+import nevu_ui.core.modules as md
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.core.enums import ConstantLayer
 from nevu_ui.core.state import nevu_state
@@ -118,9 +117,9 @@ class ProgressBar(Widget):
                 assert nevu_state.window.is_raylib(display)
                 with self.bgsurface: #type: ignore
                     display.clear(Color.Blank)
-                    display.blit_rect_vec(self.surface.texture, (0,0), mode = rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
+                    display.blit_rect_vec(self.surface.texture, (0,0), mode = md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
             else:
-                self.bgsurface = pygame.Surface(self.surface.get_size(), pygame.SRCALPHA)
+                self.bgsurface = md.pygame.Surface(self.surface.get_size(), md.pygame.SRCALPHA)
                 self.bgsurface.blit(self.surface, (0,0))
                 self.surface.fill((0,0,0,0))
             self._changed_value = True
@@ -134,8 +133,8 @@ class ProgressBar(Widget):
         if nevu_state.window.is_dtype.raylib:
             with self.surface: #type: ignore
                 display.clear(Color.Blank)
-                display.blit_rect_vec(self.bgsurface.texture, (0,0), mode = rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
-                display.blit_rect_vec(bar_surf.texture, coords, mode = rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+                display.blit_rect_vec(self.bgsurface.texture, (0,0), mode = md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
+                display.blit_rect_vec(bar_surf.texture, coords, mode = md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
             return
         self.surface.blit(self.bgsurface, (0,0))
         self.surface.blit(bar_surf, coords)
@@ -166,10 +165,10 @@ class ProgressBar(Widget):
         if len(color) == 3: color = (*color, 255)
         adds = {}
         if nevu_state.window.is_dtype.raylib:
-            adds["blitmode"] = rl.BlendMode.BLEND_ALPHA_PREMULTIPLY
-        surf = self.renderer._create_surf_base(size, override_color=color, radius=radius, **adds)#blitmode=rl.BlendMode.BLEND_ALPHA, sdfmode=rl.BlendMode.BLEND_ALPHA)
+            adds["blitmode"] = md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY
+        surf = self.renderer._create_surf_base(size, override_color=color, radius=radius, **adds)#blitmode=md.rl.BlendMode.BLEND_ALPHA, sdfmode=md.rl.BlendMode.BLEND_ALPHA)
         if nevu_state.window.is_dtype.raylib:
-            rl.set_texture_filter(surf.texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
+            md.rl.set_texture_filter(surf.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
         coords = (self._rsize_marg)
         coords.y += y_decrease
         assert self.surface

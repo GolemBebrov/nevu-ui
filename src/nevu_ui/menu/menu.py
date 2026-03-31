@@ -1,10 +1,8 @@
-import pygame
 import copy
-import pyray as rl
-from pygame._sdl2 import Texture
 from functools import partial
 from typing import Unpack
 
+from nevu_ui.core import modules as md
 from nevu_ui.window import Window
 from nevu_ui.components.layouts import LayoutType
 from nevu_ui.components.widgets import Widget
@@ -117,10 +115,10 @@ class Menu:
         surface = surf or self._surface
         assert self._window, "Window not initialized!"
         if self._window.is_dtype.sdl:
-            texture = Texture(nevu_state.renderer, (self.size*self._resize_ratio).to_tuple(), target=True) #type: ignore
+            texture = md.pygame._sdl2.Texture(nevu_state.renderer, (self.size*self._resize_ratio).to_tuple(), target=True) #type: ignore
             nevu_state.renderer.target = texture
-            ntext = Texture.from_surface(nevu_state.renderer, surface) #type: ignore
-            nevu_state.renderer.blit(ntext, pygame.Rect(0,0, *(self.size*self._resize_ratio).to_tuple()))
+            ntext = md.pygame._sdl2.Texture.from_surface(nevu_state.renderer, surface) #type: ignore
+            nevu_state.renderer.blit(ntext, md.pygame.Rect(0,0, *(self.size*self._resize_ratio).to_tuple()))
             nevu_state.renderer.target = None
         elif self._window.is_dtype.raylib:
             #texture = convert_surface_to_gl_texture(self._window._display.renderer, surface) #type: ignore
@@ -233,10 +231,10 @@ class Menu:
         assert self._window
         if self._window.is_dtype.raylib:
             self._surface = NvRenderTexture(self.size*self._resize_ratio)
-            rl.set_texture_filter(self._surface.texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
+            md.rl.set_texture_filter(self._surface.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
             return
-        if self.style.border_radius>0:self._surface = pygame.Surface(self._pygame_size, pygame.SRCALPHA)
-        else: self._surface = pygame.Surface(self._pygame_size)
+        if self.style.border_radius>0:self._surface = md.pygame.Surface(self._pygame_size, md.pygame.SRCALPHA)
+        else: self._surface = md.pygame.Surface(self._pygame_size)
         if self.style.transparency: self._surface.set_alpha(self.style.transparency)
 
     def _resize(self, size: NvVector2):
@@ -328,11 +326,11 @@ class Menu:
         self.relative_percent_y = arg2
         self.first_coordinates = self.coordinates
 
-    def _draw_sdl(self, scaled_bg: Texture):
+    def _draw_sdl(self, scaled_bg):
         assert self._window, "Window is not initialized!"
         assert self._window.is_dtype.sdl, "Backend is not SDL!"
         assert nevu_state.renderer, "SDL Renderer is not initialized!"
-        assert isinstance(scaled_bg, Texture), "Scaled background is not texture!"
+        #assert isinstance(scaled_bg, Texture), "Scaled background is not texture!"
         if self._layout:
             nevu_state.renderer.target = self._texture
             nevu_state.renderer.blit(scaled_bg, self.get_rect())
@@ -340,7 +338,7 @@ class Menu:
             nevu_state.renderer.target = None
         self._window._display.blit(self._texture, self.absolute_coordinates.to_int().to_tuple())
     
-    def _draw_raylib(self, scaled_bg: rl.RenderTexture):
+    def _draw_raylib(self, scaled_bg):
         assert self._window, "Window is not initialized!"
         assert self._window.is_dtype.raylib, "Backend is not Raylib!"
         display = nevu_state.window.display
@@ -349,16 +347,16 @@ class Menu:
             self._layout._rl_predraw_widgets()
             with self._surface: #type: ignore
                 nevu_state.window.display.clear(Color.Blank)
-                display.blit_rect_vec(scaled_bg.texture, (0, 0), mode = rl.BlendMode.BLEND_ALPHA)
-                rl.begin_blend_mode(rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+                display.blit_rect_vec(scaled_bg.texture, (0, 0), mode = md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+                md.rl.begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
                 self._layout.draw()
-                rl.end_blend_mode()
-        display.blit_rect_vec(self._surface.texture, self.absolute_coordinates.get_int_tuple(), mode=rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
+                md.rl.end_blend_mode()
+        display.blit_rect_vec(self._surface.texture, self.absolute_coordinates.get_int_tuple(), mode=md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
     
-    def _draw_pygame(self, scaled_bg: pygame.Surface):
+    def _draw_pygame(self, scaled_bg):
         assert self._window, "Window is not initialized!"
         assert self._window.is_dtype.pygame, "Backend is not Pygame!"
-        assert isinstance(self._surface, pygame.Surface), "_surface is not pygame surface!"
+        assert isinstance(self._surface, md.pygame.Surface), "_surface is not md.pygame surface!"
         self._surface.fill((0, 0, 0, 0))
         self._surface.blit(scaled_bg, (0, 0))
         if self._layout is not None: self._layout.draw() 
@@ -388,7 +386,7 @@ class Menu:
             self._layout.absolute_coordinates = self._layout.coordinates + self.absolute_coordinates
             self._layout.update(nevu_state.current_events)
         
-    def get_rect(self) -> pygame.Rect: return pygame.Rect((0,0), self.size * self._resize_ratio)
+    def get_rect(self): return md.pygame.Rect((0,0), self.size * self._resize_ratio)
     
     def get_nvrect(self): return NvRect(NvVector2(), self.size*self._resize_ratio)
     

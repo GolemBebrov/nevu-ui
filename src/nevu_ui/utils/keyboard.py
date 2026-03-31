@@ -1,7 +1,6 @@
 import functools
-import pygame
-import pyray as rl
 
+import nevu_ui.core.modules as md
 from nevu_ui.core.enums import Backend
 
 def _keyboard_initialised_only(func):
@@ -18,11 +17,11 @@ class KeyboardPygame:
         
     def update(self) -> None:
         if self._keys_now is None:
-            self._keys_now = pygame.key.get_pressed()
+            self._keys_now = md.pygame.key.get_pressed()
             self._keys_prev = self._keys_now
             return
         self._keys_prev = self._keys_now
-        self._keys_now = pygame.key.get_pressed()
+        self._keys_now = md.pygame.key.get_pressed()
 
     @_keyboard_initialised_only
     def is_fdown(self, key_code: int) -> bool:
@@ -42,13 +41,13 @@ class KeyboardRayLib:
     def update(self): pass
     def is_fdown(self, key_code: int):
         """USE RAYLIB KEYS""" 
-        return rl.is_key_pressed(key_code)
+        return md.rl.is_key_pressed(key_code)
     def is_down(self, key_code: int): 
         """USE RAYLIB KEYS""" 
-        return rl.is_key_down(key_code)
+        return md.rl.is_key_down(key_code)
     def is_up(self, key_code: int): 
         """USE RAYLIB KEYS""" 
-        return rl.is_key_up(key_code)
+        return md.rl.is_key_up(key_code)
 
 def set_keyboard(backend: Backend):
     assert isinstance(keyboard, UnselectedKeyboard), "Keyboard already selected"

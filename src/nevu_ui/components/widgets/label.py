@@ -1,7 +1,7 @@
 import copy
 from typing import Unpack
-import pyray as rl
 
+import nevu_ui.core.modules as md
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.core import nevu_state
 from nevu_ui.presentation.style import Style, default_style
@@ -52,7 +52,7 @@ class Label(Widget):
                 self.surface.blit(self._text_surface, self._text_rect)
             elif self._text_surface and self._text_rect:
                 with self.surface: #type: ignore
-                    nevu_state.window.display.blit_rect_vec(self._text_surface.texture, (self._text_rect[0], self._text_rect[1]), mode = rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
+                    nevu_state.window.display.blit_rect_vec(self._text_surface.texture, (self._text_rect[0], self._text_rect[1]), mode = md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
 
     def _create_clone(self):
         return self.__class__(self._template['text'], self._template['size'], copy.deepcopy(self.style), **self.constant_kwargs)

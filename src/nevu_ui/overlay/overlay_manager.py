@@ -1,15 +1,15 @@
-import io
-import pygame
-from pygame._sdl2 import Texture
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from pygame import Surface
+
+import nevu_ui.core.modules as md
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.core.state import nevu_state
 from nevu_ui.core.enums import Backend, OvItemType
-import pyray as rl
 
 class OverlayManager:
-    SurfaceType = pygame.Surface | Any
+    SurfaceType = Any
     PipelineItem = tuple[SurfaceType, NvVector2, int | float, OvItemType]
     layer_type = float | int
     def __init__(self):
@@ -75,7 +75,7 @@ class OverlayManager:
             self.mark_all()
         else: self._validate_strict(name, strict, lambda: print(f"Element {name} not found and cannot be changed"))
     
-    def change_surface(self, name: Any, surface: pygame.Surface, strict: bool = False, type: OvItemType | None = None):
+    def change_surface(self, name: Any, surface: "Surface", strict: bool = False, type: OvItemType | None = None):
         if self.has_element(name):
             curr_item = self.pipeline[name]
             self.pipeline[name] = (surface, curr_item[1], curr_item[2], type or self.pipeline[name][3])
@@ -103,9 +103,9 @@ class OverlayManager:
             if nevu_state.window.is_dtype.raylib:
                 display = nevu_state.window.display
                 assert nevu_state.window.is_raylib(display)
-                rl.begin_texture_mode(surface)
+                md.rl.begin_texture_mode(surface)
                 display.blit(self._rendered_cache, (0,0))
-                rl.end_texture_mode()
+                md.rl.end_texture_mode()
             else: surface.blit(self._rendered_cache, (0,0))
             return
         
@@ -115,7 +115,7 @@ class OverlayManager:
                 coords: NvVector2 = element[1][1]
                 surface.blit(surf, coords.to_tuple())
         else:
-            rl.begin_texture_mode(surface)
+            md.rl.begin_texture_mode(surface)
             display = nevu_state.window.display
             assert nevu_state.window.is_raylib(display)
             for element in self.sorted_pipeline:
@@ -126,7 +126,7 @@ class OverlayManager:
                     func()
                 else:
                     display.blit(surf.texture, coords.to_tuple())
-            rl.end_texture_mode()
+            md.rl.end_texture_mode()
             
     def get_result(self, size):
         if size.get_int_tuple() != self._cached_size:
@@ -142,7 +142,7 @@ class OverlayManager:
         result = self._get_result_surface(size)
         self.draw_pipeline(result)
         if nevu_state.window.is_dtype.raylib and self._rendered_cache: 
-            rl.unload_render_texture(self._rendered_cache)
+            md.rl.unload_render_texture(self._rendered_cache)
         result = self._finish_result(result)
         self._rendered_cache = result
         self._rendered = True
@@ -156,19 +156,19 @@ class OverlayManager:
     def _finish_result(self, result):
         match nevu_state.window._backend:
             case Backend.Pygame | Backend.RayLib: return result
-            case Backend.Sdl: return Texture.from_surface(nevu_state.renderer, result)
+            case Backend.Sdl: return md.pygame._sdl2.Texture.from_surface(nevu_state.renderer, result)
     
     def _get_result_surface(self, size):
         match nevu_state.window._backend:
             case Backend.Pygame | Backend.Sdl:
-                return pygame.Surface(size, flags = pygame.SRCALPHA)
+                return md.pygame.Surface(size, flags = md.pygame.SRCALPHA)
             case Backend.RayLib:
-                txture = rl.load_render_texture(int(size[0]), int(size[1]))
-                rl.set_texture_filter(txture.texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
-                #rl.set_texture_wrap(txture.texture, rl.TextureWrap.TEXTURE_WRAP_CLAMP)
-                rl.begin_texture_mode(txture)
-                nevu_state.window.display.clear(rl.BLANK)
-                rl.end_texture_mode()
+                txture = md.rl.load_render_texture(int(size[0]), int(size[1]))
+                md.rl.set_texture_filter(txture.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
+                #md.rl.set_texture_wrap(txture.texture, md.rl.TextureWrap.TEXTURE_WRAP_CLAMP)
+                md.rl.begin_texture_mode(txture)
+                nevu_state.window.display.clear(md.rl.BLANK)
+                md.rl.end_texture_mode()
                 return txture
 
 overlay = OverlayManager()

@@ -6,7 +6,7 @@
 # cython: nonecheck=False
 # cython: initializedcheck=False
 
-import pygame
+import nevu_ui.core.modules as md
 import cython
 cimport cython
 import numpy as np
@@ -65,7 +65,7 @@ cpdef tuple get_rect_helper(NvVector2 master_coordinates, NvVector2 resize_ratio
     return _get_rect_base(master_coordinates.x, master_coordinates.y, resize_ratio.x, resize_ratio.y, size.x, size.y)
 
 cpdef get_rect_helper_pygame(NvVector2 master_coordinates, NvVector2 resize_ratio, NvVector2 size):
-    return pygame.Rect(_get_rect_base(master_coordinates.x, master_coordinates.y, resize_ratio.x, resize_ratio.y, size.x, size.y))
+    return md.pygame.Rect(_get_rect_base(master_coordinates.x, master_coordinates.y, resize_ratio.x, resize_ratio.y, size.x, size.y))
 
 cdef inline tuple _get_rect_base_cached(float mx, float my, float csx, float csy): return (mx, my, csx, csy)
 
@@ -73,7 +73,7 @@ cpdef tuple get_rect_helper_cached(NvVector2 master_coordinates, NvVector2 csize
     return _get_rect_base_cached(master_coordinates.x, master_coordinates.y, csize.x, csize.y)
 
 cpdef get_rect_helper_cached_pygame(NvVector2 master_coordinates, NvVector2 csize):
-    return pygame.Rect(_get_rect_base_cached(master_coordinates.x, master_coordinates.y, csize.x, csize.y))
+    return md.pygame.Rect(_get_rect_base_cached(master_coordinates.x, master_coordinates.y, csize.x, csize.y))
 
 cpdef void logic_update_helper (
     NvVector2 master_coordinates,

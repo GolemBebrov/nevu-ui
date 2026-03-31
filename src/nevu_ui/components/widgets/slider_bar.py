@@ -1,7 +1,6 @@
-import pygame
-import pyray as rl
 from typing import Unpack
 
+import nevu_ui.core.modules as md
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.utils import mouse
 from nevu_ui.presentation.color import Color
@@ -164,12 +163,12 @@ class Slider(Widget):
             assert nevu_state.window.is_raylib(display)
             with self.surface: #type: ignore
                 display.clear(Color.Blank)
-                display.blit_rect_vec(self.progress_bar.surface.texture, (0,0), mode=rl.BlendMode.BLEND_ALPHA) #type: ignore
+                display.blit_rect_vec(self.progress_bar.surface.texture, (0,0), mode=md.rl.BlendMode.BLEND_ALPHA) #type: ignore
                 nvrect = NvRect(args[2]) #type: ignore
                 nvrect = self.adjust_text_rect(nvrect)
                 args = list(args) #type: ignore
                 args[2] = nvrect.get_int_tuple()[0:2] #type: ignore
-                rl.draw_text_ex(*args) #type: ignore
+                md.rl.draw_text_ex(*args) #type: ignore
         else:
             self.surface.fill((0,0,0,0)) 
             self.surface.blit(self.progress_bar.surface, (0,0)) #type: ignore

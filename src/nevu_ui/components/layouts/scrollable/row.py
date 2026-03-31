@@ -1,4 +1,3 @@
-import pygame
 import copy
 
 from nevu_ui.components.nevuobj import NevuObject

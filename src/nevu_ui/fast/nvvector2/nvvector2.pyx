@@ -7,7 +7,7 @@
 # cython: initializedcheck=False
 
 cimport cython
-import pygame
+import nevu_ui.core.modules as md
 from libc.math cimport sqrt
 
 
@@ -31,7 +31,8 @@ cdef class NvVector2:
             if isinstance(arg, NvVector2):
                 self.x = arg.x
                 self.y = arg.y
-            elif isinstance(arg, pygame.Vector2):
+            elif hasattr(arg, "clamp_magnitude_ip"):
+                #VECTOR 2 FROM PYGAME!!! ! ! !! 
                 self.x = arg.x
                 self.y = arg.y
             elif isinstance(arg, (list, tuple)):
@@ -197,7 +198,7 @@ cdef class NvVector2:
         return (int(self.x), int(self.y))
 
     def to_pygame(self):
-        return pygame.Vector2(self.x, self.y)
+        return md.pygame.Vector2(self.x, self.y)
     
     cpdef NvVector2 copy(self):
         return NvVector2.new(self.x, self.y)

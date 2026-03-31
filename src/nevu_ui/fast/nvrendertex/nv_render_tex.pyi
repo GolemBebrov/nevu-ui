@@ -1,5 +1,6 @@
-import pyray as rl
-from typing import Any, Type, TypeVar, Optional
+from typing import Any, Type, TypeVar, Optional, TYPE_CHECKING
+if TYPE_CHECKING:
+    from pyray import RenderTexture
 from nevu_ui.fast.nvvector2.nvvector2 import NvVector2
 from nevu_ui.fast.nvrect import NvRect
 from nevu_ui.presentation.color import Color
@@ -13,7 +14,7 @@ class NvRenderTexture:
     loaded: bool
 
     @classmethod
-    def from_rl_render_texture(cls: Type[_T], rl_render_texture: rl.RenderTexture) -> _T: ...
+    def from_rl_render_texture(cls: Type[_T], rl_render_texture: "RenderTexture") -> _T: ...
     
     def __init__(self, size: NvVector2) -> None: ...
     

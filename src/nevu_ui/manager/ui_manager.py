@@ -1,6 +1,6 @@
-import pygame
 import sys
 
+import nevu_ui.core.modules as md 
 from nevu_ui.window import Window
 
 class Manager:
@@ -35,7 +35,7 @@ class Manager:
         self.window.update(events, self.fps)
 
     def __main_update_loop(self):
-        events = None if self.window.is_dtype.raylib else pygame.event.get()
+        events = None if self.window.is_dtype.raylib else md.pygame.event.get()
         self._before_update(events)
         self.on_update(events)
         self._after_update(events)
@@ -47,7 +47,8 @@ class Manager:
     def _on_exit(self):
         self.on_exit()
         if self.force_quit:
-            pygame.quit()
+            if self.window.is_dtype.pygame or self.window.is_dtype.sdl:
+                md.pygame.quit()
             sys.exit()
         
     def first_update(self): pass
@@ -63,7 +64,6 @@ class Manager:
             self.window.display.begin_frame()
             self.__main_update_loop()
             self.__main_draw_loop()
-            self.window._next_update_dirty_rects = []
             self.window.display.update()
             self.window.display.end_frame()
         self._on_exit()

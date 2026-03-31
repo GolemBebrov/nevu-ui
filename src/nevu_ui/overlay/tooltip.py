@@ -1,8 +1,7 @@
 from __future__ import annotations
-import pygame
-import pyray as rl
 import weakref
 
+import nevu_ui.core.modules as md
 from nevu_ui.presentation.style import Style, default_style
 from nevu_ui.core.classes import TooltipType
 from nevu_ui.fast.nvvector2 import NvVector2
@@ -45,9 +44,9 @@ class _TooltipBase:
         surf = renderer._create_surf_base(self._csize, radius = br, sdf=True, override_color=self.style.colortheme.get_subtheme(SubThemeRole.TERTIARY).oncontainer, alt = alt)
         title_surf, title_rect , _ = renderer.bake_text(self.title, style=self.style, size = self._csize, outside=True, outside_rect = surf.get_rect(), override_font_size=self.style.font_size) #type: ignore
         if nevu_state.window.is_dtype.raylib:
-            rl.begin_texture_mode(surf.texture)
+            md.rl.begin_texture_mode(surf.texture)
             nevu_state.window.display.blit(title_surf, title_rect)
-            rl.end_texture_mode()
+            md.rl.end_texture_mode()
         else:
             surf.blit(title_surf, title_rect)
         return surf

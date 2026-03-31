@@ -1,11 +1,11 @@
 import copy
 import contextlib
-import pyray as rl
 
 from typing import (
     Callable, Any, Unpack
 )
 
+import nevu_ui.core.modules as md
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.utils import keyboard
 from nevu_ui.core.enums import HoverState
@@ -266,7 +266,7 @@ class ElementSwitcher(Widget):
                 with self.surface: #type: ignore
                     display = nevu_state.window.display
                     assert nevu_state.window.is_raylib(display)
-                    display.blit_rect_pro(self._text_surface.texture, self._text_rect, mode=rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+                    display.blit_rect_pro(self._text_surface.texture, self._text_rect, mode=md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
             else:
                 self.surface.blit(self._text_surface, self._text_rect) #type: ignore
             

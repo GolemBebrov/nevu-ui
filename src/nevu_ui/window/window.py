@@ -1,10 +1,11 @@
 import sys
 from typing import TypeGuard
 from typing_extensions import deprecated, TypedDict, Unpack, NotRequired
-import pygame
-import pyray as rl
 
 from nevu_ui.core.state import nevu_state
+from nevu_ui.core.modules import init_modules
+import nevu_ui.core.modules as md
+from nevu_ui.utils.keys import init_keys
 from nevu_ui.json_parser.base import standart_config
 from nevu_ui.core.classes import ConfigType, Counter
 from nevu_ui.fast.nvvector2 import NvVector2
@@ -75,26 +76,29 @@ class Window:
     
     def __init__(self, size, **kwargs: Unpack[WindowKwargs]):
         self.is_dtype = _IsNamespace(self)
-        
+        nevu_state.window = self
         self._debouncing = Counter(0, 0.1)
         self._old_fps = None
         
         self._init_kwargs(**kwargs)
+        init_modules()
         self._init_hooks()
         self._init_lists(size)
         self._init_graphics()
-        self._init_globals()
         
-        if not self.is_dtype.raylib:
-            self._clock = pygame.time.Clock()
         self._events: list[NevuEvent] = []
         nevu_state.current_events = []
 
         if self._resize_type == ResizeType.CropToRatio:
             self._recalculate_render_area() 
-
+        
         self.z_system = ZSystem()
         self._reset_nevu_state()
+        
+        init_keys()
+        self._init_globals()
+        if not self.is_dtype.raylib:
+            self._clock = md.pygame.time.Clock()
 
     def _init_hooks(self):
         self._specific_update = lambda **kwargs: None
@@ -157,8 +161,8 @@ class Window:
         kwargs = {"title": self.title, "size": self.size, "root": self}
         match self._backend:
             case Backend.Pygame:
-                flags = pygame.RESIZABLE if self.resizable else 0
-                flags |= pygame.HWSURFACE | pygame.DOUBLEBUF
+                flags = 16 if self.resizable else 0
+                flags |= 1 | 1073741824
                 kwargs['flags'] = flags
             case Backend.Sdl | Backend.RayLib:
                 kwargs['resizable'] = self.resizable
@@ -195,31 +199,31 @@ class Window:
     def _update_raylib(self, fps: int | None = None, **kwargs):
         fps = fps or self._fps
         if fps != self._old_fps:
-            rl.set_target_fps(fps)
+            md.rl.set_target_fps(fps)
             self._old_fps = fps
-        if rl.window_should_close():
-            rl.close_window()
+        if md.rl.window_should_close():
+            md.rl.close_window()
             sys.exit()
-        if rl.is_window_resized():
-            self.size = NvVector2(rl.get_screen_width(), rl.get_screen_height())
+        if md.rl.is_window_resized():
+            self.size = NvVector2(md.rl.get_screen_width(), md.rl.get_screen_height())
             self._debouncing.val = 0
     
     def _update_pygame(self, events, fps: int | None = None, **kwargs):
         fps = fps or self._fps
-        events = events or pygame.event.get()
+        events = events or md.pygame.event.get()
         for event in events:
-            if event.type == pygame.QUIT:
-                pygame.quit()
+            if event.type == md.pygame.QUIT:
+                md.pygame.quit()
                 sys.exit()
                 
-            if event.type == pygame.VIDEORESIZE and self._resize_type != ResizeType.ResizeFromOriginal:
+            if event.type == md.pygame.VIDEORESIZE and self._resize_type != ResizeType.ResizeFromOriginal:
                 w, h = event.w, event.h
                 self.size = NvVector2(w, h)
                 self._debouncing.val = 0
         self._clock.tick(fps)
         
     def update(self, events = None, fps: int | None = None):
-        """Events required only for pygame backend"""
+        """Events required only for md.pygame backend"""
         nevu_state.current_events = events
         
         self._update_utils(events)
@@ -267,8 +271,8 @@ class Window:
     @title.setter
     def title(self, text:str):
         self._title = text
-        if self.is_dtype.raylib: rl.set_window_title(text)
-        else: pygame.display.set_caption(self._title)
+        if self.is_dtype.raylib: md.rl.set_window_title(text)
+        else: md.pygame.display.set_caption(self._title)
         
     @property
     def ratio(self): return self._ratio

@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import math
 import weakref
-import pyray as rl
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING: 
     from nevu_ui.components.nevuobj import NevuObject
     from nevu_ui.presentation.style import Style
     from nevu_ui.rendering.gradient import GradientRaylib
+    from pyray import Texture, Font
+import nevu_ui.core.modules as md
 from nevu_ui.fast.nvrendertex import NvRenderTexture
 from nevu_ui.presentation.color import Color
 from nevu_ui.fast.nvvector2 import NvVector2
@@ -30,7 +31,7 @@ class _DrawNamespaceRayLib:
     @property
     def style(self): return self.root.style
     
-    def gradient(self, coordinates: tuple[int, int], style: Style | None = None) -> rl.Texture: # type: ignore
+    def gradient(self, coordinates: tuple[int, int], style: Style | None = None) -> Texture: # type: ignore
         style = style or self.style
         if not style.gradient: raise ValueError("Gradient not set")
         gr: GradientRaylib = style.gradient
@@ -39,11 +40,11 @@ class _DrawNamespaceRayLib:
     def create_clear(self, size: NvVector2) -> NvRenderTexture:
         return NvRenderTexture(size)
 
-    def load_image(self, path: str, size: tuple[int, int]) -> rl.Texture:
-        image = rl.load_image(path)
-        rl.image_resize(image, size[0], size[1])
-        texture = rl.load_texture_from_image(image)
-        rl.unload_image(image)
+    def load_image(self, path: str, size: tuple[int, int]) -> Texture:
+        image = md.rl.load_image(path)
+        md.rl.image_resize(image, size[0], size[1])
+        texture = md.rl.load_texture_from_image(image)
+        md.rl.unload_image(image)
         return texture
 
 class BackgroundRendererRayLib:
@@ -100,26 +101,28 @@ class BackgroundRendererRayLib:
             else: add_texture = NvRenderTexture(NvVector2(*size))
             assert add_texture
             with add_texture:
-                rl.begin_blend_mode(blitmode or rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+                md.rl.begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
                 display.clear(Color.Blank) 
                 display.clear(color)
-                rl.end_blend_mode()
+                md.rl.end_blend_mode()
 
         with texture:
+            md.rl.begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
             display.clear(Color.Blank)
             if not radius:
                 display.clear(color)
             else:
-                display.blit_sdf_vec(add_texture.texture, (0, 0), radius, mode = rl.BlendMode.BLEND_ALPHA) #type: ignore
+                display.fast_blit_sdf_vec(add_texture.texture, (0, 0), radius) #type: ignore
+            md.rl.end_blend_mode()
         return texture
     
     def _create_rect(self, size: tuple[int, int], radius = 0, color = Color.White):
-        rtext = rl.load_render_texture(size[0], size[1])
+        rtext = md.rl.load_render_texture(size[0], size[1])
         if len(color) == 3: color = (*color, 255)
-        rl.begin_texture_mode(rtext)
-        nevu_state.window.display.fill(rl.BLANK)
-        rl.draw_rectangle_rounded(size, radius, 2, color)
-        rl.end_texture_mode()
+        md.rl.begin_texture_mode(rtext)
+        nevu_state.window.display.fill(Color.Blank)
+        md.rl.draw_rectangle_rounded(size, radius, 2, color)
+        md.rl.end_texture_mode()
         return rtext
     
     def _create_outlined_rect(self, size = None, radius = None, width = None, sdf = False):
@@ -132,6 +135,7 @@ class BackgroundRendererRayLib:
         rounded_size = root._csize.to_round()
         tuple_size = rounded_size.get_int_tuple()
         flip = True
+        image = False
         add_color = NvRect(255,255,255,255)
         
         def normalize_add_color(color, add_color):
@@ -153,7 +157,7 @@ class BackgroundRendererRayLib:
             old_content_text = cache.get(CacheType.Scaled_Gradient)
             content_text = cache.get_or_exec(CacheType.Scaled_Gradient, lambda: self.draw.gradient(tuple_size, style))
             if old_content_text is not content_text and old_content_text is not None:
-                rl.unload_texture(old_content_text)
+                md.rl.unload_texture(old_content_text)
             hoverstate = root._hover_state
             
             def _add(value): 
@@ -167,6 +171,7 @@ class BackgroundRendererRayLib:
         elif style.bg_image:
             content_text = cache.get_or_exec(CacheType.Image, lambda: self.draw.load_image(style.bg_image, rounded_size.get_int_tuple()))
             flip = False
+            image = True
             
         else:
             anim_color = None
@@ -192,18 +197,20 @@ class BackgroundRendererRayLib:
         
             if isinstance(style.border_radius, int | float): borderradius = [root.relm(style.border_radius)]*4
             else: borderradius = tuple(map(root.relm, style.border_radius))
-                
+            
+            blend_mode = md.rl.BlendMode.BLEND_ALPHA if image else md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY
+            
             if style.border_width > 0 and only_content:
-                display.blit_borders(final_content_text, (0, 0, tuple_size[0], tuple_size[1]), borderradius, root.subtheme_border, color=add_color.get_int_tuple(), thickness= root.relm(style.border_width), flip=flip, mode=rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+                display.blit_borders(final_content_text, (0, 0, tuple_size[0], tuple_size[1]), borderradius, root.subtheme_border, color=add_color.get_int_tuple(), thickness= root.relm(style.border_width), flip=flip, mode=blend_mode)
             elif style.border_width > 0 and not only_content:
-                display.blit_sdf(final_content_text, (0, 0, tuple_size[0], tuple_size[1]), borderradius, flip=flip, mode=rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+                display.blit_sdf(final_content_text, (0, 0, tuple_size[0], tuple_size[1]), borderradius, flip=flip, mode = blend_mode)
             else:
-                display.blit_rect_pro(final_content_text, (0, 0, tuple_size[0], tuple_size[1]), flip=flip, mode=rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+                display.blit_rect_pro(final_content_text, (0, 0, tuple_size[0], tuple_size[1]), flip=flip, mode = blend_mode)
         assert final_surf
         return final_surf
 
     @staticmethod
-    def _split_words(words: list, font: rl.Font, font_size: float, spacing: float, max_width: float, marg=" "):
+    def _split_words(words: list, font: Font, font_size: float, spacing: float, max_width: float, marg=" "):
         current_line = ""
         lines = []
         
@@ -218,7 +225,7 @@ class BackgroundRendererRayLib:
                 continue
 
             test_line = current_line + word + marg
-            text_size_vec = rl.measure_text_ex(font, test_line, font_size, spacing)
+            text_size_vec = md.rl.measure_text_ex(font, test_line, font_size, spacing)
             
             if text_size_vec.x > max_width:
                 lines.append(current_line)
@@ -250,12 +257,13 @@ class BackgroundRendererRayLib:
             renderFont = root._get_raylib_font_nocache(current_font_size)
         else:
             renderFont = root.get_font(current_font_size)
+        assert isinstance(renderFont, md.rl.Font().__class__)
         current_font_size = renderFont.baseSize
-        assert renderFont
+        
         
         spacing = 0
         if not continuous:
-            dims = rl.measure_text_ex(renderFont, "A", current_font_size, spacing)
+            dims = md.rl.measure_text_ex(renderFont, "A", current_font_size, spacing)
             line_height = dims.y
 
             if words_indent:
@@ -279,7 +287,7 @@ class BackgroundRendererRayLib:
             if is_cropped and not unlimited_y:
                 baked_text_str = f"{baked_text_str[:-3]}..."
 
-            text_dims = rl.measure_text_ex(renderFont, baked_text_str, current_font_size, spacing)
+            text_dims = md.rl.measure_text_ex(renderFont, baked_text_str, current_font_size, spacing)
             text_w = text_dims.x
             text_h = text_dims.y
 
@@ -316,24 +324,20 @@ class BackgroundRendererRayLib:
         else:
             result_text_rect = (0, 0)
             baked_text_str = text
-            text_vec = rl.measure_text_ex(renderFont, text, current_font_size, spacing)
+            text_vec = md.rl.measure_text_ex(renderFont, text, current_font_size, spacing)
             text_w = text_vec.x
             text_h = text_vec.y
         if outside:
             texture = NvRenderTexture(NvVector2(math.ceil(text_w), math.ceil(text_h)))
             with texture:
-                rl.begin_blend_mode(rl.BlendMode.BLEND_ALPHA)
-                rl.clear_background(rl.BLANK) 
-                rl.draw_text_ex(renderFont, baked_text_str, (0, 0), current_font_size, spacing, color)
-                rl.end_blend_mode()
+                md.rl.clear_background(md.rl.BLANK) 
+                md.rl.draw_text_ex(renderFont, baked_text_str, (0, 0), current_font_size, spacing, color)
             return texture, result_text_rect, baked_text_str
 
         if modify:
             assert nevu_state.window.is_raylib(nevu_state.window.display)
             with modify:
-                rl.begin_blend_mode(rl.BlendMode.BLEND_ALPHA)
-                rl.draw_text_ex(renderFont, baked_text_str, (result_text_rect[0], result_text_rect[1]), current_font_size, spacing, color)
-                rl.end_blend_mode()
+                md.rl.draw_text_ex(renderFont, baked_text_str, (result_text_rect[0], result_text_rect[1]), current_font_size, spacing, color)
             
             return
         
@@ -342,14 +346,11 @@ class BackgroundRendererRayLib:
                 root.cache.clear_selected(whitelist = [CacheType.RlText])
             target = NvRenderTexture(NvVector2(math.ceil(text_w), math.ceil(text_h)))
             assert target
-            #rl.set_texture_filter(target.texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
-            #rl.set_texture_wrap(target.texture, rl.TextureWrap.TEXTURE_WRAP_CLAMP)
-            
+            md.rl.set_texture_filter(target.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
+            md.rl.set_texture_wrap(target.texture, md.rl.TextureWrap.TEXTURE_WRAP_CLAMP)
             with target:
-                rl.begin_blend_mode(rl.BlendMode.BLEND_ALPHA)
-                rl.clear_background(rl.BLANK) 
-                rl.draw_text_ex(renderFont, baked_text_str, (0, 0), current_font_size, spacing, color)
-                rl.end_blend_mode()
+                md.rl.clear_background(Color.Blank) 
+                md.rl.draw_text_ex(renderFont, baked_text_str, (0, 0), current_font_size, spacing, color)
 
             root._text_surface = target # type: ignore
         root._text_rect = result_text_rect # type: ignore

@@ -8,7 +8,7 @@
 # cython: nonecheck=False
 # cython: initializedcheck=False
 
-import pygame
+import nevu_ui.core.modules as md
 import numpy as np
 cimport numpy as np
 cimport cython
@@ -31,11 +31,11 @@ cpdef object _create_outlined_rounded_rect_sdf(tuple size, int radius, float wid
     if center_radius < 0:
         center_radius = 0.0
 
-    cdef object surf = pygame.Surface((w, h), pygame.SRCALPHA)
+    cdef object surf = md.pygame.Surface((w, h), md.pygame.SRCALPHA)
     surf.fill((0, 0, 0, 0))
     
-    cdef uint8_t[:, :, :] pixels3d = pygame.surfarray.pixels3d(surf)
-    cdef uint8_t[:, :] pixels_alpha = pygame.surfarray.pixels_alpha(surf)
+    cdef uint8_t[:, :, :] pixels3d = md.pygame.surfarray.pixels3d(surf)
+    cdef uint8_t[:, :] pixels_alpha = md.pygame.surfarray.pixels_alpha(surf)
 
     cdef int alpha_base = color[3] if len(color) > 3 else 255
     if alpha_base == 0:
@@ -118,14 +118,14 @@ cpdef object _create_rounded_rect_surface_optimized(tuple size, object radii_inp
     if r_br > min_dim: r_br = min_dim
     if r_bl > min_dim: r_bl = min_dim
 
-    cdef object surf = pygame.Surface((width, height), pygame.SRCALPHA)
+    cdef object surf = md.pygame.Surface((width, height), md.pygame.SRCALPHA)
     
     cdef int alpha_base = color[3] if len(color) > 3 else 255
     if alpha_base == 0:
         return surf
 
-    cdef uint8_t[:, :, :] pixels3d = pygame.surfarray.pixels3d(surf)
-    cdef uint8_t[:, :] pixels_alpha = pygame.surfarray.pixels_alpha(surf)
+    cdef uint8_t[:, :, :] pixels3d = md.pygame.surfarray.pixels3d(surf)
+    cdef uint8_t[:, :] pixels_alpha = md.pygame.surfarray.pixels_alpha(surf)
     
     cdef uint8_t r = color[0]
     cdef uint8_t g = color[1]
@@ -203,8 +203,8 @@ cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input,
 
     surf.fill((0, 0, 0, 0))
     
-    cdef uint8_t[:, :, :] pixels3d = pygame.surfarray.pixels3d(surf)
-    cdef uint8_t[:, :] pixels_alpha = pygame.surfarray.pixels_alpha(surf)
+    cdef uint8_t[:, :, :] pixels3d = md.pygame.surfarray.pixels3d(surf)
+    cdef uint8_t[:, :] pixels_alpha = md.pygame.surfarray.pixels_alpha(surf)
 
     cdef int alpha_base = color[3] if len(color) > 3 else 255
     if alpha_base == 0:
@@ -284,8 +284,8 @@ cpdef void transform_into_rounded_rect(object surf, int radius, tuple color):
     if alpha_base == 0:
         return
         
-    cdef uint8_t[:, :, :] pixels3d = pygame.surfarray.pixels3d(surf)
-    cdef uint8_t[:, :] pixels_alpha = pygame.surfarray.pixels_alpha(surf)
+    cdef uint8_t[:, :, :] pixels3d = md.pygame.surfarray.pixels3d(surf)
+    cdef uint8_t[:, :] pixels_alpha = md.pygame.surfarray.pixels_alpha(surf)
     
     cdef float center_x = (width - 1) * 0.5
     cdef float center_y = (height - 1) * 0.5

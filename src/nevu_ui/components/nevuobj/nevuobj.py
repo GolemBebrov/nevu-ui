@@ -1,13 +1,15 @@
 from collections.abc import Callable
 from typing_extensions import deprecated
-import pygame
+from typing import TYPE_CHECKING
 import math
 import copy
 import difflib
 import weakref
-import pyray as rl
 from typing import Unpack, Any
 
+import nevu_ui.core.modules as md
+if TYPE_CHECKING:
+    from pyray import Font
 from nevu_ui.fast.nvrect.nvrect import NvRect
 from nevu_ui.presentation.style import Style
 from nevu_ui.fast.nevucobj import NevuCobject
@@ -333,34 +335,34 @@ class NevuObject(NevuCobject):
     
     def _get_pygame_font(self, override_size = None):
         font_size = round(self.get_font_size(override_size))
-        return (pygame.font.SysFont(self.style.font_name, font_size) if self.style.font_name == "Arial" or self.style.font_name is None 
-        else pygame.font.Font(self.style.font_name, font_size))
+        return (md.pygame.font.SysFont(self.style.font_name, font_size) if self.style.font_name == "Arial" or self.style.font_name is None 
+        else md.pygame.font.Font(self.style.font_name, font_size))
 
-    def _get_raylib_font(self, override_size = None) -> rl.Font:
+    def _get_raylib_font(self, override_size = None) -> "Font":
         font_size = self.get_font_size(override_size)
         
         def _load_font_with_cyrillic():
             codepoints = list(range(32, 127)) + list(range(1024, 1104)) + [1025, 1105]
             glyph_count = len(codepoints)
-            c_array = rl.ffi.new("int[]", codepoints)
-            c_ptr = rl.ffi.cast("int *", c_array)
-            if self.style.font_name == "Arial": return rl.get_font_default()
+            c_array = md.rl.ffi.new("int[]", codepoints)
+            c_ptr = md.rl.ffi.cast("int *", c_array)
+            if self.style.font_name == "Arial": return md.rl.get_font_default()
             else:
-                return rl.load_font_ex(self.style.font_name, round(font_size), c_ptr, glyph_count)
+                return md.rl.load_font_ex(self.style.font_name, round(font_size), c_ptr, glyph_count)
 
         return self.cache.get_or_exec(CacheType.RlFont, _load_font_with_cyrillic) #type: ignore
     
-    def _get_raylib_font_nocache(self, override_size = None) -> rl.Font:
+    def _get_raylib_font_nocache(self, override_size = None) -> "Font":
         font_size = self.get_font_size(override_size)
         
         def _load_font_with_cyrillic():
             codepoints = list(range(32, 127)) + list(range(1024, 1104)) + [1025, 1105]
             glyph_count = len(codepoints)
-            c_array = rl.ffi.new("int[]", codepoints)
-            c_ptr = rl.ffi.cast("int *", c_array)
-            if self.style.font_name == "Arial": return rl.get_font_default()
+            c_array = md.rl.ffi.new("int[]", codepoints)
+            c_ptr = md.rl.ffi.cast("int *", c_array)
+            if self.style.font_name == "Arial": return md.rl.get_font_default()
             else:
-                return rl.load_font_ex(self.style.font_name, round(font_size), c_ptr, glyph_count)
+                return md.rl.load_font_ex(self.style.font_name, round(font_size), c_ptr, glyph_count)
 
         return _load_font_with_cyrillic()
     
@@ -609,7 +611,7 @@ class NevuObject(NevuCobject):
                 on_keyup_func=self._kup,
                 on_keyup_abandon_func=self._kup_abandon,
                 on_click_func=self._click)
-            nevu_state.window.add_request(self._z_request)
+            nevu_state.window.add_request(self._z_request) # type: ignore
         if self._next_frame_functions:
             for func in self._next_frame_functions: func()
             self._next_frame_functions.clear()

@@ -1,6 +1,4 @@
-import pyray as rl
-import pygame
-
+import nevu_ui.core.modules as md
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.core.enums import PressType, Backend
 
@@ -67,7 +65,7 @@ class MousePygame:
     def update_wheel(self, events):
         wheel_event_found = False
         for event in events:
-            if event.type == pygame.MOUSEWHEEL:
+            if event.type == md.pygame.MOUSEWHEEL:
                 wheel_event_found = True
                 new_wheel_y = event.y
                 if new_wheel_y > 0: self._wheel_side = PressType.WheelUp
@@ -81,8 +79,8 @@ class MousePygame:
     def update(self, events: list | None = None):
         if self.left_fdown: self.dragging = True
         elif self.left_up: self.dragging = False
-        self._pos = NvVector2(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1])
-        pressed = pygame.mouse.get_pressed()
+        self._pos = NvVector2(md.pygame.mouse.get_pos()[0], md.pygame.mouse.get_pos()[1])
+        pressed = md.pygame.mouse.get_pressed()
 
         if events and len(events) != 0: self.update_wheel(events)
         else: self._wheel_side = PressType.WheelStill
@@ -100,32 +98,32 @@ class MouseRayLib(MousePygame):
         self._pos = NvVector2(0, 0)
         self._states = [PressType.Still, PressType.Still, PressType.Still]
         self._up_states = {PressType.Still, PressType.Up}
-        self._mouse_keys = tuple(enumerate((rl.MouseButton.MOUSE_BUTTON_LEFT, rl.MouseButton.MOUSE_BUTTON_MIDDLE, rl.MouseButton.MOUSE_BUTTON_RIGHT)))
+        self._mouse_keys = tuple(enumerate((md.rl.MouseButton.MOUSE_BUTTON_LEFT, md.rl.MouseButton.MOUSE_BUTTON_MIDDLE, md.rl.MouseButton.MOUSE_BUTTON_RIGHT)))
         self._wheel_side = PressType.WheelStill
         
     def _get_state(self, button, state: PressType = PressType.Still):
         is_up = state in self._up_states
-        if rl.is_mouse_button_down(button):
+        if md.rl.is_mouse_button_down(button):
             return PressType.Fdown if is_up else PressType.Down
         else:
             return PressType.Up if is_up else PressType.Still
     
     def update_wheel(self): #type: ignore
-        self._wheel_y = rl.get_mouse_wheel_move_v().y
+        self._wheel_y = md.rl.get_mouse_wheel_move_v().y
         if self._wheel_y > 0: self._wheel_side = PressType.WheelUp
         elif self._wheel_y < 0: self._wheel_side = PressType.WheelDown
         else: self._wheel_side = PressType.WheelStill
     
     def update(self, *args, **kwargs): # type: ignore
         self.update_wheel()
-        if rl.is_mouse_button_pressed(rl.MouseButton.MOUSE_BUTTON_LEFT):
+        if md.rl.is_mouse_button_pressed(md.rl.MouseButton.MOUSE_BUTTON_LEFT):
             self.dragging = True
-        elif rl.is_mouse_button_up(rl.MouseButton.MOUSE_BUTTON_LEFT):
+        elif md.rl.is_mouse_button_up(md.rl.MouseButton.MOUSE_BUTTON_LEFT):
             self.dragging = False
             
         for i, button in self._mouse_keys:
             self._states[i] = self._get_state(button, self._states[i])
-        screen_pos = rl.get_mouse_position() 
+        screen_pos = md.rl.get_mouse_position() 
         self._pos = NvVector2(screen_pos.x, screen_pos.y)
 
 def set_mouse(backend: Backend):

@@ -1,16 +1,13 @@
-import pyray as rl
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from pyray import Texture
+
+import nevu_ui.core.modules as md
 from nevu_ui.fast import GradientShader
 from nevu_ui.rendering.pygame.gradient import GradientPygame
-
-from nevu_ui.core import (
-    LinearSide, RadialPosition, GradientType, GradientConfig
-)
-
-import pyray as rl
-
-from nevu_ui.rendering.pygame.gradient import GradientPygame
 from nevu_ui.core import GradientType
+
 class GradientRaylib(GradientPygame):
     _shader = None
     _locs = {}
@@ -100,28 +97,28 @@ class GradientRaylib(GradientPygame):
     @classmethod
     def _ensure_resources(cls):
         if cls._shader is None:
-            cls._shader = rl.load_shader_from_memory(GradientShader.VERTEX_SHADER, GradientShader.FRAGMENT_SHADER)
+            cls._shader = md.rl.load_shader_from_memory(GradientShader.VERTEX_SHADER, GradientShader.FRAGMENT_SHADER)
             
             if cls._shader.id == 0:
                 print("ERROR: Shader failed to compile!")
             
             cls._locs = {
-                'gradientType': rl.get_shader_location(cls._shader, "gradientType"),
-                'angle': rl.get_shader_location(cls._shader, "angle"),
-                'centerPos': rl.get_shader_location(cls._shader, "centerPos"),
-                'colors': rl.get_shader_location(cls._shader, "colors"),
-                'stops': rl.get_shader_location(cls._shader, "stops"),
-                'colorCount': rl.get_shader_location(cls._shader, "colorCount"),
-                'alpha': rl.get_shader_location(cls._shader, "alpha"),
-                'size': rl.get_shader_location(cls._shader, "size"),
+                'gradientType': md.rl.get_shader_location(cls._shader, "gradientType"),
+                'angle': md.rl.get_shader_location(cls._shader, "angle"),
+                'centerPos': md.rl.get_shader_location(cls._shader, "centerPos"),
+                'colors': md.rl.get_shader_location(cls._shader, "colors"),
+                'stops': md.rl.get_shader_location(cls._shader, "stops"),
+                'colorCount': md.rl.get_shader_location(cls._shader, "colorCount"),
+                'alpha': md.rl.get_shader_location(cls._shader, "alpha"),
+                'size': md.rl.get_shader_location(cls._shader, "size"),
             }
 
         if cls._blank_texture is None:
-            img = rl.gen_image_color(1, 1, rl.WHITE)
-            cls._blank_texture = rl.load_texture_from_image(img)
-            rl.unload_image(img)
+            img = md.rl.gen_image_color(1, 1, md.rl.WHITE)
+            cls._blank_texture = md.rl.load_texture_from_image(img)
+            md.rl.unload_image(img)
 
-    def generate_texture(self, width: int, height: int) -> rl.Texture:
+    def generate_texture(self, width: int, height: int) -> "Texture":
         colors_flat =[]
         for c in self.colors:
             colors_flat.extend([c[0]/255.0, c[1]/255.0, c[2]/255.0, c[3]/255.0 if len(c) == 4 else 1.0])
@@ -129,44 +126,44 @@ class GradientRaylib(GradientPygame):
         gradient_type_int = 0 if self.type == GradientType.Linear else 1
         alpha_val = (self.transparency / 255.0) if self.transparency is not None else 1.0
         
-        grad_type_ptr = rl.ffi.new("int *", gradient_type_int)
-        angle_ptr = rl.ffi.new("float *", float(self.angle))
-        center_ptr = rl.ffi.new("float[]", [float(self.center[0]), float(self.center[1])])
-        count_ptr = rl.ffi.new("int *", len(self.colors))
-        alpha_ptr = rl.ffi.new("float *", float(alpha_val))
-        colors_ptr = rl.ffi.new("float[]", colors_flat)
-        stops_ptr = rl.ffi.new("float[]", self.stops)
-        size_ptr = rl.ffi.new("float[]",[float(width), float(height)])
+        grad_type_ptr = md.rl.ffi.new("int *", gradient_type_int)
+        angle_ptr = md.rl.ffi.new("float *", float(self.angle))
+        center_ptr = md.rl.ffi.new("float[]", [float(self.center[0]), float(self.center[1])])
+        count_ptr = md.rl.ffi.new("int *", len(self.colors))
+        alpha_ptr = md.rl.ffi.new("float *", float(alpha_val))
+        colors_ptr = md.rl.ffi.new("float[]", colors_flat)
+        stops_ptr = md.rl.ffi.new("float[]", self.stops)
+        size_ptr = md.rl.ffi.new("float[]",[float(width), float(height)])
 
         assert self._shader and self._blank_texture
         
-        rl.set_shader_value(self._shader, self._locs['gradientType'], grad_type_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_INT)
-        rl.set_shader_value(self._shader, self._locs['angle'], angle_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_FLOAT)
-        rl.set_shader_value(self._shader, self._locs['centerPos'], center_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_VEC2)
-        rl.set_shader_value(self._shader, self._locs['colorCount'], count_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_INT)
-        rl.set_shader_value(self._shader, self._locs['alpha'], alpha_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_FLOAT)
-        rl.set_shader_value_v(self._shader, self._locs['colors'], colors_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_VEC4, len(self.colors))
-        rl.set_shader_value_v(self._shader, self._locs['stops'], stops_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_FLOAT, len(self.stops))
-        rl.set_shader_value(self._shader, self._locs['size'], size_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_VEC2)
+        md.rl.set_shader_value(self._shader, self._locs['gradientType'], grad_type_ptr, md.rl.ShaderUniformDataType.SHADER_UNIFORM_INT)
+        md.rl.set_shader_value(self._shader, self._locs['angle'], angle_ptr, md.rl.ShaderUniformDataType.SHADER_UNIFORM_FLOAT)
+        md.rl.set_shader_value(self._shader, self._locs['centerPos'], center_ptr, md.rl.ShaderUniformDataType.SHADER_UNIFORM_VEC2)
+        md.rl.set_shader_value(self._shader, self._locs['colorCount'], count_ptr, md.rl.ShaderUniformDataType.SHADER_UNIFORM_INT)
+        md.rl.set_shader_value(self._shader, self._locs['alpha'], alpha_ptr, md.rl.ShaderUniformDataType.SHADER_UNIFORM_FLOAT)
+        md.rl.set_shader_value_v(self._shader, self._locs['colors'], colors_ptr, md.rl.ShaderUniformDataType.SHADER_UNIFORM_VEC4, len(self.colors))
+        md.rl.set_shader_value_v(self._shader, self._locs['stops'], stops_ptr, md.rl.ShaderUniformDataType.SHADER_UNIFORM_FLOAT, len(self.stops))
+        md.rl.set_shader_value(self._shader, self._locs['size'], size_ptr, md.rl.ShaderUniformDataType.SHADER_UNIFORM_VEC2)
 
-        target = rl.load_render_texture(width, height)
+        target = md.rl.load_render_texture(width, height)
         
-        rl.begin_texture_mode(target)
-        rl.clear_background(rl.BLANK)
-        rl.begin_shader_mode(self._shader)
+        md.rl.begin_texture_mode(target)
+        md.rl.clear_background(md.rl.BLANK)
+        md.rl.begin_shader_mode(self._shader)
         
-        source_rec = rl.Rectangle(0, 0, 1, 1)
-        dest_rec = rl.Rectangle(0, 0, width, height)
-        rl.draw_texture_pro(self._blank_texture, source_rec, dest_rec, (0,0), 0.0, rl.WHITE)
+        source_rec = md.rl.Rectangle(0, 0, 1, 1)
+        dest_rec = md.rl.Rectangle(0, 0, width, height)
+        md.rl.draw_texture_pro(self._blank_texture, source_rec, dest_rec, (0,0), 0.0, md.rl.WHITE)
         
-        rl.end_shader_mode()
-        rl.end_texture_mode()
+        md.rl.end_shader_mode()
+        md.rl.end_texture_mode()
 
-        image = rl.load_image_from_texture(target.texture)
-        final_texture = rl.load_texture_from_image(image)
+        image = md.rl.load_image_from_texture(target.texture)
+        final_texture = md.rl.load_texture_from_image(image)
         
-        rl.unload_image(image)          
-        rl.unload_render_texture(target)
+        md.rl.unload_image(image)          
+        md.rl.unload_render_texture(target)
         return final_texture
 
 class ClickGradient(GradientRaylib):
@@ -224,30 +221,30 @@ class ClickGradient(GradientRaylib):
         gradient_type_int = 0 if self.type == GradientType.Linear else 1
         alpha_val = (self.transparency / 255.0) if self.transparency is not None else 1.0
         
-        grad_type_ptr = rl.ffi.new("int *", gradient_type_int)
-        angle_ptr = rl.ffi.new("float *", float(self.angle))
-        center_ptr = rl.ffi.new("float[]",[float(self.center[0]), float(self.center[1])])
-        count_ptr = rl.ffi.new("int *", len(self.colors))
-        alpha_ptr = rl.ffi.new("float *", float(alpha_val))
-        colors_ptr = rl.ffi.new("float[]", colors_flat)
-        stops_ptr = rl.ffi.new("float[]", self.stops)
-        size_ptr = rl.ffi.new("float[]", [float(width), float(height)])
+        grad_type_ptr = md.rl.ffi.new("int *", gradient_type_int)
+        angle_ptr = md.rl.ffi.new("float *", float(self.angle))
+        center_ptr = md.rl.ffi.new("float[]",[float(self.center[0]), float(self.center[1])])
+        count_ptr = md.rl.ffi.new("int *", len(self.colors))
+        alpha_ptr = md.rl.ffi.new("float *", float(alpha_val))
+        colors_ptr = md.rl.ffi.new("float[]", colors_flat)
+        stops_ptr = md.rl.ffi.new("float[]", self.stops)
+        size_ptr = md.rl.ffi.new("float[]", [float(width), float(height)])
 
         assert self._shader and self._blank_texture
         
-        rl.set_shader_value(self._shader, self._locs['gradientType'], grad_type_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_INT)
-        rl.set_shader_value(self._shader, self._locs['angle'], angle_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_FLOAT)
-        rl.set_shader_value(self._shader, self._locs['centerPos'], center_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_VEC2)
-        rl.set_shader_value(self._shader, self._locs['colorCount'], count_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_INT)
-        rl.set_shader_value(self._shader, self._locs['alpha'], alpha_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_FLOAT)
-        rl.set_shader_value_v(self._shader, self._locs['colors'], colors_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_VEC4, len(self.colors))
-        rl.set_shader_value_v(self._shader, self._locs['stops'], stops_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_FLOAT, len(self.stops))
-        rl.set_shader_value(self._shader, self._locs['size'], size_ptr, rl.ShaderUniformDataType.SHADER_UNIFORM_VEC2)
+        md.rl.set_shader_value(self._shader, self._locs['gradientType'], grad_type_ptr, md.rl.ShaderUniformDataType.SHADER_UNIFORM_INT)
+        md.rl.set_shader_value(self._shader, self._locs['angle'], angle_ptr, md.rl.ShaderUniformDataType.SHADER_UNIFORM_FLOAT)
+        md.rl.set_shader_value(self._shader, self._locs['centerPos'], center_ptr, md.rl.ShaderUniformDataType.SHADER_UNIFORM_VEC2)
+        md.rl.set_shader_value(self._shader, self._locs['colorCount'], count_ptr, md.rl.ShaderUniformDataType.SHADER_UNIFORM_INT)
+        md.rl.set_shader_value(self._shader, self._locs['alpha'], alpha_ptr, md.rl.ShaderUniformDataType.SHADER_UNIFORM_FLOAT)
+        md.rl.set_shader_value_v(self._shader, self._locs['colors'], colors_ptr, md.rl.ShaderUniformDataType.SHADER_UNIFORM_VEC4, len(self.colors))
+        md.rl.set_shader_value_v(self._shader, self._locs['stops'], stops_ptr, md.rl.ShaderUniformDataType.SHADER_UNIFORM_FLOAT, len(self.stops))
+        md.rl.set_shader_value(self._shader, self._locs['size'], size_ptr, md.rl.ShaderUniformDataType.SHADER_UNIFORM_VEC2)
         
-        rl.begin_shader_mode(self._shader)
+        md.rl.begin_shader_mode(self._shader)
         
         source_rec = (0, 0, 1, 1)
         dest_rec = (x, y, width, height)
-        rl.draw_texture_pro(self._blank_texture, source_rec, dest_rec, (0, 0), 0.0, rl.WHITE)
+        md.rl.draw_texture_pro(self._blank_texture, source_rec, dest_rec, (0, 0), 0.0, md.rl.WHITE)
         
-        rl.end_shader_mode()
+        md.rl.end_shader_mode()

@@ -1,7 +1,7 @@
-import pyray as rl
 import copy
 from typing import Unpack
 
+import nevu_ui.core.modules as md
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.components.nevuobj.nevuobj import NevuObject
 from collections.abc import Callable
@@ -71,14 +71,14 @@ class RectCheckBox(Widget):
             
             ext_kwargs = {}
             if nevu_state.window.is_dtype.raylib:
-                ext_kwargs["blitmode"] = rl.BlendMode.BLEND_ALPHA
+                ext_kwargs["blitmode"] = md.rl.BlendMode.BLEND_ALPHA
             
             inner_surf = self.renderer._create_surf_base(active_size, True, self.relm(inner_radius), sdf=True, **ext_kwargs)
             
             if nevu_state.window.is_dtype.raylib:
-                rl.set_texture_filter(inner_surf.texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR) #type: ignore
+                md.rl.set_texture_filter(inner_surf.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR) #type: ignore
                 with self.surface: #type: ignore
-                    nevu_state.window.display.blit_rect_vec(inner_surf.texture, offset.get_int_tuple(), mode = rl.BlendMode.BLEND_ALPHA) #type: ignore
+                    nevu_state.window.display.blit_rect_vec(inner_surf.texture, offset.get_int_tuple(), mode = md.rl.BlendMode.BLEND_ALPHA) #type: ignore
                 return
             self.surface.blit(inner_surf, offset) #type: ignore
             self.clear_texture()

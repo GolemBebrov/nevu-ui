@@ -1,5 +1,7 @@
-import pygame
-from typing import Any, List, Tuple, Optional, Sequence, Callable
+import nevu_ui.core.modules as md
+from typing import Any, List, Tuple, Optional, Sequence, Callable, TYPE_CHECKING
+if TYPE_CHECKING:
+    from pygame import Rect
 
 from nevu_ui.fast.nvvector2 import NvVector2
 
@@ -41,7 +43,7 @@ def get_rect_helper_pygame(
     master_coordinates: NvVector2, 
     resize_ratio: NvVector2, 
     size: NvVector2
-) -> pygame.Rect: ...
+) -> "Rect": ...
 
 def get_rect_helper_cached(
     master_coordinates: NvVector2, 
@@ -51,7 +53,7 @@ def get_rect_helper_cached(
 def get_rect_helper_cached_pygame(
     master_coordinates: NvVector2, 
     csize: NvVector2
-) -> pygame.Rect: ...
+) -> "Rect": ...
 
 def logic_update_helper(
     master_coordinates: NvVector2,

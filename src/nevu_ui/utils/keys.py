@@ -1,97 +1,99 @@
-import pygame
-import pyray
+import nevu_ui.core.modules as md 
 from nevu_ui.core.state import nevu_state
 
-_pygame_keys = {
-    "A": pygame.K_a, "B": pygame.K_b, "C": pygame.K_c, "D": pygame.K_d,
-    "E": pygame.K_e, "F": pygame.K_f, "G": pygame.K_g, "H": pygame.K_h,
-    "I": pygame.K_i, "J": pygame.K_j, "K": pygame.K_k, "L": pygame.K_l,
-    "M": pygame.K_m, "N": pygame.K_n, "O": pygame.K_o, "P": pygame.K_p,
-    "Q": pygame.K_q, "R": pygame.K_r, "S": pygame.K_s, "T": pygame.K_t,
-    "U": pygame.K_u, "V": pygame.K_v, "W": pygame.K_w, "X": pygame.K_x,
-    "Y": pygame.K_y, "Z": pygame.K_z,
-    "Num0": pygame.K_0, "Num1": pygame.K_1, "Num2": pygame.K_2, "Num3": pygame.K_3,
-    "Num4": pygame.K_4, "Num5": pygame.K_5, "Num6": pygame.K_6, "Num7": pygame.K_7,
-    "Num8": pygame.K_8, "Num9": pygame.K_9,
-    "F1": pygame.K_F1, "F2": pygame.K_F2, "F3": pygame.K_F3, "F4": pygame.K_F4,
-    "F5": pygame.K_F5, "F6": pygame.K_F6, "F7": pygame.K_F7, "F8": pygame.K_F8,
-    "F9": pygame.K_F9, "F10": pygame.K_F10, "F11": pygame.K_F11, "F12": pygame.K_F12,
-    "Space": pygame.K_SPACE, "Escape": pygame.K_ESCAPE, "Enter": pygame.K_RETURN,
-    "Tab": pygame.K_TAB, "Backspace": pygame.K_BACKSPACE, "Insert": pygame.K_INSERT,
-    "Delete": pygame.K_DELETE, "Right": pygame.K_RIGHT, "Left": pygame.K_LEFT,
-    "Down": pygame.K_DOWN, "Up": pygame.K_UP, "PageUp": pygame.K_PAGEUP,
-    "PageDown": pygame.K_PAGEDOWN, "Home": pygame.K_HOME, "End": pygame.K_END,
-    "LeftShift": pygame.K_LSHIFT, "RightShift": pygame.K_RSHIFT,
-    "LeftCtrl": pygame.K_LCTRL, "RightCtrl": pygame.K_RCTRL,
-    "LeftAlt": pygame.K_LALT, "RightAlt": pygame.K_RALT,
-    "LeftSuper": pygame.K_LSUPER, "RightSuper": pygame.K_RSUPER,
-    "Menu": pygame.K_MENU, "Minus": pygame.K_MINUS, "Equal": pygame.K_EQUALS,
-    "LeftBracket": pygame.K_LEFTBRACKET, "RightBracket": pygame.K_RIGHTBRACKET,
-    "Backslash": pygame.K_BACKSLASH, "Semicolon": pygame.K_SEMICOLON,
-    "Apostrophe": pygame.K_QUOTE, "Grave": pygame.K_BACKQUOTE,
-    "Comma": pygame.K_COMMA, "Period": pygame.K_PERIOD, "Slash": pygame.K_SLASH,
-    "Kp0": pygame.K_KP0, "Kp1": pygame.K_KP1, "Kp2": pygame.K_KP2,
-    "Kp3": pygame.K_KP3, "Kp4": pygame.K_KP4, "Kp5": pygame.K_KP5,
-    "Kp6": pygame.K_KP6, "Kp7": pygame.K_KP7, "Kp8": pygame.K_KP8,
-    "Kp9": pygame.K_KP9, "KpDecimal": pygame.K_KP_PERIOD,
-    "KpDivide": pygame.K_KP_DIVIDE, "KpMultiply": pygame.K_KP_MULTIPLY,
-    "KpMinus": pygame.K_KP_MINUS, "KpPlus": pygame.K_KP_PLUS,
-    "KpEnter": pygame.K_KP_ENTER, "KpEqual": pygame.K_KP_EQUALS,
-    "CapsLock": pygame.K_CAPSLOCK, "ScrollLock": pygame.K_SCROLLOCK,
-    "NumLock": pygame.K_NUMLOCK, "PrintScreen": pygame.K_PRINTSCREEN,
-    "Pause": pygame.K_PAUSE
-}
+_keys = {}
+_keys_reversed = {}
 
-_pyray_keys = {
-    "A": pyray.KeyboardKey.KEY_A, "B": pyray.KeyboardKey.KEY_B, "C": pyray.KeyboardKey.KEY_C, "D": pyray.KeyboardKey.KEY_D,
-    "E": pyray.KeyboardKey.KEY_E, "F": pyray.KeyboardKey.KEY_F, "G": pyray.KeyboardKey.KEY_G, "H": pyray.KeyboardKey.KEY_H,
-    "I": pyray.KeyboardKey.KEY_I, "J": pyray.KeyboardKey.KEY_J, "K": pyray.KeyboardKey.KEY_K, "L": pyray.KeyboardKey.KEY_L,
-    "M": pyray.KeyboardKey.KEY_M, "N": pyray.KeyboardKey.KEY_N, "O": pyray.KeyboardKey.KEY_O, "P": pyray.KeyboardKey.KEY_P,
-    "Q": pyray.KeyboardKey.KEY_Q, "R": pyray.KeyboardKey.KEY_R, "S": pyray.KeyboardKey.KEY_S, "T": pyray.KeyboardKey.KEY_T,
-    "U": pyray.KeyboardKey.KEY_U, "V": pyray.KeyboardKey.KEY_V, "W": pyray.KeyboardKey.KEY_W, "X": pyray.KeyboardKey.KEY_X,
-    "Y": pyray.KeyboardKey.KEY_Y, "Z": pyray.KeyboardKey.KEY_Z,
-    "Num0": pyray.KeyboardKey.KEY_ZERO, "Num1": pyray.KeyboardKey.KEY_ONE, "Num2": pyray.KeyboardKey.KEY_TWO, "Num3": pyray.KeyboardKey.KEY_THREE,
-    "Num4": pyray.KeyboardKey.KEY_FOUR, "Num5": pyray.KeyboardKey.KEY_FIVE, "Num6": pyray.KeyboardKey.KEY_SIX, "Num7": pyray.KeyboardKey.KEY_SEVEN,
-    "Num8": pyray.KeyboardKey.KEY_EIGHT, "Num9": pyray.KeyboardKey.KEY_NINE,
-    "F1": pyray.KeyboardKey.KEY_F1, "F2": pyray.KeyboardKey.KEY_F2, "F3": pyray.KeyboardKey.KEY_F3, "F4": pyray.KeyboardKey.KEY_F4,
-    "F5": pyray.KeyboardKey.KEY_F5, "F6": pyray.KeyboardKey.KEY_F6, "F7": pyray.KeyboardKey.KEY_F7, "F8": pyray.KeyboardKey.KEY_F8,
-    "F9": pyray.KeyboardKey.KEY_F9, "F10": pyray.KeyboardKey.KEY_F10, "F11": pyray.KeyboardKey.KEY_F11, "F12": pyray.KeyboardKey.KEY_F12,
-    "Space": pyray.KeyboardKey.KEY_SPACE, "Escape": pyray.KeyboardKey.KEY_ESCAPE, "Enter": pyray.KeyboardKey.KEY_ENTER,
-    "Tab": pyray.KeyboardKey.KEY_TAB, "Backspace": pyray.KeyboardKey.KEY_BACKSPACE, "Insert": pyray.KeyboardKey.KEY_INSERT,
-    "Delete": pyray.KeyboardKey.KEY_DELETE, "Right": pyray.KeyboardKey.KEY_RIGHT, "Left": pyray.KeyboardKey.KEY_LEFT,
-    "Down": pyray.KeyboardKey.KEY_DOWN, "Up": pyray.KeyboardKey.KEY_UP, "PageUp": pyray.KeyboardKey.KEY_PAGE_UP,
-    "PageDown": pyray.KeyboardKey.KEY_PAGE_DOWN, "Home": pyray.KeyboardKey.KEY_HOME, "End": pyray.KeyboardKey.KEY_END,
-    "LeftShift": pyray.KeyboardKey.KEY_LEFT_SHIFT, "RightShift": pyray.KeyboardKey.KEY_RIGHT_SHIFT,
-    "LeftCtrl": pyray.KeyboardKey.KEY_LEFT_CONTROL, "RightCtrl": pyray.KeyboardKey.KEY_RIGHT_CONTROL,
-    "LeftAlt": pyray.KeyboardKey.KEY_LEFT_ALT, "RightAlt": pyray.KeyboardKey.KEY_RIGHT_ALT,
-    "LeftSuper": pyray.KeyboardKey.KEY_LEFT_SUPER, "RightSuper": pyray.KeyboardKey.KEY_RIGHT_SUPER,
-    "Menu": pyray.KeyboardKey.KEY_KB_MENU, "Minus": pyray.KeyboardKey.KEY_MINUS, "Equal": pyray.KeyboardKey.KEY_EQUAL,
-    "LeftBracket": pyray.KeyboardKey.KEY_LEFT_BRACKET, "RightBracket": pyray.KeyboardKey.KEY_RIGHT_BRACKET,
-    "Backslash": pyray.KeyboardKey.KEY_BACKSLASH, "Semicolon": pyray.KeyboardKey.KEY_SEMICOLON,
-    "Apostrophe": pyray.KeyboardKey.KEY_APOSTROPHE, "Grave": pyray.KeyboardKey.KEY_GRAVE,
-    "Comma": pyray.KeyboardKey.KEY_COMMA, "Period": pyray.KeyboardKey.KEY_PERIOD, "Slash": pyray.KeyboardKey.KEY_SLASH,
-    "Kp0": pyray.KeyboardKey.KEY_KP_0, "Kp1": pyray.KeyboardKey.KEY_KP_1, "Kp2": pyray.KeyboardKey.KEY_KP_2,
-    "Kp3": pyray.KeyboardKey.KEY_KP_3, "Kp4": pyray.KeyboardKey.KEY_KP_4, "Kp5": pyray.KeyboardKey.KEY_KP_5,
-    "Kp6": pyray.KeyboardKey.KEY_KP_6, "Kp7": pyray.KeyboardKey.KEY_KP_7, "Kp8": pyray.KeyboardKey.KEY_KP_8,
-    "Kp9": pyray.KeyboardKey.KEY_KP_9, "KpDecimal": pyray.KeyboardKey.KEY_KP_DECIMAL,
-    "KpDivide": pyray.KeyboardKey.KEY_KP_DIVIDE, "KpMultiply": pyray.KeyboardKey.KEY_KP_MULTIPLY,
-    "KpMinus": pyray.KeyboardKey.KEY_KP_SUBTRACT, "KpPlus": pyray.KeyboardKey.KEY_KP_ADD,
-    "KpEnter": pyray.KeyboardKey.KEY_KP_ENTER, "KpEqual": pyray.KeyboardKey.KEY_KP_EQUAL,
-    "CapsLock": pyray.KeyboardKey.KEY_CAPS_LOCK, "ScrollLock": pyray.KeyboardKey.KEY_SCROLL_LOCK,
-    "NumLock": pyray.KeyboardKey.KEY_NUM_LOCK, "PrintScreen": pyray.KeyboardKey.KEY_PRINT_SCREEN,
-    "Pause": pyray.KeyboardKey.KEY_PAUSE, "VolumeUp": pyray.KeyboardKey.KEY_VOLUME_UP, "VolumeDown": pyray.KeyboardKey.KEY_VOLUME_DOWN
-}
+def init_keys():
+    global _keys, _keys_reversed
+    if nevu_state.window.is_dtype.pygame or nevu_state.window.is_dtype.sdl:
+        _keys = {
+            "A": md.pygame.K_a, "B": md.pygame.K_b, "C": md.pygame.K_c, "D": md.pygame.K_d,
+            "E": md.pygame.K_e, "F": md.pygame.K_f, "G": md.pygame.K_g, "H": md.pygame.K_h,
+            "I": md.pygame.K_i, "J": md.pygame.K_j, "K": md.pygame.K_k, "L": md.pygame.K_l,
+            "M": md.pygame.K_m, "N": md.pygame.K_n, "O": md.pygame.K_o, "P": md.pygame.K_p,
+            "Q": md.pygame.K_q, "R": md.pygame.K_r, "S": md.pygame.K_s, "T": md.pygame.K_t,
+            "U": md.pygame.K_u, "V": md.pygame.K_v, "W": md.pygame.K_w, "X": md.pygame.K_x,
+            "Y": md.pygame.K_y, "Z": md.pygame.K_z,
+            "Num0": md.pygame.K_0, "Num1": md.pygame.K_1, "Num2": md.pygame.K_2, "Num3": md.pygame.K_3,
+            "Num4": md.pygame.K_4, "Num5": md.pygame.K_5, "Num6": md.pygame.K_6, "Num7": md.pygame.K_7,
+            "Num8": md.pygame.K_8, "Num9": md.pygame.K_9,
+            "F1": md.pygame.K_F1, "F2": md.pygame.K_F2, "F3": md.pygame.K_F3, "F4": md.pygame.K_F4,
+            "F5": md.pygame.K_F5, "F6": md.pygame.K_F6, "F7": md.pygame.K_F7, "F8": md.pygame.K_F8,
+            "F9": md.pygame.K_F9, "F10": md.pygame.K_F10, "F11": md.pygame.K_F11, "F12": md.pygame.K_F12,
+            "Space": md.pygame.K_SPACE, "Escape": md.pygame.K_ESCAPE, "Enter": md.pygame.K_RETURN,
+            "Tab": md.pygame.K_TAB, "Backspace": md.pygame.K_BACKSPACE, "Insert": md.pygame.K_INSERT,
+            "Delete": md.pygame.K_DELETE, "Right": md.pygame.K_RIGHT, "Left": md.pygame.K_LEFT,
+            "Down": md.pygame.K_DOWN, "Up": md.pygame.K_UP, "PageUp": md.pygame.K_PAGEUP,
+            "PageDown": md.pygame.K_PAGEDOWN, "Home": md.pygame.K_HOME, "End": md.pygame.K_END,
+            "LeftShift": md.pygame.K_LSHIFT, "RightShift": md.pygame.K_RSHIFT,
+            "LeftCtrl": md.pygame.K_LCTRL, "RightCtrl": md.pygame.K_RCTRL,
+            "LeftAlt": md.pygame.K_LALT, "RightAlt": md.pygame.K_RALT,
+            "LeftSuper": md.pygame.K_LSUPER, "RightSuper": md.pygame.K_RSUPER,
+            "Menu": md.pygame.K_MENU, "Minus": md.pygame.K_MINUS, "Equal": md.pygame.K_EQUALS,
+            "LeftBracket": md.pygame.K_LEFTBRACKET, "RightBracket": md.pygame.K_RIGHTBRACKET,
+            "Backslash": md.pygame.K_BACKSLASH, "Semicolon": md.pygame.K_SEMICOLON,
+            "Apostrophe": md.pygame.K_QUOTE, "Grave": md.pygame.K_BACKQUOTE,
+            "Comma": md.pygame.K_COMMA, "Period": md.pygame.K_PERIOD, "Slash": md.pygame.K_SLASH,
+            "Kp0": md.pygame.K_KP0, "Kp1": md.pygame.K_KP1, "Kp2": md.pygame.K_KP2,
+            "Kp3": md.pygame.K_KP3, "Kp4": md.pygame.K_KP4, "Kp5": md.pygame.K_KP5,
+            "Kp6": md.pygame.K_KP6, "Kp7": md.pygame.K_KP7, "Kp8": md.pygame.K_KP8,
+            "Kp9": md.pygame.K_KP9, "KpDecimal": md.pygame.K_KP_PERIOD,
+            "KpDivide": md.pygame.K_KP_DIVIDE, "KpMultiply": md.pygame.K_KP_MULTIPLY,
+            "KpMinus": md.pygame.K_KP_MINUS, "KpPlus": md.pygame.K_KP_PLUS,
+            "KpEnter": md.pygame.K_KP_ENTER, "KpEqual": md.pygame.K_KP_EQUALS,
+            "CapsLock": md.pygame.K_CAPSLOCK, "ScrollLock": md.pygame.K_SCROLLOCK,
+            "NumLock": md.pygame.K_NUMLOCK, "PrintScreen": md.pygame.K_PRINTSCREEN,
+            "Pause": md.pygame.K_PAUSE
+        }
+    elif nevu_state.window.is_dtype.raylib:
+        _keys = {
+            "A": md.rl.KeyboardKey.KEY_A, "B": md.rl.KeyboardKey.KEY_B, "C": md.rl.KeyboardKey.KEY_C, "D": md.rl.KeyboardKey.KEY_D,
+            "E": md.rl.KeyboardKey.KEY_E, "F": md.rl.KeyboardKey.KEY_F, "G": md.rl.KeyboardKey.KEY_G, "H": md.rl.KeyboardKey.KEY_H,
+            "I": md.rl.KeyboardKey.KEY_I, "J": md.rl.KeyboardKey.KEY_J, "K": md.rl.KeyboardKey.KEY_K, "L": md.rl.KeyboardKey.KEY_L,
+            "M": md.rl.KeyboardKey.KEY_M, "N": md.rl.KeyboardKey.KEY_N, "O": md.rl.KeyboardKey.KEY_O, "P": md.rl.KeyboardKey.KEY_P,
+            "Q": md.rl.KeyboardKey.KEY_Q, "R": md.rl.KeyboardKey.KEY_R, "S": md.rl.KeyboardKey.KEY_S, "T": md.rl.KeyboardKey.KEY_T,
+            "U": md.rl.KeyboardKey.KEY_U, "V": md.rl.KeyboardKey.KEY_V, "W": md.rl.KeyboardKey.KEY_W, "X": md.rl.KeyboardKey.KEY_X,
+            "Y": md.rl.KeyboardKey.KEY_Y, "Z": md.rl.KeyboardKey.KEY_Z,
+            "Num0": md.rl.KeyboardKey.KEY_ZERO, "Num1": md.rl.KeyboardKey.KEY_ONE, "Num2": md.rl.KeyboardKey.KEY_TWO, "Num3": md.rl.KeyboardKey.KEY_THREE,
+            "Num4": md.rl.KeyboardKey.KEY_FOUR, "Num5": md.rl.KeyboardKey.KEY_FIVE, "Num6": md.rl.KeyboardKey.KEY_SIX, "Num7": md.rl.KeyboardKey.KEY_SEVEN,
+            "Num8": md.rl.KeyboardKey.KEY_EIGHT, "Num9": md.rl.KeyboardKey.KEY_NINE,
+            "F1": md.rl.KeyboardKey.KEY_F1, "F2": md.rl.KeyboardKey.KEY_F2, "F3": md.rl.KeyboardKey.KEY_F3, "F4": md.rl.KeyboardKey.KEY_F4,
+            "F5": md.rl.KeyboardKey.KEY_F5, "F6": md.rl.KeyboardKey.KEY_F6, "F7": md.rl.KeyboardKey.KEY_F7, "F8": md.rl.KeyboardKey.KEY_F8,
+            "F9": md.rl.KeyboardKey.KEY_F9, "F10": md.rl.KeyboardKey.KEY_F10, "F11": md.rl.KeyboardKey.KEY_F11, "F12": md.rl.KeyboardKey.KEY_F12,
+            "Space": md.rl.KeyboardKey.KEY_SPACE, "Escape": md.rl.KeyboardKey.KEY_ESCAPE, "Enter": md.rl.KeyboardKey.KEY_ENTER,
+            "Tab": md.rl.KeyboardKey.KEY_TAB, "Backspace": md.rl.KeyboardKey.KEY_BACKSPACE, "Insert": md.rl.KeyboardKey.KEY_INSERT,
+            "Delete": md.rl.KeyboardKey.KEY_DELETE, "Right": md.rl.KeyboardKey.KEY_RIGHT, "Left": md.rl.KeyboardKey.KEY_LEFT,
+            "Down": md.rl.KeyboardKey.KEY_DOWN, "Up": md.rl.KeyboardKey.KEY_UP, "PageUp": md.rl.KeyboardKey.KEY_PAGE_UP,
+            "PageDown": md.rl.KeyboardKey.KEY_PAGE_DOWN, "Home": md.rl.KeyboardKey.KEY_HOME, "End": md.rl.KeyboardKey.KEY_END,
+            "LeftShift": md.rl.KeyboardKey.KEY_LEFT_SHIFT, "RightShift": md.rl.KeyboardKey.KEY_RIGHT_SHIFT,
+            "LeftCtrl": md.rl.KeyboardKey.KEY_LEFT_CONTROL, "RightCtrl": md.rl.KeyboardKey.KEY_RIGHT_CONTROL,
+            "LeftAlt": md.rl.KeyboardKey.KEY_LEFT_ALT, "RightAlt": md.rl.KeyboardKey.KEY_RIGHT_ALT,
+            "LeftSuper": md.rl.KeyboardKey.KEY_LEFT_SUPER, "RightSuper": md.rl.KeyboardKey.KEY_RIGHT_SUPER,
+            "Menu": md.rl.KeyboardKey.KEY_KB_MENU, "Minus": md.rl.KeyboardKey.KEY_MINUS, "Equal": md.rl.KeyboardKey.KEY_EQUAL,
+            "LeftBracket": md.rl.KeyboardKey.KEY_LEFT_BRACKET, "RightBracket": md.rl.KeyboardKey.KEY_RIGHT_BRACKET,
+            "Backslash": md.rl.KeyboardKey.KEY_BACKSLASH, "Semicolon": md.rl.KeyboardKey.KEY_SEMICOLON,
+            "Apostrophe": md.rl.KeyboardKey.KEY_APOSTROPHE, "Grave": md.rl.KeyboardKey.KEY_GRAVE,
+            "Comma": md.rl.KeyboardKey.KEY_COMMA, "Period": md.rl.KeyboardKey.KEY_PERIOD, "Slash": md.rl.KeyboardKey.KEY_SLASH,
+            "Kp0": md.rl.KeyboardKey.KEY_KP_0, "Kp1": md.rl.KeyboardKey.KEY_KP_1, "Kp2": md.rl.KeyboardKey.KEY_KP_2,
+            "Kp3": md.rl.KeyboardKey.KEY_KP_3, "Kp4": md.rl.KeyboardKey.KEY_KP_4, "Kp5": md.rl.KeyboardKey.KEY_KP_5,
+            "Kp6": md.rl.KeyboardKey.KEY_KP_6, "Kp7": md.rl.KeyboardKey.KEY_KP_7, "Kp8": md.rl.KeyboardKey.KEY_KP_8,
+            "Kp9": md.rl.KeyboardKey.KEY_KP_9, "KpDecimal": md.rl.KeyboardKey.KEY_KP_DECIMAL,
+            "KpDivide": md.rl.KeyboardKey.KEY_KP_DIVIDE, "KpMultiply": md.rl.KeyboardKey.KEY_KP_MULTIPLY,
+            "KpMinus": md.rl.KeyboardKey.KEY_KP_SUBTRACT, "KpPlus": md.rl.KeyboardKey.KEY_KP_ADD,
+            "KpEnter": md.rl.KeyboardKey.KEY_KP_ENTER, "KpEqual": md.rl.KeyboardKey.KEY_KP_EQUAL,
+            "CapsLock": md.rl.KeyboardKey.KEY_CAPS_LOCK, "ScrollLock": md.rl.KeyboardKey.KEY_SCROLL_LOCK,
+            "NumLock": md.rl.KeyboardKey.KEY_NUM_LOCK, "PrintScreen": md.rl.KeyboardKey.KEY_PRINT_SCREEN,
+            "Pause": md.rl.KeyboardKey.KEY_PAUSE, "VolumeUp": md.rl.KeyboardKey.KEY_VOLUME_UP, "VolumeDown": md.rl.KeyboardKey.KEY_VOLUME_DOWN
+        }
 
-_pygame_keys_reversed = {v: k for k, v in _pygame_keys.items()}
-_pyray_keys_reversed = {v: k for k, v in _pyray_keys.items()}
+    
+    _keys_reversed = {v: k for k, v in _keys.items()}
 
 class KeysMeta(type):
     def __getattr__(cls, key):
         if not cls._main_keys:
-            if nevu_state.window.is_dtype.raylib:
-                cls._main_keys = _pyray_keys
-            else:
-                cls._main_keys = _pygame_keys
+            cls._main_keys = _keys
         return cls._main_keys[key]
 
 class Keys(metaclass=KeysMeta):
@@ -118,7 +120,5 @@ class Keys(metaclass=KeysMeta):
     CapsLock: int; ScrollLock: int; NumLock: int
     PrintScreen: int; Pause: int; VolumeUp: int; VolumeDown: int
     @staticmethod
-    def revert(int_key: int) -> str:
-        if nevu_state.window.is_dtype.raylib:
-            return _pyray_keys_reversed[int_key]
-        return _pygame_keys_reversed[int_key]
+    def revert(int_key: int) -> str: # type: ignore
+        _keys_reversed[int_key]

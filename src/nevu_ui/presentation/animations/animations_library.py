@@ -1,8 +1,4 @@
 import math
-import random
-
-from nevu_ui.presentation.animations.animation_base import Animation
-from nevu_ui.core.enums import AnimationType
 
 def linear(value):
     return value

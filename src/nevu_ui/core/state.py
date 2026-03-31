@@ -1,12 +1,12 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from pygame._sdl2 import Renderer
 from nevu_ui.core.enums import Backend
 
 
 if TYPE_CHECKING:
     from nevu_ui.window import Window
     from nevu_ui.fast.zsystem import ZSystem
+    from pygame._sdl2 import Renderer
     from nevu_ui.manager import Manager
     from nevu_ui.overlay import OverlayManager
 
