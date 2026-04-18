@@ -245,3 +245,54 @@ class ColorThemeLibrary(metaclass=TrackThemeNamesMeta):
         surface_variant=ColorPair(color=(40, 40, 40), oncolor=(216, 191, 216)),
         outline=(106, 90, 205),
         inverse_surface=ColorPair(color=(230, 230, 250), oncolor=(12, 12, 12)), inverse_primary=(138, 43, 226))
+    
+    tokyo_night = ColorTheme(
+        name="Tokyo Night",
+        primary=ColorSubTheme(color=(122, 162, 247), oncolor=(26, 27, 38), container=(61, 89, 161), oncontainer=(192, 202, 245)),
+        secondary=ColorSubTheme(color=(187, 154, 247), oncolor=(26, 27, 38), container=(102, 102, 153), oncontainer=(219, 203, 245)),
+        tertiary=ColorSubTheme(color=(115, 218, 202), oncolor=(26, 27, 38), container=(42, 195, 222), oncontainer=(167, 254, 235)),
+        error=ColorSubTheme(color=(247, 118, 142), oncolor=(26, 27, 38), container=(219, 75, 75), oncontainer=(255, 189, 189)),
+        background=ColorPair(color=(26, 27, 38), oncolor=(192, 202, 245)),
+        surface=ColorPair(color=(36, 40, 59), oncolor=(192, 202, 245)),
+        surface_variant=ColorPair(color=(52, 59, 88), oncolor=(169, 177, 214)),
+        outline=(68, 75, 106),
+        inverse_surface=ColorPair(color=(192, 202, 245), oncolor=(26, 27, 38)), 
+        inverse_primary=(61, 89, 161)
+    )
+
+    dracula = ColorTheme(
+        name="Dracula",
+        primary=ColorSubTheme(color=(189, 147, 249), oncolor=(40, 42, 54), container=(74, 55, 106), oncontainer=(216, 189, 255)),
+        secondary=ColorSubTheme(color=(255, 121, 198), oncolor=(40, 42, 54), container=(90, 42, 70), oncontainer=(255, 184, 225)),
+        tertiary=ColorSubTheme(color=(139, 233, 253), oncolor=(40, 42, 54), container=(45, 85, 95), oncontainer=(165, 245, 255)),
+        error=ColorSubTheme(color=(255, 85, 85), oncolor=(248, 248, 242), container=(90, 35, 35), oncontainer=(255, 180, 180)),
+        background=ColorPair(color=(40, 42, 54), oncolor=(248, 248, 242)),
+        surface=ColorPair(color=(44, 46, 58), oncolor=(248, 248, 242)),
+        surface_variant=ColorPair(color=(57, 59, 73), oncolor=(189, 147, 249)),
+        outline=(98, 114, 164),
+        inverse_surface=ColorPair(color=(248, 248, 242), oncolor=(40, 42, 54)), 
+        inverse_primary=(139, 93, 223))
+
+    nord_dark = ColorTheme(
+        name="Nord",
+        primary=ColorSubTheme(color=(136, 192, 208), oncolor=(46, 52, 64), container=(94, 129, 172), oncontainer=(236, 239, 244)),
+        secondary=ColorSubTheme(color=(129, 161, 193), oncolor=(46, 52, 64), container=(76, 86, 106), oncontainer=(216, 222, 233)),
+        tertiary=ColorSubTheme(color=(143, 188, 187), oncolor=(46, 52, 64), container=(67, 76, 94), oncontainer=(229, 233, 240)),
+        error=ColorSubTheme(color=(191, 97, 106), oncolor=(236, 239, 244), container=(110, 52, 58), oncontainer=(216, 222, 233)),
+        background=ColorPair(color=(46, 52, 64), oncolor=(216, 222, 233)),
+        surface=ColorPair(color=(59, 66, 82), oncolor=(229, 233, 240)),
+        surface_variant=ColorPair(color=(67, 76, 94), oncolor=(216, 222, 233)),
+        outline=(76, 86, 106),
+        inverse_surface=ColorPair(color=(216, 222, 233), oncolor=(46, 52, 64)), inverse_primary=(94, 129, 172))
+
+    solarized_dark = ColorTheme(
+        name="Solarized Dark",
+        primary=ColorSubTheme(color=(38, 139, 210), oncolor=(0, 43, 54), container=(7, 54, 66), oncontainer=(147, 161, 161)),
+        secondary=ColorSubTheme(color=(42, 161, 152), oncolor=(0, 43, 54), container=(7, 54, 66), oncontainer=(131, 148, 150)),
+        tertiary=ColorSubTheme(color=(181, 137, 0), oncolor=(0, 43, 54), container=(7, 54, 66), oncontainer=(147, 161, 161)),
+        error=ColorSubTheme(color=(220, 50, 47), oncolor=(253, 246, 227), container=(203, 75, 22), oncontainer=(253, 246, 227)),
+        background=ColorPair(color=(0, 43, 54), oncolor=(131, 148, 150)),
+        surface=ColorPair(color=(7, 54, 66), oncolor=(147, 161, 161)),
+        surface_variant=ColorPair(color=(88, 110, 117), oncolor=(238, 232, 213)),
+        outline=(101, 123, 131),
+        inverse_surface=ColorPair(color=(253, 246, 227), oncolor=(0, 43, 54)), inverse_primary=(42, 161, 152))
