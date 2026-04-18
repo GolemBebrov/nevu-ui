@@ -10,6 +10,9 @@ from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2
 from nevu_ui.fast.nvparam.nvparam cimport NvParam
 from cpython.dict cimport PyDict_GetItem
 from cpython.object cimport PyObject
+from nevu_ui.fast.nevucache.nevucache cimport Cache
+from nevu_ui.core.state import nevu_state
+from nevu_ui.core.enums import CacheType
 cimport cython
 from nevu_ui.fast.logic.fast_logic cimport relm_helper, rel_helper, mass_rel_helper, vec_rel_helper, get_nvrect_helper
 from nevu_ui.fast.nvrect.nvrect cimport NvRect
@@ -25,6 +28,20 @@ cdef class NevuCobject:
         self._blacklisted_params = list()
         self._param_links = dict()
         self._params_map = dict()
+        self.cache = Cache.new()
+        self._sended_z_link = False
+        self._dragging = False
+        self._is_kup = False
+        self._kup_abandoned = False
+        self._force_state_set_continue = False
+        self._visible = True
+        self._active = True
+        self._changed = True
+        self._first_update = True
+        self.booted = False
+        self._wait_mode = False
+        self._dead = False
+        self.specific_cache_whitelist = [CacheType.Scaled_Image, CacheType.Scaled_Gradient, CacheType.Surface, CacheType.Borders, CacheType.Scaled_Borders, CacheType.Scaled_Background, CacheType.Background, CacheType.Texture, CacheType.RlFont, CacheType.TextArgs, CacheType.ClickTexture]
 
     cpdef list _get_param_names(self):
         return list(self._params_map.keys())
@@ -66,22 +83,22 @@ cdef class NevuCobject:
             param.setter(new_value)
         else: param.value = new_value
 
-    cpdef float relx_custom(self, float num, float min, float max):
+    cpdef double relx_custom(self, double num, double min, double max):
         return rel_helper(num, self._resize_ratio.x, min, max)
 
-    cpdef float rely_custom(self, float num, float min, float max):
+    cpdef double rely_custom(self, double num, double min, double max):
         return rel_helper(num, self._resize_ratio.y, min, max)
 
-    cpdef float relm_custom(self, float num, float min, float max):
+    cpdef double relm_custom(self, double num, double min, double max):
         return relm_helper(num, self._resize_ratio.x, self._resize_ratio.y, min, max)
     
-    cpdef float relx(self, float num):
+    cpdef double relx(self, double num):
         return rel_helper(num, self._resize_ratio.x, -1.0, -1.0)
 
-    cpdef float rely(self, float num):
+    cpdef double rely(self, double num):
         return rel_helper(num, self._resize_ratio.y, -1.0, -1.0)
 
-    cpdef float relm(self, float num):
+    cpdef double relm(self, double num):
         return relm_helper(num, self._resize_ratio.x, self._resize_ratio.y, -1.0, -1.0)
 
     cpdef NvVector2 rel(self, NvVector2 vec):  
@@ -96,3 +113,23 @@ cdef class NevuCobject:
         cdef bint need_to_set = self._coordinates_setter(coordinates) #type: ignore
         if not need_to_set: return
         self.coordinates = coordinates
+    
+    cpdef void clear_all(self):
+        """
+        Clears all cached data by invoking the clear method on the cache. 
+        !WARNING!: may cause bugs and errors
+        """
+        if nevu_state.window.is_dtype.raylib: 
+            self._clear_rl_specific()
+        self.cache.c_clear()
+        
+    cpdef void clear_surfaces(self):
+        """
+        Clears specific cached surface-related data by invoking the clear_selected 
+        method on the cache with a whitelist of CacheTypes related to surfaces. 
+        This includes Image, Scaled_Gradient, Surface, and Borders.
+        Highly recommended to use this method instead of clear_all.
+        """
+        if nevu_state.window.is_dtype.raylib: 
+            self._clear_rl_specific()
+        self.cache.c_clear_selected(whitelist = self.specific_cache_whitelist, blacklist = [])
