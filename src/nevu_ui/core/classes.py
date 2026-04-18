@@ -1,7 +1,8 @@
-from enum import StrEnum
+from enum import StrEnum, Enum
+import contextlib
 from dataclasses import dataclass
 from typing import Any
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 from nevu_ui.core.enums import Backend
 if TYPE_CHECKING:
     from nevu_ui.fast.nvvector2 import NvVector2
@@ -96,3 +97,62 @@ class Counter:
     def reset(self, reset_value: int | float | None = None): 
         self.val = reset_value or self._initial_val
         self.ended = False
+
+class EnumValidator:
+    __slots__ = ('_enum_class', '_handlers')
+    def __init__(self, enum_class: type[Enum]):
+        object.__setattr__(self, '_enum_class', enum_class)
+        object.__setattr__(self, '_handlers', {})
+
+    def __enter__(self) -> 'EnumValidator':
+        return self
+
+    def __setattr__(self, name: str, value: Callable[..., Any] | bool) -> None:
+        if not __debug__: return
+        if name in self._enum_class.__members__:
+            self._handlers[name] = value
+        else:
+            raise AttributeError(f"'{self._enum_class.__name__}' has no member '{name}'")
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        if not __debug__: return
+        if exc_type is not None: return
+
+        if missing := [name for name in self._enum_class.__members__ if name not in self._handlers]:
+            raise NotImplementedError(f"Missing definitions for {self._enum_class.__name__} members: {', '.join(missing)}")
+
+
+class GlobalsBase:
+    def __init__(self):
+        pass
+    
+    @property
+    def library(self): 
+        return nevu_globals
+    
+    def modify(self, **kwargs): 
+        nevu_globals.update(kwargs)
+
+    @contextlib.contextmanager
+    def modify_temp(self, **kwargs):
+        saved_state = {}
+        added_keys =[]
+        
+        for key in kwargs:
+            if key in nevu_globals:
+                saved_state[key] = nevu_globals[key]
+            else:
+                added_keys.append(key)
+        self.modify(**kwargs)
+        
+        try:
+            yield
+        finally:
+            for key in added_keys:
+                if key in nevu_globals:
+                    del nevu_globals[key]
+            
+            for key, old_value in saved_state.items():
+                nevu_globals[key] = old_value
+
+nevu_globals = {}
