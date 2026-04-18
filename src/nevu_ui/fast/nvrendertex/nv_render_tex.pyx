@@ -3,44 +3,44 @@ from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2
 from nevu_ui.fast.nvrect.nvrect cimport NvRect
 from nevu_ui.presentation.color import Color
 from nevu_ui.core.state import nevu_state
-from nevu_ui.core.annotations import Annotations
+from nevu_ui.core.annotations import Annotations        
 
 cdef class NvRenderTexture:
     cdef public object render_texture 
-    cdef public object size
+    cdef public NvVector2 size
     cdef public bint loaded
-    @classmethod
-    def from_rl_render_texture(cls, rl_render_texture: md.rl.RenderTexture): 
-        cdef NvRenderTexture new_self = cls.__new__(cls)
+    @staticmethod
+    def from_rl_render_texture(rl_render_texture):
+        cdef NvRenderTexture new_self = NvRenderTexture.__new__(NvRenderTexture)
         new_self.render_texture = rl_render_texture
         new_self.size = NvVector2.new(rl_render_texture.texture.width, rl_render_texture.texture.height)
         new_self.loaded = True # type: ignore
         return new_self
     
     def __init__(self, size: NvVector2):
-        self.render_texture = md.rl.load_render_texture(int(size.x), int(size.y))
+        self.render_texture = md.rl.load_render_texture(int(size.x), int(size.y)) # type: ignore
         self.size = size
         self.loaded = True # type: ignore
     
     @property
-    def texture(self): return self.render_texture.texture # type: ignore
+    def texture(self): return self.render_texture.texture
     
     @property
-    def id(self): return self.render_texture.id # type: ignore
+    def id(self): return self.render_texture.id
     
     @property
-    def depth(self): return self.render_texture.depth # type: ignore
+    def depth(self): return self.render_texture.depth
     
     cpdef void blit(self, nv_texture: NvRenderTexture, dest: Annotations.dest_like, blend_mode: int = 0, flip: bool = True, color: Annotations.rgba_color = Color.White):
         assert self.loaded, "Render texture not loaded"
         md.rl.begin_texture_mode(self.render_texture) # type: ignore
-        self.fast_blit(nv_texture, dest, blend_mode, flip, color)
+        self.fast_blit(nv_texture, dest, flip, color)
         md.rl.end_texture_mode()
     
-    cpdef void fast_blit(self, nv_texture: NvRenderTexture, dest: Annotations.dest_like, blend_mode: int = 0, flip: bool = True, color: Annotations.rgba_color = Color.White):
+    cpdef void fast_blit(self, nv_texture: NvRenderTexture, dest: Annotations.dest_like, flip: bool = True, color: Annotations.rgba_color = Color.White):
         display = nevu_state.window.display
         assert nevu_state.window.is_raylib(display)
-        display.blit_rect_vec(nv_texture.texture, dest, flip, color, mode=blend_mode)
+        display.fast_blit_pro(nv_texture.texture, dest, flip, color)
         
     cpdef void clear(self, color: Annotations.rgba_color):
         assert self.loaded, "Render texture not loaded"
@@ -61,9 +61,17 @@ cdef class NvRenderTexture:
         self.loaded = False # type: ignore
     
     cpdef NvRect get_rect(self):
-        return NvRect(0, 0, *self.size)
+        return NvRect.new(0, 0, self.size.x, self.size.y)
     
-    def copy(self, flip: bool = True):
+    cpdef double get_height(self): return self.size.y
+    cpdef double get_width(self): return self.size.x
+
+    @property
+    def width(self): return self.size.x
+    @property
+    def height(self): return self.size.y
+
+    cpdef NvRenderTexture copy(self, bint flip = True):
         assert self.loaded, "Render texture not loaded"
         new_nvtexture = NvRenderTexture(self.size) # type: ignore
         new_nvtexture.blit(self, (0, 0), md.rl.BlendMode.BLEND_ALPHA, flip)
