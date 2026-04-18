@@ -66,3 +66,35 @@ class NvRect:
     def move_ip(self, x: float | int, y: float | int) -> None: ...
     @overload
     def move_ip(self, xy: NvVector2 | list | tuple) -> None: ...
+
+    @property
+    def left(self):
+        return self.x
+    
+    @left.setter
+    def left(self, value):
+        self.x = value
+    
+    @property
+    def top(self):
+        return self.y
+    
+    @top.setter
+    def top(self, value):
+        self.y = value
+    
+    @property
+    def right(self):
+        return self.x + self.w
+    
+    @right.setter
+    def right(self, value):
+        self.w = value - self.x
+
+    @property
+    def bottom(self):
+        return self.y + self.h
+    
+    @bottom.setter
+    def bottom(self, value):
+        self.h = value - self.y

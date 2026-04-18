@@ -64,7 +64,8 @@ cdef class NvRect:
             self.h = 0.0
         elif nargs == 1:
             arg = args[0]
-            if isinstance(arg, md.pygame.Rect | NvRect):
+            if hasattr(arg, "unionall_ip") or isinstance(arg, NvRect):
+                #pygame ReCT
                 self.x = arg.x 
                 self.y = arg.y 
                 self.w = arg.w 
@@ -303,6 +304,46 @@ cdef class NvRect:
             self.w = value[0]
             self.h = value[1]
     
+    @property
+    def left(self):
+        return self.x
+    
+    @left.setter
+    def left(self, value):
+        self.x = value
+    
+    @property
+    def top(self):
+        return self.y
+    
+    @top.setter
+    def top(self, value):
+        self.y = value
+    
+    @property
+    def right(self):
+        return self.x + self.w
+    
+    @right.setter
+    def right(self, value):
+        self.w = value - self.x
+
+    @property
+    def bottom(self):
+        return self.y + self.h
+    
+    @bottom.setter
+    def bottom(self, value):
+        self.h = value - self.y
+    
+    @property
+    def centery(self):
+        return self.y + self.h / 2
+    
+    @property
+    def centerx(self):
+        return self.x + self.w / 2
+
     @property
     def topleft(self):
         return NvVector2.new(self.x, self.y)
