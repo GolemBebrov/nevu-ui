@@ -45,7 +45,8 @@ void main()
     float d = sdf_rounded_box(p, halfSize, radius);
     
     float distChange = fwidth(d); 
-    float alpha = 1.0 - smoothstep(0.0, distChange, d);
+    float aa = fwidth(d);
+    float alpha = 1.0 - smoothstep(-aa, aa, d);
 
     vec4 baseColor = texture(texture0, fragTexCoord) * fragColor * colDiffuse;
     finalColor = vec4(baseColor.rgb * alpha, baseColor.a * alpha);

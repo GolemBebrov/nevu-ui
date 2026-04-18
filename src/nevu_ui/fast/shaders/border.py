@@ -46,15 +46,14 @@ void main()
     
     float d = calculate_dist(p, halfSize, radius);
     
-    float distChange = length(vec2(dFdx(d), dFdy(d))); 
-    
-    float alphaShape = 1.0 - smoothstep(-distChange, 0.0, d);
+    float distChange = max(fwidth(d), 1e-4);
+    float alpha = 1.0 - smoothstep(-distChange, 0.0, d);
     
     float borderMix = smoothstep(-thickness - distChange, -thickness, d);
 
     vec4 texColor = texture(texture0, fragTexCoord) * fragColor * colDiffuse;
     vec4 resultColor = mix(texColor, borderColor, borderMix);
 
-    finalColor = vec4(resultColor.rgb * alphaShape, resultColor.a * alphaShape);
+    finalColor = vec4(resultColor.rgb * alpha, resultColor.a * alpha);
 }
 """
