@@ -10,8 +10,9 @@ from typing import Unpack, Any
 import nevu_ui.core.modules as md
 if TYPE_CHECKING:
     from pyray import Font
+from nevu_ui.core import Annotations
 from nevu_ui.fast.nvrect.nvrect import NvRect
-from nevu_ui.presentation.style import Style
+from nevu_ui.presentation.style import Style, default_style
 from nevu_ui.fast.nevucobj import NevuCobject
 from nevu_ui.presentation.color import SubThemeRole
 from nevu_ui.core.classes import Events
@@ -23,7 +24,7 @@ from nevu_ui.overlay.tooltip import Tooltip
 from nevu_ui.presentation.animations import AnimationManager
 from nevu_ui.core.size.rules import Px, SizeRule
 from nevu_ui.utils import Cache, NevuEvent
-from nevu_ui.components.nevuobj.typehints import NevuObjectKwargs, NevuObjectTemplate
+from nevu_ui.components.nevuobj.typehints import NevuObjectKwargs, NevuObjectTemplate, nevu_object_globals
 
 from nevu_ui.fast.logic import (
     get_rect_helper_pygame, get_rect_helper
@@ -64,25 +65,33 @@ class NevuObject(NevuCobject):
     #        size/master dependent code
     #======================================
     
-    def __init__(self, size: NvVector2 | list, style: Style | str, **constant_kwargs: Unpack[NevuObjectKwargs]):
+    _supports_global_size = True
+    
+    def __init__(self, size: Annotations.nevuobj_size, style: Annotations.nevuobj_style, **constant_kwargs: Unpack[NevuObjectKwargs]):
         self.constant_kwargs = constant_kwargs.copy()
-        self.cache = Cache()
-        self._template = NevuObjectTemplate(size)
+        if self._supports_global_size:
+            _size = size or nevu_object_globals.library.get('size')
+        else:
+            _size = size
+        if _size is None:
+            raise ValueError(f"Size is None in {self.__class__.__name__} and no global size set.")
+        self._template = NevuObjectTemplate(_size)
+        style = style or nevu_object_globals.library.get('style') or default_style
         self._first_update_functions = []
-        
+
     #=== Pre Init ===
         #=== Flags ===
         self._init_flags()
-        
+
         #=== Test Flags ===
         self._init_test_flags()
-        
+
         #=== Constants Declaration ===
         self._declare_constants(**constant_kwargs)
-        
+
         #=== Constants L1 ===
         self._init_param_layer(ConstantLayer.Top, **constant_kwargs)
-        
+
     #=== Basic Variables ===    
         #=== Booleans(Flags) ===
         self._init_booleans()
@@ -92,20 +101,20 @@ class NevuObject(NevuCobject):
 
         #=== Lists/Vectors ===
         self._init_lists()
-        
+
         #=== Constants L2 ===
         self._init_param_layer(ConstantLayer.Basic, **constant_kwargs)
-        
+
     #=== Complicated Variables ===
         #=== Style ===
         self._init_style(style)
-    
+
         #=== Objects ===
         self._init_objects()
-        
+
         #=== Constants L3 ===
         self._init_param_layer(ConstantLayer.Complicated, **constant_kwargs)
-        
+
         if __debug__:
             add_obj(self)
             weakref.finalize(self, del_obj, self.__class__.__name__)
@@ -154,15 +163,17 @@ class NevuObject(NevuCobject):
         self._add_param_link("depth", "z")
         self._add_param("tooltip", Tooltip | type(None), None, layer=ConstantLayer.Lazy)
         self._add_param("subtheme_role", SubThemeRole, SubThemeRole.TERTIARY, getter=self._subtheme_role_getter, setter=self._subtheme_role_setter, layer=ConstantLayer.Complicated)
-
+        self._add_param("animation_manager", AnimationManager | type(None), None, layer=ConstantLayer.Top)
+        
     def _add_param_link(self, link_name: str, name: str): 
         self._param_links[link_name] = name
 
     def _preinit_params(self, layer):
         for param in self.params:
             if param.layer != layer: continue
-            if param.name in list(self.constant_kwargs.keys()): continue
-            param.value = param.default
+            if param.name in self.constant_kwargs: continue
+            val = nevu_object_globals.library.get(param.name)
+            param.value = val if val is not None else param.default
 
     def _apply_params(self, current_layer, **kwargs):
         constant_name = None
@@ -215,18 +226,7 @@ class NevuObject(NevuCobject):
         return NevuObjectTemplate(size)
     
     def _init_flags(self): 
-        self._sended_z_link = False
-        self._dragging = False
-        self._is_kup = False
-        self._kup_abandoned = False
-        self._force_state_set_continue = False
-        self._visible = True
-        self._active = True
-        self._changed = True
-        self._first_update = True
-        self.booted = False
-        self._wait_mode = False
-        self._dead = False
+        pass
         
     def _init_test_flags(self): pass
     
@@ -255,7 +255,10 @@ class NevuObject(NevuCobject):
         
     def _init_objects(self):
         self._hover_state: HoverState = HoverState.UN_HOVERED
-        self.animation_manager = AnimationManager()
+        if anim_manager := self.get_param_strict("animation_manager").value:
+            self.animation_manager = copy.deepcopy(anim_manager)
+        else:    
+            self.animation_manager = AnimationManager()
         self.z_request: ZRequest | None = None
 
     def _init_booleans(self): pass
@@ -316,8 +319,8 @@ class NevuObject(NevuCobject):
         self.absolute_coordinates = value
 
     @property
-    def _csize(self):
-        return self.cache.get_or_exec(CacheType.RelSize,self._update_size) or self.size
+    def _csize(self) -> NvVector2:
+        return self.cache.get_or_exec(CacheType.RelSize, self._update_size)
 
     def add_first_update_action(self, function):
         self._first_update_functions.append(function)
@@ -376,7 +379,7 @@ class NevuObject(NevuCobject):
     @property
     def _rsize(self) -> NvVector2:
         bw = math.ceil(self.relm(self.style.border_width))
-        return self._csize - (NvVector2(bw, bw) * 3)
+        return self._csize - (NvVector2.from_xy(bw, bw) * 3)
 
     @property
     def _rsize_marg(self) -> NvVector2: return (self._csize - self._rsize) / 2
@@ -407,21 +410,29 @@ class NevuObject(NevuCobject):
             self.get_param_strict("tooltip").value.connect_to_master(self)
 
 #=== Action functions ===
-    def show(self): self._visible = True
-    def hide(self): self._visible = False
+    def show(self): self.visible = True
+    def hide(self): self.visible = False
 
     @property
     def visible(self): return self._visible
     @visible.setter
-    def visible(self, value: bool): self._visible = value
-
-    def activate(self): self._active = True
-    def disactivate(self): self._active = False
+    def visible(self, value: bool): 
+        self._visible = value
+        self._on_visible_set()
+    def _on_visible_set(self): pass
+    
+    
+    def activate(self): self.active = True
+    def disactivate(self): self.active = False
 
     @property
     def active(self): return self._active
     @active.setter
-    def active(self, value: bool): self._active = value
+    def active(self, value: bool): 
+        self._active = value
+        self._on_active_set()
+        
+    def _on_active_set(self): pass
 
 #=== Event functions ===
     def _event_cycle(self, type: EventType, *args, **kwargs):
@@ -567,7 +578,7 @@ class NevuObject(NevuCobject):
 
 #=== Cache update functions ===
     def _update_coords(self): return self.coordinates
-    def _update_size(self): return NvVector2(self.rel(self.size))
+    def _update_size(self): return self.rel(self.size)
 
 #=== Update functions ===
     #========= UPDATE STRUCTURE: ==========
