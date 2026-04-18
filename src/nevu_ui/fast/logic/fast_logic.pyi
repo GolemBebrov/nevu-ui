@@ -61,16 +61,18 @@ def logic_update_helper(
     z_system: Any
 ): ...
 
+
+
 def draw_widgets_optimized(
     items: List[Any],
     draw_widget_func: Callable,
-    start_item: Callable
+    layout: Any
 ): ...
 
 def rl_predraw_widgets(
     items: List[Any],
-    is_layout: Callable,
-    is_widget: Callable
+    layout_type: Any,
+    widget_type: Any
 ): ...
 
 def _light_update_helper(
@@ -105,5 +107,22 @@ def _very_light_update_helper(
     items: List[Any],
     cached_coordinates: List[NvVector2],
     add_vector: NvVector2,
-    _get_item_master_coordinates: Callable[[Any], NvVector2]
+    layout: Any
 ) -> None: ...
+
+def fast_cycle_range(
+    func: Callable,
+    start: int,
+    end: int,
+    step: int
+): ...
+
+def fast_cycle_list(
+    func: Callable,
+    items: list[Any]
+): ...
+
+def fast_cycle_tuple(
+    func: Callable,
+    items: Sequence[Any]
+): ...
