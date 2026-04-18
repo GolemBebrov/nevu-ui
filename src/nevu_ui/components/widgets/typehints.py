@@ -1,10 +1,11 @@
-from typing import NotRequired, Any, Callable
+from typing import NotRequired, Any, Callable, TYPE_CHECKING, Unpack
 from dataclasses import dataclass
-
-from nevu_ui.presentation.style import Style
-from nevu_ui.presentation.color import PairColorRole, TupleColorRole
-from nevu_ui.components.nevuobj.typehints import NevuObjectKwargs, NevuObjectTemplate
-from nevu_ui.presentation.color import SubThemeRole
+from nevu_ui.components.nevuobj.typehints import NevuObjectKwargs, NevuObjectTemplate, GlobalsBase, NevuObjectGlobalsKwargs
+if TYPE_CHECKING:
+    from nevu_ui.presentation.style import Style
+    from nevu_ui.presentation.color import PairColorRole, TupleColorRole
+    from nevu_ui.presentation.color import SubThemeRole
+    from nevu_ui.components.layouts.misc.checkbox_group import CheckBoxGroup
 
 #   ------------------
 #   === TypedDicts ===
@@ -49,9 +50,10 @@ class InputKwargs(WidgetKwargs):
     allow_paste: NotRequired[bool]
     words_indent: NotRequired[bool]
     max_characters: NotRequired[int]
-    blacklist: NotRequired[list]
-    whitelist: NotRequired[list]
+    blacklist: NotRequired[list | tuple | str]
+    whitelist: NotRequired[list | tuple | str]
     padding: NotRequired[list | tuple]
+    cursor_width: NotRequired[int]
 
 class ProgressBarKwargs(WidgetKwargs):
     min_value: NotRequired[int | float]
@@ -80,6 +82,7 @@ class RectCheckBoxKwargs(WidgetKwargs):
     active: NotRequired[bool]
     active_rect_factor: NotRequired[int | float]
     active_factor: NotRequired[int | float]
+    checkbox_group: NotRequired[CheckBoxGroup]
 
 #   -----------------
 #   === Templates ===
@@ -99,3 +102,13 @@ class ElementSwitcherTemplate(WidgetTemplate):
 @dataclass
 class InputTemplate(WidgetTemplate):
     text: str
+
+class WidgetGlobalsKwargs(NevuObjectGlobalsKwargs, WidgetKwargs): pass
+
+class WidgetGlobals(GlobalsBase):
+    def modify(self, **kwargs: Unpack[WidgetGlobalsKwargs]):
+        return super().modify(**kwargs)
+    def modify_temp(self, **kwargs: Unpack[WidgetGlobalsKwargs]):
+        return super().modify_temp(**kwargs)
+
+widget_globals = WidgetGlobals()
