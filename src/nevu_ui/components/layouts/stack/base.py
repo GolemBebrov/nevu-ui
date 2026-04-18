@@ -23,6 +23,7 @@ class StackKwargs(_StackKwargs, LayoutTypeKwargs): pass
 
 #Nnna nanachi approved!
 class StackBase(LayoutType, ABC):
+    _supports_global_size = False
     content_type = list[tuple[Align, NevuObject]]
     def __init__(self, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[StackKwargs]):
         super().__init__(NvVector2(), style, content, **constant_kwargs)
@@ -93,7 +94,7 @@ class StackBase(LayoutType, ABC):
     
     def secondary_draw_content(self):
         super().secondary_draw_content()
-        draw_widgets_optimized(self.items, self._draw_widget_optimized, self._start_item)
+        draw_widgets_optimized(self.items, self._draw_widget_optimized, self)
             
     @property
     def spacing(self): return self.get_param_strict("spacing").value

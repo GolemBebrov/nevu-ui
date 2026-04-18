@@ -4,7 +4,7 @@ from typing import (
     Unpack, NotRequired, TypedDict, overload
 )
 
-from nevu_ui.components.widgets import Widget
+from nevu_ui.core import Annotations
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.fast.logic.fast_logic import draw_widgets_optimized
@@ -32,13 +32,13 @@ class Grid(LayoutType):
     any_number = int | float
     content_type = dict[tuple[any_number, any_number], NevuObject]
     @overload
-    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_rc]): ...
+    def __init__(self, size: Annotations.nevuobj_size, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_rc]): ...
     @overload
-    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_xy]): ...
-    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_uni]):
+    def __init__(self, size: Annotations.nevuobj_size, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_xy]): ...
+    def __init__(self, size: Annotations.nevuobj_size, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_uni]):
         super().__init__(size, style, content, **constant_kwargs) # type: ignore
     
-    def _create_template(self, size: NvVector2 | list, content: content_type | None): # type: ignore
+    def _create_template(self, size: Annotations.nevuobj_size, content: content_type | None): # type: ignore
         return GridTemplate(size, content)
     
     def _add_params(self):
@@ -66,7 +66,7 @@ class Grid(LayoutType):
     def _regenerate_coordinates(self):
         super()._regenerate_coordinates()
         self.cached_coordinates = []
-        c_vec = NvVector2(self._rsize.x / self.column, self._rsize.y / self.row) if self.menu else NvVector2(self.relx(self.cell_width), self.rely(self.cell_height))
+        c_vec = NvVector2.from_xy(self._rsize.x / self.column, self._rsize.y / self.row) if self.menu else NvVector2.from_xy(self.relx(self.cell_width), self.rely(self.cell_height))
         coords_marg_vec = self.coordinates + self._rsize_marg
         for i in range(len(self.items)):
             item = self.items[i]
@@ -104,11 +104,11 @@ class Grid(LayoutType):
         for coordinates in self.grid_coordinates:
             if coordinates == (x - 1, y - 1): raise ValueError("Grid item already exists")
         super().add_item(item)
-        self.grid_coordinates.append(NvVector2(x - 1,y - 1))
+        self.grid_coordinates.append(NvVector2.from_xy(x - 1,y - 1))
 
     def secondary_draw_content(self):
         super().secondary_draw_content()
-        draw_widgets_optimized(self.items, self._draw_widget_optimized, self._start_item)
+        draw_widgets_optimized(self.items, self._draw_widget_optimized, self)
 
     def get_row(self, x: any_number) -> list[NevuObject]:
         return [item for item, coords in zip(self.items, self.grid_coordinates) if coords[0] == x - 1]

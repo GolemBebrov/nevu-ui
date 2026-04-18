@@ -1,4 +1,7 @@
-from nevu_ui.components.widgets import RectCheckBox
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING: from nevu_ui.components.widgets import RectCheckBox
 from nevu_ui.core.enums import EventType
 from nevu_ui.utils import NevuEvent
 

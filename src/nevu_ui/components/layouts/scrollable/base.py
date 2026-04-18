@@ -1,5 +1,4 @@
 from __future__ import annotations
-import contextlib
 from abc import ABC, abstractmethod
 from typing import Any, Unpack, NotRequired
 
@@ -7,7 +6,7 @@ from nevu_ui.fast.logic import _light_update_helper
 from nevu_ui.components.widgets import Widget
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.core.enums import HoverState
-from nevu_ui.utils import Keys
+from nevu_ui.core import Annotations
 from nevu_ui.components.layouts.typehints import AlignTemplate
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.fast.logic.fast_logic import collide_vector, draw_widgets_optimized, rl_predraw_widgets
@@ -141,10 +140,10 @@ class ScrollableBase(LayoutType, ABC):
     @property
     def inverted_scrolling(self) -> bool: return self.get_param_strict("inverted_scrolling").value
        
-    def __init__(self, size: NvVector2 | list, style: Style = default_style, content:  content_type | None = None, **constant_kwargs: Unpack[ScrollableKwargs]):
+    def __init__(self, size: Annotations.nevuobj_size, style: Style = default_style, content:  content_type | None = None, **constant_kwargs: Unpack[ScrollableKwargs]):
         super().__init__(size, style, content, **constant_kwargs)
     
-    def _create_template(self, size: NvVector2 | list, content: content_type | None): # type: ignore
+    def _create_template(self, size: Annotations.nevuobj_size, content: content_type | None): # type: ignore
         return AlignTemplate(size, content)
         
     def _init_test_flags(self):
@@ -226,13 +225,13 @@ class ScrollableBase(LayoutType, ABC):
         return rect1.collide_rect(rect2)
     
     def _rl_predraw_widgets(self):
-        rl_predraw_widgets(self.collided_items, self.is_layout, self.is_widget)
+        rl_predraw_widgets(self.collided_items, LayoutType, Widget)
         if self.actual_max_main > 0:
             self.scroll_bar.draw()
     
     def _secondary_draw(self):
         super()._secondary_draw()
-        draw_widgets_optimized(self.collided_items, self._draw_widget_optimized, self._start_item)
+        draw_widgets_optimized(self.collided_items, self._draw_widget_optimized, self)
         if self.actual_max_main > 0:
             self._draw_widget_optimized(self.scroll_bar)
     
@@ -292,7 +291,7 @@ class ScrollableBase(LayoutType, ABC):
             self.items,
             self.cached_coordinates or [],
             self.get_relative_vector_offset(),
-            self._get_item_abs_coords)
+            self)
 
     def _logic_update(self):
         super()._logic_update()

@@ -9,6 +9,7 @@ from typing import (
 if TYPE_CHECKING: 
     from nevu_ui.menu import Menu
 import nevu_ui.core.modules as md
+from nevu_ui.core import Annotations
 from nevu_ui.components.widgets import Widget
 from nevu_ui.overlay import overlay
 from nevu_ui.fast.logic.fast_logic import _light_update_helper, rl_predraw_widgets
@@ -68,7 +69,7 @@ class LayoutType(NevuObject):
             self._need_update_overlay = False
             abs_coords = self.absolute_coordinates.to_round()
             overlay.add_draw_call(self, self._rl_border_draw_call, abs_coords, -1)
-        rl_predraw_widgets(self.items, self.is_layout, self.is_widget)
+        rl_predraw_widgets(self.items, LayoutType, Widget)
     
     def _draw_item_pygame(self, item: NevuObject, coordinates: NvVector2):
         assert isinstance(self.surface, md.pygame.Surface), "Cant use _draw_widget with uninitialized surface"
@@ -132,11 +133,11 @@ class LayoutType(NevuObject):
     def __getitem__(self, id: str) -> NevuObject:
         return self.get_item_by_id_strict(id)
 
-    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: list | None  = None, **constant_kwargs: Unpack[LayoutTypeKwargs]):
+    def __init__(self, size: Annotations.nevuobj_size, style: Style = default_style, content: list | None  = None, **constant_kwargs: Unpack[LayoutTypeKwargs]):
         super().__init__(size, style, **constant_kwargs)
         self._template = self._create_template(size, content)
     
-    def _create_template(self, size: NvVector2 | list, content: list | None): # type: ignore
+    def _create_template(self, size: Annotations.nevuobj_size, content: list | None): # type: ignore
         return LayoutTemplate(size, content)
     
     def _init_lists(self):
@@ -185,8 +186,8 @@ class LayoutType(NevuObject):
         _light_update_helper(
             self.items,
             self.cached_coordinates or [],
-            self.first_parent_menu.absolute_coordinates if self.first_parent_menu else NvVector2(),
-            NvVector2(add_x, add_y))
+            self.first_parent_menu.absolute_coordinates if self.first_parent_menu else NvVector2.from_xy(0,0),
+            NvVector2.from_xy(add_x, add_y))
 
     def _coordinates_setter(self, coordinates: NvVector2):
         self._clear_cached_coordinates_noregen()
@@ -244,6 +245,7 @@ class LayoutType(NevuObject):
     def read_item_coords(self, item: NevuObject):
         if self.booted == False: return
         w_size = item._template['size']
+       # print(w_size, type(item).__name__)
         x, y = w_size
         x, is_x_rule = self._convert_item_coord(x, 0)
         y, is_y_rule = self._convert_item_coord(y, 1)
@@ -254,7 +256,8 @@ class LayoutType(NevuObject):
         if isinstance(item, LayoutType):
             item._connect_to_layout(self)
         if self.booted == False:  return
-        item._wait_mode = False; item._init_start()
+        item._wait_mode = False
+        item._init_start()
 
     def _resize(self, resize_ratio: NvVector2):
         super()._resize(resize_ratio)

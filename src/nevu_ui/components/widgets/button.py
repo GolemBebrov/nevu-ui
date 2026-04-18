@@ -1,12 +1,13 @@
 import copy
 from typing import Unpack, Callable
 
+from nevu_ui.core import Annotations
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.components.widgets import Label, ButtonKwargs
 from nevu_ui.presentation.style import Style, default_style
 
 class Button(Label):
-    def __init__(self, function: Callable, text: str, size: NvVector2 | list, style: Style = default_style, **constant_kwargs: Unpack[ButtonKwargs]):
+    def __init__(self, function: Callable, text: str, size: Annotations.nevuobj_size = None, style: Annotations.nevuobj_style = None, **constant_kwargs: Unpack[ButtonKwargs]):
         super().__init__(text, size, style, **constant_kwargs)
         self.function = function
         

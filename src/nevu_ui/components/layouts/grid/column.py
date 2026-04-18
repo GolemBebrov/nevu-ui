@@ -1,5 +1,6 @@
 from typing import Unpack, overload
 
+from nevu_ui.core import Annotations
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2 
 from nevu_ui.presentation.style import Style, default_style
@@ -11,20 +12,20 @@ from nevu_ui.components.layouts.grid.base import (
 class Column(Grid):
     content_type = dict[Grid.any_number, NevuObject]
     @overload
-    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_rc]):
+    def __init__(self, size: Annotations.nevuobj_size, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_rc]):
         """
         Initializes a Column object.
         Parameters:
         column (int | float): **WARNING: column constant cannot be changed in Column**
         """
     @overload
-    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_xy]): 
+    def __init__(self, size: Annotations.nevuobj_size, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_xy]): 
         """
         Initializes a Column object.
         Parameters:
         x (int | float): **WARNING: x constant cannot be changed in Column**
         """
-    def __init__(self, size: NvVector2 | list, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_uni]):
+    def __init__(self, size: Annotations.nevuobj_size, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_uni]):
         super().__init__(size, style, content, **constant_kwargs) # type: ignore
         
     def _add_params(self):
