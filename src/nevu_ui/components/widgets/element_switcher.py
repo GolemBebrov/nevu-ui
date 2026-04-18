@@ -5,17 +5,17 @@ from typing import (
     Callable, Any, Unpack
 )
 
+from nevu_ui.core import Annotations
 import nevu_ui.core.modules as md
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.utils import keyboard
 from nevu_ui.core.enums import HoverState
 from nevu_ui.presentation.style import Style, default_style
 from nevu_ui.core.state import nevu_state
-
+from nevu_ui.core.enums import RenderConfig, RenderReturnType, CacheType
 from nevu_ui.components.widgets import (
     Widget, Button, ElementSwitcherKwargs, ElementSwitcherTemplate
 )
-
 
 class Element:
     __slots__ = ["text", "id"]
@@ -58,9 +58,9 @@ class ElementSwitcher(Widget):
     left_key: Any
     right_key: Any
     offset_perc: NvVector2
-    def __init__(self, size: NvVector2 | list, elements: list[Element | Any | list] | None = None, style: Style = default_style, **constant_kwargs: Unpack[ElementSwitcherKwargs]):
+    def __init__(self, size: Annotations.nevuobj_size = None, elements: list[Element | Any | list] | None = None,  style: Annotations.nevuobj_style = None, **constant_kwargs: Unpack[ElementSwitcherKwargs]):
         super().__init__(size, style, **constant_kwargs)
-        self._template = ElementSwitcherTemplate(size, elements)
+        self._template = ElementSwitcherTemplate(self._template.size, elements)
 
     def _add_params(self):
         super()._add_params()
@@ -84,7 +84,9 @@ class ElementSwitcher(Widget):
         super()._lazy_init(size)
         elements: list[Element] = elements or []
         self.elements = Elements.create(*elements)
-        self.renderer.bake_text(self.current_element_text)
+        cached_args = self.cache.get_or_exec(CacheType.TextArgs, lambda: self.renderer.run_text(RenderConfig.DrawL3, text=self.current_element_text, 
+                                                                                                words_indent=False, return_type=RenderReturnType.CreateNew))
+        self._text_rect, self._text_surface = cached_args
         self._create_buttons()
     
     def _init_numerical(self):
@@ -134,8 +136,9 @@ class ElementSwitcher(Widget):
     def _create_buttons(self):
         button_size = (NvVector2(self._get_arrow_width(), self._rsize.y) / 100 * (NvVector2(100,100) - self.offset_perc)).to_round()
         self.button_offset = NvVector2(self._get_arrow_width(), self._rsize.y) - button_size
-        self.button_left = Button(self.previous, self.left_text, button_size, self.style, z = self.z + 1, inline = True,throw_errors=True, fancy_click_style = False, alt = self.alt) #type: ignore
-        self.button_right = Button(self.next, self.right_text, button_size, self.style, z = self.z + 1, inline = True, fancy_click_style = False, alt = self.alt)
+        subtheme_role = self.get_param_strict("subtheme_role").value
+        self.button_left = Button(self.previous, self.left_text, button_size, self.style, z = self.z + 1, inline = True,throw_errors=True, fancy_click_style = False, alt = self.alt, subtheme_role=subtheme_role) #type: ignore
+        self.button_right = Button(self.next, self.right_text, button_size, self.style, z = self.z + 1, inline = True, fancy_click_style = False, alt = self.alt, subtheme_role=subtheme_role) #type: ignore
         self._shape_buttons_radius(self.relm(self.style.border_width))
         self._start_button(self.button_left)
         self._start_button(self.button_right)
@@ -155,11 +158,11 @@ class ElementSwitcher(Widget):
         
     def _position_buttons(self):
         self._check_mode()
-        offset = self._rsize_marg  + self.rel(self.button_offset) / 2 
+        offset = self._rsize_marg/2 + self.rel(self.button_offset)
         self.button_left.coordinates = offset
         right_offset_x = self._rsize.x + self._rsize_marg.x - self.relx(self.button_offset.x) / 2 - self.button_right._csize.x
         self.button_right.coordinates = NvVector2(right_offset_x, offset.y)
-    
+
     def _get_arrow_width(self):
         return round(self.relx((self.size.x - self.style.border_width*2) / 100 * self.arrow_width))
     
@@ -181,6 +184,7 @@ class ElementSwitcher(Widget):
         self.set_param_value("current_index", index)
         self._changed = True
         self._delayed_button_update = True
+        self.cache.clear_selected(whitelist = [CacheType.TextArgs])
         if self.on_content_change: 
             self.on_content_change(self.current_element_text, self.current_element.id) # type: ignore
         
@@ -257,19 +261,27 @@ class ElementSwitcher(Widget):
         if not self.visible: return
         
         if self._changed:
+            self.button_left._changed = True
+            self.button_right._changed = True
             assert self.surface
-            self.renderer.bake_text(self.current_element_text)#size = NvVector2(self._csize.x - self.button_left._csize.x * 2, self._csize.y))
-            #self.bake_text(self.current_element_text, size_x = self._csize.x - self.button_left._csize.x * 2)
+            cropped_size = self._csize.xy
+            cropped_size.x -= self.button_left._csize.x*2
+            cached_args = self.cache.get_or_exec(CacheType.TextArgs, lambda: self.renderer.run_text(RenderConfig.DrawL3, text=self.current_element_text, 
+                                                                                                    max_size = cropped_size,
+                                                                                                    words_indent=False, return_type=RenderReturnType.CreateNew))
+            self._text_rect, self._text_surface = cached_args
+
+            coordinates = NvVector2(self._text_rect)
             self._draw_buttons()
-            assert self._text_surface is not None and self._text_rect is not None, "Text surface or rect is None"
+            assert self._text_surface is not None, "Text surface or rect is None"
             if nevu_state.window.is_dtype.raylib:
-                with self.surface: #type: ignore
-                    display = nevu_state.window.display
-                    assert nevu_state.window.is_raylib(display)
-                    display.blit_rect_pro(self._text_surface.texture, self._text_rect, mode=md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-            else:
-                self.surface.blit(self._text_surface, self._text_rect) #type: ignore
-            
+                md.rl.set_texture_filter(self._text_surface.texture, md.rl.TextureFilter.TEXTURE_FILTER_ANISOTROPIC_16X)
+                md.rl.set_texture_wrap(self._text_surface.texture, md.rl.TextureWrap.TEXTURE_WRAP_CLAMP)
+                md.rl.begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+            self.surface.blit(self._text_surface, coordinates.get_int_tuple())
+            if nevu_state.window.is_dtype.raylib:
+                md.rl.end_blend_mode()
+
     def _mark_dirty(self):
         self._changed = True
         self.button_left._changed = True

@@ -1,12 +1,13 @@
 from typing import Unpack
 
 import nevu_ui.core.modules as md
+from nevu_ui.core import Annotations
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.utils import mouse
 from nevu_ui.presentation.color import Color
 from nevu_ui.components.widgets.progress_bar import ProgressBar
 from nevu_ui.core.state import nevu_state
-from nevu_ui.core.enums import Align, ConstantLayer
+from nevu_ui.core.enums import Align, ConstantLayer, RenderReturnType, RenderConfig
 from nevu_ui.presentation.color import TupleColorRole, PairColorRole
 from nevu_ui.components.widgets import Widget, SliderKwargs
 from nevu_ui.fast.nvrect import NvRect
@@ -18,7 +19,7 @@ class Slider(Widget):
     padding_y: int
     tuple_role: TupleColorRole
     bar_pair_role: PairColorRole
-    def __init__(self, size: NvVector2 | list, style: Style = default_style, **constant_kwargs: Unpack[SliderKwargs]):
+    def __init__(self, size: Annotations.nevuobj_size = None, style: Annotations.nevuobj_style = None, **constant_kwargs: Unpack[SliderKwargs]):
         self.booted = False
         self._constant_current_val = None
         super().__init__(size, style, **constant_kwargs) 
@@ -163,24 +164,27 @@ class Slider(Widget):
             assert nevu_state.window.is_raylib(display)
             with self.surface: #type: ignore
                 display.clear(Color.Blank)
-                display.blit_rect_vec(self.progress_bar.surface.texture, (0,0), mode=md.rl.BlendMode.BLEND_ALPHA) #type: ignore
-                nvrect = NvRect(args[2]) #type: ignore
-                nvrect = self.adjust_text_rect(nvrect)
-                args = list(args) #type: ignore
-                args[2] = nvrect.get_int_tuple()[0:2] #type: ignore
-                md.rl.draw_text_ex(*args) #type: ignore
+                md.rl.begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+                display.blit_rect_vec(self.progress_bar.surface.texture, (0,0), mode=md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
+                if isinstance(self._text_rect, NvRect):
+                    self._text_rect = self._text_rect.get_int_tuple()
+                
+                self.surface.fast_blit(self._text_surface, self._text_rect) #type: ignore
+                md.rl.end_blend_mode()
         else:
             self.surface.fill((0,0,0,0)) 
             self.surface.blit(self.progress_bar.surface, (0,0)) #type: ignore
             self.surface.blit(self._text_surface, self._text_rect) #type: ignore
         
     def _create_font(self):
-        ext_kwargs = {}
+        #ext_kwargs = {}
+        #self._text_surface = self.renderer.core.create_clear(self._csize)
+
+        self._text_rect, self._text_surface = self.renderer.run_text(RenderConfig.DrawL3, text=str(round(self.current_value)), override_color=self.style.colortheme.get_tuple(self.tuple_role), return_type=RenderReturnType.CreateNew)
         if nevu_state.window.is_dtype.raylib:
-            ext_kwargs["render"] = False
-        args = self.renderer.bake_text(str(round(self.current_value)), style=self.progress_bar.style, color=self.style.colortheme.get_tuple(self.tuple_role), **ext_kwargs)
-        return args
-     
+            md.rl.set_texture_filter(self._text_surface.texture, md.rl.TextureFilter.TEXTURE_FILTER_ANISOTROPIC_16X)
+            md.rl.set_texture_wrap(self._text_surface.texture, md.rl.TextureWrap.TEXTURE_WRAP_CLAMP)
+            
     def _after_state_change_system(self):
         super()._after_state_change_system()
         self._create_font()
