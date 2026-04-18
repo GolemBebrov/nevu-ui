@@ -16,16 +16,16 @@ def _create_rounded_rect_surface_optimized(
     color: Union[Tuple[int, int, int], Tuple[int, int, int, int]]
 ) -> "Surface": ...
 
-def transform_into_outlined_rounded_rect_sdf(
+def transform_into_outlined_rounded_rect(
     surf: "Surface", 
     radius: int, 
     width: float, 
-    color: Union[Tuple[int, int, int], Tuple[int, int, int, int]]
+    color: Union[Tuple[int, int, int], Tuple[int, int, int, int]],
+    background_color = None
 ) -> None: ...
 
-def transform_into_outlined_rounded_rect(
+def transform_into_rounded_rect(
     surf: "Surface", 
     radius: int | float | tuple, 
-    width: float,
     color: Union[Tuple[int, int, int], Tuple[int, int, int, int]]
 ) -> None: ...

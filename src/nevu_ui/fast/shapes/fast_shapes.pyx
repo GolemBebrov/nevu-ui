@@ -179,7 +179,7 @@ cpdef object _create_rounded_rect_surface_optimized(tuple size, object radii_inp
                     
     return surf
 
-cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input, float stroke_width, tuple color):
+cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input, float stroke_width, tuple color, object background_color=None):
     cdef int w = surf.get_width()
     cdef int h = surf.get_height()
     cdef float half_width = stroke_width / 2.0
@@ -207,12 +207,25 @@ cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input,
     cdef uint8_t[:, :] pixels_alpha = md.pygame.surfarray.pixels_alpha(surf)
 
     cdef int alpha_base = color[3] if len(color) > 3 else 255
-    if alpha_base == 0:
-        return
-
     cdef uint8_t r = color[0]
     cdef uint8_t g = color[1]
     cdef uint8_t b = color[2]
+
+    cdef int has_bg = 1 if background_color is not None else 0
+    cdef uint8_t bg_r = 0, bg_g = 0, bg_b = 0, bg_a = 0
+    cdef float bg_alpha_mult = 0.0
+    
+    if has_bg:
+        bg_r = background_color[0]
+        bg_g = background_color[1]
+        bg_b = background_color[2]
+        bg_a = background_color[3] if len(background_color) > 3 else 255
+        bg_alpha_mult = bg_a / 255.0
+
+    if alpha_base == 0 and not has_bg:
+        return
+
+    cdef float stroke_alpha_mult = alpha_base / 255.0
 
     cdef float center_x = (w - 1) * 0.5
     cdef float center_y = (h - 1) * 0.5
@@ -225,8 +238,9 @@ cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input,
     cdef float current_r
     cdef float qx, qy
     cdef float dist_outside, dist_inside
-    cdef float signed_dist, dist_from_edge, alpha_f
-    cdef float cutoff = half_width + 0.5
+    cdef float signed_dist, dist_from_edge
+    
+    cdef float sa, ba_eff, total_a, out_r, out_g, out_b
 
     with nogil:
         for y in prange(h, schedule='static'):
@@ -249,34 +263,80 @@ cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input,
                 dist_inside = fminf(fmaxf(qx, qy), 0.0)
                 
                 signed_dist = dist_outside + dist_inside - current_r
+                
+                if signed_dist > half_width + 0.5:
+                    continue
+                    
                 dist_from_edge = fabsf(signed_dist)
                 
-                if dist_from_edge > cutoff:
+                if not has_bg and signed_dist < -(half_width + 0.5):
                     continue
+                    
+                sa = 0.5 - (dist_from_edge - half_width)
+                if sa > 1.0: sa = 1.0
+                elif sa < 0.0: sa = 0.0
+                sa = sa * stroke_alpha_mult
                 
-                alpha_f = 0.5 - (dist_from_edge - half_width)
-                
-                if alpha_f > 0.0:
-                    pixels3d[x, y, 0] = r
-                    pixels3d[x, y, 1] = g
-                    pixels3d[x, y, 2] = b
-                    if alpha_f >= 1.0:
-                        pixels_alpha[x, y] = <uint8_t>alpha_base
-                    else:
-                        pixels_alpha[x, y] = <uint8_t>(alpha_f * alpha_base)
-
+                if has_bg:
+                    ba_eff = half_width - signed_dist
+                    if ba_eff > 1.0: ba_eff = 1.0
+                    elif ba_eff < 0.0: ba_eff = 0.0
+                    ba_eff = ba_eff * bg_alpha_mult
+                    
+                    total_a = sa + ba_eff * (1.0 - sa)
+                    if total_a > 0.0:
+                        out_r = (r * sa + bg_r * ba_eff * (1.0 - sa)) / total_a
+                        out_g = (g * sa + bg_g * ba_eff * (1.0 - sa)) / total_a
+                        out_b = (b * sa + bg_b * ba_eff * (1.0 - sa)) / total_a
+                        
+                        pixels3d[x, y, 0] = <uint8_t>out_r
+                        pixels3d[x, y, 1] = <uint8_t>out_g
+                        pixels3d[x, y, 2] = <uint8_t>out_b
+                        
+                        if total_a >= 1.0:
+                            pixels_alpha[x, y] = 255
+                        else:
+                            pixels_alpha[x, y] = <uint8_t>(total_a * 255.0)
+                else:
+                    if sa > 0.0:
+                        pixels3d[x, y, 0] = r
+                        pixels3d[x, y, 1] = g
+                        pixels3d[x, y, 2] = b
+                        if sa >= 1.0:
+                            pixels_alpha[x, y] = <uint8_t>alpha_base
+                        else:
+                            pixels_alpha[x, y] = <uint8_t>(sa * 255.0)
+                            
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cpdef void transform_into_rounded_rect(object surf, int radius, tuple color):
+cpdef void transform_into_rounded_rect(object surf, object radii_input, tuple color):
     cdef int width = surf.get_width()
     cdef int height = surf.get_height()
     
-    if radius * 2 > width: radius = width // 2
-    if radius * 2 > height: radius = height // 2
+    cdef float r_tl, r_tr, r_br, r_bl
+    
+    if isinstance(radii_input, (int, float)):
+        r_tl = r_tr = r_br = r_bl = <float>radii_input
+    elif len(radii_input) == 4:
+        r_tl = <float>radii_input[0]
+        r_tr = <float>radii_input[1]
+        r_br = <float>radii_input[2]
+        r_bl = <float>radii_input[3]
+    else:
+        r_tl = r_tr = r_br = r_bl = 0.0
+
+    cdef float max_radius_w = width / 2.0
+    cdef float max_radius_h = height / 2.0
+    cdef float max_radius = max_radius_w if max_radius_w < max_radius_h else max_radius_h
+
+    r_tl = fminf(fmaxf(r_tl, 0.0), max_radius)
+    r_tr = fminf(fmaxf(r_tr, 0.0), max_radius)
+    r_br = fminf(fmaxf(r_br, 0.0), max_radius)
+    r_bl = fminf(fmaxf(r_bl, 0.0), max_radius)
 
     surf.fill((0, 0, 0, 0))
 
-    if radius <= 0:
+    if r_tl <= 0.0 and r_tr <= 0.0 and r_br <= 0.0 and r_bl <= 0.0:
         surf.fill(color)
         return
 
@@ -289,32 +349,39 @@ cpdef void transform_into_rounded_rect(object surf, int radius, tuple color):
     
     cdef float center_x = (width - 1) * 0.5
     cdef float center_y = (height - 1) * 0.5
-    cdef float inner_width_half = (width - 2 * radius - 1) * 0.5
-    cdef float inner_height_half = (height - 2 * radius - 1) * 0.5
+    
+    cdef float box_half_w = (width - 1) * 0.5
+    cdef float box_half_h = (height - 1) * 0.5
     
     cdef uint8_t r = color[0]
     cdef uint8_t g = color[1]
     cdef uint8_t b = color[2]
     
     cdef int x, y
-    cdef float dx, dy, dist, signed_dist, alpha_f
-    cdef float dy_sq, current_dy_dist
+    cdef float px, py, current_r
+    cdef float qx, qy, dist_outside, dist_inside, signed_dist, alpha_f
     
     with nogil:
         for y in prange(height, schedule='static'):
-            dy = fabs(y - center_y) - inner_height_half
-            current_dy_dist = fmax(dy, 0.0)
-            dy_sq = current_dy_dist * current_dy_dist
+            py = y - center_y
             
             for x in range(width):
-                dx = fabs(x - center_x) - inner_width_half
+                px = x - center_x
                 
-                if dx > 0.0 and dy > 0.0:
-                    dist = sqrt(dx*dx + dy_sq)
+                if px > 0.0:
+                    if py > 0.0: current_r = r_br
+                    else:        current_r = r_tr
                 else:
-                    dist = fmax(dx, current_dy_dist)
+                    if py > 0.0: current_r = r_bl
+                    else:        current_r = r_tl
                 
-                signed_dist = dist - radius
+                qx = fabsf(px) - box_half_w + current_r
+                qy = fabsf(py) - box_half_h + current_r
+                
+                dist_outside = sqrtf(fmaxf(qx, 0.0)**2 + fmaxf(qy, 0.0)**2)
+                dist_inside = fminf(fmaxf(qx, qy), 0.0)
+                
+                signed_dist = dist_outside + dist_inside - current_r
                 
                 if signed_dist <= -0.5:
                     pixels3d[x, y, 0] = r
