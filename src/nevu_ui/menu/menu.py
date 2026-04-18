@@ -70,8 +70,6 @@ class Menu:
         self._renderer_proxy = MenuRendererProxy(self)
         if self._window.is_dtype.raylib: self._renderer = BackgroundRendererRayLib(self._renderer_proxy) #type: ignore
         else: self._renderer = BackgroundRendererPygame(self._renderer_proxy) #type: ignore
-        self._borrow_from_nevuobj()
-        self._borrow_from_widget()
         self._borrow_from_layout()
         self._init_size(size)
         self._init_secondary()
@@ -91,11 +89,26 @@ class Menu:
     def rel(self, mass: NvVector2, vector: bool = True) -> NvVector2:  
         return vec_rel_helper(mass, self._resize_ratio.x, self._resize_ratio.y) # type: ignore
     
-    def _borrow_from_nevuobj(self):
-        pass
-    def _borrow_from_widget(self):
-        self._clear_surfaces = partial(Widget.clear_surfaces, self) #type: ignore
-        self._clear_all = partial(Widget.clear_all, self) #type: ignore
+    def _clear_all(self):
+        """
+        Clears all cached data by invoking the clear method on the cache. 
+        !WARNING!: may cause bugs and errors
+        """
+        if nevu_state.window.is_dtype.raylib: 
+            self._clear_rl_specific()
+        self.cache.clear()
+        
+    def _clear_surfaces(self):
+        """
+        Clears specific cached surface-related data by invoking the clear_selected 
+        method on the cache with a whitelist of CacheTypes related to surfaces. 
+        This includes Image, Scaled_Gradient, Surface, and Borders.
+        Highly recommended to use this method instead of clear_all.
+        """
+        if nevu_state.window.is_dtype.raylib: 
+            self._clear_rl_specific()
+        self.cache.clear_selected(whitelist = [CacheType.Scaled_Image, CacheType.Scaled_Gradient, CacheType.Surface, CacheType.Borders, CacheType.Scaled_Borders, CacheType.Scaled_Background, CacheType.Background, CacheType.Texture, CacheType.RlFont])
+    
     def _borrow_from_layout(self):
         self._layout_proxy = MenuLayoutProxy(self)
         self._convert_item_coord = partial(LayoutType._convert_item_coord, self._layout_proxy) #type: ignore
@@ -169,6 +182,7 @@ class Menu:
             Backend.Sdl: self._draw_sdl,
             Backend.RayLib: self._draw_raylib
         }
+        self._main_draw = self._backends_to_draw.get(nevu_state.window._backend)
 
     def _init_tertiary(self, size):
         self.first_window_size = self._window.size if self._window else NvVector2(0, 0)
@@ -345,13 +359,14 @@ class Menu:
         assert self._window.is_raylib(display)
         if self._layout is not None:
             self._layout._rl_predraw_widgets()
+            rl = md.rl
             with self._surface: #type: ignore
                 nevu_state.window.display.clear(Color.Blank)
-                display.blit_rect_vec(scaled_bg.texture, (0, 0), mode = md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-                md.rl.begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+                display.blit_rect_vec(scaled_bg.texture, (0, 0), mode = rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+                rl.begin_blend_mode(rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
                 self._layout.draw()
-                md.rl.end_blend_mode()
-        display.blit_rect_vec(self._surface.texture, self.absolute_coordinates.get_int_tuple(), mode=md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
+                rl.end_blend_mode()
+        display.blit_rect_vec(self._surface.texture, self.absolute_coordinates.get_int_tuple(), mode = rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
     
     def _draw_pygame(self, scaled_bg):
         assert self._window, "Window is not initialized!"
@@ -360,13 +375,11 @@ class Menu:
         self._surface.fill((0, 0, 0, 0))
         self._surface.blit(scaled_bg, (0, 0))
         if self._layout is not None: self._layout.draw() 
-        
         self._window._display.blit(self._surface, self.absolute_coordinates.get_int_tuple())
 
     def draw(self):
-        current_draw_function = self._backends_to_draw.get(nevu_state.window._backend)
         scaled_bg = self.cache.get_or_exec(CacheType.Scaled_Background, self._background)
-        if current_draw_function: current_draw_function(scaled_bg)
+        if self._main_draw: self._main_draw(scaled_bg)
         else:
             raise ValueError(f"Backend {nevu_state.window._backend} is not supported! UWU")
         if self._opened_sub_menu:
@@ -382,10 +395,11 @@ class Menu:
         if self._opened_sub_menu:
             self._opened_sub_menu.update()
             return
+        
         if self._layout: 
             self._layout.absolute_coordinates = self._layout.coordinates + self.absolute_coordinates
             self._layout.update(nevu_state.current_events)
-        
+    
     def get_rect(self): return md.pygame.Rect((0,0), self.size * self._resize_ratio)
     
     def get_nvrect(self): return NvRect(NvVector2(), self.size*self._resize_ratio)
