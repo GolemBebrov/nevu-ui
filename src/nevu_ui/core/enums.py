@@ -57,12 +57,12 @@ _QUALITY_TO_RESOLUTION = {
     Quality.Best:   6,
 }
 
-class AnimationManagerState(Enum):
-    START = auto()
-    CONTINUOUS = auto()
-    TRANSITION = auto()
-    IDLE = auto()
-    ENDED = auto()
+class AnimationManagerState(IntEnum):
+    START = 0
+    CONTINUOUS = 1
+    TRANSITION = 2
+    IDLE = 3
+    ENDED = 4
 
 class GradientConfig(StrEnum): pass
 
@@ -111,8 +111,9 @@ class CacheType(Enum):
     Scaled_Gradient = auto()
     Background = auto()
     Texture = auto()
+    TextArgs = auto()
+    ClickTexture = auto()
     
-    #NEW FUKING RL cache
     RlFont = auto()
     RlText = auto()
     RlTexture = auto()
@@ -170,18 +171,25 @@ class ConfigLoadType(StrEnum):
     Json = "json"
 
 class RenderConfig(StrEnum):
-    Root = "root"
-    Style = "style"
     DrawL1 = "draw_l1"
     DrawL2 = "draw_l2"
     DrawL3 = "draw_l3"
     DrawL4 = "draw_l4"
+    DrawL5 = "draw_l5"
+
+class RenderReturnType(StrEnum):
+    Raw = "raw"
+    Null = "null"
+    Outside = "outside"
+    Modify = "modify"
+    CreateNew = "create_new"
 
 class _RenderArg:
     pass
 
 class RenderArgs:
     class DrawBase(_RenderArg): pass
+    class DrawBorders(_RenderArg): pass
     class DrawText(_RenderArg): pass
     class DrawEffects(_RenderArg): pass
     @dataclass
