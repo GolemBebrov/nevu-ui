@@ -9,13 +9,14 @@
 cimport cython
 import nevu_ui.core.modules as md
 from libc.math cimport sqrt
+from cpython.list cimport PyList_GET_ITEM
+from cpython.tuple cimport PyTuple_GET_ITEM
 
-
+@cython.freelist(1000)
 @cython.final
-@cython.freelist(32)
 cdef class NvVector2:
     @staticmethod
-    cdef inline NvVector2 new(float x, float y):
+    cdef inline NvVector2 new(double x, double y) noexcept:
         cdef NvVector2 vec = NvVector2.__new__(NvVector2)
         vec.x = x
         vec.y = y
@@ -48,6 +49,60 @@ cdef class NvVector2:
         else:
             raise TypeError(f"NvVector2() takes 0, 1, or 2 arguments, but {nargs} were given")
 
+    @staticmethod
+    cdef inline NvVector2 cfrom_nvvector2(NvVector2 other):
+        return NvVector2.new(other.x, other.y)
+    
+    @staticmethod
+    cdef inline NvVector2 cfrom_tuple(tuple other):
+        cdef double x, y
+        x = <double><object>PyTuple_GET_ITEM(other, 0)
+        y = <double><object>PyTuple_GET_ITEM(other, 1)
+        return NvVector2.new(x, y)
+    
+    @staticmethod
+    cdef inline NvVector2 cfrom_list(list other):
+        cdef double x, y
+        x = <double><object>PyList_GET_ITEM(other, 0)
+        y = <double><object>PyList_GET_ITEM(other, 1)
+        return NvVector2.new(x, y)
+    
+    @staticmethod
+    cdef inline NvVector2 cfrom_ints(int x, int y):
+        return NvVector2.new(x, y)
+    
+    @staticmethod
+    cdef inline NvVector2 cfrom_floats(float x, float y):
+        return NvVector2.new(x, y)
+
+    @staticmethod
+    cdef inline NvVector2 cfrom_xy(double x, double y):
+        return NvVector2.new(x, y)
+
+    @staticmethod
+    def from_nvvector2(NvVector2 other):
+        return NvVector2.cfrom_nvvector2(other)
+    
+    @staticmethod
+    def from_tuple(tuple other):
+        return NvVector2.cfrom_tuple(other)
+    
+    @staticmethod
+    def from_list(list other):
+        return NvVector2.cfrom_list(other)
+    
+    @staticmethod
+    def from_ints(int x, int y):
+        return NvVector2.cfrom_ints(x, y)
+    
+    @staticmethod
+    def from_floats(float x, float y):
+        return NvVector2.cfrom_floats(x, y)
+
+    @staticmethod
+    def from_xy(double x, double y):
+        return NvVector2.cfrom_xy(x, y)
+
     @property
     def xx(self):
         return NvVector2.new(self.x, self.x)
@@ -66,6 +121,9 @@ cdef class NvVector2:
 
     def to_tuple(self):
         return (self.x, self.y)
+    
+    cpdef void sadd(self, NvVector2 new_vec, NvVector2 old_vec):
+        self._sadd(new_vec, old_vec)
 
     def __getitem__(self, int index):
         if index == 0:
@@ -75,7 +133,7 @@ cdef class NvVector2:
         else:
             raise IndexError("Vector index out of range")
 
-    def __setitem__(self, int index, float value):
+    def __setitem__(self, int index, double value):
         if index == 0:
             self.x = value
         elif index == 1:
@@ -83,48 +141,45 @@ cdef class NvVector2:
         else:
             raise IndexError("Vector index out of range")
 
-    @cython.ccall
     cdef inline NvVector2 _add(self, NvVector2 other):
         return NvVector2.new(self.x + other.x, self.y + other.y)
 
-    @cython.ccall
     cdef inline NvVector2 _sub(self, NvVector2 other):
         return NvVector2.new(self.x - other.x, self.y - other.y)
 
-    @cython.ccall
-    cdef inline NvVector2 _mul_scalar(self, float val):
+    cdef inline NvVector2 _mul_scalar(self, double val):
         return NvVector2.new(self.x * val, self.y * val)
 
-    @cython.ccall
     cdef inline NvVector2 _mul_vector(self, NvVector2 other):
         return NvVector2.new(self.x * other.x, self.y * other.y)
 
-    @cython.ccall
-    cdef inline NvVector2 _iadd(self, NvVector2 other):
+    cdef inline void _iadd(self, NvVector2 other) nogil:
         self.x += other.x
         self.y += other.y
-        return self
 
-    @cython.ccall
-    cdef inline NvVector2 _isub(self, NvVector2 other):
+    cdef inline void _sadd(self, NvVector2 new_vec, NvVector2 old_vec) nogil:
+        self.x = new_vec.x + old_vec.x
+        self.y = new_vec.y + old_vec.y
+
+    cdef inline void _isub(self, NvVector2 other) nogil:
         self.x -= other.x
         self.y -= other.y
-        return self
 
-    @cython.ccall
-    cdef inline NvVector2 _imul(self, NvVector2 other):
+    cdef inline void _imul(self, NvVector2 other) nogil:
         self.x *= other.x
         self.y *= other.y
-        return self
 
     def __imul__(self, NvVector2 other):
-        return self._imul(other) # type: ignore
+        self._imul(other)
+        return self
     
     def __isub__(self, NvVector2 other):
-        return self._isub(other) # type: ignore
+        self._isub(other)
+        return self # type: ignore
 
     def __iadd__(self, NvVector2 other):
-        return self._iadd(other) # type: ignore
+        self._iadd(other)
+        return self # type: ignore
 
     def __add__(self, NvVector2 other):
         return self._add(other) # type: ignore
@@ -226,8 +281,8 @@ cdef class NvVector2:
         return sqrt(self.x * self.x + self.y * self.y) # type: ignore
     
     def normalize(self):
-            cdef float l = sqrt(self.x * self.x + self.y * self.y) # type: ignore
-            cdef float inv_l
+            cdef double l = sqrt(self.x * self.x + self.y * self.y) # type: ignore
+            cdef double inv_l
             
             if l == 0: 
                 return NvVector2.new(0.0, 0.0)
@@ -236,8 +291,8 @@ cdef class NvVector2:
             return NvVector2.new(self.x * inv_l, self.y * inv_l)
     
     def normalize_ip(self):
-        cdef float l = sqrt(self.x * self.x + self.y * self.y) # type: ignore
-        cdef float inv_l
+        cdef double l = sqrt(self.x * self.x + self.y * self.y) # type: ignore
+        cdef double inv_l
         
         if l > 0: 
             inv_l = 1.0 / l
@@ -246,13 +301,13 @@ cdef class NvVector2:
         return self
     
     def distance_to(self, NvVector2 other):
-        cdef float dx = self.x - other.x
-        cdef float dy = self.y - other.y
+        cdef double dx = self.x - other.x
+        cdef double dy = self.y - other.y
         return sqrt(dx * dx + dy * dy) # type: ignore
 
     def distance_squared_to(self, NvVector2 other):
-        cdef float dx = self.x - other.x
-        cdef float dy = self.y - other.y
+        cdef double dx = self.x - other.x
+        cdef double dy = self.y - other.y
         return dx * dx + dy * dy
 
     def dot(self, NvVector2 other):
