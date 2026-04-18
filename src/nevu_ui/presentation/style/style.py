@@ -43,7 +43,7 @@ type SVar[T] = T | StateVariable[T]
 
 class StyleKwargs(TypedDict):
     border_radius: NotRequired[SVar[int | float | tuple]]
-    br: NotRequired[SVar[int]]
+    br: NotRequired[SVar[int | float | tuple]]
     border_width: NotRequired[SVar[int]]
     bw: NotRequired[SVar[int]]
     font_size: NotRequired[SVar[int]]
