@@ -37,71 +37,57 @@ cython_directives = {
     'unraisable_tracebacks': True,
 }
 
+def get_extension(name: str, source: str) -> Extension:
+    return Extension(
+        name,
+        [source],
+        include_dirs=[numpy.get_include()],
+        extra_compile_args=c_opts,
+        extra_link_args=l_opts,
+    )
+
 def get_extensions():
     extensions = [
-        Extension(
+        get_extension(
             "nevu_ui.fast.nvvector2.nvvector2",
-            ["src/nevu_ui/fast/nvvector2/nvvector2.pyx"],
-            include_dirs=[numpy.get_include()],
-            extra_compile_args=c_opts,
-            extra_link_args=l_opts,
+            "src/nevu_ui/fast/nvvector2/nvvector2.pyx"
         ),
-        Extension(
+        get_extension(
             "nevu_ui.fast.nvrect.nvrect",
-            ["src/nevu_ui/fast/nvrect/nvrect.pyx"],
-            include_dirs=[numpy.get_include()],
-            extra_compile_args=c_opts,
-            extra_link_args=l_opts,
+            "src/nevu_ui/fast/nvrect/nvrect.pyx"
         ),
-        Extension(
+        get_extension(
             "nevu_ui.fast.nvparam.nvparam",
-            ["src/nevu_ui/fast/nvparam/nvparam.pyx"],
-            extra_compile_args=c_opts,
-            extra_link_args=l_opts,
-            include_dirs=[numpy.get_include()]
+            "src/nevu_ui/fast/nvparam/nvparam.pyx"
         ),
-        Extension(
+        get_extension(
             "nevu_ui.fast.nevucobj.nevucobj",
-            ["src/nevu_ui/fast/nevucobj/nevucobj.pyx"],
-            extra_compile_args=c_opts,
-            extra_link_args=l_opts,
-            include_dirs=[numpy.get_include()]
+            "src/nevu_ui/fast/nevucobj/nevucobj.pyx"
         ),
-        Extension(
+        get_extension(
+            "nevu_ui.fast.nevucache.nevucache",
+            "src/nevu_ui/fast/nevucache/nevucache.pyx"
+        ),
+        get_extension(
             "nevu_ui.fast.logic.fast_logic",
-            ["src/nevu_ui/fast/logic/fast_logic.pyx"],
-            extra_compile_args=c_opts,
-            extra_link_args=l_opts,
-            include_dirs=[numpy.get_include()]
+            "src/nevu_ui/fast/logic/fast_logic.pyx"
         ),
-        Extension(
+        get_extension(
             "nevu_ui.fast.shapes.fast_shapes",
-            ["src/nevu_ui/fast/shapes/fast_shapes.pyx"],
-            extra_compile_args=c_opts,
-            extra_link_args=l_opts,
-            include_dirs=[numpy.get_include()]
+            "src/nevu_ui/fast/shapes/fast_shapes.pyx"
         ),
-        Extension(
+        get_extension(
             "nevu_ui.fast.zsystem.fast_zsystem",
-            ["src/nevu_ui/fast/zsystem/fast_zsystem.pyx"],
-            include_dirs=[numpy.get_include()],
-            extra_compile_args=c_opts,
-            extra_link_args=l_opts,
+            "src/nevu_ui/fast/zsystem/fast_zsystem.pyx"
         ),
-        Extension(
+        get_extension(
             "nevu_ui.fast.raylib.nevu_raylib",
-            ["src/nevu_ui/fast/raylib/nevu_raylib.pyx"],
-            include_dirs=[numpy.get_include()],
-            extra_compile_args=c_opts,
-            extra_link_args=l_opts,
+            "src/nevu_ui/fast/raylib/nevu_raylib.pyx"
         ),
-        Extension(
+        get_extension(
             "nevu_ui.fast.nvrendertex.nv_render_tex",
-            ["src/nevu_ui/fast/nvrendertex/nv_render_tex.pyx"],
-            include_dirs=[numpy.get_include()],
-            extra_compile_args=c_opts,
-            extra_link_args=l_opts,
-        )
+            "src/nevu_ui/fast/nvrendertex/nv_render_tex.pyx"
+        ),
     ]
 
     return cythonize(extensions, compiler_directives=cython_directives, annotate=True)
