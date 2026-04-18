@@ -1,8 +1,9 @@
-from typing import Callable
+from typing import Callable, TYPE_CHECKING
 
 from nevu_ui.utils.time import time
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.core.annotations import Annotations
+if TYPE_CHECKING:
+    from nevu_ui.core.annotations import Annotations
 
 class Animation():
     def __init__(self, start, end, time: int | float = 1, easing_func: Callable | None = None, check_errors: bool = False):
