@@ -94,7 +94,7 @@ class ResizeType(Enum):
     FillAllScreen = auto()
     ResizeFromOriginal = auto()
 
-class RenderMode(Enum): # TODO: make use for this
+class RenderMode(Enum): # TODO: make use for this #Update: No
     AA = auto()
     SDF = auto()
 

@@ -94,7 +94,7 @@ class StackBase(LayoutType, ABC):
     
     def secondary_draw_content(self):
         super().secondary_draw_content()
-        draw_widgets_optimized(self.items, self._draw_widget_optimized, self)
+        draw_widgets_optimized(self.items, self._draw_widget_optimized, self, LayoutType, Widget)
             
     @property
     def spacing(self): return self.get_param_strict("spacing").value

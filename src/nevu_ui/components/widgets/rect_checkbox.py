@@ -104,6 +104,7 @@ class RectCheckBox(Widget):
                 size=active_size,
                 modify_object=inner_surf,
                 standstill=True,
+                gradient_support=False,
                 return_type=RenderReturnType.Modify
             )
             self.surface.blit(inner_surf, offset.get_int_tuple())

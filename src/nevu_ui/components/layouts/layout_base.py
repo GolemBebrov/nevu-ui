@@ -69,7 +69,7 @@ class LayoutType(NevuObject):
             self._need_update_overlay = False
             abs_coords = self.absolute_coordinates.to_round()
             overlay.add_draw_call(self, self._rl_border_draw_call, abs_coords, -1)
-        rl_predraw_widgets(self.items, LayoutType, Widget)
+        rl_predraw_widgets(list(self._all_items()), LayoutType, Widget)
     
     def _draw_item_pygame(self, item: NevuObject, coordinates: NvVector2):
         assert isinstance(self.surface, md.pygame.Surface), "Cant use _draw_widget with uninitialized surface"
@@ -358,7 +358,7 @@ class LayoutType(NevuObject):
             overlay.add_element(self, surf, self.absolute_coordinates.to_round(), -1)
                 
         for item in self.floating_items:
-            self._draw_widget(item, self.rel(item.coordinates))
+            self._draw_widget_optimized(item)
 
     def _logic_update(self):
         super()._logic_update()

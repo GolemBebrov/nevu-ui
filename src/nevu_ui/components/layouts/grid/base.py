@@ -6,6 +6,7 @@ from typing import (
 
 from nevu_ui.core import Annotations
 from nevu_ui.components.nevuobj import NevuObject
+from nevu_ui.components.widgets import Widget
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.fast.logic.fast_logic import draw_widgets_optimized
 from nevu_ui.components.layouts.typehints import GridTemplate
@@ -108,7 +109,7 @@ class Grid(LayoutType):
 
     def secondary_draw_content(self):
         super().secondary_draw_content()
-        draw_widgets_optimized(self.items, self._draw_widget_optimized, self)
+        draw_widgets_optimized(self.items, self._draw_widget_optimized, self, LayoutType, Widget)
 
     def get_row(self, x: any_number) -> list[NevuObject]:
         return [item for item, coords in zip(self.items, self.grid_coordinates) if coords[0] == x - 1]

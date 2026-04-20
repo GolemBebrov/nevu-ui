@@ -271,7 +271,7 @@ class Widget(NevuObject):
         
         if self.cache.get(CacheType.RlFont): md.rl.unload_font(self.cache.get(CacheType.RlFont)) #type: ignore
         #if self.cache.get(CacheType.Surface): md.rl.unload_render_texture(self.cache.get(CacheType.Surface)) #type: ignore
-        #if self.cache.get(CacheType.Scaled_Gradient): md.rl.unload_texture(self.cache.get(CacheType.Scaled_Gradient)) #type: ignore
+        if self.cache.get(CacheType.Scaled_Image): md.rl.unload_texture(self.cache.get(CacheType.Scaled_Image)) #type: ignore
 
     def _on_style_change(self):
         if self.inline: self._changed_size = True
@@ -340,24 +340,31 @@ class Widget(NevuObject):
         def build_background() -> NvRenderTexture:
             bg = self.cache.get_or_exec(CacheType.Background, lambda: self.renderer.core.create_clear(self._csize))
             bg.fill(Color.Blank)
-
-            self.renderer.run_base(
-                key=RenderConfig.DrawL1,
-                radius=self.style.border_radius,
-                easy_background=True,
-                return_type=RenderReturnType.Modify,
-                modify_object=bg
-            )
+            
+            easy_background = self._draw_borders
+            override_color = self.override_color or None
+            if self._draw_content:
+                self.renderer.run_base(
+                    key=RenderConfig.DrawL1,
+                    override_color=override_color,
+                    radius=self.style.border_radius,
+                    easy_background=easy_background,
+                    return_type=RenderReturnType.Modify,
+                    modify_object=bg
+                )
 
             final = self.cache.get_or_exec(CacheType.Borders, lambda: self.renderer.core.create_clear(self._csize))
             final.fill(Color.Blank)
-            self.renderer.run_borders(
-                key=RenderConfig.DrawL2,
-                subject=bg,
-                return_type=RenderReturnType.Modify,
-                modify_object=final,
-                override_position=(0, 0)
-            )
+            if self._draw_borders:
+                self.renderer.run_borders(
+                    key=RenderConfig.DrawL2,
+                    subject=bg,
+                    return_type=RenderReturnType.Modify,
+                    modify_object=final,
+                    override_position=(0, 0)
+                )
+            else:
+                return bg
             return final
 
         cached_bg: NvRenderTexture = self.cache.get_or_exec(CacheType.Surface, build_background)
@@ -478,14 +485,6 @@ class Widget(NevuObject):
                 function()
 
     def _boot_up(self): pass
-
-    @deprecated("Use renderer.bake_text() instead. This method will be removed in a future version.")
-    def bake_text(self, text: str, unlimited_y: bool = False, words_indent: bool = False,
-                alignx: Align = Align.CENTER, aligny: Align = Align.CENTER, continuous: bool = False, size_x = None, size_y = None, color = None):
-        size_x = size_x or self._csize.x
-        size_y = size_y or self._csize.y
-        size = NvVector2(size_x, size_y)
-        #self.renderer.bake_text(text, unlimited_y, words_indent, self.style, size, color)
 
     def _resize(self, resize_ratio: NvVector2):
         super()._resize(resize_ratio)

@@ -231,7 +231,7 @@ class ScrollableBase(LayoutType, ABC):
     
     def _secondary_draw(self):
         super()._secondary_draw()
-        draw_widgets_optimized(self.collided_items, self._draw_widget_optimized, self)
+        draw_widgets_optimized(self.collided_items, self._draw_widget_optimized, self, LayoutType, Widget)
         if self.actual_max_main > 0:
             self._draw_widget_optimized(self.scroll_bar)
     

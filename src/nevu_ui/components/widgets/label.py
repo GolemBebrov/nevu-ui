@@ -37,6 +37,8 @@ class Label(Widget):
     @text.setter
     def text(self, text: str):
         self._changed = True
+        self.clear_surfaces()
+        self.clear_texture()
         self._text = text
 
     def _fast_bake_text(self):
@@ -61,7 +63,7 @@ class Label(Widget):
             if self._text_surface and not nevu_state.window.is_dtype.raylib:
                 
                 self.surface.blit(self._text_surface, coordinates.get_int_tuple()) 
-            elif self._text_surface and self._text_rect:
+            elif self._text_surface:
                 with self.surface: #type: ignore
                     md.rl.begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
                     self.surface.fast_blit(self._text_surface, coordinates.get_int_tuple())
