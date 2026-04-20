@@ -34,6 +34,8 @@ cpdef void draw_widgets_optimized(
     list items,
     object draw_widget_func,
     NevuCobject layout,
+    type layout_type,
+    type widget_type
 )
 
 cpdef void rl_predraw_widgets(

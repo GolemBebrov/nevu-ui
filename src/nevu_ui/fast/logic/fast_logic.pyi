@@ -61,12 +61,12 @@ def logic_update_helper(
     z_system: Any
 ): ...
 
-
-
 def draw_widgets_optimized(
     items: List[Any],
     draw_widget_func: Callable,
-    layout: Any
+    layout: Any,
+    layout_type: Any,
+    widget_type: Any
 ): ...
 
 def rl_predraw_widgets(

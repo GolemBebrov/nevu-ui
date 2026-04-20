@@ -9,9 +9,15 @@
 import nevu_ui.core.modules as md
 import cython
 cimport cython
-from cpython.list cimport PyList_GET_SIZE, PyList_GET_ITEM
+from cpython.list cimport PyList_GET_SIZE, PyList_GET_ITEM, PyList_GetItemRef
 from cpython.tuple cimport PyTuple_GET_SIZE, PyTuple_GET_ITEM
 from cpython.object cimport PyObject, PyObject_CallFunctionObjArgs
+from nevu_ui.fast.raylib.nevu_raylib cimport draw_texture_rec
+cdef extern from "Python.h":
+    double PyFloat_AsDouble(PyObject* obj) nogil
+cdef extern from "Python.h":
+    object PyObject_CallNoArgs(object func)
+
 import numpy as np
 cimport numpy as np
 from nevu_ui.core.state import nevu_state
@@ -49,8 +55,8 @@ cpdef double relm_helper(double num, double resize_ratio_x, double resize_ratio_
 cpdef NvVector2 mass_rel_helper(list mass, double resize_ratio_x, double resize_ratio_y, bint vector):
     if len(mass) < 2:
         raise ValueError("mass must be a sequence with two elements")
-    cdef double x = _rel_helper_c(<double><object>PyList_GET_ITEM(mass, 0), resize_ratio_x, 0, 0, 0, 0)
-    cdef double y = _rel_helper_c(<double><object>PyList_GET_ITEM(mass, 1), resize_ratio_y, 0, 0, 0, 0)
+    cdef double x = _rel_helper_c(PyFloat_AsDouble(PyList_GET_ITEM(mass, 0)), resize_ratio_x, 0, 0, 0, 0)
+    cdef double y = _rel_helper_c(PyFloat_AsDouble(PyList_GET_ITEM(mass, 1)), resize_ratio_y, 0, 0, 0, 0)
     return NvVector2.new(x, y)
 
 cpdef NvVector2 vec_rel_helper(NvVector2 vec, double resize_ratio_x, double resize_ratio_y):
@@ -167,26 +173,64 @@ cdef inline start_item(NevuCobject item, NevuCobject layout):
         item._connect_to_layout(layout) # type: ignore
     if layout.booted == False:  return
     item._wait_mode = False # type: ignore
-    item._init_start() # type: ignore
+    PyObject_CallNoArgs(item._init_start) # type: ignore
+
+ctypedef void (*DrawFuncPtr)(NevuCobject, NevuCobject, NvVector2)
+
+cdef void draw_item_pygame(NevuCobject layout, NevuCobject item, NvVector2 coordinates):
+    layout.surface.blit(item.surface, coordinates.to_tuple()) #type: ignore
+
+cdef void draw_item_sdl(NevuCobject layout, NevuCobject item, NvVector2 coordinates):
+    if not hasattr(item, '_sdl2_texture'): return
+    if not item._sdl2_texture: return
+    nevu_state.window.display.blit(item._sdl2_texture, (coordinates.to_tuple(), item._csize.to_tuple())) #type: ignore
+
+cdef void draw_item_raylib(NevuCobject layout, NevuCobject item, NvVector2 coordinates):
+    display = nevu_state.window.display
+    draw_texture_rec(item.surface.texture, (0,0, item.surface.texture.width, -item.surface.texture.height), coordinates.get_int_tuple(), (255, 255, 255, 255))
+
+cdef inline void draw_widget_optimized(DrawFuncPtr draw_item, NevuCobject layout, NevuCobject item, type layout_type, type widget_type):
+    if not nevu_state.window.is_dtype.raylib:
+        PyObject_CallNoArgs(item.draw)
+        if isinstance(item, layout_type): return
+    elif isinstance(item, layout_type): 
+        PyObject_CallNoArgs(item.draw)
+        return
+    if not isinstance(item, widget_type): return
+    draw_item(layout,item, item.coordinates)
 
 cpdef void draw_widgets_optimized(
     list items,
     object draw_widget_func,
     NevuCobject layout,
+    type layout_type,
+    type widget_type
 ):
     cdef Py_ssize_t n = PyList_GET_SIZE(items) 
     cdef NevuCobject item
+    cdef DrawFuncPtr draw_func = NULL
+    dtype = nevu_state.window.is_dtype
+    if dtype.pygame:
+        draw_func = draw_item_pygame
+    elif dtype.sdl:
+        draw_func = draw_item_sdl
+    elif dtype.raylib:
+        draw_func = draw_item_raylib
+
     cdef Py_ssize_t i = 0
     while i < n:
         item = <NevuCobject>PyList_GET_ITEM(items, i)
         if not item._visible: i+=1; continue
         if not item.booted:
             item.booted = True # type: ignore
-            item._boot_up() # type: ignore
+            PyObject_CallNoArgs(item._boot_up) # type: ignore
             start_item(item, layout)
-        draw_widget_func(item) # type: ignore
+        #draw_widget_func(item)
+        draw_widget_optimized(draw_func, layout, item, layout_type, widget_type)
+       # draw_func(layout, item, item.coordinates) # type: ignore
         i += 1
 
+@cython.optimize.unpack_method_calls(True)
 cpdef void rl_predraw_widgets(
     list items,
     type layout_type,
@@ -197,11 +241,12 @@ cpdef void rl_predraw_widgets(
     cdef Py_ssize_t i = 0
     while i < n:
         item = <NevuCobject>PyList_GET_ITEM(items, i)
-        if not item._visible: i+=1;continue
+        if not item._visible: i+=1; continue
         if isinstance(item, layout_type):
-            item._rl_predraw_widgets() # type: ignore
+            PyObject_CallNoArgs(item._rl_predraw_widgets) # type: ignore
         elif isinstance(item, widget_type):
-            if item._changed: item.draw() # type: ignore
+            if item._changed: 
+                PyObject_CallNoArgs(item.draw) # type: ignore
         i += 1
 
 def fast_cycle_range(object func not None, Py_ssize_t start, Py_ssize_t end, Py_ssize_t step):
@@ -211,11 +256,11 @@ def fast_cycle_range(object func not None, Py_ssize_t start, Py_ssize_t end, Py_
         raise ValueError("step must not be 0")
     if step > 0:
         while i < end:
-            f()
+            PyObject_CallNoArgs(f)
             i += step
     else:
         while i > end:
-            f()
+            PyObject_CallNoArgs(f)
             i += step
 
 def fast_cycle_list(func, list items not None):
