@@ -44,9 +44,8 @@ class _TooltipBase:
         surf = renderer._create_surf_base(self._csize, radius = br, sdf=True, override_color=self.style.colortheme.get_subtheme(SubThemeRole.TERTIARY).oncontainer, alt = alt)
         title_surf, title_rect , _ = renderer.bake_text(self.title, style=self.style, size = self._csize, outside=True, outside_rect = surf.get_rect(), override_font_size=self.style.font_size) #type: ignore
         if nevu_state.window.is_dtype.raylib:
-            md.rl.begin_texture_mode(surf.texture)
-            nevu_state.window.display.blit(title_surf, title_rect)
-            md.rl.end_texture_mode()
+            with surf:
+                nevu_state.window.display.blit(title_surf.texture, title_rect)
         else:
             surf.blit(title_surf, title_rect)
         return surf

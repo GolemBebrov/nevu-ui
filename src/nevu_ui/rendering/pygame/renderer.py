@@ -39,7 +39,7 @@ class _DrawNamespace:
         return gr.apply_gradient(surface)
 
     def create_clear(self, size, flags) -> Surface:
-        surf = md.pygame.Surface(size, flags = flags)
+        surf = md.pygame.Surface(size, flags = flags | md.pygame.SRCALPHA, depth=32 )
         surf.fill((0,0,0,0))
         return surf
     

@@ -92,9 +92,7 @@ def init_keys():
 
 class KeysMeta(type):
     def __getattr__(cls, key):
-        if not cls._main_keys:
-            cls._main_keys = _keys
-        return cls._main_keys[key]
+        return _keys[key]
 
 class Keys(metaclass=KeysMeta):
     _main_keys = None

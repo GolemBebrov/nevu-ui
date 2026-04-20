@@ -256,7 +256,7 @@ class Menu:
         self._changed = True
         self.cache.clear_selected(whitelist = [CacheType.RelSize])
         self._resize_ratio = NvVector2([size[0] / self.first_window_size[0], size[1] / self.first_window_size[1]])
-        if self._window is None: raise ValueError("Window is not initialized!")
+        if self._window is None: return
         if self.isrelativeplaced:
             window_size = self._window.size - NvVector2(self._window._crop_width_offset, self._window._crop_height_offset)
             target_pos = window_size * (NvVector2(self.relative_percent_x, self.relative_percent_y) / 100) #type: ignore
