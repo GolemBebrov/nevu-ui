@@ -33,10 +33,14 @@ from .presentation.style import (
 from .core.enums import (
     Align, Quality, HoverState, LinearSide, RadialPosition, GradientType, CacheName, CacheType, EventType, Backend, ConfigLoadType, AnimationType
 )
-from .core.classes import TooltipType, BorderConfig
+from .core.classes import TooltipType, BorderConfig, nevu_globals
 from .components.widgets import (
     Widget, Label, Button, EmptyWidget, RectCheckBox, Image, Gif, Input, MusicPlayer, ElementSwitcher, Element, ProgressBar, Slider
 )
+
+from .components.widgets.typehints import widget_globals
+from .components.nevuobj.typehints import nevu_object_globals
+
 from .components.layouts import (
     LayoutType, Grid, Row, Column, ScrollableColumn, ScrollableRow, ColorPicker, Pages, Gallery_Pages, StackRow, StackColumn, CheckBoxGroup
 )
@@ -68,5 +72,5 @@ __all__ = [
     "animations", "utils", "size"
 ]
 
-version = "0.7.4" #okabe 1.048596% based, lelush buryatskiy povelevae bagi uydite
+version = "0.7.5" #okabe 1.048596% based, lelush buryatskiy povelevae bagi uydite
 print(f"nevu-ui {version}")
