@@ -200,8 +200,6 @@ cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input,
     r_tr = fmaxf(r_tr - half_width, 0.0)
     r_br = fmaxf(r_br - half_width, 0.0)
     r_bl = fmaxf(r_bl - half_width, 0.0)
-
-    surf.fill((0, 0, 0, 0))
     
     cdef uint8_t[:, :, :] pixels3d = md.pygame.surfarray.pixels3d(surf)
     cdef uint8_t[:, :] pixels_alpha = md.pygame.surfarray.pixels_alpha(surf)
@@ -241,6 +239,7 @@ cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input,
     cdef float signed_dist, dist_from_edge
     
     cdef float sa, ba_eff, total_a, out_r, out_g, out_b
+    cdef float orig_a, orig_r, orig_g, orig_b
 
     with nogil:
         for y in prange(h, schedule='static'):
@@ -265,13 +264,11 @@ cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input,
                 signed_dist = dist_outside + dist_inside - current_r
                 
                 if signed_dist > half_width + 0.5:
+                    pixels_alpha[x, y] = 0
                     continue
                     
                 dist_from_edge = fabsf(signed_dist)
                 
-                if not has_bg and signed_dist < -(half_width + 0.5):
-                    continue
-                    
                 sa = 0.5 - (dist_from_edge - half_width)
                 if sa > 1.0: sa = 1.0
                 elif sa < 0.0: sa = 0.0
@@ -297,19 +294,54 @@ cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input,
                             pixels_alpha[x, y] = 255
                         else:
                             pixels_alpha[x, y] = <uint8_t>(total_a * 255.0)
+                    else:
+                        pixels_alpha[x, y] = 0
                 else:
+                    if signed_dist < -(half_width + 0.5):
+                        continue
+                        
                     if sa > 0.0:
-                        pixels3d[x, y, 0] = r
-                        pixels3d[x, y, 1] = g
-                        pixels3d[x, y, 2] = b
-                        if sa >= 1.0:
-                            pixels_alpha[x, y] = <uint8_t>alpha_base
+                        if signed_dist > 0.0:
+                            pixels3d[x, y, 0] = r
+                            pixels3d[x, y, 1] = g
+                            pixels3d[x, y, 2] = b
+                            if sa >= 1.0:
+                                pixels_alpha[x, y] = <uint8_t>alpha_base
+                            else:
+                                pixels_alpha[x, y] = <uint8_t>(sa * 255.0)
                         else:
-                            pixels_alpha[x, y] = <uint8_t>(sa * 255.0)
-                            
+                            if sa >= 1.0:
+                                pixels3d[x, y, 0] = r
+                                pixels3d[x, y, 1] = g
+                                pixels3d[x, y, 2] = b
+                                pixels_alpha[x, y] = <uint8_t>alpha_base
+                            else:
+                                orig_a = pixels_alpha[x, y] / 255.0
+                                orig_r = pixels3d[x, y, 0]
+                                orig_g = pixels3d[x, y, 1]
+                                orig_b = pixels3d[x, y, 2]
+                                
+                                total_a = sa + orig_a * (1.0 - sa)
+                                if total_a > 0.0:
+                                    out_r = (r * sa + orig_r * orig_a * (1.0 - sa)) / total_a
+                                    out_g = (g * sa + orig_g * orig_a * (1.0 - sa)) / total_a
+                                    out_b = (b * sa + orig_b * orig_a * (1.0 - sa)) / total_a
+                                    
+                                    pixels3d[x, y, 0] = <uint8_t>out_r
+                                    pixels3d[x, y, 1] = <uint8_t>out_g
+                                    pixels3d[x, y, 2] = <uint8_t>out_b
+                                    
+                                    if total_a >= 1.0:
+                                        pixels_alpha[x, y] = 255
+                                    else:
+                                        pixels_alpha[x, y] = <uint8_t>(total_a * 255.0)
+                                else:
+                                    pixels_alpha[x, y] = 0
+
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cpdef void transform_into_rounded_rect(object surf, object radii_input, tuple color):
+cpdef void transform_into_rounded_rect(object surf, object radii_input, object color=None):
     cdef int width = surf.get_width()
     cdef int height = surf.get_height()
     
@@ -334,16 +366,25 @@ cpdef void transform_into_rounded_rect(object surf, object radii_input, tuple co
     r_br = fminf(fmaxf(r_br, 0.0), max_radius)
     r_bl = fminf(fmaxf(r_bl, 0.0), max_radius)
 
-    surf.fill((0, 0, 0, 0))
+    cdef int has_color = 1 if color is not None else 0
+    cdef int alpha_base = 0
+    cdef uint8_t r = 0, g = 0, b = 0
+    
+    if has_color:
+        alpha_base = color[3] if len(color) > 3 else 255
+        r = color[0]
+        g = color[1]
+        b = color[2]
 
     if r_tl <= 0.0 and r_tr <= 0.0 and r_br <= 0.0 and r_bl <= 0.0:
-        surf.fill(color)
+        if has_color:
+            surf.fill(color)
         return
 
-    cdef int alpha_base = color[3] if len(color) > 3 else 255
-    if alpha_base == 0:
+    if has_color and alpha_base == 0:
+        surf.fill((0, 0, 0, 0))
         return
-        
+
     cdef uint8_t[:, :, :] pixels3d = md.pygame.surfarray.pixels3d(surf)
     cdef uint8_t[:, :] pixels_alpha = md.pygame.surfarray.pixels_alpha(surf)
     
@@ -352,10 +393,6 @@ cpdef void transform_into_rounded_rect(object surf, object radii_input, tuple co
     
     cdef float box_half_w = (width - 1) * 0.5
     cdef float box_half_h = (height - 1) * 0.5
-    
-    cdef uint8_t r = color[0]
-    cdef uint8_t g = color[1]
-    cdef uint8_t b = color[2]
     
     cdef int x, y
     cdef float px, py, current_r
@@ -383,14 +420,20 @@ cpdef void transform_into_rounded_rect(object surf, object radii_input, tuple co
                 
                 signed_dist = dist_outside + dist_inside - current_r
                 
-                if signed_dist <= -0.5:
-                    pixels3d[x, y, 0] = r
-                    pixels3d[x, y, 1] = g
-                    pixels3d[x, y, 2] = b
-                    pixels_alpha[x, y] = <uint8_t>alpha_base
-                elif signed_dist < 0.5:
+                if signed_dist >= 0.5:
+                    pixels_alpha[x, y] = 0
+                elif signed_dist > -0.5:
                     alpha_f = 0.5 - signed_dist
-                    pixels3d[x, y, 0] = r
-                    pixels3d[x, y, 1] = g
-                    pixels3d[x, y, 2] = b
-                    pixels_alpha[x, y] = <uint8_t>(alpha_f * alpha_base)
+                    if has_color:
+                        pixels3d[x, y, 0] = r
+                        pixels3d[x, y, 1] = g
+                        pixels3d[x, y, 2] = b
+                        pixels_alpha[x, y] = <uint8_t>(alpha_f * alpha_base)
+                    else:
+                        pixels_alpha[x, y] = <uint8_t>(pixels_alpha[x, y] * alpha_f)
+                else:
+                    if has_color:
+                        pixels3d[x, y, 0] = r
+                        pixels3d[x, y, 1] = g
+                        pixels3d[x, y, 2] = b
+                        pixels_alpha[x, y] = <uint8_t>alpha_base
