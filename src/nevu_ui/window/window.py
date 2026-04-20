@@ -22,6 +22,7 @@ from nevu_ui.utils import (
 )
 
 class _IsNamespace:
+    __slots__ = ["master"]
     def __init__(self, master):
         self.master = master
     @property
@@ -79,6 +80,7 @@ class Window:
         nevu_state.window = self
         self._debouncing = Counter(0, 0.1)
         self._old_fps = None
+        self.pygame_unicode = None
         
         self._init_kwargs(**kwargs)
         init_modules()
@@ -198,28 +200,35 @@ class Window:
     
     def _update_raylib(self, fps: int | None = None, **kwargs):
         fps = fps or self._fps
+        rl = md.rl
+        assert rl
         if fps != self._old_fps:
-            md.rl.set_target_fps(fps)
+            rl.set_target_fps(fps)
             self._old_fps = fps
-        if md.rl.window_should_close():
-            md.rl.close_window()
+        if rl.window_should_close():
+            rl.close_window()
             sys.exit()
-        if md.rl.is_window_resized():
-            self.size = NvVector2(md.rl.get_screen_width(), md.rl.get_screen_height())
+        if rl.is_window_resized():
+            self.size = NvVector2(rl.get_screen_width(), rl.get_screen_height())
             self._debouncing.val = 0
     
     def _update_pygame(self, events, fps: int | None = None, **kwargs):
         fps = fps or self._fps
         events = events or md.pygame.event.get()
+        unicoded = False
         for event in events:
             if event.type == md.pygame.QUIT:
                 md.pygame.quit()
                 sys.exit()
-                
+            if event.type == md.pygame.KEYDOWN:
+                self.pygame_unicode = event.unicode
+                unicoded = True
             if event.type == md.pygame.VIDEORESIZE and self._resize_type != ResizeType.ResizeFromOriginal:
                 w, h = event.w, event.h
                 self.size = NvVector2(w, h)
                 self._debouncing.val = 0
+        if unicoded == False:
+            self.pygame_unicode = None
         self._clock.tick(fps)
         
     def update(self, events = None, fps: int | None = None):
