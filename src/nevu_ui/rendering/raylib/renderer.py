@@ -346,7 +346,7 @@ class BackgroundRendererRayLib:
                 root.cache.clear_selected(whitelist = [CacheType.RlText])
             target = NvRenderTexture(NvVector2(math.ceil(text_w), math.ceil(text_h)))
             assert target
-            md.rl.set_texture_filter(target.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
+            md.rl.set_texture_filter(target.texture, md.rl.TextureFilter.TEXTURE_FILTER_ANISOTROPIC_16X)
             md.rl.set_texture_wrap(target.texture, md.rl.TextureWrap.TEXTURE_WRAP_CLAMP)
             with target:
                 md.rl.clear_background(Color.Blank) 

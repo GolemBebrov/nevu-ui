@@ -64,10 +64,12 @@ class DisplaySdl(DisplayBase):
         return Texture(self.renderer, size=(width, height), target=True)
 
     def load_image(self, path: str): return md.pygame.image.load(path)
-
+    
+_origin = (0, 0)
 class DisplayRayLib(DisplayBase):
     def __init__(self, title, size, root, **kwargs): 
         super().__init__(root)
+        
         if kwargs.get('resizable', False):
             md.rl.set_config_flags(md.rl.ConfigFlags.FLAG_WINDOW_RESIZABLE)
         md.rl.init_window(int(size[0]), int(size[1]), title)
@@ -99,7 +101,8 @@ class DisplayRayLib(DisplayBase):
             "BeginBlendMode",
             "EndBlendMode",
             "BeginTextureMode",
-            "EndTextureMode"]
+            "EndTextureMode",
+            "ClearBackground",]
         pointer_dict = {}
         for func_name in functions_to_load:
             try:
@@ -112,7 +115,7 @@ class DisplayRayLib(DisplayBase):
         init_raylib_pointers(pointer_dict) # type: ignore
         print(f"Successfully loaded {len(pointer_dict)} fast raylib functions.")
 
-    def blit(self, source: "Texture", dest: Annotations.rect_like, flip = True, color: Annotations.rgba_color = Color.White, angle: int | float | None = None): 
+    def blit(self, source: "Texture", dest: Annotations.rect_like, flip = True, color: Annotations.rgba_color = Color.White, angle: int | float = 0.0): 
         if isinstance(color, tuple) and len(color) == 3:
             color = (*color, 255)
         self.blit_rect_pro(source, (dest[0], dest[1], source.width, source.height), flip, color, angle)
@@ -142,6 +145,7 @@ class DisplayRayLib(DisplayBase):
         begin_blend_mode(mode or md.rl.BlendMode.BLEND_ALPHA)
         draw_texture_rec(source, source_rec, coordinates, color)
         end_blend_mode()
+    
     
     def _begin_sdf(self, width, height, radii):
         radii = list(radii)
@@ -206,7 +210,12 @@ class DisplayRayLib(DisplayBase):
         self._begin_borders(source.width, source.height, radii, border_color, thickness)
         self.blit_rect_vec(source, coordinates, flip, color)
         self._end_shader()
-        
+    
+    def fast_blit_borders_vec(self, source: "Texture", coordinates: Annotations.dest_like, radii: Annotations.rect_like, border_color: Annotations.rgb_like_color, thickness: float = 1, flip = True):
+        self._begin_borders(source.width, source.height, radii, border_color, thickness)
+        self.fast_blit_pro(source, coordinates, flip)
+        self._end_shader()
+    
     def get_width(self): return md.rl.get_screen_width()
     def get_height(self): return md.rl.get_screen_height()
     def get_rect(self): return NvRect(0, 0, *self.get_size())
