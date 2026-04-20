@@ -2,7 +2,10 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pyray import Texture
+    from pyray import RenderTexture
 
+from nevu_ui.fast.nvrendertex import NvRenderTexture
+from nevu_ui.fast.nvvector2 import NvVector2
 import nevu_ui.core.modules as md
 from nevu_ui.fast import GradientShader
 from nevu_ui.rendering.pygame.gradient import GradientPygame
@@ -118,7 +121,7 @@ class GradientRaylib(GradientPygame):
             cls._blank_texture = md.rl.load_texture_from_image(img)
             md.rl.unload_image(img)
 
-    def generate_texture(self, width: int, height: int) -> "Texture":
+    def generate_texture(self, width: int, height: int) -> "NvRenderTexture":
         colors_flat =[]
         for c in self.colors:
             colors_flat.extend([c[0]/255.0, c[1]/255.0, c[2]/255.0, c[3]/255.0 if len(c) == 4 else 1.0])
@@ -146,25 +149,18 @@ class GradientRaylib(GradientPygame):
         md.rl.set_shader_value_v(self._shader, self._locs['stops'], stops_ptr, md.rl.ShaderUniformDataType.SHADER_UNIFORM_FLOAT, len(self.stops))
         md.rl.set_shader_value(self._shader, self._locs['size'], size_ptr, md.rl.ShaderUniformDataType.SHADER_UNIFORM_VEC2)
 
-        target = md.rl.load_render_texture(width, height)
+        target = NvRenderTexture(NvVector2(width, height))
         
-        md.rl.begin_texture_mode(target)
-        md.rl.clear_background(md.rl.BLANK)
-        md.rl.begin_shader_mode(self._shader)
-        
-        source_rec = md.rl.Rectangle(0, 0, 1, 1)
-        dest_rec = md.rl.Rectangle(0, 0, width, height)
-        md.rl.draw_texture_pro(self._blank_texture, source_rec, dest_rec, (0,0), 0.0, md.rl.WHITE)
-        
-        md.rl.end_shader_mode()
-        md.rl.end_texture_mode()
-
-        image = md.rl.load_image_from_texture(target.texture)
-        final_texture = md.rl.load_texture_from_image(image)
-        
-        md.rl.unload_image(image)          
-        md.rl.unload_render_texture(target)
-        return final_texture
+        with target:
+            md.rl.clear_background(md.rl.BLANK)
+            md.rl.begin_shader_mode(self._shader)
+            
+            source_rec = (0, 0, 1, 1)
+            dest_rec = (0, 0, width, height)
+            md.rl.draw_texture_pro(self._blank_texture, source_rec, dest_rec, (0,0), 0.0, md.rl.WHITE)
+            
+            md.rl.end_shader_mode()
+        return target
 
 class ClickGradient(GradientRaylib):
     def __init__(self, colors, type: GradientType = GradientType.Radial, direction=None, angle=None, center=None, transparency=None):
