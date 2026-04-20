@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import NotRequired, Any, Callable, TYPE_CHECKING, Unpack
 from dataclasses import dataclass
 from nevu_ui.components.nevuobj.typehints import NevuObjectKwargs, NevuObjectTemplate, GlobalsBase, NevuObjectGlobalsKwargs

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import abstractmethod, ABC
 import weakref
 from typing_extensions import TypedDict, Unpack, Any, TYPE_CHECKING, NotRequired, Callable, overload
@@ -20,7 +22,7 @@ class _BaseCoreNamespace(ABC):
     def root(self) -> "Widget": return self._renderer.root
     
     @property
-    def style(self) -> Style: return self.root.style
+    def style(self) -> "Style": return self.root.style
     
     @abstractmethod
     def get_gradient(self, style = None):

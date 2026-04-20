@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing_extensions import override, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:

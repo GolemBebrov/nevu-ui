@@ -52,7 +52,7 @@ class Vector2Animation(Animation):
         self.current_value = NvVector2(*(round(self.start[i] + (self.end[i] - self.start[i]) * eased_value) for i in range(2)))
 
 class ColorAnimation(Animation):
-    def __init__(self, start: Annotations.rgba_color, end: Annotations.rgba_color, time: int | float = 1, easing_func: Callable | None = None, check_errors: bool = False):
+    def __init__(self, start, end, time: int | float = 1, easing_func: Callable | None = None, check_errors: bool = False):
         super().__init__(start, end, time, easing_func, check_errors)
     def _apply_easing(self, eased_value):
         lenght = min(len(self.start), len(self.end))
