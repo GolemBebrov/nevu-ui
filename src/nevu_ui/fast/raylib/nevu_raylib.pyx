@@ -90,29 +90,29 @@ cdef RenderTexture2D _get_c_render_texture(object py_rt):
     c_rt.depth = _get_c_texture(py_rt.depth)
     return c_rt
 
-cdef inline void set_rectangle_4vals(Rectangle* rect, float x, float y, int width, int height) noexcept nogil:
+cdef void set_rectangle_4vals(Rectangle* rect, float x, float y, int width, int height) noexcept nogil:
     rect.x = x
     rect.y = y
     rect.width = width
     rect.height = height
 
-cdef inline void set_rectangle_2tuple(Rectangle* rect, tuple pos, tuple size):
+cdef void set_rectangle_2tuple(Rectangle* rect, tuple pos, tuple size):
     rect.x = PyFloat_AsDouble(PyTuple_GET_ITEM(pos, 0))
     rect.y = PyFloat_AsDouble(PyTuple_GET_ITEM(pos, 1))
     rect.width = PyLong_AsLong(PyTuple_GET_ITEM(size, 0))
     rect.height = PyLong_AsLong(PyTuple_GET_ITEM(size, 1))
 
-cdef inline void set_rectangle_1tuple(Rectangle* rect, tuple rect_value):
+cdef void set_rectangle_1tuple(Rectangle* rect, tuple rect_value):
     rect.x = PyFloat_AsDouble(PyTuple_GET_ITEM(rect_value, 0))
     rect.y = PyFloat_AsDouble(PyTuple_GET_ITEM(rect_value, 1))
     rect.width = rect_value[2]
     rect.height = rect_value[3]
 
-cdef inline void set_vector2_tuple(Vector2* vec, tuple pos):
+cdef void set_vector2_tuple(Vector2* vec, tuple pos):
     vec.x = PyFloat_AsDouble(PyTuple_GET_ITEM(pos, 0))
     vec.y = PyFloat_AsDouble(PyTuple_GET_ITEM(pos, 1))
 
-cdef inline void set_color(Color* col, tuple color):
+cdef void set_color(Color* col, tuple color):
     cdef Py_ssize_t color_size = PyTuple_GET_SIZE(color)
     col.r = <unsigned char>PyFloat_AsDouble(PyTuple_GET_ITEM(color, 0))
     col.g = <unsigned char>PyFloat_AsDouble(PyTuple_GET_ITEM(color, 1))
@@ -122,7 +122,7 @@ cdef inline void set_color(Color* col, tuple color):
     else:
         col.a = 255
 
-cdef inline void c_draw_texture_rec(object texture, tuple source_rec, tuple position, tuple color):
+cdef void c_draw_texture_rec(object texture, tuple source_rec, tuple position, tuple color):
     cdef Texture2D c_tex = _get_c_texture(texture)
     cdef Rectangle c_source
     cdef Vector2 c_pos
@@ -142,7 +142,7 @@ cpdef void draw_texture_rec(object texture, tuple source_rec, tuple position, tu
 cpdef void draw_texture_rec_ez(object texture, tuple source_rec, tuple position):
     c_draw_texture_rec(texture, source_rec, position, (255, 255, 255, 255))
 
-cdef inline void c_draw_texture_vec(object texture, tuple position, tuple color, bint flip):
+cdef void c_draw_texture_vec(object texture, tuple position, tuple color, bint flip):
     cdef Texture2D c_tex = _get_c_texture(texture)
     cdef Rectangle c_source
     cdef Vector2 c_pos
@@ -166,7 +166,7 @@ cpdef void draw_texture_vec(object texture, tuple position, tuple color, bint fl
 cpdef void draw_texture_vec_ez(object texture, tuple position, bint flip):
     c_draw_texture_vec(texture, position, (255, 255, 255, 255), flip)
 
-cdef inline void c_draw_texture_pro(object texture, tuple source_rec, tuple dest_rec, tuple origin, float rotation, tuple color):
+cdef void c_draw_texture_pro(object texture, tuple source_rec, tuple dest_rec, tuple origin, float rotation, tuple color):
     cdef Texture2D c_tex = _get_c_texture(texture)
     cdef Rectangle c_source
     cdef Rectangle c_dest
@@ -199,7 +199,7 @@ cpdef void begin_texture_mode(object target):
 cpdef void end_texture_mode():
     _c_EndTextureMode()
 
-cdef inline void c_clear_background(tuple color):
+cdef void c_clear_background(tuple color):
     cdef Color c_col
     set_color(&c_col, color)
     _c_ClearBackground(c_col)

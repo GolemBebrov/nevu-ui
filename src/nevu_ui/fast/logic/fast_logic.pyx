@@ -189,7 +189,7 @@ cdef void draw_item_raylib(NevuCobject layout, NevuCobject item, NvVector2 coord
     display = nevu_state.window.display
     draw_texture_rec(item.surface.texture, (0,0, item.surface.texture.width, -item.surface.texture.height), coordinates.get_int_tuple(), (255, 255, 255, 255))
 
-cdef inline void draw_widget_optimized(DrawFuncPtr draw_item, NevuCobject layout, NevuCobject item, type layout_type, type widget_type):
+cdef void draw_widget_optimized(DrawFuncPtr draw_item, NevuCobject layout, NevuCobject item, type layout_type, type widget_type):
     if not nevu_state.window.is_dtype.raylib:
         PyObject_CallNoArgs(item.draw)
         if isinstance(item, layout_type): return
