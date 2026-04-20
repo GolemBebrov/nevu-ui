@@ -28,7 +28,7 @@ cpdef void logic_update_helper(
     ZSystem z_system
 )
 
-cdef inline start_item(NevuCobject item, NevuCobject layout)
+cdef start_item(NevuCobject item, NevuCobject layout)
 
 cpdef void draw_widgets_optimized(
     list items,
