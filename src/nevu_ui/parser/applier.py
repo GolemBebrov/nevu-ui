@@ -4,8 +4,8 @@ from enum import StrEnum
 from typing import Any
 
 from nevu_ui.core.classes import ConfigType
-from nevu_ui.json_parser import check
-from nevu_ui.json_parser import standart_config
+from nevu_ui.parser import check
+from nevu_ui.parser import standart_config
 from nevu_ui.core.enums import ConfigLoadType
 from nevu_ui.presentation.style import Style
 from nevu_ui.presentation.color.color_theme import ColorTheme, ColorSubTheme, ColorPair
