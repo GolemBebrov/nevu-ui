@@ -2,6 +2,9 @@
 
 ![alt text](https://img.shields.io/badge/License:-MIT-orange.svg)
 
+# Wiki link
+ * <a href="https://golembebrov.github.io/nevu-docs/">NevuDocs</a>
+
 # Brief Description
 **Nevu UI** is a library for the declarative creation of user interfaces in python. The project aims to provide developers with a set of ready-made, stylable, and extensible components for the rapid creation of modern and responsive interfaces in games and multimedia applications.
 
