@@ -2,7 +2,7 @@
 
 ![alt text](https://img.shields.io/badge/License:-MIT-orange.svg)
 
-# Wiki ссылка
+# Wiki ссылка (БЕТА!)
  * <a href="https://golembebrov.github.io/nevu-docs/">NevuDocs</a>
 
 # Краткое описание

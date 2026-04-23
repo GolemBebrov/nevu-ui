@@ -2,13 +2,15 @@
 
 ![alt text](https://img.shields.io/badge/License:-MIT-orange.svg)
 
-# Wiki link
+# Wiki link(BETA!)
  * <a href="https://golembebrov.github.io/nevu-docs/">NevuDocs</a>
+
+### Nevu UI means: `Nevu is Eleven times better Versus other UI's User Interface`
 
 # Brief Description
 **Nevu UI** is a library for the declarative creation of user interfaces in python. The project aims to provide developers with a set of ready-made, stylable, and extensible components for the rapid creation of modern and responsive interfaces in games and multimedia applications.
 
-#### The main goal of Nevu UI: to make creating interfaces in python even easier and faster
+#### The main goal of Nevu UI: to make creating interfaces in python easier and faster
 
 ### Key features include:
 *   **Layout system:** Convenient arrangement of elements, for example, using grids (Grid) and scrollable containers (ScrollableColumn).
@@ -49,7 +51,6 @@ Examples of declarativeness:
     *   **Themes:** Ready-made color themes in `ColorThemeLibrary`.
     *   **Gradients:** Support for linear and radial.
     *   **Image:** Support for a background image via the `bgimage` parameter.
-    *   **Inheritance:** Styles can be created based on existing ones.
     *   **And much more:** Fonts, borders, rounding, transparency.
 *   **Built-in animations:** Bring your interface to life with ready-made animations for movement, transparency, etc.
     * **25+ built-in animations**
@@ -80,8 +81,8 @@ Examples of declarativeness:
         my_var: NotRequired[int | float]
 
     class MyWidget(ui.Widget):
-        def __init__(self, size: NvVector2 | list, style: Style = default_style, **constant_kwargs: Unpack[MyWidgetKwargs]):
-            super().__init__(size, style, **constant_kwargs)
+        def __init__(self, size: NvVector2 | list, style: Style = default_style, **param_kwargs: Unpack[MyWidgetKwargs]):
+            super().__init__(size, style, **param_kwargs)
 
         #Override the function to add parameters (mandatory)
         def _add_params(self):
@@ -184,7 +185,7 @@ while True: #Main loop
 
 ### **Layouts (Layout_Type Heirs)**
 
-(✅ - done, ❌ - not done, 💾 - deprecated/not working)
+(✅ - done, ❌ - not done, 💾 - deprecated and not working)
 
 *   ✅ `Grid`
 *   ✅ `Row`
@@ -207,7 +208,7 @@ while True: #Main loop
 *   ✅ `EmptyWidget`
 *   ✅ `Tooltip` (Pygame exclusive, for now)
 *   💾 `Gif`
-*   ❌ `MusicPlayer` (Will be reworked, hopefully)
+*   ❌ `MusicPlayer` (Will be reworked, i guess?)
 *   ✅ `ProgressBar`
 *   ✅ `SliderBar`
 *   ✅ `ElementSwitcher`
@@ -218,7 +219,7 @@ while True: #Main loop
 
 *   ✅ `Pygame-ce`
 *   ✅ `Pygame-ce._sdl2(Sdl)`
-*   ✅ `RayLib` (BETA)
+*   ✅ `RayLib`
 
 ## Backend Exclusives
 
