@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing_extensions import override, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from nevu_ui.rendering.gradient import GradientPygame
+    from nevu_ui.rendering.uni_gradient import GradientPygame
     from nevu_ui.presentation.style import Style
 
 from nevu_ui.core.enums import RenderReturnType
@@ -44,6 +44,7 @@ class _PygameCoreNamespace(_BaseCoreNamespace):
     def load_image(self, path: str, size: Annotations.dest_like | NvVector2 | None = None):
         img = md.pygame.image.load(path)
         img.convert_alpha()
+        md.pygame.transform.smoothscale(img, size)
         return img
     
     @override
@@ -99,7 +100,7 @@ class PygameRenderer(BaseRenderer):
                 surface.blit(gradient, (0, 0)) 
                 
             elif image_support and root.style.bg_image:
-                image = self.core.load_image(root.style.bg_image, size)
+                image = root.cache.get_or_exec(CacheType.Scaled_Image, lambda: self.core.load_image(root.style.bg_image, size))
                 surface.blit(image, (0, 0))
             else:
                 if easy_background:
@@ -113,7 +114,7 @@ class PygameRenderer(BaseRenderer):
             validator.Raw = True
             validator.Modify = True
             validator.CreateNew = True
-        
+
         match return_type:
             case RenderReturnType.Null:
                 assert isinstance(root.surface, md.pygame.Surface), "root.surface must be a pygame Surface"
@@ -128,6 +129,7 @@ class PygameRenderer(BaseRenderer):
                 assert texture, "Modify return type selected but no object provided"
                 _draw_on_texture(texture)
             case RenderReturnType.CreateNew:
+                
                 texture = self.core.create_clear(size)
                 _draw_on_texture(texture)
                 return texture
