@@ -16,9 +16,9 @@ from .fast import NvVector2
 from .fast.nvrect import NvRect
 from .fast.nvrendertex import NvRenderTexture
 
-from .rendering import Gradient, gradient_queue
+from .rendering import Gradient
 from .core.state import nevu_state
-from .json_parser import apply_config, get_style, get_color, get_all_styles, get_all_colors, get_colortheme, get_all_colorthemes
+from .parser import apply_config, get_style, get_color, get_all_styles, get_all_colors, get_colortheme, get_all_colorthemes
 from .overlay import overlay, Tooltip
 
 from .core.size.units import (
@@ -72,5 +72,5 @@ __all__ = [
     "animations", "utils", "size"
 ]
 
-version = "0.7.5" #okabe 1.048596% based, lelush buryatskiy povelevae bagi uydite
+version = "0.7.6" #okabe 1.048596% based, lelush buryatskiy povelevae bagi uydite
 print(f"nevu-ui {version}")

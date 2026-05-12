@@ -1,2 +1,2 @@
 from .gradient import GradientRaylib
-from .renderer import BackgroundRendererRayLib
+from .new_renderer import RaylibRenderer

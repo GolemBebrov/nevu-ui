@@ -1,2 +1,2 @@
 from .gradient import GradientPygame
-from .renderer import BackgroundRendererPygame
+from .new_renderer import PygameRenderer
