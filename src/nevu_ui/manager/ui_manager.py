@@ -4,10 +4,10 @@ import nevu_ui.core.modules as md
 from nevu_ui.window import Window
 
 class Manager:
+    __slots__ = ("_window", "running", "force_quit", "background", "fps")
     def __init__(self, window: Window | None = None):
         if window: self.window = window
         self.running = True
-        self.dirty_mode = False
         self.force_quit = True
         self.background = (0, 0, 0)
         self.fps = 60
@@ -20,25 +20,9 @@ class Manager:
             raise ValueError("Unexpected window type!")
         self._window = window
 
-    def _before_draw(self): self.window.clear(self.background)
     def on_draw(self): pass
-    def _after_draw(self): pass
-    
-    def __main_draw_loop(self):
-        self._before_draw()
-        self.on_draw()
-        self._after_draw()
 
-    def _before_update(self, events): pass
-    def on_update(self, events): pass
-    def _after_update(self, events):
-        self.window.update(events, self.fps)
-
-    def __main_update_loop(self):
-        events = None if self.window.is_dtype.raylib else md.pygame.event.get()
-        self._before_update(events)
-        self.on_update(events)
-        self._after_update(events)
+    def on_update(self): pass
     
     def exit(self): self.running = False
     def on_start(self): pass
@@ -55,17 +39,34 @@ class Manager:
     def first_draw(self): pass
     
     def __main_loop(self):
-        self.window.display.begin_frame()
+        begin_frame = self.window.display.begin_frame
+        end_frame = self.window.display.end_frame
+        w_update = self.window.display.update
+        
+        on_update = self.on_update
+        on_draw = self.on_draw
+        
+        window = self.window
+        
+        begin_frame()
         self.on_start()
         self.first_update()
         self.first_draw()
-        self.window.display.end_frame()
+        end_frame()
+        
         while self.running:
-            self.window.display.begin_frame()
-            self.__main_update_loop()
-            self.__main_draw_loop()
-            self.window.display.update()
-            self.window.display.end_frame()
+            begin_frame()
+            window.clear(self.background)
+            
+            on_update()
+            window.update(None, self.fps)
+        
+            on_draw()
+            
+            w_update()
+            
+            end_frame()
+            
         self._on_exit()
         
     def run(self): self.__main_loop()
