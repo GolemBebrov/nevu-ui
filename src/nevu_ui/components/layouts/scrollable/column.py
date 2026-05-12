@@ -13,6 +13,8 @@ class ScrollableColumn(ScrollableBase):
     def _sec_coord(self, coordinates: NvVector2): return coordinates.x
     @property
     def _main_axis(self): return 1
+    @property
+    def _sec_axis(self): return 0
     
     def _add_params(self):
         super()._add_params()
@@ -22,11 +24,9 @@ class ScrollableColumn(ScrollableBase):
 
     def _parse_align(self, align: Align): return align in (Align.LEFT, Align.RIGHT, Align.CENTER)
 
-    def _create_scroll_bar(self) -> ScrollableBase.ScrollBar:
-        if not self.scrollbar_perc:
-            size = NvVector2(self.size[0]/40, self.size[1]/20)
-        else: size = self.size / 100 * self.scrollbar_perc
-        return self.ScrollBar(size, self.style, ScrollBarType.Vertical, self)
+    @property
+    def _scrollbar_type(self) -> ScrollBarType:
+        return ScrollBarType.Vertical
 
     def _get_scrollbar_coordinates(self) -> NvVector2:
         adds = self.coordinates
@@ -35,18 +35,16 @@ class ScrollableColumn(ScrollableBase):
     def _set_item_main(self, item: NevuObject, align: Align):
         container_width, widget_width = self._csize.x, item._csize.x
         padding = self.relx(self.get_param_strict("spacing").value)
+        self_cx = self.coordinates.x
+        item_coords = item.coordinates
+        
+        value = 0
         
         match align:
-            case Align.LEFT: item.coordinates.x = self.coordinates.x + padding
-            case Align.RIGHT: item.coordinates.x = self.coordinates.x + (container_width - widget_width - padding)
-            case Align.CENTER: item.coordinates.x = self.coordinates.x + (container_width / 2 - widget_width / 2)
-        item.coordinates.x += self.coordinates.x
-    
-    def _base_light_update(self, items = None): # type: ignore
-        super()._base_light_update(0, -self.get_offset(), items = items)
-        
-    @property
-    def _collide_function(self): return collide_vertical
+            case Align.LEFT: value = self_cx + padding
+            case Align.RIGHT: value = self_cx + (container_width - widget_width - padding)
+            case Align.CENTER: value = self_cx + (container_width / 2 - widget_width / 2)
+        item_coords.x = value + self_cx
         
     def _regenerate_max_values(self):
         assert nevu_state.window, "Window is not initialized"
@@ -59,6 +57,5 @@ class ScrollableColumn(ScrollableBase):
         antirel = nevu_state.window.rel
         self.actual_max_main = max(0, (total_content_height - visible_height) / antirel.y)
 
-    def get_relative_vector_offset(self) -> NvVector2: return self.coordinates + NvVector2(0, self.rely(self.get_offset()))
-
-    def clone(self): return ScrollableColumn(self._template['size'], copy.deepcopy(self.style), self._template['content'], **self.constant_kwargs)
+    def _update_offset(self): 
+        self._offset = self.coordinates + NvVector2.from_xy(0, self.rely(self.get_offset()))
