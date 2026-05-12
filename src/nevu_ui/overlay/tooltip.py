@@ -10,13 +10,19 @@ from nevu_ui.core.state import nevu_state
 from typing import TYPE_CHECKING
 if TYPE_CHECKING: from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.utils import NevuEvent, mouse, time
-from nevu_ui.core.enums import EventType, HoverState, Malign
+from nevu_ui.core.enums import EventType, HoverState, Malign, CacheType, RenderReturnType, RenderConfig
 from nevu_ui.overlay import overlay
-from nevu_ui.presentation.color import SubThemeRole
-from nevu_ui.rendering.pygame.renderer import BackgroundRendererPygame
+from nevu_ui.presentation.color import SubThemeRole, TupleColorRole
+from nevu_ui.rendering.base_renderer import BaseRenderer
+from nevu_ui.fast.nevucache import Cache
+
+#include <brain.h>
+#include <not bugs.h>
+#include <stability.h>
+#define GurrenLagann
 
 class _TooltipBase:
-    __slots__ = ('ratio', 'pos', 'size', 'style', 'title', '_cached_surf', 'initial_ratio')
+    __slots__ = ('ratio', 'pos', 'size', 'style', 'title', '_cached_surf', 'initial_ratio', 'cache')
     def __init__(self, title: str, style: Style = default_style):
         self.initial_ratio = NvVector2(1,1)
         self.ratio = NvVector2(1,1)
@@ -24,11 +30,28 @@ class _TooltipBase:
         self.size = NvVector2()
         self.style = style
         self.title = title
+        self.cache = Cache()
         self._cached_surf = None
+    
+    def _clear_rl_specific(self):
+        assert nevu_state.window
         
+        if self.cache.get(CacheType.RlFont): md.rl.unload_font(self.cache.get(CacheType.RlFont)) #type: ignore
+        if self.cache.get(CacheType.Scaled_Image): md.rl.unload_texture(self.cache.get(CacheType.Scaled_Image)) #type: ignore
+        
+    def clear_all(self):
+        if nevu_state.window.is_dtype.raylib: 
+            self._clear_rl_specific()
+        self.cache.clear()
+        
+    def clear_surfaces(self):
+        if nevu_state.window.is_dtype.raylib: 
+            self._clear_rl_specific()
+        self.cache.clear_selected(whitelist = [CacheType.Scaled_Image, CacheType.Image, CacheType.Scaled_Gradient, CacheType.Surface, CacheType.Borders, CacheType.Scaled_Borders, CacheType.Scaled_Background, CacheType.Background, CacheType.Texture, CacheType.RlFont, CacheType.TextArgs, CacheType.ClickTexture], blacklist = [])
+    
     def adapted_coords(self): return mouse.pos
     
-    def get_surf(self, renderer: BackgroundRendererPygame, alt):
+    def get_surf(self, renderer: BaseRenderer, alt):
         if not self._cached_surf:
             self._cached_surf = self._get_surf_content(renderer, alt)
         return self._cached_surf
@@ -36,18 +59,24 @@ class _TooltipBase:
     def resize(self, ratio: NvVector2): 
         self.ratio = ratio
         self._cached_surf = None
+        self.clear_all()
         
-    def _get_surf_content(self, renderer: BackgroundRendererPygame, alt):
+    def _get_surf_content(self, renderer: BaseRenderer, alt):
         br = self.style.border_radius
         if isinstance(br, tuple|list):
             br = max(br)
-        surf = renderer._create_surf_base(self._csize, radius = br, sdf=True, override_color=self.style.colortheme.get_subtheme(SubThemeRole.TERTIARY).oncontainer, alt = alt)
-        title_surf, title_rect , _ = renderer.bake_text(self.title, style=self.style, size = self._csize, outside=True, outside_rect = surf.get_rect(), override_font_size=self.style.font_size) #type: ignore
+        title_rect = NvRect(0,0,*self._csize)
+        surf = renderer.run_base(RenderConfig.DrawL1, size = self._csize, radius = br, override_color=self.style.colortheme.get_subtheme(SubThemeRole.TERTIARY).oncontainer, return_type=RenderReturnType.CreateNew)
+        _, title_surf = renderer.run_text(RenderConfig.DrawL3, text = self.title, override_font_size=self.style.font_size*self.ratio.y, override_color=self.style.colortheme.get_tuple(TupleColorRole.INVERSE_PRIMARY), return_type=RenderReturnType.CreateNew, max_size=self._csize) 
+        tx = title_surf.width
+        title_rect[0] += self._csize.x / 2 - tx / 2
         if nevu_state.window.is_dtype.raylib:
             with surf:
-                nevu_state.window.display.blit(title_surf.texture, title_rect)
+                md.rl.begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+                nevu_state.window.display.fast_blit(title_surf.texture, title_rect.get_int_tuple())
+                md.rl.end_blend_mode()
         else:
-            surf.blit(title_surf, title_rect)
+            surf.blit(title_surf, title_rect.get_int_tuple())
         return surf
     
     @property
@@ -63,18 +92,20 @@ class _ExtendedTooltipBase(_TooltipBase):
         br = self.style.border_radius
         if isinstance(br, tuple|list):
             br = max(br)
-        surf = renderer._create_surf_base(self._csize, radius = br, sdf=True, override_color=self.style.colortheme.get_subtheme(SubThemeRole.TERTIARY).oncolor, alt = alt)
+        surf = renderer.run_base(RenderConfig.DrawL1, size = self._csize, radius = br, override_color=self.style.colortheme.get_subtheme(SubThemeRole.TERTIARY).oncontainer, return_type=RenderReturnType.CreateNew)
         title_size = self._csize - NvVector2(0, self._csize.y / 1.3)
         content_size = self._csize - NvVector2(0, title_size.y)
         title_rect = NvRect(0,0,*title_size)
-        content_rect = NvRect(0,0,*content_size)
-        title_surf, title_rect , _ = renderer.bake_text(self.title, style=self.style, size = title_size, outside=True, outside_rect = title_rect, override_font_size=self.style.font_size) #type: ignore
-        content_surf, content_rect, _ = renderer.bake_text(self.content, style=self.style, size = content_size, outside=True, outside_rect = content_rect, override_font_size=self.style.font_size) #type: ignore
-        content_rect = list(content_rect)
-        content_rect[0]+=title_size.y
-        content_rect = tuple(content_rect)
-        surf.blit(title_surf, title_rect)
-        surf.blit(content_surf, content_rect)
+        content_rect = NvRect(0,title_rect.h, *content_size)
+        
+        _, title_surf = renderer.run_text(RenderConfig.DrawL3,override_font_size=self.style.font_size*self.ratio.y, text = self.title, override_color=self.style.colortheme.get_tuple(TupleColorRole.INVERSE_PRIMARY),return_type=RenderReturnType.CreateNew, max_size=title_size) 
+        _, content_surf = renderer.run_text(RenderConfig.DrawL3,override_font_size=self.style.font_size*self.ratio.y,text = self.content, override_color=self.style.colortheme.get_tuple(TupleColorRole.INVERSE_PRIMARY), return_type=RenderReturnType.CreateNew, max_size=content_size) 
+        tx = title_surf.width
+        cx = content_surf.width
+        title_rect[0] += title_size.x / 2 - tx / 2
+        content_rect[0] += content_size.x / 2 - cx / 2
+        surf.blit(title_surf, title_rect.get_int_tuple())
+        surf.blit(content_surf, content_rect.get_int_tuple())
         return surf
 
 class _SmallTooltip(_TooltipBase): 
