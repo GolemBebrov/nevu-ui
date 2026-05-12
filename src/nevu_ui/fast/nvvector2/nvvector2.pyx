@@ -251,6 +251,9 @@ cdef class NvVector2:
 
     def get_int_tuple(self):
         return (int(self.x), int(self.y))
+    
+    cdef tuple c_get_int_tuple(self):
+        return (int(self.x), int(self.y))
 
     def to_pygame(self):
         return md.pygame.Vector2(self.x, self.y)

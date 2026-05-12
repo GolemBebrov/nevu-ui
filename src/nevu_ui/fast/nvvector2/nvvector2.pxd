@@ -23,6 +23,7 @@ cdef class NvVector2:
     @staticmethod
     cdef inline NvVector2 cfrom_xy(double x, double y)
 
+    cdef tuple c_get_int_tuple(self)
     cdef NvVector2 _add(self, NvVector2 other)
     cdef NvVector2 _sub(self, NvVector2 other)
     cdef NvVector2 _mul_scalar(self, double val)
