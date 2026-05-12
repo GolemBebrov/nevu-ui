@@ -6,7 +6,7 @@ from nevu_ui.core.state import nevu_state
 from nevu_ui.core.modules import init_modules
 import nevu_ui.core.modules as md
 from nevu_ui.utils.keys import init_keys
-from nevu_ui.json_parser.base import standart_config
+from nevu_ui.parser.base import standart_config
 from nevu_ui.core.classes import ConfigType, Counter
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.fast.zsystem import ZSystem, ZRequest
@@ -14,7 +14,7 @@ from nevu_ui.core.enums import ResizeType, EventType, Backend
 from nevu_ui.overlay import overlay
 from nevu_ui.fast.nvrect import NvRect
 
-from nevu_ui.window.display import (
+from nevu_ui.fast.nvdisplay.display import (
     DisplayClassic, DisplaySdl, DisplayBase, DisplayRayLib
 )
 from nevu_ui.utils import (
@@ -22,15 +22,21 @@ from nevu_ui.utils import (
 )
 
 class _IsNamespace:
-    __slots__ = ["master"]
+    __slots__ = ["master", "_cached_result", "pygame", "sdl", "raylib", "pygame_like"]
     def __init__(self, master):
         self.master = master
-    @property
-    def pygame(self): return isinstance(self.master._display, DisplayClassic)
-    @property
-    def sdl(self): return isinstance(self.master._display, DisplaySdl)
-    @property
-    def raylib(self): return isinstance(self.master._display, DisplayRayLib)
+        self._cached_result = None
+        self.pygame = False
+        self.sdl = False
+        self.raylib = False
+        self.pygame_like = False
+    def _initial_check(self):
+        if self._cached_result is None:
+            self._cached_result = self.master._backend
+        self.pygame = self._cached_result == Backend.Pygame
+        self.sdl = self._cached_result == Backend.Sdl
+        self.raylib = self._cached_result == Backend.RayLib
+        self.pygame_like = self.pygame or self.sdl
 
 class WindowKwargs(TypedDict):
     title: NotRequired[str]
@@ -101,6 +107,9 @@ class Window:
         self._init_globals()
         if not self.is_dtype.raylib:
             self._clock = md.pygame.time.Clock()
+            
+        self.begin_frame = self._display.begin_frame
+        self.end_frame = self._display.end_frame
 
     def _init_hooks(self):
         self._specific_update = lambda **kwargs: None
@@ -134,6 +143,7 @@ class Window:
         self._crop_width_offset = 0
         self._crop_height_offset = 0
         self._offset = NvVector2(0, 0)
+        self._x2_offset = NvVector2(0, 0)
 
     def _init_graphics(self):
         kwargs = self._get_graphics_kwargs()
@@ -149,6 +159,7 @@ class Window:
         }
         self._display = back_to_class[self._backend](**kwargs)
         self._specific_update = back_to_update[self._backend]
+        self.is_dtype._initial_check()
 
     def _reset_nevu_state(self):
         nevu_state.window = self
@@ -160,7 +171,7 @@ class Window:
             case _: nevu_state.renderer = None
         
     def _get_graphics_kwargs(self):
-        kwargs = {"title": self.title, "size": self.size, "root": self}
+        kwargs = {"title": self.title, "size": self.size.get_int_tuple(), "root": self}
         match self._backend:
             case Backend.Pygame:
                 flags = 16 if self.resizable else 0
@@ -187,16 +198,10 @@ class Window:
         target_ratio = self._ratio or self._original_size
         self._crop_width_offset, self._crop_height_offset = self.cropToRatio(current_w, current_h, target_ratio)
         self._offset = NvVector2(self._crop_width_offset / 2, self._crop_height_offset / 2)
+        self._x2_offset = NvVector2(self._crop_width_offset, self._crop_height_offset)
 
     def add_request(self, z_request: ZRequest): self.z_system.add(z_request)
     def mark_dirty(self): self.z_system.mark_dirty()
-    
-    def begin_frame(self):
-        """Required for raylib backend"""
-        self.display.begin_frame()
-    def end_frame(self):
-        """Required for raylib backend"""
-        self.display.end_frame()
     
     def _update_raylib(self, fps: int | None = None, **kwargs):
         fps = fps or self._fps
@@ -214,16 +219,17 @@ class Window:
     
     def _update_pygame(self, events, fps: int | None = None, **kwargs):
         fps = fps or self._fps
-        events = events or md.pygame.event.get()
+        pygame = md.pygame
+        events = events or pygame.event.get()
         unicoded = False
         for event in events:
-            if event.type == md.pygame.QUIT:
-                md.pygame.quit()
+            if event.type == pygame.QUIT:
+                pygame.quit()
                 sys.exit()
-            if event.type == md.pygame.KEYDOWN:
+            if event.type == pygame.KEYDOWN:
                 self.pygame_unicode = event.unicode
                 unicoded = True
-            if event.type == md.pygame.VIDEORESIZE and self._resize_type != ResizeType.ResizeFromOriginal:
+            if event.type == pygame.VIDEORESIZE and self._resize_type != ResizeType.ResizeFromOriginal:
                 w, h = event.w, event.h
                 self.size = NvVector2(w, h)
                 self._debouncing.val = 0
@@ -232,7 +238,7 @@ class Window:
         self._clock.tick(fps)
         
     def update(self, events = None, fps: int | None = None):
-        """Events required only for md.pygame backend"""
+        """Events required only for pygame backend"""
         nevu_state.current_events = events
         
         self._update_utils(events)
@@ -304,7 +310,7 @@ class Window:
             if hook: hook()
     
     @property
-    def rel(self): return NvVector2((self.size - self._offset * 2) / self.original_size)
+    def rel(self): return NvVector2((self.size - self._x2_offset) / self.original_size)
 
     def get_nvrect(self): return NvRect(0, 0, self.size[0], self.size[1])
     
