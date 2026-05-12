@@ -12,7 +12,9 @@ cimport cython
 from cpython.list cimport PyList_GET_SIZE, PyList_GET_ITEM, PyList_GetItemRef
 from cpython.tuple cimport PyTuple_GET_SIZE, PyTuple_GET_ITEM
 from cpython.object cimport PyObject, PyObject_CallFunctionObjArgs
-from nevu_ui.fast.raylib.nevu_raylib cimport draw_texture_rec
+from nevu_ui.fast.raylib.nevu_raylib cimport c_draw_texture_nvvec
+from libc.stdlib cimport malloc, free
+from nevu_ui.presentation.color import Color
 cdef extern from "Python.h":
     double PyFloat_AsDouble(PyObject* obj) nogil
 cdef extern from "Python.h":
@@ -88,11 +90,10 @@ cpdef void logic_update_helper (
     NvVector2 master_coordinates,
     NvVector2 dr_coordinates_old,
     ZSystem z_system):
-    with nogil: # type: ignore
-        if master_coordinates.x != dr_coordinates_old.x or master_coordinates.y != dr_coordinates_old.y:
-            z_system.c_mark_dirty()
-            dr_coordinates_old.x = master_coordinates.x
-            dr_coordinates_old.y = master_coordinates.y
+    if master_coordinates.x != dr_coordinates_old.x or master_coordinates.y != dr_coordinates_old.y:
+        z_system.c_mark_dirty()
+        dr_coordinates_old.x = master_coordinates.x
+        dr_coordinates_old.y = master_coordinates.y
 
 cpdef void _light_update_helper(
     list items,
@@ -109,9 +110,9 @@ cpdef void _light_update_helper(
     cdef object raw_anim_val, animation_manager
     cdef int animation_manager_state
 
-    cdef Py_ssize_t i
+    cdef Py_ssize_t i = 0
 
-    for i in range(n_items):
+    while i < n_items:
         item = <NevuCobject>PyList_GET_ITEM(items, i)
         coords = <NvVector2>PyList_GET_ITEM(cached_coordinates, i)
 
@@ -119,18 +120,32 @@ cpdef void _light_update_helper(
         animation_manager_state = <int>animation_manager.state.value # type: ignore
         if not(animation_manager_state == 3 or animation_manager_state == 4):
             raw_anim_val = animation_manager.get_animation_value(AnimationType.Position) # type: ignore
+            anim_coords = <NvVector2>raw_anim_val
+            coordinates = coords._add(item.rel(anim_coords))
+            coordinates._iadd(add_vector)
         else:
             raw_anim_val = None
-        if raw_anim_val is None:
             coordinates = coords._add(add_vector)
-        else:
-            anim_coords = <NvVector2>raw_anim_val
-            correct_coords = coords._add(item.rel(anim_coords))
-            coordinates = correct_coords._add(add_vector) # type: ignore
-
         item.set_coordinates(coordinates)
-        item.absolute_coordinates = coordinates._add(coordinatesMW)
-        item.update() # type: ignore
+        item.absolute_coordinates.x = coordinates.x + coordinatesMW.x
+        item.absolute_coordinates.y = coordinates.y + coordinatesMW.y
+        PyObject_CallNoArgs(item.update) # type: ignore
+        i += 1
+
+def base_light_update(NevuCobject self, double add_x = 0, double add_y = 0 ):
+    cdef list cached_coordinates, items
+    cdef object first_parent_menu
+
+    first_parent_menu = self.first_parent_menu
+    cached_coordinates = self.cached_coordinates
+    items = self.items
+   
+    if cached_coordinates is None or PyList_GET_SIZE(items) != PyList_GET_SIZE(cached_coordinates): return
+    _light_update_helper(
+        items,
+        cached_coordinates or [],
+        first_parent_menu.absolute_coordinates if first_parent_menu else NvVector2.new(0.0, 0.0),
+        NvVector2.new(add_x, add_y))
 
 cpdef bint collide_horizontal(NvVector2 r1_tl, NvVector2 r1_br, NvVector2 r2_tl, NvVector2 r2_br):
     return r1_tl.x < r2_br.x and r1_br.x > r2_tl.x
@@ -142,8 +157,10 @@ cpdef bint collide_vector(NvVector2 r1_tl, NvVector2 r1_br, NvVector2 r2_tl, NvV
     return (r1_tl.x < r2_br.x and r1_br.x > r2_tl.x) and (r1_tl.y < r2_br.y and r1_br.y > r2_tl.y)
 
 cdef inline get_item_abs_coords(NevuCobject layout, NevuCobject item):
-    return item.coordinates + layout.first_parent_menu.absolute_coordinates 
-    
+    return item.coordinates + <NvVector2>layout.first_parent_menu.absolute_coordinates 
+
+def py_get_item_abs_coords(NevuCobject layout not None, NevuCobject item not None):
+    return get_item_abs_coords(layout, item)
 
 cpdef _very_light_update_helper(
     list items,
@@ -186,8 +203,7 @@ cdef void draw_item_sdl(NevuCobject layout, NevuCobject item, NvVector2 coordina
     nevu_state.window.display.blit(item._sdl2_texture, (coordinates.to_tuple(), item._csize.to_tuple())) #type: ignore
 
 cdef void draw_item_raylib(NevuCobject layout, NevuCobject item, NvVector2 coordinates):
-    display = nevu_state.window.display
-    draw_texture_rec(item.surface.texture, (0,0, item.surface.texture.width, -item.surface.texture.height), coordinates.get_int_tuple(), (255, 255, 255, 255))
+    c_draw_texture_nvvec(item.surface.texture, coordinates, Color.White, True)
 
 cdef void draw_widget_optimized(DrawFuncPtr draw_item, NevuCobject layout, NevuCobject item, type layout_type, type widget_type):
     if not nevu_state.window.is_dtype.raylib:
@@ -197,7 +213,7 @@ cdef void draw_widget_optimized(DrawFuncPtr draw_item, NevuCobject layout, NevuC
         PyObject_CallNoArgs(item.draw)
         return
     if not isinstance(item, widget_type): return
-    draw_item(layout,item, item.coordinates)
+    draw_item(layout, item, item.coordinates)
 
 cpdef void draw_widgets_optimized(
     list items,
@@ -220,11 +236,11 @@ cpdef void draw_widgets_optimized(
     cdef Py_ssize_t i = 0
     while i < n:
         item = <NevuCobject>PyList_GET_ITEM(items, i)
-        if not item._visible: i+=1; continue
-        if not item.booted:
-            item.booted = True # type: ignore
-            PyObject_CallNoArgs(item._boot_up) # type: ignore
-            start_item(item, layout)
+        if not item._visible: i +=1; continue
+        #if not item.booted:
+        #    item.booted = True # type: ignore
+        #    PyObject_CallNoArgs(item._boot_up) # type: ignore
+        #    start_item(item, layout)
         #draw_widget_func(item)
         draw_widget_optimized(draw_func, layout, item, layout_type, widget_type)
        # draw_func(layout, item, item.coordinates) # type: ignore

@@ -69,6 +69,10 @@ def draw_widgets_optimized(
     widget_type: Any
 ): ...
 
+def base_light_update(self, add_x: int | float = 0, add_y: int | float = 0): ...
+
+def py_get_item_abs_coords(layout, item): ...
+
 def rl_predraw_widgets(
     items: List[Any],
     layout_type: Any,
