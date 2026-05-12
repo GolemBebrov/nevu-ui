@@ -327,12 +327,13 @@ def check_style(key, value):
                 return False, f"colortheme must be a string (theme name), got {type(_val)}"
             continue
         
-        result = Style().parameters_dict.get(param)
+        result = Style.parameters_dict.get(param)
         
         if not result:
             return False, f"{param} is not in Style parameters"
         
-        param_name, validator = result #type: ignore
+        param_name, validator_name = result #type: ignore
+        validator = getattr(Style(), validator_name)
         if not validator(_val)[0]: 
             return False, f"{_val} is not valid for {param}"
         

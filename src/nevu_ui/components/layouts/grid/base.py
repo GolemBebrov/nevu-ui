@@ -8,7 +8,8 @@ from nevu_ui.core import Annotations
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.fast.logic.fast_logic import draw_widgets_optimized
+from nevu_ui.fast.logic.fast_logic import draw_widgets_optimized, base_light_update
+from nevu_ui.fast.logic.fast_logic import _light_update_helper, rl_predraw_widgets, py_get_item_abs_coords
 from nevu_ui.components.layouts.typehints import GridTemplate
 from nevu_ui.components.layouts import LayoutType, LayoutTypeKwargs
 from nevu_ui.presentation.style import Style, default_style
@@ -33,10 +34,10 @@ class Grid(LayoutType):
     any_number = int | float
     content_type = dict[tuple[any_number, any_number], NevuObject]
     @overload
-    def __init__(self, size: Annotations.nevuobj_size, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_rc]): ...
+    def __init__(self, size: Annotations.nevuobj_size, style: Annotations.nevuobj_style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_rc]): ...
     @overload
-    def __init__(self, size: Annotations.nevuobj_size, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_xy]): ...
-    def __init__(self, size: Annotations.nevuobj_size, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_uni]):
+    def __init__(self, size: Annotations.nevuobj_size, style: Annotations.nevuobj_style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_xy]): ...
+    def __init__(self, size: Annotations.nevuobj_size, style: Annotations.nevuobj_style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_uni]):
         super().__init__(size, style, content, **constant_kwargs) # type: ignore
     
     def _create_template(self, size: Annotations.nevuobj_size, content: content_type | None): # type: ignore
@@ -69,19 +70,18 @@ class Grid(LayoutType):
         self.cached_coordinates = []
         c_vec = NvVector2.from_xy(self._rsize.x / self.column, self._rsize.y / self.row) if self.menu else NvVector2.from_xy(self.relx(self.cell_width), self.rely(self.cell_height))
         coords_marg_vec = self.coordinates + self._rsize_marg
-        for i in range(len(self.items)):
-            item = self.items[i]
-            gr_vec = self.grid_coordinates[i]
+        cached_coords_append = self.cached_coordinates.append
+        for item, gr_vec in zip(self.items, self.grid_coordinates):
             curr_cell_vec = gr_vec * c_vec
             size_adapt_vec = (c_vec - item._csize) / 2
             coordinates = coords_marg_vec + curr_cell_vec + size_adapt_vec
             item.coordinates = coordinates
-            item.absolute_coordinates = self._get_item_abs_coords(item)
-            self.cached_coordinates.append(coordinates)
+            item.absolute_coordinates = py_get_item_abs_coords(self, item)
+            cached_coords_append(coordinates)
             
     def secondary_update(self, *args):
         super().secondary_update()
-        self._base_light_update()
+        base_light_update(self)
         #print(self, self.get_param_strict("id").value)
         #if self.get_param_value("id") == "secret_test":
         #    print(self.coordinates)
@@ -109,7 +109,7 @@ class Grid(LayoutType):
 
     def secondary_draw_content(self):
         super().secondary_draw_content()
-        draw_widgets_optimized(self.items, self._draw_widget_optimized, self, LayoutType, Widget)
+        draw_widgets_optimized(self.items, None, self, LayoutType, Widget) # type: ignore
 
     def get_row(self, x: any_number) -> list[NevuObject]:
         return [item for item, coords in zip(self.items, self.grid_coordinates) if coords[0] == x - 1]

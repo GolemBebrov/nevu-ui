@@ -12,7 +12,7 @@ import nevu_ui.core.modules as md
 from nevu_ui.core import Annotations
 from nevu_ui.components.widgets import Widget
 from nevu_ui.overlay import overlay
-from nevu_ui.fast.logic.fast_logic import _light_update_helper, rl_predraw_widgets
+from nevu_ui.fast.logic.fast_logic import _light_update_helper, rl_predraw_widgets, py_get_item_abs_coords, draw_widgets_optimized
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.core.state import nevu_state
 from nevu_ui.core.enums import ConstantLayer
@@ -47,12 +47,7 @@ class LayoutType(NevuObject):
 
     def _uninitialized_layout_error(self, item):
         return ValueError(f"Cant use {item} in uninitialized layout {self}")
-    
-    def _get_item_abs_coords(self, item: NevuObject):
-        assert isinstance(item, NevuObject), f"Can't use _get_item_master_coordinates on {type(item)}"
-        assert self.first_parent_menu, self._unconnected_layout_error(item)
-        return item.coordinates + self.first_parent_menu.absolute_coordinates #+ NvVector2(self.first_parent_menu._window._crop_width_offset, self.first_parent_menu._window._crop_height_offset)
-    
+
     def _rl_border_draw_call(self):
         if not self.get_nvrect().collide_rect(nevu_state.window.get_nvrect()): return
         norm_size = self._csize.to_round().get_int_tuple()
@@ -71,56 +66,6 @@ class LayoutType(NevuObject):
             overlay.add_draw_call(self, self._rl_border_draw_call, abs_coords, -1)
         rl_predraw_widgets(list(self._all_items()), LayoutType, Widget)
     
-    def _draw_item_pygame(self, item: NevuObject, coordinates: NvVector2):
-        assert isinstance(self.surface, md.pygame.Surface), "Cant use _draw_widget with uninitialized surface"
-        self.surface.blit(item.surface, coordinates.to_tuple()) #type: ignore
-    
-    def _draw_item_sdl(self, item: NevuObject, coordinates: NvVector2):
-        if not hasattr(item, '_sdl2_texture'): return
-        if not item._sdl2_texture: return
-        assert item._sdl2_texture
-        nevu_state.window.display.blit(item._sdl2_texture, (coordinates.to_tuple(), item._csize.to_tuple())) #type: ignore
-    
-    def _draw_item_raylib(self, item: NevuObject, coordinates: NvVector2):
-        display = nevu_state.window.display
-        assert nevu_state.window.is_raylib(display)
-        display.fast_blit_pro(item.surface.texture, coordinates.get_int_tuple(), flip = True)
-    
-    def _draw_widget(self, item: NevuObject, multiply: NvVector2 | None = None, add: NvVector2 | None = None):
-        assert isinstance(item, NevuObject), f"Cant use _draw_widget on {type(item)}"
-        assert nevu_state.window, "Window not initialized!"
-        if item._wait_mode:
-            self.read_item_coords(item)
-            self._start_item(item)
-            return
-
-        if not nevu_state.window.is_dtype.raylib:
-            item.draw()
-            if self.is_layout(item): return
-        elif self.is_layout(item): 
-            item.draw()
-            return
-        
-        if not isinstance(item, Widget): return
-        
-        coordinates = item.coordinates.xy
-        if multiply: coordinates *= multiply
-        if add: coordinates += add
-        
-        self._draw_item(item, coordinates)
-    
-    def _draw_widget_optimized(self, item: NevuObject):
-        assert isinstance(item, NevuObject), f"Cant use _draw_widget on {type(item)}"
-        assert nevu_state.window, "Window not initialized!"
-        if not nevu_state.window.is_dtype.raylib:
-            item.draw()
-            if self.is_layout(item): return
-        elif self.is_layout(item): 
-            item.draw()
-            return
-        if not isinstance(item, Widget): return
-        self._draw_item(item, item.coordinates)
-    
     def _boot_up(self):
         self.booted = True
         for item in self._all_items():
@@ -133,7 +78,7 @@ class LayoutType(NevuObject):
     def __getitem__(self, id: str) -> NevuObject:
         return self.get_item_by_id_strict(id)
 
-    def __init__(self, size: Annotations.nevuobj_size, style: Style = default_style, content: list | None  = None, **constant_kwargs: Unpack[LayoutTypeKwargs]):
+    def __init__(self, size: Annotations.nevuobj_size, style: Annotations.nevuobj_style = default_style, content: list | None  = None, **constant_kwargs: Unpack[LayoutTypeKwargs]):
         super().__init__(size, style, **constant_kwargs)
         self._template = self._create_template(size, content)
     
@@ -158,14 +103,7 @@ class LayoutType(NevuObject):
         self.menu = None
         self.layout = None
         self._last_border_name = None
-        self._draw_item = lambda *args, **kwargs: None
-        if nevu_state.window.is_dtype.raylib:
-            self._draw_item = self._draw_item_raylib
-        elif nevu_state.window.is_dtype.pygame:
-            self._draw_item = self._draw_item_pygame
-        elif nevu_state.window.is_dtype.sdl:
-            self._draw_item = self._draw_item_sdl 
-    
+        
     def _add_params(self):
         super()._add_params()
         #self._add_param("border_name", str, "", layer = ConstantLayer.Complicated)# setter = self._border_name_setter)
@@ -181,16 +119,9 @@ class LayoutType(NevuObject):
     def add_items(self, content: content_type):
         raise NotImplementedError("Subclasses of LayoutType may implement add_items()")
     
-    def _base_light_update(self, add_x: int | float = 0, add_y: int | float = 0 ):
-        if self.cached_coordinates is None or len(self.items) != len(self.cached_coordinates): return
-        _light_update_helper(
-            self.items,
-            self.cached_coordinates or [],
-            self.first_parent_menu.absolute_coordinates if self.first_parent_menu else NvVector2.from_xy(0,0),
-            NvVector2.from_xy(add_x, add_y))
-
     def _coordinates_setter(self, coordinates: NvVector2):
-        self._clear_cached_coordinates_noregen()
+        if round(coordinates.x) != round(self.coordinates.x) or round(coordinates.y) != round(self.coordinates.y):
+            self.cached_coordinates = None
         return True
     
     def _borders_setter(self, value: BorderConfig):
@@ -336,7 +267,12 @@ class LayoutType(NevuObject):
                 item.cache.clear()
             elif self.is_layout(item): 
                 item.apply_style_patch_to_childs(**patch)
-                
+
+    def _set_bg_transparent(self, value: bool):
+        self._bg_transparent = value
+        for i in self._all_items():
+            i._set_bg_transparent(value)
+
     def _primary_draw(self):
         super()._primary_draw()
         if  self._need_update_overlay and not nevu_state.window.is_dtype.raylib and self.borders:
@@ -357,8 +293,7 @@ class LayoutType(NevuObject):
                 md.pygame.draw.rect(surf, self.borders.color, [0, 0, self._csize.x, self._csize.y], 1)
             overlay.add_element(self, surf, self.absolute_coordinates.to_round(), -1)
                 
-        for item in self.floating_items:
-            self._draw_widget_optimized(item)
+        draw_widgets_optimized(self.floating_items, None, self, LayoutType, Widget)
 
     def _logic_update(self):
         super()._logic_update()

@@ -12,20 +12,20 @@ from nevu_ui.components.layouts.grid.base import (
 class Row(Grid):
     content_type = dict[Grid.any_number, NevuObject]
     @overload
-    def __init__(self, size: Annotations.nevuobj_size, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_rc]):
+    def __init__(self, size: Annotations.nevuobj_size, style: Annotations.nevuobj_style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_rc]):
         """
         Initializes a Row object.
         Parameters:
         row (int | float): **WARNING: row constant cannot be changed in Row**
         """
     @overload
-    def __init__(self, size: Annotations.nevuobj_size, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_xy]): 
+    def __init__(self, size: Annotations.nevuobj_size, style: Annotations.nevuobj_style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_xy]): 
         """
         Initializes a Row object.
         Parameters:
         y (int | float): **WARNING: y constant cannot be changed in Row**
         """
-    def __init__(self, size: Annotations.nevuobj_size, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_uni]):
+    def __init__(self, size: Annotations.nevuobj_size, style: Annotations.nevuobj_style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[GridKwargs_uni]):
         super().__init__(size, style, content, **constant_kwargs) # type: ignore
         
     def _add_params(self):

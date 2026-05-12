@@ -60,27 +60,28 @@ class StyleKwargs(TypedDict):
     subtheme_role: NotRequired[SVar[SubThemeRole]]
     
 class Style:
+    parameters_dict = {
+        "border_radius": ("border_radius", "_parse_br"),
+        "br": ("border_radius", "_parse_int_min0"),
+        "border_width": ("border_width", "_parse_int_min0"),
+        "bw": ("border_width", "_parse_int_min0"),
+        "font_size": ("font_size", "_parse_font_size"),
+        "font_name": ("font_name", "parse_str"),
+        "font_path": ("font_name", "parse_str"),
+        "align_x": ("align_x", "_parse_align"),
+        "align_y": ("align_y", "_parse_align"),
+        "transparency": ("transparency", "_parse_transparency"),
+        "bg_image": ("bg_image", "parse_str"),
+        "colortheme": ("colortheme", "_parse_colortheme"),
+        "gradient": ("gradient", "_parse_gradient"),
+        "color_role": ("color_role", "_parse_color_role"),
+        "subtheme_role": ("subtheme_role", "_parse_subtheme_role"),
+        "font_role": ("font_role", "_parse_font_role"),
+    }
+
     def __init__(self, **kwargs: Unpack[StyleKwargs]):
         self._kwargs_for_copy = copy.deepcopy(kwargs)
         self.kwargs_dict = {}
-        self.parameters_dict = {
-            "border_radius": ["border_radius", self._parse_br],
-            "br": ["border_radius", self._parse_int_min0],
-            "border_width": ["border_width", self._parse_int_min0],
-            "bw": ["border_width", self._parse_int_min0],
-            "font_size": ["font_size", lambda value: self.parse_int(value, min_restriction = 1)],
-            "font_name": ["font_name", self.parse_str],
-            "font_path": ["font_name", self.parse_str],
-            "align_x": ["align_x", self._parse_align],
-            "align_y": ["align_y", self._parse_align],
-            "transparency": ["transparency", lambda value: self.parse_int(value, max_restriction = 255, min_restriction = 0)],
-            "bg_image": ["bg_image", self.parse_str],
-            "colortheme": ["colortheme", lambda value: self.parse_type(value, ColorTheme)],
-            "gradient": ["gradient", lambda value: (True, None)],
-            "color_role": ["color_role", lambda value: self.parse_type(value, SubThemeRole)],
-            "subtheme_role": ["subtheme_role", lambda value: self.parse_type(value, SubThemeRole)],
-            "font_role": ["font_role", lambda value: self.parse_type(value, PairColorRole)],
-        }
         self._curr_state = HoverState.UN_HOVERED
         self._init_basic()
         self._add_paramethers()
@@ -98,11 +99,32 @@ class Style:
     
     def _parse_align(self, value):
         return self.parse_type(value, Align)
+
+    def _parse_font_size(self, value):
+        return self.parse_int(value, min_restriction=1)
+
+    def _parse_transparency(self, value):
+        return self.parse_int(value, max_restriction=255, min_restriction=0)
+
+    def _parse_colortheme(self, value):
+        return self.parse_type(value, ColorTheme)
+
+    def _parse_gradient(self, value):
+        return (True, None)
+
+    def _parse_color_role(self, value):
+        return self.parse_type(value, SubThemeRole)
+
+    def _parse_subtheme_role(self, value):
+        return self.parse_type(value, SubThemeRole)
+
+    def _parse_font_role(self, value):
+        return self.parse_type(value, PairColorRole)
     
     def _add_paramethers(self):
         for name, value in self.parameters_dict.items():
-            paramether, checker_lambda = value
-            self.add_style_parameter(name, paramether, checker_lambda)
+            parameter, checker_func_name = value
+            self.add_style_parameter(name, parameter, getattr(self, checker_func_name))
         
     def _init_basic(self):
         self.colortheme = copy.copy(ColorThemeLibrary.material3_blue)
@@ -131,7 +153,7 @@ class Style:
         
         elif isinstance(value, str) and can_be_string:
             try:
-                color_value = Color[value] # type: ignore
+                color_value = Color[value]
             except KeyError: return False, None
             else:
                 assert isinstance(color_value, tuple)
@@ -174,7 +196,7 @@ class Style:
         attribute_name, checker = dict_value
         if isinstance(item_value, StateVariable):
             validated_values = {}
-            for state_name in ["static", "hover", "active"]:
+            for state_name in["static", "hover", "active"]:
                 value_to_check = item_value[state_name]
                 is_valid, new_value = checker(value_to_check)
                 if not is_valid and raise_errors:

@@ -23,10 +23,10 @@ class Button(Label):
 
     def _on_keyup_system(self):
         super()._on_keyup_system()
-        if self.function and self.is_active:
-            try: self.function()
-            except Exception as e:
-                if self.throw_errors: raise e
-                else: print(f"Error in Button(id = {self.id}, text = {self.text!r}) function: {e}")
+        if not ((func := self.function) and self.is_active): return
+        try: func()
+        except Exception as e:
+            if self.throw_errors: raise e
+            else: print(f"Error in Button(id = {self.id}, text = {self.text!r}) function: {e}")
                 
     def _create_clone(self): return Button(self.function, self._template['text'], self._template['size'], copy.deepcopy(self.style), **self.constant_kwargs)

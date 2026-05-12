@@ -1,3 +1,4 @@
+from nevu_ui.fast.logic.fast_logic import _light_update_helper, rl_predraw_widgets, py_get_item_abs_coords
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.core.enums import Align
 from nevu_ui.components.layouts.stack.base import StackBase
@@ -24,6 +25,6 @@ class StackColumn(StackBase):
             item, alignment = self.items[i], self.widgets_alignment[i]
             item.coordinates.y = self.coordinates.y + (current_y + m / 2)
             self._set_align_coords(item, alignment)
-            item.absolute_coordinates = self._get_item_abs_coords(item)
+            item.absolute_coordinates = py_get_item_abs_coords(self, item)
             current_y += self.rely(item.size.y + self.spacing)
             self.cached_coordinates.append(item.coordinates)

@@ -3,8 +3,6 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from nevu_ui.presentation.style import Style
 from nevu_ui.core.size.units import SizeRule
-from nevu_ui.fast.nvvector2.nvvector2 import NvVector2
-
 
 class Annotations:
     #=== size annotations ===
@@ -23,5 +21,5 @@ class Annotations:
     
     #=== NevuObject annotation ===
     size_item = int | SizeRule | float
-    nevuobj_size = tuple[size_item, size_item] | list[size_item] | NvVector2 | None
+    nevuobj_size = tuple[size_item, size_item] | list[size_item] | Any | None
     nevuobj_style = Any | str | None

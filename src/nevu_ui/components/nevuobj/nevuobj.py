@@ -18,7 +18,7 @@ from nevu_ui.presentation.color import SubThemeRole
 from nevu_ui.core.classes import Events
 from nevu_ui.fast.zsystem import ZRequest
 from nevu_ui.core.state import nevu_state
-from nevu_ui.json_parser.base import standart_config
+from nevu_ui.parser.base import standart_config
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.overlay.tooltip import Tooltip
 from nevu_ui.presentation.animations import AnimationManager
@@ -226,7 +226,7 @@ class NevuObject(NevuCobject):
         return NevuObjectTemplate(size)
     
     def _init_flags(self): 
-        pass
+        self._bg_transparent = False
         
     def _init_test_flags(self): pass
     
@@ -335,6 +335,9 @@ class NevuObject(NevuCobject):
         result = self.relm(override_size or self.style.font_size)
         if nevu_state.window.is_dtype.raylib: result *= 1.25
         return result
+    
+    def _set_bg_transparent(self, value: bool):
+        self._bg_transparent = value
     
     def _get_pygame_font(self, override_size = None):
         font_size = round(self.get_font_size(override_size))

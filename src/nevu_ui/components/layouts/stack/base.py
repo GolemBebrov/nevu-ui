@@ -8,10 +8,11 @@ from typing import (
 
 if TYPE_CHECKING: from nevu_ui.menu import Menu
 from nevu_ui.core.size.base import SizeRule
+from nevu_ui.core import Annotations
 from nevu_ui.components.widgets import Widget
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.fast.logic.fast_logic import draw_widgets_optimized
+from nevu_ui.fast.logic.fast_logic import draw_widgets_optimized, base_light_update
 from nevu_ui.core.enums import Align
 from nevu_ui.components.layouts import LayoutType, LayoutTypeKwargs
 from nevu_ui.presentation.style import Style, default_style
@@ -25,7 +26,7 @@ class StackKwargs(_StackKwargs, LayoutTypeKwargs): pass
 class StackBase(LayoutType, ABC):
     _supports_global_size = False
     content_type = list[tuple[Align, NevuObject]]
-    def __init__(self, style: Style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[StackKwargs]):
+    def __init__(self, style: Annotations.nevuobj_style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[StackKwargs]):
         super().__init__(NvVector2(), style, content, **constant_kwargs)
         
     def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None):
@@ -90,7 +91,7 @@ class StackBase(LayoutType, ABC):
         
     def secondary_update(self, *args):
         super().secondary_update()
-        self._base_light_update()
+        base_light_update(self)
     
     def secondary_draw_content(self):
         super().secondary_draw_content()

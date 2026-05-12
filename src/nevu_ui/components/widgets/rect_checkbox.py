@@ -23,7 +23,8 @@ class RectCheckBox(Widget):
             size = NvVector2([size, size])
         elif isinstance(size, SizeRule):
             size = (size, size)
-
+        elif isinstance(size, list | tuple):
+            size = size
         super().__init__(size, style, **constant_kwargs)
         
     def _init_booleans(self):

@@ -145,6 +145,7 @@ class DrawBaseKwargs(TypedDict):
     image_support: NotRequired[bool]
     easy_background: NotRequired[bool]
     override_inline: NotRequired[bool]
+    cache: NotRequired[Any]
     return_type: NotRequired[RenderReturnType]
 
 class AllDrawBaseKwargs(DrawBaseKwargs, _ModifyKwargs): pass
