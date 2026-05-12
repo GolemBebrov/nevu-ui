@@ -33,27 +33,28 @@ uniform float thickness;
 
 float calculate_dist(vec2 p, vec2 b, vec4 r)
 {
-    r.xy = (p.x > 0.0) ? r.yz : r.xw;
-    r.x  = (p.y > 0.0) ? r.y  : r.x;
-    vec2 q = abs(p) - b + r.x;
-    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r.x;
+    vec2 s = step(0.0, p);
+    
+    float currentRadius = mix(
+        mix(r.w, r.z, s.x),
+        mix(r.x, r.y, s.x),
+        s.y
+    );
+    
+    vec2 q = abs(p) - b + currentRadius;
+    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - currentRadius;
 }
 
 void main()
 {
     vec2 halfSize = rectSize * 0.5;
     vec2 p = fragTexCoord * rectSize - halfSize;
-    
     float d = calculate_dist(p, halfSize, radius);
-    
-    float distChange = max(fwidth(d), 1e-4);
-    float alpha = 1.0 - smoothstep(-distChange, 0.0, d);
-    
-    float borderMix = smoothstep(-thickness - distChange, -thickness, d);
-
+    float aa = max(fwidth(d), 1e-4) * 0.707;
+    float alpha = smoothstep(-aa, aa, -d);
+    float borderMix = smoothstep(-thickness - aa, -thickness + aa, d);
     vec4 texColor = texture(texture0, fragTexCoord) * fragColor * colDiffuse;
     vec4 resultColor = mix(texColor, borderColor, borderMix);
-
-    finalColor = vec4(resultColor.rgb * alpha, resultColor.a * alpha);
+    finalColor = resultColor * alpha;
 }
 """
