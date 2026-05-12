@@ -40,3 +40,17 @@ class NevuState:
             self.current_dirty_rects.clear()
     
 nevu_state = NevuState()
+
+def _analize_bg(self):
+    if not nevu_state.window.is_dtype.raylib: return False
+    transparent = False
+    if self.style.gradient:
+        gr = self.style.gradient
+        
+        for color in gr.raw_colors:
+            if len(color) == 4 and color[3] < 255: transparent = True
+    
+    if self.style.bg_image:
+        transparent = True
+        
+    return transparent
