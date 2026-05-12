@@ -73,6 +73,17 @@ def get_extensions():
             "src/nevu_ui/fast/logic/fast_logic.pyx"
         ),
         get_extension(
+            "nevu_ui.fast.nvshader.nvshader",
+            "src/nevu_ui/fast/nvshader/nvshader.pyx"
+        ),
+        get_extension(
+            "nevu_ui.fast.nvdisplay.display",
+            "src/nevu_ui/fast/nvdisplay/display.pyx"
+        ),
+        get_extension(
+            "nevu_ui.fast.nvraygrad.nvraygrad",
+            "src/nevu_ui/fast/nvraygrad/nvraygrad.pyx"),
+        get_extension(
             "nevu_ui.fast.shapes.fast_shapes",
             "src/nevu_ui/fast/shapes/fast_shapes.pyx"
         ),
