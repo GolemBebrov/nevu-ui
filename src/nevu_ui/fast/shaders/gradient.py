@@ -1,4 +1,3 @@
-
 class GradientShader:
     VERTEX_SHADER = """
     #version 330
@@ -31,6 +30,10 @@ class GradientShader:
     uniform int colorCount;
     uniform float alpha;
     uniform vec2 size;
+
+    float random(vec2 uv) {
+        return fract(sin(dot(uv.xy, vec2(12.9898, 78.233))) * 43758.5453123);
+    }
 
     vec4 getColor(float t) {
         if (colorCount <= 1) return colors[0];
@@ -75,6 +78,14 @@ class GradientShader:
         else progress = getRadialProgress(fragTexCoord);
         
         vec4 color = getColor(progress);
-        finalColor = vec4(color.rgb, color.a * alpha);
+        
+        float r1 = random(fragTexCoord * size);
+        float r2 = random(fragTexCoord * size + 0.1); 
+        
+        float noise = (r1 + r2 - 1.0); 
+        
+        float dither = noise * (2.5 / 255.0);
+        
+        finalColor = vec4(color.rgb + dither, color.a * alpha);
     }
     """
