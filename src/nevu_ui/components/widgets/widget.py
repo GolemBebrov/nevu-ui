@@ -11,8 +11,7 @@ from nevu_ui.utils import mouse
 from nevu_ui.rendering.pygame.new_renderer import PygameRenderer
 from nevu_ui.rendering.raylib.new_renderer import RaylibRenderer
 from nevu_ui.rendering.raylib.gradient import ClickGradient
-from nevu_ui.rendering.blit import ReverseAlphaBlit
-from nevu_ui.core.state import nevu_state
+from nevu_ui.core.state import nevu_state, _analize_bg
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import WidgetKwargs
 from nevu_ui.presentation.color import SubThemeRole, PairColorRole
@@ -99,6 +98,7 @@ class Widget(NevuObject):
         self._old_color = None
         self._new_color = None
         self._color_anim_manager = None
+        self._inner_bg_transparent = False
         self._color_anim_old_value = None
         self._sdl2_texture = None
         assert nevu_state.window, "Window not initialized!"
@@ -108,10 +108,7 @@ class Widget(NevuObject):
             self.renderer = PygameRenderer(self)
         self.renderer.base_configure()
         self._master_mask = None
-        #if not nevu_state.window.is_dtype.raylib:
-        #    self._primary_draw_content = self._pygame_primary_draw_content
-        #else:
-        self._primary_draw_content = self._raylib_primary_draw_content
+        self._primary_draw_content = self._uni_primary_draw_content
         if self.get_param_strict("ripple_effect").value and nevu_state.window.is_dtype.raylib:
             self._click_anim_manager = AnimationManager(warn=False)
             self._click_gradient = ClickGradient([((255, 255, 255, 255), 0), (255, 255, 255, 0)], center=(0.5, 0.5))
@@ -190,6 +187,10 @@ class Widget(NevuObject):
     @property
     def _draw_content(self): return self.get_param_strict("_draw_content").value
     
+    @property
+    def _correct_blend(self):
+        return md.rl.BlendMode.BLEND_ALPHA if self._inner_bg_transparent else md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY
+    
     def _regen_surface(self):
         assert nevu_state.window
         if self.inline: return
@@ -252,7 +253,7 @@ class Widget(NevuObject):
             pos = mouse.pos.copy()
             pos -= self.absolute_coordinates
             normalized = pos / self._csize
-            self._click_gradient.set_center(normalized) #type: ignore
+            self._click_gradient.set_center_nvvec(normalized)
         self._toogle_click_style()
     def _on_unhover_system(self):
         super()._on_unhover_system()
@@ -270,7 +271,6 @@ class Widget(NevuObject):
         assert nevu_state.window
         
         if self.cache.get(CacheType.RlFont): md.rl.unload_font(self.cache.get(CacheType.RlFont)) #type: ignore
-        #if self.cache.get(CacheType.Surface): md.rl.unload_render_texture(self.cache.get(CacheType.Surface)) #type: ignore
         if self.cache.get(CacheType.Scaled_Image): md.rl.unload_texture(self.cache.get(CacheType.Scaled_Image)) #type: ignore
 
     def _on_style_change(self):
@@ -312,31 +312,8 @@ class Widget(NevuObject):
         if not self._visible:
             self.clear_surfaces()
             self.clear_texture()
-    
-    def _pygame_primary_draw_content(self):
-        
-        return
-        assert self.surface and isinstance(self.surface, md.pygame.Surface)
-        assert isinstance(self.renderer, BackgroundRendererPygame), "Cannot use pygame renderer for non pygame widget"
-        if self.inline: 
-            surf = self.renderer._generate_background(only_content = self._draw_content, sdf = self._sdf_mode)
-            assert surf
-            dest_pos = self.coordinates.to_round().to_tuple()
-            if self._master_mask:
-                mask_offset = NvVector2(0, 0)
-                if self._sdf_mode: mask_offset += NvVector2(1, 1)
-                if self.style.border_width > 0: mask_offset += NvVector2(1, 1)
 
-                read_pos = (self.coordinates.to_round() - self._inline_add_coords.to_round() - mask_offset.to_round())
-
-                ReverseAlphaBlit.blit(surf, self._master_mask, read_pos.to_tuple()) #type: ignore
-            self.surface.blit(surf, dest_pos)
-        else:
-            cache =  self.renderer._generate_background(only_content = self._draw_content, sdf = self._sdf_mode)
-            assert cache
-            self.surface = cache.copy()
-
-    def _raylib_primary_draw_content(self):
+    def _uni_primary_draw_content(self):
         def build_background() -> NvRenderTexture:
             bg = self.cache.get_or_exec(CacheType.Background, lambda: self.renderer.core.create_clear(self._csize))
             bg.fill(Color.Blank)
@@ -369,53 +346,20 @@ class Widget(NevuObject):
 
         cached_bg: NvRenderTexture = self.cache.get_or_exec(CacheType.Surface, build_background)
 
+        surface = self.surface
+        
         if not self.inline:
-            self.surface.fill(Color.Blank)
+            surface.fill(Color.Blank)
             coords = (0 , 0)
         else:
             coords = self.coordinates.to_round().to_tuple()
         if nevu_state.window.is_dtype.raylib:
-            
-            with self.surface:
+            with surface:
                 md.rl.begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-                self.surface.fast_blit(cached_bg, coords)
+                surface.fast_blit(cached_bg, coords)
                 md.rl.end_blend_mode()
         else:
-            self.surface.blit(cached_bg, coords)
-        #assert isinstance(self.renderer, BackgroundRendererRayLib), "Cannot use raylib renderer for non-raylib widget"
-        #if isinstance(self.style.border_radius, tuple): radius = tuple(map(self.relm, self.style.border_radius)) 
-        #else: radius = [self.relm(self.style.border_radius)]*4
-        #
-        #display = nevu_state.window.display
-        #assert nevu_state.window.is_raylib(display)
-        #
-        #if self.inline:
-        #    surf = self.renderer._generate_background(only_content = self._draw_content, sdf = self._sdf_mode)
-        #    sdfed_texture = NvRenderTexture(NvVector2(surf.texture.width, surf.texture.height))
-        #    
-        #    with sdfed_texture:
-        #        nevu_state.window.display.clear(Color.Blank)
-        #        display.blit_sdf(surf.texture, (0, 0, surf.texture.width, surf.texture.height), radius, mode=md.rl.BlendMode.BLEND_ALPHA) #type: ignore
-    #
-        #        md.rl.begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-    #
-        #        display.fast_blit_sdf_vec(surf.texture, (surf.texture.width, surf.texture.height), radius)
-    #
-        #        md.rl.end_blend_mode()
-        #    with self.surface: #type: ignore
-        #        display.blit_rect_vec(sdfed_texture.texture, self.coordinates.to_round().to_tuple(), mode=md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-        #        
-        #else:
-        #    adds = {}
-        #    if self._color_anim_manager is not None:
-        #        adds["override_color"] = self._color_anim_manager.get_animation_value("main")
-        #    if self.get_param_value("override_color") is not None:
-        #        adds["override_color"] = self.get_param_value("override_color")
-        #    cache =  self.renderer._generate_background(only_content = self._draw_content, sdf = self._sdf_mode, cached=True, **adds)
-        #    with self.surface: #type: ignore
-        #        display.clear(Color.Blank)
-        #        display.blit_sdf(cache.texture, (0, 0, self.surface.texture.width, self.surface.texture.height), radius, mode=md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
-            
+            surface.blit(cached_bg, coords)
             
     def _secondary_draw_end(self):
         if self._changed and nevu_state.renderer:
@@ -427,20 +371,7 @@ class Widget(NevuObject):
         if self._click_started and nevu_state.window.is_dtype.raylib:
             self._click_texture = self.cache.get_or_exec(CacheType.ClickTexture, lambda: self.renderer.core.create_clear(self._csize))
             self.renderer.run_effects(key=RenderConfig.DrawL5, return_type=RenderReturnType.Null, click_gradient=self._click_gradient, click_subject=self._click_texture)
-        #    display = nevu_state.window.display
-        #    assert nevu_state.window.is_raylib(display)
-        #    if isinstance(self.style.border_radius, tuple): radius = tuple(map(self.relm, self.style.border_radius)) 
-        #    else: radius = [self.relm(self.style.border_radius)]*4
-        #    if not self._click_texture:
-        #        self._click_texture = NvRenderTexture(NvVector2(self.surface.texture.width, self.surface.texture.height)) #type: ignore
-        #        
-        #    with self._click_texture:
-        #        nevu_state.window.display.clear(Color.Blank)
-        #        self._click_gradient.draw(0, 0, self._csize.x, self._csize.y)
-        #        
-        #    with self.surface: #type: ignore
-        #        display.blit_sdf(self._click_texture.texture, (0, 0, self.surface.texture.width, self.surface.texture.height), radius, mode=md.rl.BlendMode.BLEND_ADDITIVE) #type: ignore
-    #
+
     def clear_texture(self): self.cache.clear_selected(whitelist = [CacheType.Texture])
     
     def _logic_update(self):
@@ -478,7 +409,9 @@ class Widget(NevuObject):
         
         if hasattr(self, "_sdl2_texture") and self._sdl2_texture and (alpha := self.animation_manager.get_animation_value("ripple_opacity")):
             self._sdl2_texture.alpha = alpha
-            
+        
+        self._inner_bg_transparent = _analize_bg(self)
+        
         if self._first_update:
             self._first_update = False
             for function in self._first_update_functions:

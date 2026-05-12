@@ -8,6 +8,7 @@ from nevu_ui.core.enums import ConstantLayer, RenderConfig, RenderReturnType
 from nevu_ui.core.state import nevu_state
 from nevu_ui.presentation.color import PairColorRole, Color
 from nevu_ui.fast.nvrendertex import NvRenderTexture
+from nevu_ui.fast.raylib.nevu_raylib import begin_blend_mode, end_blend_mode
 from nevu_ui.presentation.style import Style, default_style
 from nevu_ui.components.widgets import Widget, ProgressBarKwargs
 
@@ -111,34 +112,59 @@ class ProgressBar(Widget):
     
     def _primary_draw(self):
         super()._primary_draw()
-        if self._changed and self.surface:
-            if nevu_state.window.is_dtype.raylib:
-                self.bgsurface = NvRenderTexture(NvVector2(self.surface.texture.width, self.surface.texture.height)) #type: ignore
-                display = nevu_state.window.display
-                assert nevu_state.window.is_raylib(display)
-                with self.bgsurface: #type: ignore
-                    display.clear(Color.Blank)
-                    display.blit_rect_vec(self.surface.texture, (0,0), mode = md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
-            else:
-                self.bgsurface = md.pygame.Surface(self.surface.get_size(), md.pygame.SRCALPHA)
-                self.bgsurface.blit(self.surface, (0,0))
-                self.surface.fill((0,0,0,0))
-            self._changed_value = True
-            self.clear_texture()
-    
-    def _create_surface(self, bar_surf, coords):
-        assert self.surface
+        surface = self.surface
+        if not (self._changed and surface): return
+        dtype = nevu_state.window.is_dtype
+        
+        if dtype.raylib:
+            assert isinstance(surface, NvRenderTexture)
+            texture = surface.texture
+            self.bgsurface = NvRenderTexture(NvVector2.from_xy(texture.width, texture.height))
+            display = nevu_state.window.display
+            assert nevu_state.window.is_raylib(display)
+            bg_surf = self.bgsurface
+            with bg_surf:
+                bg_surf.fast_clear(Color.Blank)
+                begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+                bg_surf.fast_blit(surface, (0,0))
+                end_blend_mode()
+               
+        elif dtype.pygame_like:
+            pygame = md.pygame
+            assert isinstance(surface, pygame.Surface)
+            self.bgsurface = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+            self.bgsurface.blit(surface, (0,0))
+            surface.fill((0,0,0,0))
+            
+        self._changed_value = True
         self.clear_texture()
-        display = nevu_state.window.display
-        if nevu_state.window.is_dtype.raylib:
-            with self.surface: #type: ignore
-                assert nevu_state.window.is_raylib(display)
-                display.clear(Color.Blank)
-                display.blit_rect_vec(self.bgsurface.texture, (0,0), mode = md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
-                display.blit_rect_vec(bar_surf.texture, coords, mode = md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-            return
-        self.surface.blit(self.bgsurface, (0,0))
-        self.surface.blit(bar_surf, coords)
+    
+    def _create_surface(self, bar_surf = None, coords = None):
+        assert self.surface
+        assert coords
+        self.clear_texture()
+        surface = self.surface
+        bg_surf = self.bgsurface
+        dtype = nevu_state.window.is_dtype
+        
+        if dtype.raylib:
+            assert isinstance(surface, NvRenderTexture)
+            assert isinstance(bg_surf, NvRenderTexture)
+            with surface: #type: ignore
+                surface.fast_clear(Color.Blank)
+                begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+                surface.fast_blit(bg_surf, (0,0))
+                if bar_surf:
+                    surface.fast_blit(bar_surf, coords)
+                end_blend_mode()
+                
+        elif dtype.pygame_like:
+            assert isinstance(surface, md.pygame.Surface)
+            assert isinstance(bg_surf, md.pygame.Surface)
+            surface.fill(Color.Blank)
+            surface.blit(bg_surf, (0,0))
+            if bar_surf:
+                surface.blit(bar_surf, coords)
     
     def secondary_draw_content(self):
         super().secondary_draw_content()
@@ -156,7 +182,9 @@ class ProgressBar(Widget):
             y_decrease = math.ceil(radius - (size.x / 2))
             if size.y - y_decrease * 2 > 0: size.y -= y_decrease * 2
         
-        if size.x <= 0 or size.y <= 0: return
+        if size.x <= 0 or size.y <= 0: 
+            self._create_surface(None, (0, 0))
+            return
         
         if isinstance(radius, int | float):
             radius = min(size.x / 2, size.y / 2, radius)
@@ -164,9 +192,6 @@ class ProgressBar(Widget):
             
         color = self._subtheme_progress
         if len(color) == 3: color = (*color, 255)
-        adds = {}
-        #if nevu_state.window.is_dtype.raylib:
-        #    adds["blitmode"] = md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY
         surf = self.renderer.core.create_clear(size)
         self.renderer.run_base(
                 key=RenderConfig.DrawL1,
@@ -178,7 +203,6 @@ class ProgressBar(Widget):
                 return_type=RenderReturnType.Modify,
                 modify_object=surf
             )
-        #surf = self.renderer._create_surf_base(size, override_color=color, radius=radius, **adds)#blitmode=md.rl.BlendMode.BLEND_ALPHA, sdfmode=md.rl.BlendMode.BLEND_ALPHA)
         if nevu_state.window.is_dtype.raylib:
             md.rl.set_texture_filter(surf.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
         coords = (self._rsize_marg)

@@ -165,21 +165,22 @@ class Slider(Widget):
             with self.surface: #type: ignore
                 display.clear(Color.Blank)
                 md.rl.begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-                display.blit_rect_vec(self.progress_bar.surface.texture, (0,0), mode=md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
+                self.surface.fast_blit(self.progress_bar.surface, (0, 0))
+                md.rl.end_blend_mode()
+                md.rl.begin_blend_mode(self._correct_blend)
                 if isinstance(self._text_rect, NvRect):
                     self._text_rect = self._text_rect.get_int_tuple()
                 
                 self.surface.fast_blit(self._text_surface, self._text_rect) #type: ignore
                 md.rl.end_blend_mode()
         else:
-            self.surface.fill((0,0,0,0)) 
-            self.surface.blit(self.progress_bar.surface, (0,0)) #type: ignore
-            self.surface.blit(self._text_surface, self._text_rect) #type: ignore
+            surf = self.surface
+            surf_blit = surf.blit
+            surf.fill((0,0,0,0)) 
+            surf_blit(self.progress_bar.surface, (0,0)) #type: ignore
+            surf_blit(self._text_surface, self._text_rect) #type: ignore
         
     def _create_font(self):
-        #ext_kwargs = {}
-        #self._text_surface = self.renderer.core.create_clear(self._csize)
-
         self._text_rect, self._text_surface = self.renderer.run_text(RenderConfig.DrawL3, text=str(round(self.current_value)), override_color=self.style.colortheme.get_tuple(self.tuple_role), return_type=RenderReturnType.CreateNew)
         if nevu_state.window.is_dtype.raylib:
             md.rl.set_texture_filter(self._text_surface.texture, md.rl.TextureFilter.TEXTURE_FILTER_ANISOTROPIC_16X)

@@ -4,6 +4,8 @@ from typing import Unpack
 import nevu_ui.core.modules as md
 from nevu_ui.core import Annotations
 from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.fast.raylib.nevu_raylib import begin_blend_mode, end_blend_mode
+from nevu_ui.fast.nvrendertex import NvRenderTexture
 from nevu_ui.core import nevu_state
 from nevu_ui.presentation.style import Style, default_style
 from nevu_ui.components.widgets import Widget, LabelKwargs, LabelTemplate
@@ -55,20 +57,22 @@ class Label(Widget):
     def secondary_draw_content(self):
         super().secondary_draw_content()
         if not self.visible: return
-        if self._changed_text or self._changed:
-            self._changed_text = False
-            self._fast_bake_text()
-            coordinates = NvVector2(self._text_rect)
-            if self.inline: coordinates += self.coordinates
-            if self._text_surface and not nevu_state.window.is_dtype.raylib:
-                
-                self.surface.blit(self._text_surface, coordinates.get_int_tuple()) 
-            elif self._text_surface:
-                with self.surface: #type: ignore
-                    md.rl.begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-                    self.surface.fast_blit(self._text_surface, coordinates.get_int_tuple())
-                    md.rl.end_blend_mode()
-                    #nevu_state.window.display.blit_rect_vec(self._text_surface.texture, (0, 0), mode = md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY) #type: ignore
-
+        if not self._changed_text and not self._changed: return
+        self._changed_text = False
+        self._fast_bake_text()
+        coordinates = NvVector2(self._text_rect)
+        if self.inline: coordinates += self.coordinates
+        if not (text_surface := self._text_surface): return
+        dtype = nevu_state.window.is_dtype
+        surf = self.surface
+        if dtype.pygame_like:
+            surf.blit(text_surface, coordinates.get_int_tuple()) 
+        elif dtype.raylib:
+            assert isinstance(surf, NvRenderTexture)
+            with surf:
+                begin_blend_mode(self._correct_blend)
+                surf.fast_blit(text_surface, coordinates.get_int_tuple())
+                end_blend_mode()
+                  
     def _create_clone(self):
         return self.__class__(self._template['text'], self._template['size'], copy.deepcopy(self.style), **self.constant_kwargs)
