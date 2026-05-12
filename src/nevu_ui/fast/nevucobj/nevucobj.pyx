@@ -14,6 +14,9 @@ from nevu_ui.fast.nevucache.nevucache cimport Cache
 from nevu_ui.core.state import nevu_state
 from nevu_ui.core.enums import CacheType
 cimport cython
+cdef extern from "Python.h":
+    object PyObject_CallNoArgs(object func)
+
 from nevu_ui.fast.logic.fast_logic cimport relm_helper, rel_helper, mass_rel_helper, vec_rel_helper, get_nvrect_helper
 from nevu_ui.fast.nvrect.nvrect cimport NvRect
 
@@ -71,7 +74,7 @@ cdef class NevuCobject:
         if p_ptr == NULL: return None 
         cdef NvParam param = <NvParam>p_ptr
         if param.getter is not None:
-            return param.getter()
+            return PyObject_CallNoArgs(param.getter)
         return param.value
 
     cpdef void set_param_value(self, str name, object new_value):
@@ -112,7 +115,8 @@ cdef class NevuCobject:
             return
         cdef bint need_to_set = self._coordinates_setter(coordinates) #type: ignore
         if not need_to_set: return
-        self.coordinates = coordinates
+        self.coordinates.x = coordinates.x
+        self.coordinates.y = coordinates.y
     
     cpdef void clear_all(self):
         """
