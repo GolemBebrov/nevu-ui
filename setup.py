@@ -90,8 +90,9 @@ def get_extensions():
         ),
     ]
 
-    return cythonize(extensions, compiler_directives=cython_directives, annotate=True)
+    return cythonize(extensions, compiler_directives=cython_directives, annotate=True, include_path=["src"],)
 
 setup(
-    ext_modules=get_extensions()
+    ext_modules=get_extensions(),
+    package_dir={"": "src"}
 )
