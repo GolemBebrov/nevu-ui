@@ -3,8 +3,6 @@ import numpy
 import os
 from Cython.Build import cythonize
 
-pgo_mode = os.environ.get('PGO_MODE')
-
 c_opts = [
     '-O3',
     '-march=x86-64-v3',
@@ -16,15 +14,6 @@ c_opts = [
 ]
 
 l_opts = ['-fopenmp', '-flto']
-
-if pgo_mode == 'GENERATE':
-    pgo_flags = ['-fprofile-generate']
-    c_opts.extend(pgo_flags)
-    l_opts.extend(pgo_flags)
-elif pgo_mode == 'USE':
-    pgo_flags = ['-fprofile-use', '-fprofile-correction']
-    c_opts.extend(pgo_flags)
-    l_opts.extend(pgo_flags)
 
 cython_directives = {
     'language_level': "3",
