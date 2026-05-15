@@ -252,8 +252,10 @@ class ScrollableBase(LayoutType, ABC):
             self._scroll_needs_update = False
              
         if self.actual_max_main > 0:
-            scroll_bar.coordinates = self._get_scrollbar_coordinates() # type: ignore
-            scroll_bar.absolute_coordinates = py_get_item_abs_coords(self, scroll_bar)
+            coords = self._get_scrollbar_coordinates()
+            if coords:
+                scroll_bar.coordinates = coords # type: ignore
+                scroll_bar.absolute_coordinates = py_get_item_abs_coords(self, scroll_bar)
 
     def _recollide_items(self):
         drawable = self._widget_drawable

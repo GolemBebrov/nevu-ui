@@ -122,7 +122,7 @@ cpdef void _light_update_helper(
             raw_anim_val = animation_manager.get_animation_value(AnimationType.Position) # type: ignore
             anim_coords = <NvVector2>raw_anim_val
             coordinates = coords._add(item.rel(anim_coords))
-            coordinates._iadd(add_vector)
+            coordinates = coordinates._add(add_vector)
         else:
             raw_anim_val = None
             coordinates = coords._add(add_vector)

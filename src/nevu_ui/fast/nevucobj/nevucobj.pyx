@@ -115,8 +115,7 @@ cdef class NevuCobject:
             return
         cdef bint need_to_set = self._coordinates_setter(coordinates) #type: ignore
         if not need_to_set: return
-        self.coordinates.x = coordinates.x
-        self.coordinates.y = coordinates.y
+        self.coordinates = coordinates
     
     cpdef void clear_all(self):
         """

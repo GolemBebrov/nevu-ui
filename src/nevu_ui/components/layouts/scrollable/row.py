@@ -29,8 +29,9 @@ class ScrollableRow(ScrollableBase):
         return ScrollBarType.Horizontal
     
     def _get_scrollbar_coordinates(self) -> NvVector2:
-        return NvVector2(self.scroll_bar.coordinates.x, self._coordinates.y + self.rely(self.size.y - self.scroll_bar.size.y))
-        
+        adds = self.coordinates
+        return NvVector2((self._csize.x-self.scroll_bar._csize.x)/100*self.scroll_bar.percentage+adds.x, self.coordinates.y + self.rely(self.size.y - self.scroll_bar.size.y), )
+
     def _set_item_main(self, item: NevuObject, align: Align):
         container_height, widget_height = self.rely(self.size[1]), self.rely(item.size[1])
         padding = self.rely(self.get_param_strict("spacing").value)

@@ -8,5 +8,7 @@ from nevu_ui.core import Annotations
 class EmptyWidget(Widget):
     def __init__(self, size: Annotations.nevuobj_size = None, **constant_kwargs: Unpack[WidgetKwargs]):
         super().__init__(size, default_style, **constant_kwargs)
-    def draw(self): pass
+    def draw(self): 
+        if self._changed:
+            self.surface.fill((0, 0, 0, 0))
     def clone(self): return EmptyWidget(self._template['size'], **self.constant_kwargs)

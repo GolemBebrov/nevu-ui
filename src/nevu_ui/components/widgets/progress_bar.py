@@ -58,7 +58,7 @@ class ProgressBar(Widget):
         self._add_param_link("min", "min_value")
         self._add_param("max_value", (int, float), 100, layer=ConstantLayer.Top)
         self._add_param_link("max", "max_value")
-        self._add_param("value", (int, float), 0, getter=self.value_getter, setter=self.value_setter, layer=ConstantLayer.Top)
+        self._add_param("value", (int, float), 0, layer=ConstantLayer.Top)
         self._add_param("color_pair_role", PairColorRole, PairColorRole.BACKGROUND)
         self._add_param_link("role", "color_pair_role")
         
@@ -69,31 +69,35 @@ class ProgressBar(Widget):
         self._progress = value
         self.value = self.min_value + (self.max_value - self.min_value) * self._progress
     
+    def _base_clear(self):
+        self._changed = True
+        self.clear_surfaces()
+        self.clear_texture()
+    
     @property
-    def min_value(self): return self.get_param_strict("min_value").value
+    def min_value(self): return self.get_param_value("min_value")
     @min_value.setter
-    def min_value(self, value): self.set_param_value("min_value", value)
+    def min_value(self, value): 
+        self.set_param_value("min_value", value)
+        self.set_progress_by_value(self.value)
+        self._base_clear()
     @property
-    def max_value(self): return self.get_param_strict("max_value").value
+    def max_value(self): return self.get_param_value("max_value")
     @max_value.setter
-    def max_value(self, value): self.set_param_value("max_value", value)
+    def max_value(self, value): 
+        self.set_param_value("max_value", value)
+        self.set_progress_by_value(self.value)
+        self._base_clear()
     @property
     def value(self): return self.get_param_strict("value").value
     @value.setter
-    def value(self, value): self.set_param_value("value", value)
+    def value(self, value): 
+        self.set_param_value("value", value)
+        #self.set_progress_by_value(value)
+        self._base_clear()
     
     def set_progress_by_value(self, value: int | float):
         self.progress = (value - self.min_value) / (self.max_value - self.min_value)
-        
-    def value_getter(self): return self.get_param_strict("value").value
-    def value_setter(self, value): 
-        self.get_param_strict("value").value = value
-        self._changed_value = True
-        if not hasattr(self, "_progress"):
-            self.set_progress_by_value(value)
-        else:
-            self.on_value_change()
-            self._on_value_change_system()
     
     def _on_value_change_system(self): pass
     def on_value_change(self): pass
@@ -150,36 +154,44 @@ class ProgressBar(Widget):
         if dtype.raylib:
             assert isinstance(surface, NvRenderTexture)
             assert isinstance(bg_surf, NvRenderTexture)
+            surf_fast_blit = surface.fast_blit
             with surface: #type: ignore
                 surface.fast_clear(Color.Blank)
                 begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-                surface.fast_blit(bg_surf, (0,0))
+                surf_fast_blit(bg_surf, (0,0))
                 if bar_surf:
-                    surface.fast_blit(bar_surf, coords)
+                    surf_fast_blit(bar_surf, coords)
                 end_blend_mode()
                 
         elif dtype.pygame_like:
             assert isinstance(surface, md.pygame.Surface)
             assert isinstance(bg_surf, md.pygame.Surface)
             surface.fill(Color.Blank)
-            surface.blit(bg_surf, (0,0))
+            surf_blit = surface.blit
+            surf_blit(bg_surf, (0,0))
             if bar_surf:
-                surface.blit(bar_surf, coords)
+                surf_blit(bar_surf, coords)
     
     def secondary_draw_content(self):
         super().secondary_draw_content()
         if not (self._changed_value) or self.progress < 0: return
         self._changed_value = False
-        inner_vec = self._rsize
-        size = NvVector2(math.ceil(inner_vec.x * self.progress), inner_vec.y)
-        bw = math.ceil(self.relm(self.style.border_width))
-        radius = self.relm(self.style.border_radius) - bw
-        min_side = min(self._rsize.x // 2, self._rsize.y // 2)
+        rsize = self._rsize
+        ceil = math.ceil
+        relm = self.relm
+        style = self.style
+        
+        size = NvVector2.from_xy(ceil(rsize.x * self.progress), rsize.y)
+        half_size = size / 2
+        
+        bw = ceil(relm(style.border_width))
+        radius = relm(style.border_radius) - bw
+        min_side = min(rsize.x // 2, rsize.y // 2)
         radius = min(min_side, max(radius, 0))
         
         y_decrease = 0
-        if size.x / 2 < radius:
-            y_decrease = math.ceil(radius - (size.x / 2))
+        if half_size.x < radius:
+            y_decrease = ceil(radius - half_size.x)
             if size.y - y_decrease * 2 > 0: size.y -= y_decrease * 2
         
         if size.x <= 0 or size.y <= 0: 
@@ -187,21 +199,24 @@ class ProgressBar(Widget):
             return
         
         if isinstance(radius, int | float):
-            radius = min(size.x / 2, size.y / 2, radius)
+            radius = min(half_size.x, half_size.y, radius)
             radius = tuple((radius, radius, radius, radius))
             
         color = self._subtheme_progress
         if len(color) == 3: color = (*color, 255)
-        surf = self.renderer.core.create_clear(size)
-        self.renderer.run_base(
-                key=RenderConfig.DrawL1,
-                radius=self.style.border_radius,
-                easy_background=False,
+        
+        renderer = self.renderer
+        
+        surf = renderer.core.create_clear(size)
+        renderer.run_base(
+                key = RenderConfig.DrawL1,
+                radius = style.border_radius,
+                easy_background = False,
                 size = size,
-                override_color=color,
-                gradient_support=False,
-                return_type=RenderReturnType.Modify,
-                modify_object=surf
+                override_color = color,
+                gradient_support = False,
+                return_type = RenderReturnType.Modify,
+                modify_object = surf
             )
         if nevu_state.window.is_dtype.raylib:
             md.rl.set_texture_filter(surf.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
