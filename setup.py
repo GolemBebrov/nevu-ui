@@ -30,7 +30,7 @@ def get_extension(name: str, source: str) -> Extension:
     return Extension(
         name,
         [source],
-        include_dirs=[numpy.get_include()],
+        include_dirs=[numpy.get_include(), "src"],
         extra_compile_args=c_opts,
         extra_link_args=l_opts,
     )
