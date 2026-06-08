@@ -8,7 +8,6 @@ from collections.abc import Callable
 from nevu_ui.core.enums import EventType, RenderReturnType, RenderConfig
 from nevu_ui.components.widgets import RectCheckBoxKwargs, Widget
 from nevu_ui.core.size.units import SizeRule
-from nevu_ui.presentation.style import Style, default_style
 from nevu_ui.core.state import nevu_state
 from nevu_ui.core import Annotations
 from nevu_ui.components.nevuobj.typehints import nevu_object_globals
@@ -74,7 +73,6 @@ class RectCheckBox(Widget):
             self.clear_texture()
         
     def secondary_draw_content(self):
-        super().secondary_draw_content()
         if self._changed and self.toggled:
             margin = (self._csize * (1 - self.active_rect_factor))
             margin.to_round()
@@ -109,7 +107,7 @@ class RectCheckBox(Widget):
                 return_type=RenderReturnType.Modify
             )
             self.surface.blit(inner_surf, offset.get_int_tuple())
-            if nevu_state.window.is_dtype.raylib:
+            if nevu_state.window.renderer_type.raylib:
                 md.rl.set_texture_filter(inner_surf.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR) #type: ignore
                 #with self.surface: #type: ignore
                     #nevu_state.window.display.blit_rect_vec(inner_surf.texture, offset.get_int_tuple(), mode = md.rl.BlendMode.BLEND_ALPHA) #type: ignore

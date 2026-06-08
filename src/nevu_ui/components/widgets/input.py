@@ -85,6 +85,7 @@ class Input(Widget):
         self.hoverable = False
         self.selected = False
         self._changed_text = False
+        self._custom_event_update = True
         self._changed_cursor = False
         
     def _init_text_cache(self):
@@ -123,7 +124,7 @@ class Input(Widget):
     def _init_cursor(self):
         font_height = int(self._get_line_height())
         cursor_width = max(1, int(self.get_param_strict("cursor_width").value * self._resize_ratio.x))
-        dtype = nevu_state.window.is_dtype
+        dtype = nevu_state.window.renderer_type
         if dtype.raylib: 
             cursor = NvRenderTexture(NvVector2(cursor_width, font_height))
         elif dtype.pygame_like:
@@ -139,7 +140,7 @@ class Input(Widget):
         self.cursor = cursor
         
     def _get_line_height(self):
-        dtype = nevu_state.window.is_dtype
+        dtype = nevu_state.window.renderer_type
         if dtype.raylib: 
             rl_font = self._get_raylib_font()
             return md.rl.measure_text_ex(rl_font, "A", rl_font.baseSize, 0).y
@@ -194,7 +195,7 @@ class Input(Widget):
         scroll_offset.x = max(0, min(scroll_offset.x, max(0, measure(curr_line_text)[0] - visible_width)))
         
     def _measure_texture(self, object):
-        dtype = nevu_state.window.is_dtype
+        dtype = nevu_state.window.renderer_type
         if dtype.raylib:
             return [object.texture.width, object.texture.height]
         elif dtype.pygame_like:
@@ -226,7 +227,7 @@ class Input(Widget):
             self._text_surface = None
             return
         
-        dtype = nevu_state.window.is_dtype
+        dtype = nevu_state.window.renderer_type
         if dtype.raylib:
             rl = md.rl
             ceil = math.ceil
@@ -247,7 +248,7 @@ class Input(Widget):
         
     def _continuous_bake_text(self, text: str | None = None): 
             self._text_rect, self._text_surface = self.renderer.run_text(RenderConfig.DrawL3, text = text or self.text or "", words_indent = self.words_indent, return_type=RenderReturnType.CreateNew, continuous=True)
-            dtype = nevu_state.window.is_dtype
+            dtype = nevu_state.window.renderer_type
             if dtype.raylib:
                 rl = md.rl
                 rl.set_texture_filter(self._text_surface.texture, rl.TextureFilter.TEXTURE_FILTER_ANISOTROPIC_16X)
@@ -259,7 +260,7 @@ class Input(Widget):
         renderFont = self.get_font()
         line_height = int(self._get_line_height())
         lines = text.split('\n')
-        dtype = nevu_state.window.is_dtype
+        dtype = nevu_state.window.renderer_type
         
         if not lines: 
             if dtype.raylib:
@@ -325,8 +326,8 @@ class Input(Widget):
         else: self._continuous_bake_text(text_to_render)
         self._update_scroll_offset_x()
         
-    def _resize(self, resize_ratio: NvVector2):
-        super()._resize(resize_ratio)
+    def _resize_content(self, resize_ratio: NvVector2):
+        super()._resize_content(resize_ratio)
         self._init_cursor()
         self._right_bake_text()
         
@@ -370,7 +371,7 @@ class Input(Widget):
     
     def _parse_paste(self):
         pasted_text = ""
-        dtype = nevu_state.window.is_dtype
+        dtype = nevu_state.window.renderer_type
         
         if dtype.raylib:
             pasted_text = md.rl.get_clipboard_text()
@@ -548,7 +549,7 @@ class Input(Widget):
             return
         
         if ctrl or down(Keys.LeftAlt) or down(Keys.RightAlt): return
-        dtype = nevu_state.window.is_dtype
+        dtype = nevu_state.window.renderer_type
         if dtype.raylib: 
             unicode_char = md.rl.get_char_pressed()
         elif dtype.pygame_like: 
@@ -636,7 +637,7 @@ class Input(Widget):
     
     def _measure_text(self, text: str):
         renderFont = self.get_font()
-        dtype = nevu_state.window.is_dtype
+        dtype = nevu_state.window.renderer_type
         if dtype.raylib:
             measure = md.rl.measure_text_ex
             res = measure(renderFont, text, renderFont.baseSize, 0) #type: ignore
@@ -711,7 +712,6 @@ class Input(Widget):
             try: self._on_change_fun(entered_text)
             except Exception as e: print(f"Error in Input on_change_function (setter): {e}")
     def secondary_draw_content(self):
-        super().secondary_draw_content()
         if not self.visible: return
         if not self._changed: return
         assert self.surface
@@ -734,7 +734,7 @@ class Input(Widget):
     
         if clip.x <= 0 or clip.y <= 0: return
 
-        dtype = nevu_state.window.is_dtype
+        dtype = nevu_state.window.renderer_type
         text_surface = self._text_surface
         surface = self.surface
         multiple = self.multiple

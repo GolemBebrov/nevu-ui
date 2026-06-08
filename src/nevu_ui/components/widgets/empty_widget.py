@@ -1,6 +1,5 @@
 from typing import Unpack
 
-from nevu_ui.fast.nvvector2.nvvector2 import NvVector2
 from nevu_ui.presentation.style import default_style
 from nevu_ui.components.widgets import Widget, WidgetKwargs
 from nevu_ui.core import Annotations

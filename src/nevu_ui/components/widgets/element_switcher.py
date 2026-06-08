@@ -1,5 +1,4 @@
 import copy
-import contextlib
 
 from typing import (
     Callable, Any, Unpack
@@ -11,7 +10,7 @@ import nevu_ui.core.modules as md
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.utils import keyboard
 from nevu_ui.core.enums import HoverState
-from nevu_ui.presentation.style import Style, default_style
+from nevu_ui.presentation.style import Style
 from nevu_ui.core.state import nevu_state
 from nevu_ui.core.enums import RenderConfig, RenderReturnType, CacheType
 from nevu_ui.components.widgets import (
@@ -79,6 +78,7 @@ class ElementSwitcher(Widget):
         self._delayed_button_update = False
         self.hoverable = False
         self._easy_mode = False
+        self._custom_secondary_update = True
         
     def _lazy_init(self, size: NvVector2 | list, elements: list[Element] | None = None): # type: ignore
         super()._lazy_init(size)
@@ -94,9 +94,9 @@ class ElementSwitcher(Widget):
         self._additional_y_marg = 1
     
     @property
-    def _global_hovered(self): return self.hover_state in [HoverState.HOVERED, HoverState.CLICKED] or self._button_hovered
+    def _global_hovered(self): return self.hover_state in [HoverState.Hovered, HoverState.Clicked] or self._button_hovered
     @property
-    def _button_hovered(self): return self.button_left.hover_state in [HoverState.HOVERED, HoverState.CLICKED] or self.button_right.hover_state in [HoverState.HOVERED, HoverState.CLICKED]
+    def _button_hovered(self): return self.button_left.hover_state in [HoverState.Hovered, HoverState.Clicked] or self.button_right.hover_state in [HoverState.Hovered, HoverState.Clicked]
     
     def _logic_update(self):
         super()._logic_update()
@@ -199,8 +199,8 @@ class ElementSwitcher(Widget):
         self.button_left._resize(self._resize_ratio)
         self.button_right._resize(self._resize_ratio)
 
-    def _resize(self, resize_ratio: NvVector2):
-        super()._resize(resize_ratio)
+    def _resize_content(self, resize_ratio: NvVector2):
+        super()._resize_content(resize_ratio)
         self._position_buttons()
         self._resize_buttons()
         self._delayed_button_update = True
@@ -311,7 +311,7 @@ class ElementSwitcher(Widget):
         
         assert text_surface is not None, "Text surface or rect is None"
         
-        dtype = nevu_state.window.is_dtype
+        dtype = nevu_state.window.renderer_type
         surface = self.surface
         
         if dtype.raylib:

@@ -7,7 +7,6 @@ from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.fast.raylib.nevu_raylib import begin_blend_mode, end_blend_mode
 from nevu_ui.fast.nvrendertex import NvRenderTexture
 from nevu_ui.core import nevu_state
-from nevu_ui.presentation.style import Style, default_style
 from nevu_ui.components.widgets import Widget, LabelKwargs, LabelTemplate
 from nevu_ui.core.enums import RenderConfig, RenderReturnType, CacheType
 
@@ -44,18 +43,14 @@ class Label(Widget):
         self._text = text
 
     def _fast_bake_text(self):
-        #if not nevu_state.window.is_dtype.raylib: 
-        #    self.bake_text(self._text, False, self.words_indent, self.style.align_x, self.style.align_y, color = self.subtheme_font)
-        #else: self.renderer.bake_text(self._text, False, self.words_indent, self.style, color = self.subtheme_font)
-        cached_args = self.cache.get_or_exec(CacheType.TextArgs, lambda: self.renderer.run_text(RenderConfig.DrawL3, text=self._text, 
+        cached_args = self.cache.get_or_exec(CacheType.TextArgs, lambda: self.renderer.run_text(RenderConfig.DrawL3, text=self._text or "", 
                                                                                                 words_indent=self.words_indent, return_type=RenderReturnType.CreateNew))
         self._text_rect, self._text_surface = cached_args
-        if nevu_state.window.is_dtype.raylib:
+        if nevu_state.window.renderer_type.raylib:
             md.rl.set_texture_filter(self._text_surface.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
             md.rl.set_texture_wrap(self._text_surface.texture, md.rl.TextureWrap.TEXTURE_WRAP_CLAMP)
         
     def secondary_draw_content(self):
-        super().secondary_draw_content()
         if not self.visible: return
         if not self._changed_text and not self._changed: return
         self._changed_text = False
@@ -63,7 +58,7 @@ class Label(Widget):
         coordinates = NvVector2(self._text_rect)
         if self.inline: coordinates += self.coordinates
         if not (text_surface := self._text_surface): return
-        dtype = nevu_state.window.is_dtype
+        dtype = nevu_state.window.renderer_type
         surf = self.surface
         if dtype.pygame_like:
             surf.blit(text_surface, coordinates.get_int_tuple()) 

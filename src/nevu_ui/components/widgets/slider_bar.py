@@ -2,16 +2,14 @@ from typing import Unpack
 
 import nevu_ui.core.modules as md
 from nevu_ui.core import Annotations
-from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.fast import NvVector2, NvRect
 from nevu_ui.utils import mouse
-from nevu_ui.presentation.color import Color
+from nevu_ui.presentation.color import Color, TupleColorRole, PairColorRole
 from nevu_ui.components.widgets.progress_bar import ProgressBar
 from nevu_ui.core.state import nevu_state
 from nevu_ui.core.enums import Align, ConstantLayer, RenderReturnType, RenderConfig
-from nevu_ui.presentation.color import TupleColorRole, PairColorRole
 from nevu_ui.components.widgets import Widget, SliderKwargs
-from nevu_ui.fast.nvrect import NvRect
-from nevu_ui.presentation.style import Style, default_style
+from nevu_ui.presentation.style import Style
 
 class Slider(Widget):
     progress_style: Style
@@ -24,6 +22,11 @@ class Slider(Widget):
         self._constant_current_val = None
         super().__init__(size, style, **constant_kwargs) 
     
+    def _init_booleans(self):
+        self._custom_secondary_draw_content = True
+        self._custom_secondary_update = True
+        
+        
     def _lazy_init(self, size: NvVector2 | list):
         super()._lazy_init(size)
         self.create_progress_bar()
@@ -34,9 +37,9 @@ class Slider(Widget):
         self._create_font()
     
     def _on_progress_bar_change(self):
-        if nevu_state.window.is_dtype.raylib:
+        if nevu_state.window.renderer_type.raylib:
             with self.progress_bar.surface: #type: ignore
-                nevu_state.window.display.clear(Color.Blank)
+                nevu_state.window.renderer.clear(Color.Blank)
         else:
             self.progress_bar.surface.fill((0,0,0,0))
             self._create_surf()
@@ -159,8 +162,8 @@ class Slider(Widget):
         args = self._create_font()
         self.clear_texture()
         self.adjust_text_rect()
-        if nevu_state.window.is_dtype.raylib:
-            display = nevu_state.window.display
+        if nevu_state.window.renderer_type.raylib:
+            display = nevu_state.window.renderer
             assert nevu_state.window.is_raylib(display)
             with self.surface: #type: ignore
                 display.clear(Color.Blank)
@@ -182,7 +185,7 @@ class Slider(Widget):
         
     def _create_font(self):
         self._text_rect, self._text_surface = self.renderer.run_text(RenderConfig.DrawL3, text=str(round(self.current_value)), override_color=self.style.colortheme.get_tuple(self.tuple_role), return_type=RenderReturnType.CreateNew)
-        if nevu_state.window.is_dtype.raylib:
+        if nevu_state.window.renderer_type.raylib:
             md.rl.set_texture_filter(self._text_surface.texture, md.rl.TextureFilter.TEXTURE_FILTER_ANISOTROPIC_16X)
             md.rl.set_texture_wrap(self._text_surface.texture, md.rl.TextureWrap.TEXTURE_WRAP_CLAMP)
             
@@ -234,8 +237,8 @@ class Slider(Widget):
         else:
             return result_rect
     
-    def _resize(self, resize_ratio: NvVector2):
-        super()._resize(resize_ratio)
+    def _resize_content(self, resize_ratio: NvVector2):
+        super()._resize_content(resize_ratio)
         assert self.surface
         self._create_font()
         self.progress_bar._resize(resize_ratio)

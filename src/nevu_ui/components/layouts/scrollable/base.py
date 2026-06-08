@@ -2,19 +2,16 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Unpack, NotRequired
 
-from nevu_ui.fast.logic import _light_update_helper
 from nevu_ui.components.widgets import Widget
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.core.enums import HoverState
 from nevu_ui.core import Annotations
 from nevu_ui.components.layouts.typehints import AlignTemplate
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.fast.logic.fast_logic import collide_vector, draw_widgets_optimized, rl_predraw_widgets
-from nevu_ui.fast.logic.fast_logic import base_light_update
-from nevu_ui.fast.logic.fast_logic import _light_update_helper, rl_predraw_widgets, py_get_item_abs_coords
+from nevu_ui.fast.logic.fast_logic import draw_widgets_optimized, rl_predraw_widgets, base_light_update, rl_predraw_widgets, py_get_item_abs_coords
 from nevu_ui.presentation.color import SubThemeRole
-from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.logic.fast_logic import _very_light_update_helper
+from nevu_ui.fast.nvspecific.nvspec import scrollable_update_collided
 from nevu_ui.presentation.style import Style, default_style
 from nevu_ui.core.enums import Align, ScrollBarType
 from nevu_ui.components.layouts import LayoutType, LayoutTypeKwargs
@@ -51,6 +48,7 @@ class ScrollableBase(LayoutType, ABC):
             
             if orientation not in ScrollBarType: raise ValueError("Orientation must be 'vertical' or 'horizontal'")
             self.orientation = orientation
+            self._custom_secondary_update = True
         
         def _add_params(self):
             super()._add_params()
@@ -219,11 +217,10 @@ class ScrollableBase(LayoutType, ABC):
         if self.actual_max_main > 0:
             self.scroll_bar.draw()
     
-    def _secondary_draw(self):
-        super()._secondary_draw()
-        draw_widgets_optimized(self.collided_items, None, self, LayoutType, Widget)
+    def secondary_draw_content(self):
+        draw_widgets_optimized(self, self.collided_items, LayoutType, Widget)
         if self.actual_max_main > 0:
-            draw_widgets_optimized([self.scroll_bar], None, self, LayoutType, Widget)
+            draw_widgets_optimized(self, [self.scroll_bar], LayoutType, Widget)
 
     def secondary_update(self): 
         super().secondary_update()
@@ -238,12 +235,11 @@ class ScrollableBase(LayoutType, ABC):
                 self._scroll_needs_update = True
                 
         _very_light_update_helper(
-            self.items, self.cached_coordinates or [], 
+            self.items, self.cached_coordinates or [], self.first_parent_menu.absolute_coordinates,
             self._offset, self
             )
         
-        for item in self.collided_items:
-            item.update() 
+        scrollable_update_collided(self.collided_items)
         
         if self._scroll_needs_update:
             self._update_offset()
@@ -289,14 +285,14 @@ class ScrollableBase(LayoutType, ABC):
         self.cached_coordinates = cached_coordinates
         
         _very_light_update_helper(
-            items, self.cached_coordinates or [], 
+            items, self.cached_coordinates or [], self.first_parent_menu.absolute_coordinates,
             self._offset, self
             )
         self._recollide_items()
 
     def _logic_update(self):
         super()._logic_update()
-        if self.hover_state == HoverState.UN_HOVERED: return
+        if self.hover_state == HoverState.NotHovered: return
         inverse = -1 if self.inverted_scrolling else 1
         fdown = keyboard.is_fdown
         get = self.get_param_value
@@ -333,9 +329,9 @@ class ScrollableBase(LayoutType, ABC):
         track_length[self._main_axis] = self._csize[self._main_axis]
         self.scroll_bar.set_scroll_params(local_start, abs_coords, track_length)
 
-    def _resize(self, resize_ratio: NvVector2): 
+    def _resize_content(self, resize_ratio: NvVector2): 
         old_scrbar_perc = self.scroll_bar.percentage
-        super()._resize(resize_ratio)
+        super()._resize_content(resize_ratio)
         self.scroll_bar._resize(resize_ratio)
         self._update_scroll_bar()
         self.scroll_bar.set_percents(old_scrbar_perc)

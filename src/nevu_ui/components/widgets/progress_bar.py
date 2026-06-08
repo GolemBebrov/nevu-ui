@@ -3,13 +3,11 @@ from typing import Unpack
 
 import nevu_ui.core.modules as md
 from nevu_ui.core import Annotations
-from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.fast import NvVector2, NvRenderTexture
 from nevu_ui.core.enums import ConstantLayer, RenderConfig, RenderReturnType
 from nevu_ui.core.state import nevu_state
 from nevu_ui.presentation.color import PairColorRole, Color
-from nevu_ui.fast.nvrendertex import NvRenderTexture
 from nevu_ui.fast.raylib.nevu_raylib import begin_blend_mode, end_blend_mode
-from nevu_ui.presentation.style import Style, default_style
 from nevu_ui.components.widgets import Widget, ProgressBarKwargs
 
 class ProgressBar(Widget):
@@ -118,13 +116,13 @@ class ProgressBar(Widget):
         super()._primary_draw()
         surface = self.surface
         if not (self._changed and surface): return
-        dtype = nevu_state.window.is_dtype
+        dtype = nevu_state.window.renderer_type
         
         if dtype.raylib:
             assert isinstance(surface, NvRenderTexture)
             texture = surface.texture
             self.bgsurface = NvRenderTexture(NvVector2.from_xy(texture.width, texture.height))
-            display = nevu_state.window.display
+            display = nevu_state.window.renderer
             assert nevu_state.window.is_raylib(display)
             bg_surf = self.bgsurface
             with bg_surf:
@@ -149,7 +147,7 @@ class ProgressBar(Widget):
         self.clear_texture()
         surface = self.surface
         bg_surf = self.bgsurface
-        dtype = nevu_state.window.is_dtype
+        dtype = nevu_state.window.renderer_type
         
         if dtype.raylib:
             assert isinstance(surface, NvRenderTexture)
@@ -218,7 +216,7 @@ class ProgressBar(Widget):
                 return_type = RenderReturnType.Modify,
                 modify_object = surf
             )
-        if nevu_state.window.is_dtype.raylib:
+        if nevu_state.window.renderer_type.raylib:
             md.rl.set_texture_filter(surf.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
         coords = (self._rsize_marg)
         coords.y += y_decrease

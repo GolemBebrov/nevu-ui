@@ -12,11 +12,11 @@ import nevu_ui.core.modules as md
 from nevu_ui.core import Annotations
 from nevu_ui.components.widgets import Widget
 from nevu_ui.overlay import overlay
-from nevu_ui.fast.logic.fast_logic import _light_update_helper, rl_predraw_widgets, py_get_item_abs_coords, draw_widgets_optimized
+from nevu_ui.fast.logic.fast_logic import rl_predraw_widgets, py_get_item_abs_coords, draw_widgets_optimized
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.core.state import nevu_state
 from nevu_ui.core.enums import ConstantLayer
-from nevu_ui.core.classes import BorderConfig
+from nevu_ui.core.classes import BorderConfig, _strategy_type, Strategy
 from nevu_ui.components.nevuobj import NevuObject, NevuObjectKwargs
 from nevu_ui.components.layouts.typehints import LayoutTemplate
 
@@ -96,6 +96,10 @@ class LayoutType(NevuObject):
         super()._init_booleans()
         self._can_be_main_layout = True
         self._need_update_overlay = True
+        self._custom_logic_update = True
+        self._custom_primary_draw = True
+        self._custom_secondary_draw_content = True
+        self._custom_secondary_update = True
         
     def _init_objects(self):
         super()._init_objects()
@@ -106,10 +110,8 @@ class LayoutType(NevuObject):
         
     def _add_params(self):
         super()._add_params()
-        #self._add_param("border_name", str, "", layer = ConstantLayer.Complicated)# setter = self._border_name_setter)
-        #self._add_param("borders", bool, False, layer = ConstantLayer.Basic)
         self._add_param("borders", BorderConfig | type(None), None, layer = ConstantLayer.Complicated, setter=self._borders_setter)
-    
+
     def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None):
         super()._lazy_init(size)
         if content and type(self) == LayoutType:
@@ -126,7 +128,7 @@ class LayoutType(NevuObject):
     
     def _borders_setter(self, value: BorderConfig):
         if not value.font: return
-        if nevu_state.window.is_dtype.raylib:
+        if nevu_state.window.renderer_type.raylib:
             rlfont = value.font
             if not hasattr(rlfont, "glyphCount"):
                 raise ValueError("font must be a raylib font")
@@ -189,9 +191,9 @@ class LayoutType(NevuObject):
         if self.booted == False:  return
         item._wait_mode = False
         item._init_start()
-
-    def _resize(self, resize_ratio: NvVector2):
-        super()._resize(resize_ratio)
+    
+    def _resize_content(self, resize_ratio: NvVector2):
+        super()._resize_content(resize_ratio)
         self.cached_coordinates = None
         self._border_font_surface = None
         self._need_update_overlay = True
@@ -274,8 +276,7 @@ class LayoutType(NevuObject):
             i._set_bg_transparent(value)
 
     def _primary_draw(self):
-        super()._primary_draw()
-        if  self._need_update_overlay and not nevu_state.window.is_dtype.raylib and self.borders:
+        if  self._need_update_overlay and not nevu_state.window.renderer_type.raylib and self.borders:
             assert self.surface
             assert nevu_state.window
             if not self.borders.font:
@@ -283,9 +284,6 @@ class LayoutType(NevuObject):
             else:
                 self.border_font = self.borders.font
             self._border_font_surface = self.border_font.render(self.borders.name, True, self.borders.color)
-            #self.surface.blit(self._border_font_surface, [self.coordinates[0], self.coordinates[1] - self._border_font_surface.get_height()])
-            #md.pygame.draw.rect(self.surface, self.borders.color, [self.coordinates[0], self.coordinates[1], self._csize.x, self._csize.y], 1)
-            #elif nevu_state.window.is_dtype.sdl:
             surf = md.pygame.Surface(self._csize.to_tuple(), flags = md.pygame.SRCALPHA)
             surf.fill((0,0,0,0))
             if hasattr(self, "border_font_surface"):
@@ -293,10 +291,9 @@ class LayoutType(NevuObject):
                 md.pygame.draw.rect(surf, self.borders.color, [0, 0, self._csize.x, self._csize.y], 1)
             overlay.add_element(self, surf, self.absolute_coordinates.to_round(), -1)
                 
-        draw_widgets_optimized(self.floating_items, None, self, LayoutType, Widget)
+        draw_widgets_optimized(self, self.floating_items, LayoutType, Widget)
 
     def _logic_update(self):
-        super()._logic_update()
         if overlay.has_element(self):
             abs_coordinates = self.absolute_coordinates
             if overlay.get_element_strict(self)[1] != abs_coordinates.to_round():

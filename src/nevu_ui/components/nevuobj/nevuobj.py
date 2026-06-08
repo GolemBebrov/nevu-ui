@@ -11,19 +11,17 @@ import nevu_ui.core.modules as md
 if TYPE_CHECKING:
     from pyray import Font
 from nevu_ui.core import Annotations
-from nevu_ui.fast.nvrect.nvrect import NvRect
 from nevu_ui.presentation.style import Style, default_style
-from nevu_ui.fast.nevucobj import NevuCobject
+from nevu_ui.fast import NevuCobject, ZRequest, NvVector2
 from nevu_ui.presentation.color import SubThemeRole
 from nevu_ui.core.classes import Events
-from nevu_ui.fast.zsystem import ZRequest
 from nevu_ui.core.state import nevu_state
 from nevu_ui.parser.base import standart_config
-from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.overlay.tooltip import Tooltip
+from nevu_ui.core.classes import _strategy_type, Strategy
 from nevu_ui.presentation.animations import AnimationManager
 from nevu_ui.core.size.rules import Px, SizeRule
-from nevu_ui.utils import Cache, NevuEvent
+from nevu_ui.utils import NevuEvent
 from nevu_ui.components.nevuobj.typehints import NevuObjectKwargs, NevuObjectTemplate, nevu_object_globals
 
 from nevu_ui.fast.logic import (
@@ -164,6 +162,7 @@ class NevuObject(NevuCobject):
         self._add_param("tooltip", Tooltip | type(None), None, layer=ConstantLayer.Lazy)
         self._add_param("subtheme_role", SubThemeRole, SubThemeRole.TERTIARY, getter=self._subtheme_role_getter, setter=self._subtheme_role_setter, layer=ConstantLayer.Complicated)
         self._add_param("animation_manager", AnimationManager | type(None), None, layer=ConstantLayer.Top)
+        self._add_param("strategy", type(_strategy_type), Strategy.Relative, layer = ConstantLayer.Basic)
         
     def _add_param_link(self, link_name: str, name: str): 
         self._param_links[link_name] = name
@@ -254,7 +253,7 @@ class NevuObject(NevuCobject):
         else: self.style = style
         
     def _init_objects(self):
-        self._hover_state: HoverState = HoverState.UN_HOVERED
+        self._hover_state: HoverState = HoverState.NotHovered
         if anim_manager := self.get_param_strict("animation_manager").value:
             self.animation_manager = copy.deepcopy(anim_manager)
         else:    
@@ -272,6 +271,7 @@ class NevuObject(NevuCobject):
     def _init_start(self):
         if self.booted: return
         self._wait_mode = False
+        self._template.size = list(self._template.size)
         for i, item in enumerate(self._template.size): #type: ignore
             self._template.size[i] = self._handle_size_rules(item) #type: ignore
         if not self._wait_mode: self._lazy_init(**self._template.__dict__)
@@ -281,7 +281,6 @@ class NevuObject(NevuCobject):
         self._init_param_layer(ConstantLayer.Lazy, **self.constant_kwargs)
         
     def _lazy_init(self, size):
-       # print("lazied", self)
         self.size = size if isinstance(size, NvVector2) else NvVector2(size)
         self.original_size = self.size.copy()
         self.add_first_update_action(self._reset_tooltip)
@@ -309,31 +308,16 @@ class NevuObject(NevuCobject):
         self._wait_mode = value
 
     @property
-    @deprecated("Use absolute_coordinates instead")
-    def master_coordinates(self):
-        return self.absolute_coordinates
-    
-    @master_coordinates.setter
-    @deprecated("Use absolute_coordinates instead")
-    def master_coordinates(self, value):
-        self.absolute_coordinates = value
-
-    @property
     def _csize(self) -> NvVector2:
         return self.cache.get_or_exec(CacheType.RelSize, self._update_size)
 
-    def add_first_update_action(self, function):
-        self._first_update_functions.append(function)
-    
-    def add_next_frame_action(self, function):
-        self._next_frame_functions.append(function)
-
-    def get_animation_value(self, animation_type: AnimationType):
-        return self.animation_manager.get_animation_value(animation_type)
+    def add_first_update_action(self, function): self._first_update_functions.append(function)
+    def add_next_frame_action(self, function): self._next_frame_functions.append(function)
+    def get_animation_value(self, animation_key: AnimationType | str): return self.animation_manager.get_animation_value(animation_key)
 
     def get_font_size(self, override_size = None):
         result = self.relm(override_size or self.style.font_size)
-        if nevu_state.window.is_dtype.raylib: result *= 1.25
+        if nevu_state.window.renderer_type.raylib: result *= 1.25
         return result
     
     def _set_bg_transparent(self, value: bool):
@@ -346,16 +330,20 @@ class NevuObject(NevuCobject):
 
     def _get_raylib_font(self, override_size = None) -> "Font":
         font_size = self.get_font_size(override_size)
-        
+
         def _load_font_with_cyrillic():
             codepoints = list(range(32, 127)) + list(range(1024, 1104)) + [1025, 1105]
             glyph_count = len(codepoints)
-            c_array = md.rl.ffi.new("int[]", codepoints)
-            c_ptr = md.rl.ffi.cast("int *", c_array)
-            if self.style.font_name == "Arial": return md.rl.get_font_default()
+            rl = md.rl
+            ffi = rl.ffi
+            c_array = ffi.new("int[]", codepoints)
+            c_ptr = ffi.cast("int *", c_array)
+            if self.style.font_name == "Arial": font =  rl.get_font_default()
             else:
-                return md.rl.load_font_ex(self.style.font_name, round(font_size), c_ptr, glyph_count)
-
+                font = rl.load_font_ex(self.style.font_name, round(font_size), c_ptr, glyph_count)
+            if font.glyphCount == 0: raise ValueError(f"Font {self.style.font_name} not found")
+            return font
+        
         return self.cache.get_or_exec(CacheType.RlFont, _load_font_with_cyrillic) #type: ignore
     
     def _get_raylib_font_nocache(self, override_size = None) -> "Font":
@@ -364,16 +352,20 @@ class NevuObject(NevuCobject):
         def _load_font_with_cyrillic():
             codepoints = list(range(32, 127)) + list(range(1024, 1104)) + [1025, 1105]
             glyph_count = len(codepoints)
-            c_array = md.rl.ffi.new("int[]", codepoints)
-            c_ptr = md.rl.ffi.cast("int *", c_array)
-            if self.style.font_name == "Arial": return md.rl.get_font_default()
+            rl = md.rl
+            ffi = rl.ffi
+            c_array = ffi.new("int[]", codepoints) 
+            c_ptr = ffi.cast("int *", c_array)
+            if self.style.font_name == "Arial": font =  rl.get_font_default()
             else:
-                return md.rl.load_font_ex(self.style.font_name, round(font_size), c_ptr, glyph_count)
+                font = rl.load_font_ex(self.style.font_name, round(font_size), c_ptr, glyph_count)
+            if font.glyphCount == 0: raise ValueError(f"Font {self.style.font_name} not found")
+            return font
 
         return _load_font_with_cyrillic()
     
     def get_font(self, override_size = None):
-        if nevu_state.window.is_dtype.raylib: return self._get_raylib_font(override_size)
+        if nevu_state.window.renderer_type.raylib: return self._get_raylib_font(override_size)
         else: return self._get_pygame_font(override_size)
     
     @property
@@ -381,8 +373,8 @@ class NevuObject(NevuCobject):
 
     @property
     def _rsize(self) -> NvVector2:
-        bw = math.ceil(self.relm(self.style.border_width))
-        return self._csize - (NvVector2.from_xy(bw, bw) * 3)
+        bw = self.relm(self.style.border_width)
+        return self._csize - (NvVector2.from_xy(bw, bw) * 2) + NvVector2.from_xy(1, 1)
 
     @property
     def _rsize_marg(self) -> NvVector2: return (self._csize - self._rsize) / 2
@@ -438,11 +430,6 @@ class NevuObject(NevuCobject):
     def _on_active_set(self): pass
 
 #=== Event functions ===
-    def _event_cycle(self, type: EventType, *args, **kwargs):
-        for event in self.get_param_strict("events").value.content:
-            if event._type == type:
-                event(*args, **kwargs)
-
     def subscribe(self, event: NevuEvent):
         """Adds a new event listener to the object.
         Args:
@@ -451,19 +438,18 @@ class NevuObject(NevuCobject):
             None
         """
         self.get_param_value("events").add(event)
-        
-    @deprecated("use .subscribe() instead. This method will be removed in a future version.")
-    def add_event(self, event: NevuEvent):
-        """**Deprecated**: use .subscribe instead."""
-        return self.subscribe(event)
 
     def _set_events(self, value: Events):
         value.on_add = self._on_event_add #type: ignore
         return self.get_param_value("events")
     
     def _on_event_add(self): self.constant_kwargs['events'] = self.get_param_value("events")
-        
+
     def _resize(self, resize_ratio: NvVector2):
+        if self.get_param_value("strategy") == Strategy.Static: return
+        self._resize_content(resize_ratio)
+
+    def _resize_content(self, resize_ratio: NvVector2):
         self._changed = True
         self._resize_ratio = resize_ratio
         self.cache.clear_selected(whitelist=[CacheType.RelSize])
@@ -488,57 +474,23 @@ class NevuObject(NevuCobject):
     def on_unhover(self): """Override this function to run code when the object is unhovered"""
     def on_scroll(self, side: bool): """Override this function to run code when the object is scrolled"""
     def on_change(self): """Override this function to run code when the object is changed"""
-    
-    #=== System hooks ===
-    def _on_click_system(self): self._event_cycle(EventType.OnKeyDown, self)
-    def _on_hover_system(self): self._event_cycle(EventType.OnHover, self)
-    def _on_keyup_system(self): self._event_cycle(EventType.OnKeyUp, self)
-    def _on_keyup_abandon_system(self): self._event_cycle(EventType.OnKeyUpAbandon, self)
-    def _on_unhover_system(self): self._event_cycle(EventType.OnUnhover, self)
-    def _on_scroll_system(self, side: bool): self._event_cycle(EventType.OnMouseScroll, self, side)
-    def _on_change_system(self): self._event_cycle(EventType.OnChange, self)
-    
-    #=== Group functions ===
-    def _group_on_click(self):
-        self._on_click_system()
-        self.on_click()
-    def _group_on_hover(self):
-        self._on_hover_system()
-        self.on_hover()
-    def _group_on_keyup(self):
-        self._on_keyup_system()
-        self.on_keyup()
-    def _group_on_keyup_abandon(self):
-        self._on_keyup_abandon_system()
-        self.on_keyup_abandon()
-    def _group_on_unhover(self):
-        self._on_unhover_system()
-        self.on_unhover()
-    def _group_on_scroll(self, side: bool):
-        self._on_scroll_system(side)
-        self.on_scroll(side)
-    
-    #=== Selection functions ===
-    def _click(self):
-        self._force_state_set_continue = True
-        self.hover_state = HoverState.CLICKED
-    def _unhover(self):
-        self.hover_state = HoverState.UN_HOVERED
-    def _hover(self):
-        self.hover_state = HoverState.HOVERED
-    def _kup(self):
-        self._is_kup = True
-        self._force_state_set_continue = True
-        self.hover_state = HoverState.HOVERED
-    def _kup_abandon(self):
-        self._kup_abandoned = True
-        self._force_state_set_continue = True
-        self.hover_state = HoverState.UN_HOVERED
+
+
+#=== Update stubs ===
+    def secondary_update(self): pass
+    def _logic_update(self): pass
+    def _animation_update(self): pass
+    def _event_update(self, events): pass
+
+#=== Draw stubs ===
+    def _primary_draw(self): pass
+    def secondary_draw_content(self): pass
+    def _secondary_draw_end(self): pass
+    def secondary_draw(self): pass
 
 #=== Hover state ===
     @property
-    def hover_state(self):
-        return self._hover_state
+    def hover_state(self): return self._hover_state
     
     @hover_state.setter
     def hover_state(self, value: HoverState):
@@ -552,14 +504,14 @@ class NevuObject(NevuCobject):
         self.style.mark_state(value)
         
         match self._hover_state:
-            case HoverState.CLICKED:
+            case HoverState.Clicked:
                 self._group_on_click()
-            case HoverState.HOVERED:
+            case HoverState.Hovered:
                 if self._is_kup:
                     self._group_on_keyup()
                     self._is_kup = False
                 else: self._group_on_hover()
-            case HoverState.UN_HOVERED:
+            case HoverState.NotHovered:
                 if self._kup_abandoned:
                     self._group_on_keyup_abandon()
                     self._kup_abandoned = False
@@ -568,111 +520,17 @@ class NevuObject(NevuCobject):
         self.after_state_change()
         self._after_state_change_system()
         
-    def on_state_change(self, state: HoverState): pass
-    def _on_state_change_system(self, state: HoverState): pass
     def after_state_change(self): pass
     def _after_state_change_system(self): pass
 
 #=== Rect functions ===
-    def get_rect(self):
-        return get_rect_helper_pygame(self.absolute_coordinates, self._resize_ratio, self.size)
-    def get_rect_static(self):
-        return get_rect_helper(self.coordinates, self._resize_ratio, self.size)
+    def get_rect(self): return get_rect_helper_pygame(self.absolute_coordinates, self._resize_ratio, self.size)
+    def get_rect_static(self): return get_rect_helper(self.coordinates, self._resize_ratio, self.size)
 
 #=== Cache update functions ===
     def _update_coords(self): return self.coordinates
     def _update_size(self): return self.rel(self.size)
 
-#=== Update functions ===
-    #========= UPDATE STRUCTURE: ==========
-    #    update >
-    #
-    #        primary_update >
-    #            logic_update >
-    #                all math and logic code
-    #            animation_update >
-    #                system animation code
-    #            event_update >
-    #                all pygame.event dependent code
-    #
-    #        secondary_update >
-    #            widget/layout update code
-    #
-    #        Update event cycle
-    #======================================
-
-    def update(self, events: list | None = None):
-        events = events or nevu_state.current_events
-        if not self._active or not self._visible: return
-        self._primary_update(events)
-        self.secondary_update()
-        self._event_cycle(EventType.Update)
-        
-    def _primary_update(self, events: list | None = None):
-        events = events or []
-        self._logic_update()
-        self._animation_update()
-        self._event_update(events)
-        
-    def _logic_update(self):
-        if not self._sended_z_link and nevu_state.window != None:
-            self._sended_z_link = True
-            self._z_request = ZRequest(
-                link=self,
-                on_hover_func=self._hover,
-                on_unhover_func=self._unhover,
-                on_scroll_func=self._group_on_scroll,
-                on_keyup_func=self._kup,
-                on_keyup_abandon_func=self._kup_abandon,
-                on_click_func=self._click)
-            nevu_state.window.add_request(self._z_request) # type: ignore
-        if self._next_frame_functions:
-            for func in self._next_frame_functions: func()
-            self._next_frame_functions.clear()
-            
-    def _animation_update(self):
-        self.animation_manager.update()
-        
-    def _event_update(self, events: list): pass
-    
-    def secondary_update(self): pass
-
-#=== Draw functions ===
-    #========== DRAW STRUCTURE: ===========
-    #    draw >
-    #        primary_draw >
-    #            basic draw code
-    #
-    #        Draw event cycle
-    #
-    #        secondary_draw >
-    #            secondary_draw_content >
-    #                all additional draw | on change code
-    #            secondary_draw_end >
-    #                all after change code
-    #
-    #        Render event cycle
-    #======================================
-
-    def draw(self):
-        if self._changed and self._active and self._visible and not self.wait_mode:
-            self.on_change()
-            self._on_change_system()
-        self._primary_draw()
-        self._event_cycle(EventType.Draw)
-        self._secondary_draw()
-        self._event_cycle(EventType.Render)
-        
-    def _primary_draw(self): pass
-    
-    def _secondary_draw(self):
-        self.secondary_draw_content()
-        self._secondary_draw_end()
-        
-    def secondary_draw_content(self): pass
-    
-    def _secondary_draw_end(self):
-        if self._changed: self._changed = False
 
 #=== Relative functions ===
     #Empty... :3
@@ -719,8 +577,6 @@ class NevuObject(NevuCobject):
         self.is_active = False
 
         self._clear_z_request()
-
-        if hasattr(self, 'renderer'): self.renderer = None
-
-        if hasattr(self, '_sended_z_link') and self._sended_z_link and nevu_state.window:
+        if self.renderer: self.renderer = None
+        if self._sended_z_link and nevu_state.window:
             nevu_state.window.z_system.mark_dirty()

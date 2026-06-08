@@ -9,7 +9,7 @@ from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.fast.logic.fast_logic import draw_widgets_optimized, base_light_update
-from nevu_ui.fast.logic.fast_logic import _light_update_helper, rl_predraw_widgets, py_get_item_abs_coords
+from nevu_ui.fast.logic.fast_logic import py_get_item_abs_coords
 from nevu_ui.components.layouts.typehints import GridTemplate
 from nevu_ui.components.layouts import LayoutType, LayoutTypeKwargs
 from nevu_ui.presentation.style import Style, default_style
@@ -73,21 +73,13 @@ class Grid(LayoutType):
         cached_coords_append = self.cached_coordinates.append
         for item, gr_vec in zip(self.items, self.grid_coordinates):
             curr_cell_vec = gr_vec * c_vec
-            size_adapt_vec = (c_vec - item._csize) / 2
+            size_adapt_vec = (c_vec - item.get_actual_size()) / 2
             coordinates = coords_marg_vec + curr_cell_vec + size_adapt_vec
             item.coordinates = coordinates
             item.absolute_coordinates = py_get_item_abs_coords(self, item)
             cached_coords_append(coordinates)
             
-    def secondary_update(self, *args):
-        super().secondary_update()
-        base_light_update(self)
-        #print(self, self.get_param_strict("id").value)
-        #if self.get_param_value("id") == "secret_test":
-        #    print(self.coordinates)
-        #    print("--")
-        #    print(self.absolute_coordinates)
-        #    print(self.items, self.cached_coordinates)
+    def secondary_update(self, *args): base_light_update(self)
 
     def _parse_gcx(self, coord, pos: int): # type: ignore
         if self.first_parent_menu is None: raise self._unconnected_layout_error("Gcx coords")
@@ -108,8 +100,7 @@ class Grid(LayoutType):
         self.grid_coordinates.append(NvVector2.from_xy(x - 1,y - 1))
 
     def secondary_draw_content(self):
-        super().secondary_draw_content()
-        draw_widgets_optimized(self.items, None, self, LayoutType, Widget) # type: ignore
+        draw_widgets_optimized(self, self.items, LayoutType, Widget)
 
     def get_row(self, x: any_number) -> list[NevuObject]:
         return [item for item, coords in zip(self.items, self.grid_coordinates) if coords[0] == x - 1]

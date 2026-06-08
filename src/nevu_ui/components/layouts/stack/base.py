@@ -47,12 +47,9 @@ class StackBase(LayoutType, ABC):
         super()._add_params()
         self._add_param("spacing",(int, float), 10)
     
-    def _init_numerical(self):
-        super()._init_numerical()
-        self._bugfix1 = 2
-    
-    def _clear_cached_coordinates(self):
-        super()._clear_cached_coordinates()
+    def _init_booleans(self):
+        super()._init_booleans()
+        self._custom_secondary_draw_content = True
     
     def _init_test_flags(self):
         super()._init_test_flags()
@@ -90,12 +87,10 @@ class StackBase(LayoutType, ABC):
         if self.layout: self.layout._on_item_add(item)
         
     def secondary_update(self, *args):
-        super().secondary_update()
         base_light_update(self)
     
     def secondary_draw_content(self):
-        super().secondary_draw_content()
-        draw_widgets_optimized(self.items, self._draw_widget_optimized, self, LayoutType, Widget)
+        draw_widgets_optimized(self, self.items, LayoutType, Widget)
             
     @property
     def spacing(self): return self.get_param_strict("spacing").value
