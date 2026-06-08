@@ -9,13 +9,17 @@
 
 cimport cython
 import nevu_ui.core.modules as md
-from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2
+from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2, nv_vector2_t
 
 @cython.final
 @cython.freelist(32)
 cdef class NvRect:
     @staticmethod
     cdef NvRect from_nvvector(NvVector2 pos, NvVector2 size):
+        return NvRect.new(pos.x, pos.y, size.x, size.y)
+    
+    @staticmethod
+    cdef NvRect from_nv_vector_t(nv_vector2_t pos, nv_vector2_t size):
         return NvRect.new(pos.x, pos.y, size.x, size.y)
     
     cpdef NvRect union(self, NvRect other):

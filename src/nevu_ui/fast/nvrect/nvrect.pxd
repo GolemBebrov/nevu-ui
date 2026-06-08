@@ -1,4 +1,4 @@
-from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2
+from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2, nv_vector2_t
 
 cdef class NvRect:
     cdef public float x
@@ -19,4 +19,6 @@ cdef class NvRect:
     cpdef NvRect union(self, NvRect other)
     @staticmethod
     cdef NvRect from_nvvector(NvVector2 pos, NvVector2 size)
+    @staticmethod
+    cdef NvRect from_nv_vector_t(nv_vector2_t pos, nv_vector2_t size)
     cpdef bint collide_rect(self, NvRect other)
