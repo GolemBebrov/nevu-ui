@@ -29,7 +29,9 @@ cdef inline void check_singleton() noexcept:
     window_renderer_created = True
 
 cdef class WindowRendererBase:
-    pass #Used for typehints :D
+    cdef int bug
+    def __init__(self):
+        pass #Used for typehints :D
 
 cdef class WindowRendererSdl:
     cdef public object window, renderer, surface, root
