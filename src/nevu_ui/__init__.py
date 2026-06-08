@@ -35,14 +35,14 @@ from .core.enums import (
 )
 from .core.classes import TooltipType, BorderConfig, nevu_globals
 from .components.widgets import (
-    Widget, Label, Button, EmptyWidget, RectCheckBox, Image, Gif, Input, MusicPlayer, ElementSwitcher, Element, ProgressBar, Slider
+    Widget, Label, Button, EmptyWidget, RectCheckBox, Image, Gif, Input, MusicPlayer, ElementSwitcher, Element, ProgressBar, Slider, Switch
 )
 
 from .components.widgets.typehints import widget_globals
 from .components.nevuobj.typehints import nevu_object_globals
 
 from .components.layouts import (
-    LayoutType, Grid, Row, Column, ScrollableColumn, ScrollableRow, ColorPicker, Pages, Gallery_Pages, StackRow, StackColumn, CheckBoxGroup
+    LayoutType, Grid, Row, Column, ScrollableColumn, ScrollableRow, ColorPicker, Pages, Gallery_Pages, StackRow, StackColumn, CheckBoxGroup, Panel
 )
 from .utils import (
     time, Time, keyboard, NevuEvent, InputType, mouse, load_font, Keys
@@ -58,9 +58,9 @@ __all__ = [
     #===Most Used===
     "Menu", "Window", "ConfiguredWindow", "NevuObject", "Manager", "NvVector2", "nevu_state", "apply_config", "get_style", "get_color", "get_all_styles", "get_all_colors", "overlay", "TooltipType",
     #===Widgets===
-    "Widget", "Label", "Button", "EmptyWidget", "RectCheckBox", "Image", "Gif", "Input", "MusicPlayer", "ElementSwitcher", "Element", "ProgressBar", "Slider", "Tooltip",
+    "Widget", "Label", "Button", "EmptyWidget", "RectCheckBox", "Image", "Gif", "Input", "MusicPlayer", "ElementSwitcher", "Element", "ProgressBar", "Slider", "Tooltip", "Switch",
     #===Layouts===
-    "LayoutType", "Grid", "Row", "Column", "ScrollableColumn", "ScrollableRow", "ColorPicker", "Pages", "Gallery_Pages", "StackRow", "StackColumn", "CheckBoxGroup",
+    "LayoutType", "Grid", "Row", "Column", "ScrollableColumn", "ScrollableRow", "ColorPicker", "Pages", "Gallery_Pages", "StackRow", "StackColumn", "CheckBoxGroup", "Panel",
     #===Utils===
     "time", "Time", "mouse", "keyboard", "Cache", "NevuEvent", "InputType", "NvRect", "load_font", "load_image", "load_image_texture", "gradient_queue", "Keys", "NvRenderTexture",
     #===Size vars===
