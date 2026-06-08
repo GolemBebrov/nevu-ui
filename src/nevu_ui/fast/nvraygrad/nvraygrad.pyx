@@ -22,7 +22,6 @@ cdef inline Vector4 tuple_to_vector4(tuple t):
     v.z = t[2] / 255
     v.w = t[3] / 255
     return v
-
 cdef NvShader _SHARED_SHADER = None
 cdef object _SHARED_BLANK_TEXTURE = None
 cdef int _LOC_TYPE = -1
@@ -36,19 +35,20 @@ cdef int _LOC_SIZE = -1
 
 cdef class GradientRaylib:
     cdef public list raw_colors
-    cdef public int transparency
-    cdef public float angle
-    cdef public NvVector2 center
+    cdef int _transparency
+    cdef float _angle
+    cdef NvVector2 _center
     cdef public object type
-    cdef public vector[Vector4] colors
-    cdef public vector[float] stops
+    cdef vector[Vector4] _colors
+    cdef vector[float] _stops
+
     def __init__(self, list colors, type = GradientType.Linear, direction = None, angle = None, center = None, transparency = None):
         self.raw_colors = colors
         self.type = type
-        self.transparency = transparency if transparency is not None else 255
+        self._transparency = transparency if transparency is not None else 255
         
-        self.angle = 0.0
-        self.center = NvVector2.new(0.5, 0.5)
+        self._angle = 0.0
+        self._center = NvVector2.new(0.5, 0.5)
 
         if direction is not None:
             if type == GradientType.Linear:
@@ -59,9 +59,9 @@ cdef class GradientRaylib:
                         "BottomRight": 45.0, "TopLeft": 225.0,
                         "TopRight": 315.0, "BottomLeft": 135.0
                     }
-                    self.angle = mapping.get(direction.name, 0.0)
+                    self._angle = mapping.get(direction.name, 0.0)
                 elif isinstance(direction, (int, float)):
-                    self.angle = float(direction)
+                    self._angle = float(direction)
             elif type == GradientType.Radial:
                 if hasattr(direction, 'name'):
                     mapping = {
@@ -69,27 +69,32 @@ cdef class GradientRaylib:
                         "TopCenter": (0.5, 0.0), "TopLeft": (0.0, 0.0), "TopRight": (1.0, 0.0),
                         "BottomCenter": (0.5, 1.0), "BottomLeft": (0.0, 1.0), "BottomRight": (1.0, 1.0)
                     }
-                    center = mapping.get(direction.name, (0.5, 0.5))
-                    self.center = NvVector2.new(center[0], center[1])
+                    center_coords = mapping.get(direction.name, (0.5, 0.5))
+                    self._center = NvVector2.new(center_coords[0], center_coords[1])
                 elif isinstance(direction, tuple):
-                    self.center = NvVector2.new(direction[0], direction[1])
+                    self._center = NvVector2.new(direction[0], direction[1])
 
         if angle is not None:
-            self.angle = <float>angle
+            self._angle = <float>angle
         if center is not None:
-            self.center = NvVector2.new(center[0], center[1])
-        self.colors.clear()
+            self._center = NvVector2.new(center[0], center[1])
+        
+        self._update_colors(colors)
+        self._ensure_resources()
+
+    cdef void _update_colors(self, list colors):
+        self._colors.clear()
         cdef vector[float] weights
         weights.clear()
         
-        self.colors.reserve(len(colors))
+        self._colors.reserve(len(colors))
         weights.reserve(len(colors))
         for item in colors:
             if isinstance(item, tuple) and len(item) == 2 and isinstance(item[1], (int, float)):
-                self.colors.push_back(tuple_to_vector4(item[0]))
+                self._colors.push_back(tuple_to_vector4(item[0]))
                 weights.push_back(float(item[1]))
             else:
-                self.colors.push_back(tuple_to_vector4(item))
+                self._colors.push_back(tuple_to_vector4(item))
                 weights.push_back(1.0)
         total_weight = accumulate(weights.begin(), weights.end(), 0.0)
         if total_weight <= 0:
@@ -101,20 +106,57 @@ cdef class GradientRaylib:
             current += w / total_weight
             boundaries.push_back(current)
         
-        self.stops = <vector[float]>[]
+        self._stops = <vector[float]>[]
         n = weights.size()
         for i in range(n):
             if n == 1:
-                self.stops.push_back(0.0)
+                self._stops.push_back(0.0)
             elif i == 0:
                 rb = boundaries[1]
-                self.stops.push_back(max(0.0, rb - min(rb, 1.0 - rb)))
+                self._stops.push_back(max(0.0, rb - min(rb, 1.0 - rb)))
             elif i == n - 1:
                 lb = boundaries[i]
-                self.stops.push_back(min(1.0, lb + min(lb, 1.0 - lb)))
+                self._stops.push_back(min(1.0, lb + min(lb, 1.0 - lb)))
             else:
-                self.stops.push_back((boundaries[i] + boundaries[i+1]) / 2.0)
-        self._ensure_resources()
+                self._stops.push_back((boundaries[i] + boundaries[i+1]) / 2.0)
+
+    @property
+    def transparency(self):
+        return self._transparency
+
+    @transparency.setter
+    def transparency(self, int value):
+        self._transparency = value
+
+    @property
+    def angle(self):
+        return self._angle
+
+    @angle.setter
+    def angle(self, float value):
+        self._angle = value
+
+    @property
+    def center(self):
+        return self._center
+
+    @center.setter
+    def center(self, value):
+        if isinstance(value, NvVector2):
+            self._center = value
+        elif isinstance(value, tuple) and len(value) == 2:
+            self._center = NvVector2.new(value[0], value[1])
+        else:
+            raise TypeError("center must be an NvVector2 instance or a tuple of (x, y)")
+
+    @property
+    def colors(self):
+        return self.raw_colors
+
+    @colors.setter
+    def colors(self, list value):
+        self.raw_colors = value
+        self._update_colors(value)
 
     @classmethod
     def _ensure_resources(cls):
@@ -140,16 +182,16 @@ cdef class GradientRaylib:
 
     def generate_texture(self, int width, int height):
         gradient_type_int = 0 if self.type == GradientType.Linear else 1
-        alpha_val = (self.transparency / 255.0) if self.transparency is not None else 1.0
+        alpha_val = (self._transparency / 255.0)
 
         cdef NvVector2 size = NvVector2.new(width, height)
         set_nvshader_value_int(_SHARED_SHADER, _LOC_TYPE, gradient_type_int)
-        set_nvshader_value_float(_SHARED_SHADER, _LOC_ANGLE, self.angle)
-        set_nvshader_value_vec2_nvvec(_SHARED_SHADER, _LOC_CENTER, self.center)
-        set_nvshader_value_int(_SHARED_SHADER, _LOC_COUNT, <int>self.colors.size())
+        set_nvshader_value_float(_SHARED_SHADER, _LOC_ANGLE, self._angle)
+        set_nvshader_value_vec2_nvvec(_SHARED_SHADER, _LOC_CENTER, self._center)
+        set_nvshader_value_int(_SHARED_SHADER, _LOC_COUNT, <int>self._colors.size())
         set_nvshader_value_float(_SHARED_SHADER, _LOC_ALPHA, 1.0)
-        set_nvshader_value_vec4_v(_SHARED_SHADER, _LOC_COLORS, self.colors)
-        set_nvshader_value_float_v(_SHARED_SHADER, _LOC_STOPS, self.stops)
+        set_nvshader_value_vec4_v(_SHARED_SHADER, _LOC_COLORS, self._colors)
+        set_nvshader_value_float_v(_SHARED_SHADER, _LOC_STOPS, self._stops)
         set_nvshader_value_vec2_nvvec(_SHARED_SHADER, _LOC_SIZE, size)
 
         cdef NvRenderTexture target = NvRenderTexture.new(size)
@@ -158,8 +200,6 @@ cdef class GradientRaylib:
         begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
         begin_nvshader_mode(_SHARED_SHADER)
         target.c_fast_clear((0, 0, 0, 0))
-        
-        
         
         source_rec = (0, 0, 1, 1)
         dest_rec = (0, 0, width, height)
@@ -172,28 +212,41 @@ cdef class GradientRaylib:
 
 cdef class ClickGradient(GradientRaylib):
     cdef public vector[float] weights
+
     def __init__(self, list colors, type = GradientType.Radial, direction = None, angle = None, center = None, transparency = None):
         super().__init__(colors, type, direction, angle, center, transparency)
+
+    cdef void _update_colors(self, list colors):
         self.weights.clear()
+        self.weights.reserve(len(colors))
         for item in colors:
             if isinstance(item, tuple) and len(item) == 2 and isinstance(item[1], (int, float)):
                 self.weights.push_back(float(item[1]))
             else:
                 self.weights.push_back(1.0)
+        
+        self._colors.clear()
+        self._colors.reserve(len(colors))
+        for item in colors:
+            if isinstance(item, tuple) and len(item) == 2 and isinstance(item[1], (int, float)):
+                self._colors.push_back(tuple_to_vector4(item[0]))
+            else:
+                self._colors.push_back(tuple_to_vector4(item))
+
+        self._recalculate_stops()
 
     def set_weight(self, int index, float weight):
-        if 0 <= index < len(self.weights):
-            self.weights[index] = float(weight)
+        if 0 <= index < <int>self.weights.size():
+            self.weights[index] = weight
             self._recalculate_stops()
         else:
-            raise IndexError(f"Color index out of range! Max: {len(self.weights)-1}")
+            raise IndexError(f"Color index out of range! Max: {self.weights.size() - 1}")
 
     def set_center(self, tuple center):
-        self.center = NvVector2.new(center[0], center[1])
+        self._center = NvVector2.new(center[0], center[1])
 
     def set_center_nvvec(self, NvVector2 center):
-        cdef NvVector2 nwnvvec = NvVector2.new(center.x, center.y)
-        self.center = nwnvvec
+        self._center = NvVector2.new(center.x, center.y)
 
     def _recalculate_stops(self):
         total_weight = accumulate(self.weights.begin(), self.weights.end(), 0.0)
@@ -209,35 +262,35 @@ cdef class ClickGradient(GradientRaylib):
             current += w / total_weight
             boundaries.push_back(current)
             
-        self.stops.clear()
+        self._stops.clear()
         cdef size_t n = self.weights.size()
         for i in range(n):
             if n == 1:
-                self.stops.push_back(0.0)
+                self._stops.push_back(0.0)
             elif i == 0:
                 rb = boundaries[1]
-                self.stops.push_back(max(0.0, rb - min(rb, 1.0 - rb)))
+                self._stops.push_back(max(0.0, rb - min(rb, 1.0 - rb)))
             elif i == n - 1:
                 lb = boundaries[i]
-                self.stops.push_back(min(1.0, lb + min(lb, 1.0 - lb)))
+                self._stops.push_back(min(1.0, lb + min(lb, 1.0 - lb)))
             else:
-                self.stops.push_back((boundaries[i] + boundaries[i+1]) / 2.0)
+                self._stops.push_back((boundaries[i] + boundaries[i+1]) / 2.0)
 
     def draw(self, float x, float y, float width, float height):
         self._ensure_resources()
     
         gradient_type_int = 0 if self.type == GradientType.Linear else 1
-        alpha_val = (self.transparency / 255.0) if self.transparency is not None else 1.0
+        alpha_val = (self._transparency / 255.0)
         
         cdef NvVector2 size = NvVector2.new(width, height)
         
         set_nvshader_value_int(_SHARED_SHADER, _LOC_TYPE, gradient_type_int)
-        set_nvshader_value_float(_SHARED_SHADER, _LOC_ANGLE, self.angle)
-        set_nvshader_value_vec2_tuple(_SHARED_SHADER, _LOC_CENTER, (self.center.x, self.center.y))
-        set_nvshader_value_int(_SHARED_SHADER, _LOC_COUNT, <int>self.colors.size())
+        set_nvshader_value_float(_SHARED_SHADER, _LOC_ANGLE, self._angle)
+        set_nvshader_value_vec2_tuple(_SHARED_SHADER, _LOC_CENTER, (self._center.x, self._center.y))
+        set_nvshader_value_int(_SHARED_SHADER, _LOC_COUNT, <int>self._colors.size())
         set_nvshader_value_float(_SHARED_SHADER, _LOC_ALPHA, alpha_val)
-        set_nvshader_value_vec4_v(_SHARED_SHADER, _LOC_COLORS, self.colors)
-        set_nvshader_value_float_v(_SHARED_SHADER, _LOC_STOPS, self.stops)
+        set_nvshader_value_vec4_v(_SHARED_SHADER, _LOC_COLORS, self._colors)
+        set_nvshader_value_float_v(_SHARED_SHADER, _LOC_STOPS, self._stops)
         set_nvshader_value_vec2_nvvec(_SHARED_SHADER, _LOC_SIZE, size)
         
         begin_nvshader_mode(_SHARED_SHADER)
