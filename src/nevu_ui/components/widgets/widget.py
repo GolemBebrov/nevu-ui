@@ -21,11 +21,12 @@ from nevu_ui.core.enums import (
     Align, CacheType, ConstantLayer, Backend, AnimationType, AnimationManagerState, RenderConfig, RenderReturnType, RenderArgs
 )
 from nevu_ui.presentation.animations import (
-    AnimationManager, ease_out, FloatAnimation, ColorAnimation
+    AnimationManager, ease_out_quad, FloatAnimation, ColorAnimation
 )
 
 class Widget(NevuObject):
     _alt: bool
+    bg_variant: bool
     clickable: bool
     hoverable: bool
     fancy_click_style: bool
@@ -47,18 +48,16 @@ class Widget(NevuObject):
             raise ValueError("Window not initialized!")
         assert nevu_state.window, "Window not initialized!"
         assert self.surface, "Surface not initialized!"
-        if nevu_state.window.is_dtype.sdl:
-            assert isinstance(self.surface, md.pygame.Surface)
-            texture = md.pygame._sdl2.Texture.from_surface(nevu_state.renderer, self.surface) #type: ignore
-            texture = md.pygame._sdl2.Image(texture) #type: ignore
-        elif nevu_state.window.is_dtype.raylib:
-            raise NotImplementedError("raylib texture conversion is not implemented yet.")
-            #texture = convert_surface_to_gl_texture(nevu_state.window.display.renderer, self.surface)
+        assert nevu_state.window.renderer_type.sdl, "convert_to_sdl2_texture is supported only in SDL backend! UWO"
+        assert isinstance(self.surface, md.pygame.Surface)
+        texture = md.pygame._sdl2.Texture.from_surface(nevu_state.renderer, self.surface) #type: ignore
+        texture = md.pygame._sdl2.Image(texture) #type: ignore
         return texture #type: ignore
     
     def _add_params(self):
         super()._add_params()
         self._add_param("alt", bool, False, getter=self._alt_getter, setter=self._alt_setter, layer=ConstantLayer.Complicated)
+        self._add_param("bg_variant", bool, False)
         self._add_param("clickable", bool, False)
         self._add_param("hoverable", bool, False)
         self._add_param("fancy_click_style", bool, False)
@@ -88,7 +87,7 @@ class Widget(NevuObject):
         else:
             curr_color = None
         self._color_anim_manager = AnimationManager(warn=False)
-        self._color_anim_manager.add_start_animation("main", ColorAnimation(curr_color or self._old_color, color, 0.25, ease_out)) #type: ignore
+        self._color_anim_manager.add_start_animation("main", ColorAnimation(curr_color or self._old_color, color, 0.25, ease_out_quad)) #type: ignore
         self._color_anim_manager.update()
         self._color_anim_old_value = self._color_anim_manager.get_animation_value("main")
         self._old_color = color
@@ -102,14 +101,14 @@ class Widget(NevuObject):
         self._color_anim_old_value = None
         self._sdl2_texture = None
         assert nevu_state.window, "Window not initialized!"
-        if nevu_state.window.is_dtype.raylib:
+        if nevu_state.window.renderer_type.raylib:
             self.renderer = RaylibRenderer(self)
         else:
             self.renderer = PygameRenderer(self)
         self.renderer.base_configure()
         self._master_mask = None
         self._primary_draw_content = self._uni_primary_draw_content
-        if self.get_param_strict("ripple_effect").value and nevu_state.window.is_dtype.raylib:
+        if self.get_param_strict("ripple_effect").value and nevu_state.window.renderer_type.raylib:
             self._click_anim_manager = AnimationManager(warn=False)
             self._click_gradient = ClickGradient([((255, 255, 255, 255), 0), (255, 255, 255, 0)], center=(0.5, 0.5))
             self._click_texture = None
@@ -124,6 +123,10 @@ class Widget(NevuObject):
     def _init_booleans(self):
         super()._init_booleans()
         self._sdf_mode = True
+        self._custom_secondary_draw_end = True
+        self._custom_logic_update = True
+        self._custom_primary_draw = True
+        self._custom_secondary_draw_content = True
         self._click_started = False
         self._supports_tuple_borderradius = True
         self._changed_size = True
@@ -194,7 +197,7 @@ class Widget(NevuObject):
     def _regen_surface(self):
         assert nevu_state.window
         if self.inline: return
-        if nevu_state.window.is_dtype.raylib: 
+        if nevu_state.window.renderer_type.raylib: 
             self.surface = NvRenderTexture(self._csize)
             md.rl.set_texture_filter(self.surface.texture, md.rl.TextureFilter.TEXTURE_FILTER_ANISOTROPIC_16X)
             md.rl.set_texture_wrap(self.surface.texture, md.rl.TextureWrap.TEXTURE_WRAP_CLAMP)
@@ -235,19 +238,17 @@ class Widget(NevuObject):
             self.alt = self._original_alt
         if not self.get_param_strict("clickable").value:
             return
-        
-        #if self.get_param_strict("ripple_effect").value: self._click_started = False
         self._on_style_change()
     def _on_click_system(self):
         super()._on_click_system()
         if not self.get_param_strict("clickable").value: return
-        if self.get_param_strict("ripple_effect").value and nevu_state.window.is_dtype.raylib: 
+        if self.get_param_strict("ripple_effect").value and nevu_state.window.renderer_type.raylib: 
             self._click_started = True
             assert self._click_anim_manager
-            self._click_anim_manager.state = AnimationManagerState.START
+            self._click_anim_manager.state = AnimationManagerState.Start
             anim_time = 0.4
             self._click_gradient.set_weight(0, 0)
-            self._click_gradient.transparency = 255
+            self._click_gradient.transparency = 255 #type: ignore
             self._click_anim_manager.add_start_animation("ripple_opacity", FloatAnimation(255, 0, anim_time))
             self._click_anim_manager.add_start_animation("ripple_thickness", FloatAnimation(0, 10, anim_time))
             pos = mouse.pos.copy()
@@ -264,12 +265,10 @@ class Widget(NevuObject):
         if self.alt != self._original_alt:
             self.alt = self._original_alt
         if not self.get_param_strict("hoverable").value and not self.get_param_strict("clickable").value: return
-        #if self.get_param_strict("ripple_effect").value: self._click_started = False
         self._on_style_change()
     
     def _clear_rl_specific(self):
         assert nevu_state.window
-        
         if self.cache.get(CacheType.RlFont): md.rl.unload_font(self.cache.get(CacheType.RlFont)) #type: ignore
         if self.cache.get(CacheType.Scaled_Image): md.rl.unload_texture(self.cache.get(CacheType.Scaled_Image)) #type: ignore
 
@@ -291,10 +290,10 @@ class Widget(NevuObject):
     @property
     def font_role(self): return self.style.font_role or self.get_param_strict("font_role").value
     
-    def _main_subtheme_content(self): return self._subtheme.container
-    def _main_subtheme_border(self): return self._subtheme.oncontainer
-    def _alt_subtheme_content(self): return self._subtheme.oncontainer
-    def _alt_subtheme_border(self):return self._subtheme.container
+    def _main_subtheme_content(self): return self._subtheme.color if self.bg_variant else self._subtheme.container
+    def _main_subtheme_border(self): return self._subtheme.oncolor if self.bg_variant else self._subtheme.oncontainer
+    def _alt_subtheme_content(self): return self._subtheme.oncolor if self.bg_variant else self._subtheme.oncontainer
+    def _alt_subtheme_border(self): return self._subtheme.color if self.bg_variant else self._subtheme.container
     def _main_subtheme_font(self): return self.style.colortheme.get_pair(self.font_role).color
     def _alt_subtheme_font(self): return self.style.colortheme.get_pair(self.font_role).oncolor
     
@@ -305,7 +304,6 @@ class Widget(NevuObject):
         self._primary_draw_content()
     
     def _primary_draw_content(self): pass
-
 
     def _on_visible_set(self):
         super()._on_visible_set()
@@ -323,7 +321,7 @@ class Widget(NevuObject):
             if self._draw_content:
                 self.renderer.run_base(
                     key=RenderConfig.DrawL1,
-                    override_color=override_color,
+                    override_color=override_color, #type: ignore
                     radius=self.style.border_radius,
                     easy_background=easy_background,
                     return_type=RenderReturnType.Modify,
@@ -353,13 +351,13 @@ class Widget(NevuObject):
             coords = (0 , 0)
         else:
             coords = self.coordinates.to_round().to_tuple()
-        if nevu_state.window.is_dtype.raylib:
-            with surface:
+        if nevu_state.window.renderer_type.raylib:
+            with surface: #type: ignore
                 md.rl.begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-                surface.fast_blit(cached_bg, coords)
-                md.rl.end_blend_mode()
+                surface.fast_blit(cached_bg, coords) #type: ignore
+                md.rl.end_blend_mode() 
         else:
-            surface.blit(cached_bg, coords)
+            surface.blit(cached_bg, coords) #type: ignore
             
     def _secondary_draw_end(self):
         if self._changed and nevu_state.renderer:
@@ -367,15 +365,13 @@ class Widget(NevuObject):
         if self._changed_size:
             self._changed_size = False
         assert nevu_state.window
-        super()._secondary_draw_end()
-        if self._click_started and nevu_state.window.is_dtype.raylib:
+        if self._click_started and nevu_state.window.renderer_type.raylib:
             self._click_texture = self.cache.get_or_exec(CacheType.ClickTexture, lambda: self.renderer.core.create_clear(self._csize))
             self.renderer.run_effects(key=RenderConfig.DrawL5, return_type=RenderReturnType.Null, click_gradient=self._click_gradient, click_subject=self._click_texture)
 
     def clear_texture(self): self.cache.clear_selected(whitelist = [CacheType.Texture])
     
     def _logic_update(self):
-        super()._logic_update()
         if self._click_started:
             click_anim_manager = self._click_anim_manager
             assert click_anim_manager
@@ -388,10 +384,10 @@ class Widget(NevuObject):
                 click_gradient.set_weight(0, anim_value_thickness)
                 need_to_change = True
             if anim_value_opacity:
-                click_gradient.transparency = anim_value_opacity
+                click_gradient.transparency = anim_value_opacity #type: ignore
                 need_to_change = True
             self._changed = self._changed or need_to_change
-            if click_anim_manager.state == AnimationManagerState.ENDED:
+            if click_anim_manager.state == AnimationManagerState.Ended:
                 self._click_started = False
             
         if self._color_anim_manager:
@@ -404,7 +400,6 @@ class Widget(NevuObject):
                     self.cache.clear_selected(whitelist = [CacheType.Surface])
             if anim := color_anim_manager.get_animation("main"): #type: ignore
                 if anim.ended: self._color_anim_manager = None
-                
         logic_update_helper(self.absolute_coordinates, self._dr_coordinates_old, nevu_state.z_system)
         
         if hasattr(self, "_sdl2_texture") and self._sdl2_texture and (alpha := self.animation_manager.get_animation_value("ripple_opacity")):
@@ -419,8 +414,8 @@ class Widget(NevuObject):
 
     def _boot_up(self): pass
 
-    def _resize(self, resize_ratio: NvVector2):
-        super()._resize(resize_ratio)
+    def _resize_content(self, resize_ratio: NvVector2):
+        super()._resize_content(resize_ratio)
         self._resize_ratio = resize_ratio
         self.cache.clear_selected(whitelist = [CacheType.RelSize])
         self.clear_surfaces()
