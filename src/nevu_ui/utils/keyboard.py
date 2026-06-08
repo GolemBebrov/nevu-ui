@@ -3,6 +3,12 @@ import functools
 import nevu_ui.core.modules as md
 from nevu_ui.core.enums import Backend
 
+class _BaseKeyboard:
+    def update(self): pass
+    def is_fdown(self, key_code: int): pass
+    def is_down(self, key_code: int): pass
+    def is_up(self, key_code: int): pass
+
 def _keyboard_initialised_only(func):
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
@@ -10,7 +16,7 @@ def _keyboard_initialised_only(func):
     
     return wrapper
 
-class KeyboardPygame:
+class PygameKeyboard:
     def __init__(self):
         self._keys_now = None
         self._keys_prev = None
@@ -36,29 +42,29 @@ class KeyboardPygame:
         assert self._keys_now is not None and self._keys_prev is not None
         return not self._keys_now[key_code] and self._keys_prev[key_code]
 
-class KeyboardRayLib:
+class RaylibKeyboard:
     def __init__(self): pass
     def update(self): pass
     def is_fdown(self, key_code: int):
-        """USE RAYLIB KEYS""" 
+        """USE RAYLIB OR NEVU UI KEYS""" 
         return md.rl.is_key_pressed(key_code)
     def is_down(self, key_code: int): 
-        """USE RAYLIB KEYS""" 
+        """USE RAYLIB OR NEVU UI KEYS""" 
         return md.rl.is_key_down(key_code)
     def is_up(self, key_code: int): 
-        """USE RAYLIB KEYS""" 
+        """USE RAYLIB OR NEVU UI KEYS""" 
         return md.rl.is_key_up(key_code)
 
 def set_keyboard(backend: Backend):
     assert isinstance(keyboard, UnselectedKeyboard), "Keyboard already selected"
     keyboard.select(backend)
 
-class UnselectedKeyboard:
+class UnselectedKeyboard(_BaseKeyboard):
     def __init__(self): pass
     def select(self, backend: Backend):
         match backend:
-            case Backend.Pygame | Backend.Sdl: self.__class__ = KeyboardPygame #type: ignore 
-            case Backend.RayLib: self.__class__ = KeyboardRayLib #type: ignore
+            case Backend.Pygame | Backend.Sdl: self.__class__ = PygameKeyboard #type: ignore 
+            case Backend.RayLib: self.__class__ = RaylibKeyboard #type: ignore
         self.__init__()
 
-keyboard: KeyboardPygame | KeyboardRayLib = UnselectedKeyboard() # type: ignore
+keyboard: _BaseKeyboard = UnselectedKeyboard() # type: ignore
