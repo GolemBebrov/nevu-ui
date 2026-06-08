@@ -3,7 +3,7 @@ import pygame
 
 def create_test_instances():
     ui.default_style = ui.default_style(colortheme=ui.ColorThemeLibrary.gruvbox_light)
-    test_window = ui.Window((300,300), title="Test Window", resize_type=ui.ResizeType.CropToRatio, ratio=ui.NvVector2(1,1))
+    test_window = ui.Window((300,300), title="Test Window", resize_type=ui.ResizeType.CropToRatio, ratio=ui.NvVector2(1,1), backend=ui.Backend.RayLib)
     test_widget = ui.RectCheckBox(50 ,ui.default_style(borderradius=999, borderwidth=0 ), active_rect_factor=0.9, alt=True)#ui.Button(lambda: print("pressed"), "Nevu UI!", (100, 100), ui.default_style(borderwidth=10, borderradius = 15),single_instance=False)
     tooglegroup = ui.CheckBoxGroup([test_widget], single_selection=True)
     tooglegroup.on_single_toggled = lambda checkbox: print(checkbox)
@@ -23,8 +23,6 @@ def create_test_instances():
                                         (3,1): super_duper_test_button("Button TopRight", "Test Chamber"),
                                     }
                             )
-    test_inner_layout.border_name = "Inner Layout"
-    test_inner_layout.borders = True
     test_menu = ui.Menu(test_window,[100*ui.vw, 100*ui.vh],ui.default_style(borderradius=10))
     return test_window, test_widget, test_hard_widget, test_inner_layout, test_menu, tooglegroup
 

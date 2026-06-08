@@ -8,9 +8,9 @@ class InputGrid(NevuTest):
         #self.draw_cursor = False
         #self.print_debug_fps = True
         self.fps = 99999999
-        input_box: ui.Input = self.showcase_widgets[2]
-        input_box._lazy_kwargs['size'] = [ui.Fill(100), ui.Fill(100)]
-        input_box.style = ui.default_style(borderradius=15, borderwidth=3, fontsize=22)
+        input_box: ui.Input = self.showcase_widgets[4]
+        input_box._template.size = [ui.Fill(100), ui.Fill(100)]
+        input_box.style = input_box.style(border_radius=15, border_width=3, font_size=44)
         self.test_menu.layout = \
         ui.Grid([ui.Fill(100), ui.Fill(100)], x=3,y=3,
                 content={
@@ -19,7 +19,7 @@ class InputGrid(NevuTest):
                 )
         self.grid = self.test_menu.layout
     def on_update(self, events=None):
-        super().on_update(events)
-        #print(self.test_hard_widget.text)
+        super().on_update()
+
 ts = InputGrid()
 ts.run()

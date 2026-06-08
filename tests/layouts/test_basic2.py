@@ -2,7 +2,9 @@ import nevu_ui as ui
 from nevu_ui.core import nevu_state
 from nevu_ui.fast.nvvector2 import NvVector2
 import pyray as rl
+from raylib import rl as rla, ffi
 import pygame
+from nevu_ui.fast.logic.fast_logic import fast_cycle_list, fast_cycle_tuple, fast_cycle_range
 from nevu_ui.fast.nvrect import NvRect
 import time
 pygame.init()
@@ -26,7 +28,7 @@ class BatchManager:
     def change(self, texture_id, new_texture):
         self.t_texture_links[texture_id] = new_texture
         rl.begin_texture_mode(self.texture)
-        nevu_state.window.display.blit(new_texture.texture, self.t_texture_rects[texture_id])
+        nevu_state.window.renderer.blit(new_texture.texture, self.t_texture_rects[texture_id])
         rl.end_texture_mode()
         
     @staticmethod
@@ -51,9 +53,9 @@ class BatchManager:
         x, y = self.regen_coordinates()
         self.texture = rl.load_render_texture(int(x), int(y))
         rl.begin_texture_mode(self.texture)
-        nevu_state.window.display.clear(rl.DARKBROWN)
+        nevu_state.window.renderer.clear(rl.DARKBROWN)
         for texture_id, coordinates in self.t_coordinates.items():
-            nevu_state.window.display.blit(self.t_texture_links[texture_id].texture, coordinates)
+            nevu_state.window.renderer.blit(self.t_texture_links[texture_id].texture, coordinates)
             self.t_texture_rects[texture_id] = self._get_texture_rect_by_id_inner(texture_id)
         rl.end_texture_mode()
         
@@ -86,7 +88,30 @@ class BatchManager:
             
         return max(1, max_vec.x), max(1, max_vec.y)
 
-if __name__ == "__main__":
+class Cout:
+    def2 = "def1"
+    def __init__(self):
+        pass
+
+    def __rshift__(self, other):
+        if other == "\n":
+            print()
+            return Cout()
+        print(other, end = "")
+        return Cout()
+
+class Std: 
+    __sluts__ = "__bob__"
+    def __bob__(self):
+        print('bob')
+    def __init__(self):
+        self.cout = Cout()
+        self.endL = "\n"
+
+std = Std()
+std.cout >> "выпускай" >> "блядь" >> "быстрее" >> "новый" >> "суко" >> "версию парсера блядь" >> std.endL
+
+if __name__ == "__main__" and False:
     import random
     window = ui.Window((300, 300), title="Test Window", resize_type=ui.ResizeType.CropToRatio, ratio=ui.NvVector2(1,1), backend=ui.Backend.RayLib)
     batch_manager = BatchManager()
@@ -165,3 +190,159 @@ if __name__ == "__main__":
         if oldx != additional_x or oldy != additional_y:
             changed = True
         window.end_frame()
+
+if __name__ == "__main__" and False:
+    window = ui.Window((300, 300), title="Test Window", resize_type=ui.ResizeType.CropToRatio, ratio=ui.NvVector2(1,1), backend=ui.Backend.RayLib)
+    menu = ui.Menu(window, (300, 300))
+    menu.layout = ui.Grid([100%ui.vw, 100%ui.vh], row=3, column=3)
+    menu.layout.add_item(ui.Button(lambda: print("You clicked!"), "КНОПКА!", [50%ui.fill, 50%ui.gc], ui.Style(font_name="tests/vk_font.ttf")), 2, 2)
+    rl.set_trace_log_level(rl.TraceLogLevel.LOG_WARNING)
+    rl.set_target_fps(75)
+    while True:
+        window.begin_frame()
+        window.display.clear(ui.Color.White)
+        print(ui.time.fps)
+        menu.update()
+        menu.draw()
+        window.update(None, 99)
+        window.end_frame()
+
+if __name__ == "__main__" and False:
+    window = ui.Window((300, 300), title="Test Window", resize_type=ui.ResizeType.CropToRatio, ratio=ui.NvVector2(1,1), backend=ui.Backend.RayLib)
+    menu = ui.Menu(window, (300, 300))
+    menu.layout = ui.Grid([100%ui.vw, 100%ui.vh], row=3, column=3)
+    anim_manager = ui.animations.AnimationManager()
+    anim_manager.add_continuous_animation(ui.AnimationType.Position, ui.animations.Vector2Animation(NvVector2(40, 0), NvVector2(-40, 0), 2, ui.animations.ease_in))
+    menu.layout.add_item(ui.Label("КНОПКА!", [50%ui.fill, 50%ui.gc], ui.Style(font_name="tests/vk_font.ttf", border_radius=100, font_size=20), clickable=True, hoverable=True, animation_manager=anim_manager), 2, 2)
+    rl.set_trace_log_level(rl.TraceLogLevel.LOG_WARNING)
+    menu.update()
+    menu.draw()
+    widget: ui.Widget = menu.layout.get_item(2, 2)
+    while False:
+        window.begin_frame()
+        window.update(None, 75)
+        window.display.clear(ui.Color.White)
+        menu.update()
+        menu.draw()
+        
+        
+        window.end_frame()
+    else:
+        def draw_nv_pro(a):
+            start_func(widget.surface.render_texture)
+            draw_func(widget.surface.texture, pos)
+            end_func()
+        def draw_nv_rec(a):
+            start_func(widget.surface.render_texture)
+            draw_func(widget.surface.texture, pos, True, color)
+            end_func()
+        fast_cycle_fun = fast_cycle_range
+        draw_func = ui.fast.raylib.rl_fast_blit_rec
+        start_func = ui.fast.raylib.begin_texture_mode
+        end_func = ui.fast.raylib.end_texture_mode
+        pos = (0, 0, 100, 100)
+        pos2 = (0, 0)
+        size = (100, 100, 0, 0)
+        origin = (0, 0)
+        color = (255, 255, 255, 255)
+        rotation = 0
+        time_func = lambda: time.perf_counter()
+        t1 = time_func()
+
+        fast_cycle_range(draw_nv_rec, 0, 50000, 1)
+        #for i in range(50000):
+        #    start_func(widget.surface.render_texture)
+        #    draw_func(widget.surface.texture, pos, True, color)
+        #    end_func()
+        
+        t2 = time_func()
+        print(f"Cython rec binding: {(t2 - t1) * 1000:.2f}ms")
+        draw_func = rl.draw_texture_pro
+        start_func = rl.begin_texture_mode
+        end_func = rl.end_texture_mode
+        t3 = time_func()
+        for i in range(50000):
+            start_func(widget.surface.render_texture)
+            draw_func(widget.surface.texture, pos, size, origin, rotation, color)
+            end_func()
+        t4 = time_func()
+        print(f"Pyray pro binding: {(t4 - t3) * 1000:.2f}ms")
+        display = nevu_state.window.renderer
+        assert nevu_state.window.is_raylib(display)
+        draw_func = rl.draw_texture_rec
+        start_func = rl.begin_texture_mode
+        end_func = rl.end_texture_mode
+        t5 = time_func()
+        for i in range(50000):
+            start_func(widget.surface.render_texture)
+            draw_func(widget.surface.texture, size, pos2, color)
+            end_func()
+        t6 = time_func()
+        print(f"Pyray rec binding: {(t6 - t5) * 1000:.2f}ms")
+        
+        draw_func = ui.fast.raylib.rl_fast_blit_pro
+        start_func = ui.fast.raylib.begin_texture_mode
+        end_func = ui.fast.raylib.end_texture_mode
+        
+ 
+        t7 = time_func()
+        fast_cycle_range(draw_nv_pro, 0, 50000, 1)
+        #for i in range(50000):
+        #    start_func(widget.surface.render_texture)
+        #    draw_func(widget.surface.texture, pos)
+        #    end_func()
+        t8 = time_func()
+        print(f"Cython pro binding: {(t8 - t7) * 1000:.2f}ms")
+
+if __name__ == "__main__" and False:
+    window = ui.Window((300, 300), backend=ui.Backend.RayLib)
+    time_func = lambda: time.perf_counter()
+    
+    texture = rl.load_render_texture(100, 100)
+    texture_bg = rl.load_render_texture(100, 100)
+    nv_texture = ui.NvRenderTexture(ui.NvVector2(100, 100))
+    nv_texture_bg = ui.NvRenderTexture(ui.NvVector2(100, 100))
+    TEST_NUM = 5000
+    
+    state1 = (0, 0, 100, 100)
+    state2 = (0, 0)
+    state3 = (255, 255, 255, 255)
+    
+    t1 = time_func()
+    rl.begin_texture_mode(texture_bg)
+    for i in range(TEST_NUM):    
+        rl.draw_texture_rec(texture.texture, state1, state2, state3)
+    rl.end_texture_mode()
+    t2 = time_func()
+    print(f"python: {(t2 - t1) * 1000:.2f}ms")
+    display = ui.nevu_state.window.renderer
+    assert window.is_raylib(display)
+    blit_func = display.fast_blit
+    #ui.fast.logic.fast_logic.fast_cycle_range(blit_func, 0, TEST_NUM, 1)
+    t3 = time_func()
+    rl.begin_texture_mode(nv_texture_bg.render_texture)
+    for i in range(TEST_NUM):    
+        nv_texture_bg.fast_blit(nv_texture, (0,0))
+    rl.end_texture_mode()
+    t4 = time_func()
+    print(f"cython: {(t4 - t3) * 1000:.2f}ms")
+    exit(0)
+
+
+if __name__ == "__main__":
+    time_func = lambda: time.perf_counter()
+    from nevu_ui.fast.nvvector2 import NvVector2
+    
+    vec1 = NvVector2(0.0, 0.0)
+    
+    TEST_NUM = 500000
+    t1 = time_func()
+    for i in range(TEST_NUM):
+        NvVector2(0.0, 0.0)
+    t2 = time_func()
+    print(f"cython: {(t2 - t1) * 1000:.2f}ms")
+    t3 = time_func()
+    for i in range(TEST_NUM):
+        NvVector2.from_xy(0.0, 0.0)
+    t4 = time_func()
+    print(f"cython: {(t4 - t3) * 1000:.2f}ms")
