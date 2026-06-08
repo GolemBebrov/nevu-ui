@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from typing import NotRequired, Any, Callable, TYPE_CHECKING, Unpack
+from nevu_ui.core.enums import SwitchAxis
 from dataclasses import dataclass
 from nevu_ui.components.nevuobj.typehints import NevuObjectKwargs, NevuObjectTemplate, GlobalsBase, NevuObjectGlobalsKwargs
 if TYPE_CHECKING:
     from nevu_ui.presentation.style import Style
-    from nevu_ui.presentation.color import PairColorRole, TupleColorRole
-    from nevu_ui.presentation.color import SubThemeRole
+    from nevu_ui.presentation.color import PairColorRole, TupleColorRole, SubThemeRole
     from nevu_ui.components.layouts.misc.checkbox_group import CheckBoxGroup
 
 #   ------------------
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 class WidgetKwargs(NevuObjectKwargs):
     alt: NotRequired[bool]
+    bg_variant: NotRequired[bool]
     clickable: NotRequired[bool]
     hoverable: NotRequired[bool]
     fancy_click_style: NotRequired[bool]
@@ -28,6 +29,10 @@ class WidgetKwargs(NevuObjectKwargs):
     animate_color_change: NotRequired[bool]
     override_color: NotRequired[tuple | None]
     subtheme_role: NotRequired[SubThemeRole]
+
+class SwitchKwargs(WidgetKwargs):
+    axis: NotRequired[SwitchAxis]
+    on_switch_change: NotRequired[Callable[[Any, bool], None]]
 
 class LabelKwargs(WidgetKwargs):
     words_indent: NotRequired[bool]
@@ -104,6 +109,10 @@ class ElementSwitcherTemplate(WidgetTemplate):
 @dataclass
 class InputTemplate(WidgetTemplate):
     text: str
+
+@dataclass
+class SwitchTemplate(WidgetTemplate):
+    state: bool
 
 class WidgetGlobalsKwargs(NevuObjectGlobalsKwargs, WidgetKwargs): pass
 
