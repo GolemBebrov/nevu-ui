@@ -1,7 +1,7 @@
 #TypedDicts
-from .typehints import WidgetKwargs, LabelKwargs, ButtonKwargs, RectCheckBoxKwargs, InputKwargs, ElementSwitcherKwargs, ProgressBarKwargs, SliderKwargs
+from .typehints import WidgetKwargs, LabelKwargs, ButtonKwargs, RectCheckBoxKwargs, InputKwargs, ElementSwitcherKwargs, ProgressBarKwargs, SliderKwargs, SwitchKwargs
 #Templates
-from .typehints import WidgetTemplate, LabelTemplate, ElementSwitcherTemplate
+from .typehints import WidgetTemplate, LabelTemplate, ElementSwitcherTemplate, SwitchTemplate
 #Widgets
 from .widget import Widget
 from .label import Label
@@ -13,6 +13,7 @@ from .deprecated import Image, Gif, MusicPlayer #Deprecated
 from .element_switcher import ElementSwitcher, Element
 from .progress_bar import ProgressBar
 from .slider_bar import Slider
+from .switch import Switch
 
 __all__ = [
     'Widget', 'Label', 'Button', 'EmptyWidget', 'RectCheckBox', 'Image', 'Gif', 'Input', 'MusicPlayer', 'ElementSwitcher', 'Element', 'ProgressBar', 'Slider'

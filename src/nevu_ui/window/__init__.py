@@ -1,1 +1,1 @@
-from .window import Window, ConfiguredWindow
+from .window import Window, ConfiguredWindow, InitializedWindow
