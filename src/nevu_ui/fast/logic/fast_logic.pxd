@@ -1,5 +1,5 @@
 from nevu_ui.fast.nvrect.nvrect cimport NvRect
-from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2
+from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2, nv_vector2_t
 from nevu_ui.fast.zsystem.fast_zsystem cimport ZSystem
 from nevu_ui.fast.nevucobj.nevucobj cimport NevuCobject
 
@@ -31,9 +31,8 @@ cpdef void logic_update_helper(
 cdef start_item(NevuCobject item, NevuCobject layout)
 
 cpdef void draw_widgets_optimized(
+    NevuCobject layout, 
     list items,
-    object draw_widget_func,
-    NevuCobject layout,
     type layout_type,
     type widget_type
 )
@@ -44,16 +43,18 @@ cpdef void rl_predraw_widgets(
     type widget_type,
 )
 
-cpdef void _light_update_helper(
+cdef inline void _light_update_helper(
     list items,
     list cached_coordinates,
-    NvVector2 coordinatesMW,
-    NvVector2 add_vector,
-)
+    nv_vector2_t menu_vec,
+    double add_x,
+    double add_y
+) noexcept
 
 cpdef _very_light_update_helper(
     list items,
     list cached_coordinates,
+    NvVector2 menu_vec,
     NvVector2 add_vector,
     NevuCobject layout
 )

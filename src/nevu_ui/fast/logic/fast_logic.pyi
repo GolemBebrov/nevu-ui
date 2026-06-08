@@ -62,9 +62,8 @@ def logic_update_helper(
 ): ...
 
 def draw_widgets_optimized(
-    items: List[Any],
-    draw_widget_func: Callable,
     layout: Any,
+    items: List[Any],
     layout_type: Any,
     widget_type: Any
 ): ...
@@ -78,13 +77,6 @@ def rl_predraw_widgets(
     layout_type: Any,
     widget_type: Any
 ): ...
-
-def _light_update_helper(
-    items: List[Any],
-    cached_coordinates: List[NvVector2],
-    coordinatesMW: NvVector2,
-    add_vector: NvVector2,
-) -> None: ...
 
 def collide_vector(
     r1_tl: NvVector2,
@@ -110,6 +102,7 @@ def collide_vertical(
 def _very_light_update_helper(
     items: List[Any],
     cached_coordinates: List[NvVector2],
+    menu_vec: NvVector2,
     add_vector: NvVector2,
     layout: Any
 ) -> None: ...
@@ -129,4 +122,9 @@ def fast_cycle_list(
 def fast_cycle_tuple(
     func: Callable,
     items: Sequence[Any]
+): ...
+
+def fast_cycle_in_list(
+    func_name: str,
+    items: list[Any]
 ): ...
