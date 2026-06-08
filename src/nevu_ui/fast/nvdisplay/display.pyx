@@ -5,7 +5,7 @@ if TYPE_CHECKING:
 from nevu_ui.core import Annotations
 from nevu_ui.presentation.color import Color
 from nevu_ui.fast.shaders import SdfShader, BorderShader
-from nevu_ui.fast.nvrect import NvRect
+from nevu_ui.fast.nvrect.nvrect cimport NvRect
 from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2
 from nevu_ui.fast.raylib.nevu_raylib cimport (
     init_raylib_pointers, begin_blend_mode, end_blend_mode, begin_texture_mode, end_texture_mode, 
@@ -14,63 +14,137 @@ from nevu_ui.fast.raylib.nevu_raylib cimport (
 )
 from nevu_ui.fast.nvshader.nvshader cimport NvShader
 
-cdef class DisplayBase:
-    cdef object root
-    cpdef void fill(self, tuple color): self.clear(color)
+# SDL
+cdef type sdl_window_t, sdl_renderer_t, sdl_texture_t, sdl_image_t #type: ignore
 
-cdef class DisplaySdl():
+# Pygame
+cdef type pg_surface_t, pg_rect_t #type: ignore
+
+cdef bint window_renderer_created = False
+cdef tuple fill_color = Color.White
+
+cdef inline void check_singleton() noexcept:
+    global window_renderer_created
+    if window_renderer_created: raise RuntimeError("Window renderer already created")
+    window_renderer_created = True
+
+cdef class WindowRendererBase:
+    pass #Used for typehints :D
+
+cdef class WindowRendererSdl:
     cdef public object window, renderer, surface, root
+    
+    @staticmethod
+    def create_initialized(window, sdl_window, renderer):
+        cdef WindowRendererSdl self = WindowRendererSdl.__new__(WindowRendererSdl)
+        check_singleton()
+        self._init_types()
+        self.window = sdl_window
+        self.renderer = renderer
+        self._init_base(window)
+        return self
+
     def __init__(self, str title, tuple size, object root not None, **kwargs):
-        self.root = root
-        from pygame._sdl2.video import (Window as SDL2Window, Renderer)
-        resizable = kwargs.get('resizable', False)
-        self.window = SDL2Window(title, (size[0], size[1]), resizable = resizable)
-        self.renderer = Renderer(self.window, accelerated = True, target_texture = True)
-        self.surface = self.window.get_surface()
-    cpdef get_rect(self): return NvRect(0, 0, *self.get_size())
-    cpdef get_size(self): return self.window.size
-    cpdef get_width(self): return self.window.size[0]
-    cpdef get_height(self): return self.window.size[1]
-    cpdef set_target(self, texture): self.renderer.target = texture
-    cpdef update(self): pass
-    cpdef begin_frame(self): pass
-    cpdef end_frame(self): self.renderer.present()
-    cpdef void blit(self, source, dest): #type: ignore
+        check_singleton()
+        self._init_types()
+        self._init_window(title, size, kwargs.get('resizable', False))
+        self._init_base(root)
+        
+    cdef inline void _init_window(self, title, size, bint resizable):
+        self.window = sdl_window_t(title, (size[0], size[1]), resizable = resizable)
+        self.renderer = sdl_renderer_t(self.window, accelerated = True, target_texture = True)
+    
+    cdef inline void _init_types(self):
+        global sdl_window_t, sdl_renderer_t, sdl_texture_t, sdl_image_t, pg_surface_t, pg_rect_t
+
         from pygame._sdl2.video import (Window as SDL2Window, Renderer, Texture, Image)
-        if isinstance(source, md.pygame.Surface):
-            source = Image(Texture.from_surface(self.renderer, source))
-        elif isinstance(source, Texture):
-            source = Image(source)
-        if not isinstance(dest, md.pygame.Rect):
-            if len(dest) == 4: dest = md.pygame.Rect(*dest)
-            elif len(dest) == 2: 
-                if isinstance(dest[0], tuple|list): dest = md.pygame.Rect(*dest)
+        
+        sdl_window_t = SDL2Window
+        sdl_renderer_t = Renderer
+        sdl_texture_t = Texture
+        sdl_image_t = Image
+        
+        pg_surface_t = md.pygame.Surface
+        pg_rect_t = md.pygame.Rect
+    
+    cdef inline void _init_base(self, root):
+        self.root = root
+        self.surface = self.window.get_surface()
+
+    # === Sizes ===
+    cpdef tuple get_tuple_rect(self): return (0, 0, self.c_get_width(), self.c_get_height())
+    cpdef NvRect get_nvrect(self): return NvRect.new(0, 0, self.c_get_width(), self.c_get_height())
+    
+    cdef inline tuple c_get_tuple_size(self) noexcept: return self.window.size
+    cdef inline NvVector2 c_get_nvvec_size(self): return NvVector2.cfrom_ints(self.window.size[0], self.window.size[1])
+    cdef inline int c_get_width(self) noexcept: return self.window.size[0]
+    cdef inline int c_get_height(self) noexcept: return self.window.size[1]
+
+    cpdef tuple get_size_tuple(self): return self.c_get_tuple_size()
+    cpdef NvVector2 get_size_nvvec(self): return self.c_get_nvvec_size()
+    
+    cpdef int get_width(self): return self.c_get_width()
+    cpdef int get_height(self): return self.c_get_height()
+    
+    # === Blit ===
+    cpdef void blit(self, source, dest): #type: ignore
+        renderer = self.renderer
+        cdef int len_dest
+        if isinstance(source, pg_surface_t):
+            source = sdl_image_t(sdl_texture_t.from_surface(renderer, source))
+        elif isinstance(source, sdl_texture_t):
+            source = sdl_image_t(source)
+        if not isinstance(dest, pg_rect_t):
+            len_dest = len(dest)
+            if len_dest == 4: dest = pg_rect_t(*dest)
+            elif len_dest == 2: 
+                if isinstance(dest[0], tuple | list): 
+                    dest = pg_rect_t(*dest)
                 else:
-                    dest = md.pygame.Rect(*dest, source.texture.width, source.texture.height)
-        self.renderer.blit(source, dest)
-    cpdef void fill(self, tuple color): self.clear(color)
-    cpdef void clear(self, color = (255, 255, 255, 255)):
-        if color:
-            old_color = self.renderer.draw_color 
-            self.renderer.draw_color = color
-            self.renderer.clear()
-            self.renderer.draw_color = old_color
-        else: self.renderer.clear()
+                    dest = pg_rect_t(*dest, source.texture.width, source.texture.height)
+        renderer.blit(source, dest)
 
-    cpdef create_texture_target(self, int width, int height):
-        return Texture(self.renderer, size = (width, height), target = True)
-
+    # === Misc ===
+    @property
+    def screen(self): return self.window
+    cpdef void set_target(self, texture): self.renderer.target = texture
+    cpdef void set_title(self, str title): self.window.title = title
+    cpdef void update(self): pass
+    cpdef void begin_frame(self): pass
+    cpdef void end_frame(self): self.renderer.present()
+    cpdef void clear(self, color = fill_color):
+        renderer = self.renderer
+        old_color = renderer.draw_color
+        renderer.draw_color = color
+        renderer.clear()
+        renderer.draw_color = old_color
+    cpdef create_target_texture(self, int width, int height): return sdl_texture_t(self.renderer, size = (width, height), target = True)
     cpdef load_image(self, str path): return md.pygame.image.load(path)
     
-cdef class DisplayRayLib():
+cdef class WindowRendererRaylib:
     cdef public NvShader _sdf_shader, _border_shader
     cdef public dict _sdf_locs, _border_locs
     cdef public object root
+
+    @staticmethod
+    def create_initialized(window):
+        cdef WindowRendererRaylib self = WindowRendererRaylib.__new__(WindowRendererRaylib)
+        check_singleton()
+        self._init_base(window)
+        return self
+
     def __init__(self, title, size, root, **kwargs):
-        self.root = root
-        if kwargs.get('resizable', False):
+        check_singleton()
+        self._init_window(title, size, kwargs.get('resizable', False))
+        self._init_base(root)
+
+    cdef inline void _init_window(self, str title, tuple size, bint resizable):
+        if resizable:
             md.rl.set_config_flags(md.rl.ConfigFlags.FLAG_WINDOW_RESIZABLE)
         md.rl.init_window(int(size[0]), int(size[1]), title)
+    
+    cdef inline void _init_base(self, root):
+        self.root = root
         self.load_raylib_fast_bindings()
         self._sdf_shader = NvShader.c_create_from_code(SdfShader.VERTEX_SHADER, SdfShader.FRAGMENT_SHADER)
         self._sdf_locs = {
@@ -90,6 +164,7 @@ cdef class DisplayRayLib():
             "thickness": get_nvshader_location(self._border_shader, "thickness"),
         }
         set_nvshader_value_vec4_tuple(self._border_shader, self._border_locs['colDiffuse'], (1.0, 1.0, 1.0, 1.0),)
+
     cpdef load_raylib_fast_bindings(self):
         functions_to_load = [
             "DrawTextureRec",
@@ -118,6 +193,7 @@ cdef class DisplayRayLib():
         init_raylib_pointers(pointer_dict) # type: ignore
         print(f"Successfully loaded {len(pointer_dict)} fast raylib functions.")
 
+    # === Blit ===
     cpdef blit(self, source, tuple dest, bint flip = True, tuple color = Color.White, double angle = 0.0): 
         if isinstance(color, tuple) and len(color) == 3:
             color = (*color, 255)
@@ -131,8 +207,6 @@ cdef class DisplayRayLib():
             color = (*color, 255)
         h = -source.height if flip else source.height
         c_draw_texture_rec(source, (0,0, source.width, h), dest, color)
-
-    cpdef void fill(self, tuple color): self.clear(color)
 
     cpdef blit_rect_pro(self, source, tuple dest, bint flip = True, tuple color = Color.White, double angle = 0.0, source_rect: Annotations.rect_like | None = None, int mode = 0):
         if source_rect: source_rec = source_rect
@@ -149,23 +223,6 @@ cdef class DisplayRayLib():
         begin_blend_mode(mode or md.rl.BlendMode.BLEND_ALPHA)
         c_draw_texture_rec(source, source_rec, coordinates, color)
         end_blend_mode()
-    
-    cpdef _begin_sdf(self, float width, float height, tuple radii):
-        cdef list list_radii
-        list_radii = list(radii)
-        minside = min(width, height) / 2
-        minrad = min(radii)
-        if minrad > minside:
-            for i in range(4): 
-                list_radii[i] = min(radii[i], minside)
-        begin_nvshader_mode(self._sdf_shader)
-        #cdef NvVector2 rect_size
-        #rect_size = NvVector2.new(width, height)
-        set_nvshader_value_vec2_tuple(self._sdf_shader, self._sdf_locs['rectSize'], (width, height))
-        set_nvshader_value_vec4_tuple(self._sdf_shader, self._sdf_locs['radius'], tuple(list_radii))
-        
-    cpdef _end_shader(self): 
-        end_shader_mode()
     
     cpdef blit_sdf(self, source, tuple dest, object radii, bint flip = True, int mode = 0):
         if isinstance(radii, int | float): radii = (radii, radii, radii, radii)
@@ -184,7 +241,35 @@ cdef class DisplayRayLib():
         self._begin_sdf(source.width, source.height, <tuple>radii)
         self.fast_blit_pro(source, coordinates, flip)
         self._end_shader()
+
+    cpdef blit_borders(self, source, tuple dest_rect, tuple radii, tuple border_color, tuple color = Color.White, double thickness = 1, bint flip = True, int mode = 0):
+        self._begin_borders(dest_rect[2], dest_rect[3], radii, border_color, thickness)
+        self.blit_rect_pro(source, dest_rect, flip, color, mode=mode)
+        self._end_shader()
+        
+    cpdef blit_borders_vec(self, source, tuple coordinates, tuple radii, tuple border_color, tuple color = Color.White, double thickness = 1, bint flip = True):
+        self._begin_borders(source.width, source.height, radii, border_color, thickness)
+        self.blit_rect_vec(source, coordinates, flip, color)
+        self._end_shader()
     
+    cpdef fast_blit_borders_vec(self, source, tuple coordinates, tuple radii, tuple border_color, double thickness = 1, bint flip = True):
+        self._begin_borders(source.width, source.height, radii, border_color, thickness)
+        self.fast_blit_pro(source, coordinates, flip)
+        self._end_shader()
+
+    # === Shaders ===
+    cpdef _begin_sdf(self, float width, float height, tuple radii):
+        cdef list list_radii
+        list_radii = list(radii)
+        minside = min(width, height) / 2
+        minrad = min(radii)
+        if minrad > minside:
+            for i in range(4): 
+                list_radii[i] = min(radii[i], minside)
+        begin_nvshader_mode(self._sdf_shader)
+        set_nvshader_value_vec2_tuple(self._sdf_shader, self._sdf_locs['rectSize'], (width, height))
+        set_nvshader_value_vec4_tuple(self._sdf_shader, self._sdf_locs['radius'], tuple(list_radii))
+
     cpdef _begin_borders(self, double width, double height, tuple radii, tuple border_color, double thickness):
         begin_nvshader_mode(self._border_shader)
         cdef list list_radii
@@ -208,46 +293,76 @@ cdef class DisplayRayLib():
         set_nvshader_value_vec4_tuple(self._border_shader, self._border_locs['borderColor'], b_color_vec)
         set_nvshader_value_float(self._border_shader, self._border_locs['thickness'], <float>thickness)
 
-    cpdef blit_borders(self, source, tuple dest_rect, tuple radii, tuple border_color, tuple color = Color.White, double thickness = 1, bint flip = True, int mode = 0):
-        self._begin_borders(dest_rect[2], dest_rect[3], radii, border_color, thickness)
-        self.blit_rect_pro(source, dest_rect, flip, color, mode=mode)
-        self._end_shader()
-        
-    cpdef blit_borders_vec(self, source, tuple coordinates, tuple radii, tuple border_color, tuple color = Color.White, double thickness = 1, bint flip = True):
-        self._begin_borders(source.width, source.height, radii, border_color, thickness)
-        self.blit_rect_vec(source, coordinates, flip, color)
-        self._end_shader()
+    cdef inline void _end_shader(self) noexcept: end_shader_mode()
+
+    # === Sizes ===
+    cpdef tuple get_tuple_rect(self): return (0, 0, self.c_get_width(), self.c_get_height())
+    cpdef NvRect get_nvrect(self): return NvRect.new(0, 0, self.c_get_width(), self.c_get_height())
+
+    cdef inline tuple c_get_tuple_size(self) noexcept: return (md.rl.get_screen_width(), md.rl.get_screen_height())
+    cdef inline NvVector2 c_get_nvvec_size(self): return NvVector2.cfrom_ints(md.rl.get_screen_width(), md.rl.get_screen_height())
+    cdef inline int c_get_width(self) noexcept: return md.rl.get_screen_width()
+    cdef inline int c_get_height(self) noexcept: return md.rl.get_screen_height()
     
-    cpdef fast_blit_borders_vec(self, source, tuple coordinates, tuple radii, tuple border_color, double thickness = 1, bint flip = True):
-        self._begin_borders(source.width, source.height, radii, border_color, thickness)
-        self.fast_blit_pro(source, coordinates, flip)
-        self._end_shader()
-    
-    cpdef get_width(self): return md.rl.get_screen_width()
-    cpdef get_height(self): return md.rl.get_screen_height()
-    cpdef get_rect(self): return NvRect(0, 0, *self.get_size())
-    cpdef get_size(self): return (md.rl.get_screen_width(), md.rl.get_screen_height())
-    cpdef clear(self, color: Annotations.rgb_like_color = (0, 0, 0, 0)): md.rl.clear_background(color)
-    cpdef begin_frame(self): begin_drawing()
-    cpdef update(self): pass
-    cpdef end_frame(self): end_drawing()
+    cpdef tuple get_size_tuple(self): return self.c_get_tuple_size()
+    cpdef NvVector2 get_size_nvvec(self): return self.c_get_nvvec_size()
+
+    cpdef int get_width(self): return md.rl.get_screen_width()
+    cpdef int get_height(self): return md.rl.get_screen_height()
+
+    # === Misc ===
+    @property
+    def screen(self): return None
+    cpdef void set_title(self, str title): md.rl.set_window_title(title)
+    cpdef void clear(self, color = fill_color): md.rl.clear_background(color)
+    cpdef void begin_frame(self): begin_drawing()
+    cpdef void update(self): pass
+    cpdef void end_frame(self): end_drawing()
     cpdef load_image(self, str path): return md.rl.load_texture(path)
     
-cdef class DisplayClassic():
+cdef class WindowRendererPygame:
     cdef public object window, root
+
+    @staticmethod
+    def create_initialized(window, screen):
+        cdef WindowRendererPygame self = WindowRendererPygame.__new__(WindowRendererPygame)
+        check_singleton()
+        self.window = screen
+        self._init_base(window)
+        return self
+
     def __init__(self, title, size, root, flags = 0, **kwargs):
-        self.root = root
-        self.window = md.pygame.display.set_mode(size, flags, **kwargs)
+        check_singleton()
+        self._init_window(title, size, flags)
+        self._init_base(root)
+    
+    cdef inline void _init_base(self, object root): self.root = root
+    cdef inline void _init_window(self, title, size, flags): 
+        self.window = md.pygame.display.set_mode(size, flags)
         md.pygame.display.set_caption(title)
-    cpdef get_rect(self): return self.window.get_rect()
+
+    # === Sizes ===
+    cpdef tuple get_tuple_rect(self): return (0, 0, self.c_get_width(), self.c_get_height())
+    cpdef NvRect get_nvrect(self): return NvRect.new(0, 0, self.c_get_width(), self.c_get_height())
+
+    cdef inline tuple c_get_tuple_size(self) noexcept: return self.window.size
+    cdef inline NvVector2 c_get_nvvec_size(self): return NvVector2.cfrom_ints(self.window.width, self.window.height)
+    cdef inline int c_get_width(self) noexcept: return self.window.width
+    cdef inline int c_get_height(self) noexcept: return self.window.height
+
+    cpdef int get_width(self): return self.c_get_width()
+    cpdef int get_height(self): return self.c_get_height()
+    cpdef NvVector2 get_size_nvvec(self): return self.c_get_nvvec_size()
+    cpdef tuple get_size_tuple(self): return self.c_get_tuple_size()
+
+    # === Misc ===
+    @property
+    def screen(self): return self.window
     cpdef void end_frame(self): md.pygame.display.update()
     cpdef void begin_frame(self): pass
-    cpdef tuple get_size(self): return self.window.size
-    cpdef int get_width(self): return self.window.width
-    cpdef int get_height(self): return self.window.height
-    cpdef void clear(self, color: Annotations.rgb_like_color = (0, 0, 0, 0)): self.window.fill(color)
+    cpdef void clear(self, color = fill_color): self.window.fill(color)
     cpdef void update(self): pass
-    cpdef void fill(self, color: Annotations.rgb_like_color): self.window.fill(color)
     cpdef void flip(self): md.pygame.display.flip()
-    cpdef void blit(self, source, dest: Annotations.dest_like): self.window.blit(source, dest)
+    cpdef void blit(self, source, dest): self.window.blit(source, dest)
     cpdef load_image(self, path: str): return md.pygame.image.load(path)
+    cpdef set_title(self, title: str): md.pygame.display.set_caption(title)
