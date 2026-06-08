@@ -74,7 +74,7 @@ cdef class NvRenderTexture:
         self.c_fast_blit(nv_texture, dest, flip, color)
     
     cdef void c_fast_blit_texture(self, object texture, tuple dest, bint flip, tuple color):
-        display = nevu_state.window.display
+        display = nevu_state.window.renderer
         display.fast_blit_pro(texture, dest, flip, color)
 
     def blit_texture(self, texture: object, dest, int blend_mode = 0, bint flip = True, tuple color = Color.White):
