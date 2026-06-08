@@ -59,7 +59,12 @@ class Grid(LayoutType):
         self.cell_height = self.size[1] / self.row
         self.cell_width = self.size[0] / self.column
         self.add_items(content)
-
+        
+    def _coordinates_setter(self, coordinates: NvVector2):
+        result = super()._coordinates_setter(coordinates)
+        self.cached_coordinates = None
+        return result
+    
     def add_items(self, content: content_type | None): # type: ignore
         if not content: return
         for coords, item in content.items():

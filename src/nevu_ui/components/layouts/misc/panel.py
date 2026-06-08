@@ -54,11 +54,13 @@ class Panel(Grid):
         super().apply_style_to_childs(style)
         self.bg_widget.style = style
     
-    
     def _coordinates_setter(self, coordinates: NvVector2) -> bool:
         result = super()._coordinates_setter(coordinates)
         if self.bg_widget:
             self.bg_widget.coordinates = coordinates.copy()
+        if slot :=self.get_item(1, 1):
+            if self.is_layout(slot):
+                slot.cached_coordinates = None
         return result
 
     def _resize_content(self, resize_ratio: NvVector2):
