@@ -1,11 +1,3 @@
-# distutils: language = c++
-# cython: language_level=3
-# cython: boundscheck=False
-# cython: wraparound=False
-# cython: cdivision=True
-# cython: nonecheck=False
-# cython: initializedcheck=False
-
 cimport cython
 import nevu_ui.core.modules as md
 from libc.math cimport sqrt
@@ -15,43 +7,58 @@ from cpython.tuple cimport PyTuple_GET_ITEM
 @cython.freelist(1000)
 @cython.final
 cdef class NvVector2:
+
+    @property
+    def x(self):
+        return self.data.x
+
+    @x.setter
+    def x(self, double value):
+        self.data.x = value
+
+    @property
+    def y(self):
+        return self.data.y
+
+    @y.setter
+    def y(self, double value):
+        self.data.y = value
+
     @staticmethod
-    cdef inline NvVector2 new(double x, double y) noexcept:
+    cdef inline NvVector2 new(double x, double y):
         cdef NvVector2 vec = NvVector2.__new__(NvVector2)
-        vec.x = x
-        vec.y = y
+        vec.data.x = x
+        vec.data.y = y
         return vec
 
     def __init__(self, *args):
         cdef int nargs = len(args)
         if nargs == 0:
-            self.x = 0.0
-            self.y = 0.0
+            self.data.x = 0.0
+            self.data.y = 0.0
         elif nargs == 1:
             arg = args[0]
             if isinstance(arg, NvVector2):
-                self.x = arg.x
-                self.y = arg.y
+                self.data = (<NvVector2>arg).data
             elif hasattr(arg, "clamp_magnitude_ip"):
-                #VECTOR 2 FROM PYGAME!!! ! ! !! 
-                self.x = arg.x
-                self.y = arg.y
+                self.data.x = arg.x
+                self.data.y = arg.y
             elif isinstance(arg, (list, tuple)):
                 if len(arg) != 2:
                     raise TypeError(f"NvVector2() takes a sequence of length 2, but got {len(arg)}")
-                self.x = arg[0]
-                self.y = arg[1]
+                self.data.x = arg[0]
+                self.data.y = arg[1]
             else:
                 raise TypeError(f"NvVector2() invalid constructor argument: {type(arg).__name__}")
         elif nargs == 2:
-            self.x = args[0]
-            self.y = args[1]
+            self.data.x = args[0]
+            self.data.y = args[1]
         else:
             raise TypeError(f"NvVector2() takes 0, 1, or 2 arguments, but {nargs} were given")
 
     @staticmethod
     cdef inline NvVector2 cfrom_nvvector2(NvVector2 other):
-        return NvVector2.new(other.x, other.y)
+        return NvVector2.new(other.data.x, other.data.y)
     
     @staticmethod
     cdef inline NvVector2 cfrom_tuple(tuple other):
@@ -105,213 +112,197 @@ cdef class NvVector2:
 
     @property
     def xx(self):
-        return NvVector2.new(self.x, self.x)
+        return NvVector2.new(self.data.x, self.data.x)
 
     @property
     def yy(self):
-        return NvVector2.new(self.y, self.y)
+        return NvVector2.new(self.data.y, self.data.y)
 
     @property
     def xy(self):
-        return NvVector2.new(self.x, self.y)
+        return NvVector2.new(self.data.x, self.data.y)
 
     @property
     def yx(self):
-        return NvVector2.new(self.y, self.x)
+        return NvVector2.new(self.data.y, self.data.x)
 
     def to_tuple(self):
-        return (self.x, self.y)
-    
-    cpdef void sadd(self, NvVector2 new_vec, NvVector2 old_vec):
-        self._sadd(new_vec, old_vec)
+        return (self.data.x, self.data.y)
 
     def __getitem__(self, int index):
         if index == 0:
-            return self.x
+            return self.data.x
         elif index == 1:
-            return self.y
+            return self.data.y
         else:
             raise IndexError("Vector index out of range")
 
     def __setitem__(self, int index, double value):
         if index == 0:
-            self.x = value
+            self.data.x = value
         elif index == 1:
-            self.y = value
+            self.data.y = value
         else:
             raise IndexError("Vector index out of range")
 
-    cdef inline NvVector2 _add(self, NvVector2 other):
-        return NvVector2.new(self.x + other.x, self.y + other.y)
-
-    cdef inline NvVector2 _sub(self, NvVector2 other):
-        return NvVector2.new(self.x - other.x, self.y - other.y)
-
-    cdef inline NvVector2 _mul_scalar(self, double val):
-        return NvVector2.new(self.x * val, self.y * val)
-
-    cdef inline NvVector2 _mul_vector(self, NvVector2 other):
-        return NvVector2.new(self.x * other.x, self.y * other.y)
-
-    cdef inline void _iadd(self, NvVector2 other) nogil:
-        self.x += other.x
-        self.y += other.y
-
-    cdef inline void _sadd(self, NvVector2 new_vec, NvVector2 old_vec) nogil:
-        self.x = new_vec.x + old_vec.x
-        self.y = new_vec.y + old_vec.y
-
-    cdef inline void _isub(self, NvVector2 other) nogil:
-        self.x -= other.x
-        self.y -= other.y
-
-    cdef inline void _imul(self, NvVector2 other) nogil:
-        self.x *= other.x
-        self.y *= other.y
-
-    def __imul__(self, NvVector2 other):
-        self._imul(other)
-        return self
-    
-    def __isub__(self, NvVector2 other):
-        self._isub(other)
-        return self # type: ignore
-
-    def __iadd__(self, NvVector2 other):
-        self._iadd(other)
-        return self # type: ignore
-
     def __add__(self, NvVector2 other):
-        return self._add(other) # type: ignore
+        cdef nv_vector2_t res = nv_vector2_add(self.data, other.data)
+        return NvVector2.new(res.x, res.y)
 
     def __sub__(self, NvVector2 other):
-        return self._sub(other) # type: ignore
+        cdef nv_vector2_t res = nv_vector2_sub(self.data, other.data)
+        return NvVector2.new(res.x, res.y)
 
     def __mul__(self, other):
+        cdef nv_vector2_t res
         if isinstance(other, NvVector2):
-            return self._mul_vector(other) # type: ignore
+            res = nv_vector2_mul_vector(self.data, (<NvVector2>other).data)
+            return NvVector2.new(res.x, res.y)
         elif isinstance(other, (int, float)):
-            return self._mul_scalar(other) # type: ignore
-        else:
-            return NotImplemented
+            res = nv_vector2_mul_scalar(self.data, other)
+            return NvVector2.new(res.x, res.y)
+        return NotImplemented
 
     def __truediv__(self, other):
+        cdef nv_vector2_t res
         if isinstance(other, NvVector2):
-            return NvVector2.new(self.x / other.x, self.y / other.y)
+            res = nv_vector2_div_vector(self.data, (<NvVector2>other).data)
+            return NvVector2.new(res.x, res.y)
         elif isinstance(other, (int, float)):
-            return NvVector2.new(self.x / other, self.y / other)
-        else:
-            return NotImplemented
+            res = nv_vector2_div_scalar(self.data, other)
+            return NvVector2.new(res.x, res.y)
+        return NotImplemented
 
     def __floordiv__(self, other):
+        cdef nv_vector2_t res
         if isinstance(other, NvVector2):
-            return NvVector2.new(self.x // other.x, self.y // other.y)
+            res = nv_vector2_floordiv_vector(self.data, (<NvVector2>other).data)
+            return NvVector2.new(res.x, res.y)
         elif isinstance(other, (int, float)):
-            return NvVector2.new(self.x // other, self.y // other)
-        else:
-            return NotImplemented
+            res = nv_vector2_floordiv_scalar(self.data, other)
+            return NvVector2.new(res.x, res.y)
+        return NotImplemented
+
+    def __iadd__(self, NvVector2 other):
+        nv_vector2_iadd(&self.data, other.data)
+        return self
+
+    def __isub__(self, NvVector2 other):
+        nv_vector2_isub(&self.data, other.data)
+        return self
+
+    def __imul__(self, NvVector2 other):
+        nv_vector2_imul(&self.data, other.data)
+        return self
 
     def __neg__(self):
-        return NvVector2.new(-self.x, -self.y)
+        return NvVector2.new(-self.data.x, -self.data.y)
 
     def __repr__(self):
-        return f"NvVector2({self.x}, {self.y})"
+        return f"NvVector2({self.data.x}, {self.data.y})"
+
+    cdef inline NvVector2 _add(self, NvVector2 other):
+        cdef nv_vector2_t res = nv_vector2_add(self.data, other.data)
+        return NvVector2.new(res.x, res.y)
+
+    cdef inline NvVector2 _sub(self, NvVector2 other):
+        cdef nv_vector2_t res = nv_vector2_sub(self.data, other.data)
+        return NvVector2.new(res.x, res.y)
+
+    cdef inline void _iadd(self, NvVector2 other) nogil:
+        nv_vector2_iadd(&self.data, other.data)
+
+    cdef inline void _sadd(self, NvVector2 new_vec, NvVector2 old_vec) nogil:
+        self.data.x = new_vec.data.x + old_vec.data.x
+        self.data.y = new_vec.data.y + old_vec.data.y
+
+    cdef inline void _isub(self, NvVector2 other) nogil:
+        nv_vector2_isub(&self.data, other.data)
+
+    cdef inline void _imul(self, NvVector2 other) nogil:
+        nv_vector2_imul(&self.data, other.data)
+
+    cpdef void sadd(self, NvVector2 new_vec, NvVector2 old_vec):
+        self._sadd(new_vec, old_vec)
 
     def to_int(self):
-        self.x = int(self.x)
-        self.y = int(self.y)
+        self.data.x = <int>self.data.x
+        self.data.y = <int>self.data.y
         return self
 
     def get_int(self):
-        return NvVector2.new(int(self.x), int(self.y))
+        return NvVector2.new(<int>self.data.x, <int>self.data.y)
     
     def to_round(self):
-        self.x = round(self.x)
-        self.y = round(self.y)
+        self.data.x = round(self.data.x)
+        self.data.y = round(self.data.y)
         return self
 
     def get_round(self):
-        return NvVector2.new(round(self.x), round(self.y))
+        return NvVector2.new(round(self.data.x), round(self.data.y))
 
     def to_abs(self):
-        self.x = abs(self.x)
-        self.y = abs(self.y)
+        self.data.x = abs(self.data.x)
+        self.data.y = abs(self.data.y)
         return self
 
     def get_abs(self):
-        return NvVector2.new(abs(self.x), abs(self.y))
+        return NvVector2.new(abs(self.data.x), abs(self.data.y))
 
     def to_neg(self):
-        self.x = -self.x
-        self.y = -self.y
+        self.data.x = -self.data.x
+        self.data.y = -self.data.y
         return self
 
     def get_neg(self):
-        return NvVector2.new(-self.x, -self.y)
+        return NvVector2.new(-self.data.x, -self.data.y)
 
     def get_int_tuple(self):
-        return (int(self.x), int(self.y))
+        return (<int>self.data.x, <int>self.data.y)
     
     cdef tuple c_get_int_tuple(self):
-        return (int(self.x), int(self.y))
+        return (<int>self.data.x, <int>self.data.y)
 
     def to_pygame(self):
-        return md.pygame.Vector2(self.x, self.y)
+        return md.pygame.Vector2(self.data.x, self.data.y)
     
     cpdef NvVector2 copy(self):
-        return NvVector2.new(self.x, self.y)
+        return NvVector2.new(self.data.x, self.data.y)
 
     def __copy__(self):
-        return NvVector2.new(self.x, self.y)
+        return NvVector2.new(self.data.x, self.data.y)
     
     def __deepcopy__(self, memo):
-        return NvVector2.new(self.x, self.y)
+        return NvVector2.new(self.data.x, self.data.y)
     
     def __hash__(self):
-        return hash((self.x, self.y))
+        return hash((self.data.x, self.data.y))
     
     def __len__(self):
         return 2
 
     def __eq__(self, other):
         if isinstance(other, NvVector2):
-            return self.x == other.x and self.y == other.y
-        else:
-            return NotImplemented
+            return self.data.x == (<NvVector2>other).data.x and self.data.y == (<NvVector2>other).data.y
+        return NotImplemented
 
     @property
     def length(self):
-        return sqrt(self.x * self.x + self.y * self.y) # type: ignore
+        return nv_vector2_length(self.data)
     
     def normalize(self):
-            cdef double l = sqrt(self.x * self.x + self.y * self.y) # type: ignore
-            cdef double inv_l
-            
-            if l == 0: 
-                return NvVector2.new(0.0, 0.0)
-            
-            inv_l = 1.0 / l
-            return NvVector2.new(self.x * inv_l, self.y * inv_l)
+        cdef nv_vector2_t res = nv_vector2_normalize(self.data)
+        return NvVector2.new(res.x, res.y)
     
     def normalize_ip(self):
-        cdef double l = sqrt(self.x * self.x + self.y * self.y) # type: ignore
-        cdef double inv_l
-        
-        if l > 0: 
-            inv_l = 1.0 / l
-            self.x *= inv_l
-            self.y *= inv_l
+        self.data = nv_vector2_normalize(self.data)
         return self
     
     def distance_to(self, NvVector2 other):
-        cdef double dx = self.x - other.x
-        cdef double dy = self.y - other.y
-        return sqrt(dx * dx + dy * dy) # type: ignore
+        return nv_vector2_distance_to(self.data, other.data)
 
     def distance_squared_to(self, NvVector2 other):
-        cdef double dx = self.x - other.x
-        cdef double dy = self.y - other.y
-        return dx * dx + dy * dy
+        return nv_vector2_distance_squared_to(self.data, other.data)
 
     def dot(self, NvVector2 other):
-        return self.x * other.x + self.y * other.y
+        return nv_vector2_dot(self.data, other.data)
