@@ -47,9 +47,9 @@ class _BaseCoreNamespace(ABC):
     def get_color_on_hover(self, color: Annotations.rgb_color):
         root = self.root
         hover_state = root._hover_state
-        if hover_state == HoverState.CLICKED and not root.get_param_strict("fancy_click_style").value and root.get_param_strict("clickable").value: 
+        if hover_state == HoverState.Clicked and not root.get_param_strict("fancy_click_style").value and root.get_param_strict("clickable").value: 
             color = Color.lighten(color, 0.2)
-        elif hover_state == HoverState.HOVERED and root.get_param_strict("hoverable").value: 
+        elif hover_state == HoverState.Hovered and root.get_param_strict("hoverable").value: 
             color = Color.darken(color, 0.2)
         return color
     

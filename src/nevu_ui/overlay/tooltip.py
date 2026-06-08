@@ -4,8 +4,7 @@ import weakref
 import nevu_ui.core.modules as md
 from nevu_ui.presentation.style import Style, default_style
 from nevu_ui.core.classes import TooltipType
-from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.fast.nvrect import NvRect
+from nevu_ui.fast import NvVector2, NvRect, Cache
 from nevu_ui.core.state import nevu_state
 from typing import TYPE_CHECKING
 if TYPE_CHECKING: from nevu_ui.components.nevuobj import NevuObject
@@ -14,7 +13,6 @@ from nevu_ui.core.enums import EventType, HoverState, Malign, CacheType, RenderR
 from nevu_ui.overlay import overlay
 from nevu_ui.presentation.color import SubThemeRole, TupleColorRole
 from nevu_ui.rendering.base_renderer import BaseRenderer
-from nevu_ui.fast.nevucache import Cache
 
 #include <brain.h>
 #include <not bugs.h>
@@ -40,12 +38,12 @@ class _TooltipBase:
         if self.cache.get(CacheType.Scaled_Image): md.rl.unload_texture(self.cache.get(CacheType.Scaled_Image)) #type: ignore
         
     def clear_all(self):
-        if nevu_state.window.is_dtype.raylib: 
+        if nevu_state.window.renderer_type.raylib: 
             self._clear_rl_specific()
         self.cache.clear()
         
     def clear_surfaces(self):
-        if nevu_state.window.is_dtype.raylib: 
+        if nevu_state.window.renderer_type.raylib: 
             self._clear_rl_specific()
         self.cache.clear_selected(whitelist = [CacheType.Scaled_Image, CacheType.Image, CacheType.Scaled_Gradient, CacheType.Surface, CacheType.Borders, CacheType.Scaled_Borders, CacheType.Scaled_Background, CacheType.Background, CacheType.Texture, CacheType.RlFont, CacheType.TextArgs, CacheType.ClickTexture], blacklist = [])
     
@@ -70,10 +68,10 @@ class _TooltipBase:
         _, title_surf = renderer.run_text(RenderConfig.DrawL3, text = self.title, override_font_size=self.style.font_size*self.ratio.y, override_color=self.style.colortheme.get_tuple(TupleColorRole.INVERSE_PRIMARY), return_type=RenderReturnType.CreateNew, max_size=self._csize) 
         tx = title_surf.width
         title_rect[0] += self._csize.x / 2 - tx / 2
-        if nevu_state.window.is_dtype.raylib:
+        if nevu_state.window.renderer_type.raylib:
             with surf:
                 md.rl.begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-                nevu_state.window.display.fast_blit(title_surf.texture, title_rect.get_int_tuple())
+                nevu_state.window.renderer.fast_blit(title_surf.texture, title_rect.get_int_tuple())
                 md.rl.end_blend_mode()
         else:
             surf.blit(title_surf, title_rect.get_int_tuple())
@@ -185,10 +183,10 @@ class Tooltip():
         
     def _update(self, *args):
         assert self.master, "Tooltip is not connected to NevuObject!"
-        if self.master.hover_state == HoverState.UN_HOVERED and overlay.has_element(self):
+        if self.master.hover_state == HoverState.NotHovered and overlay.has_element(self):
             self._off()
             self._counter = 0
-        elif self.master.hover_state in [HoverState.HOVERED, HoverState.CLICKED]:
+        elif self.master.hover_state in [HoverState.Hovered, HoverState.Clicked]:
             new_pos = mouse.pos
             if new_pos != self.old_coord:
                 self._counter += 1*time.dt

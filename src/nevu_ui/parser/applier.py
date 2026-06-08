@@ -30,7 +30,7 @@ def regen_buffers():
 
 #!WARNING:
 #!DO NOT change order.
-PROCESSING_ORDER =["colors", "colorthemes", "styles", "window", "animations", "generated"]
+PROCESSING_ORDER = ["colors", "colorthemes", "styles", "window", "animations", "generated"]
 
 def _apply_config(config: dict):
     veryold_time = time.time()

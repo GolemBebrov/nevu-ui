@@ -43,7 +43,7 @@ class _RaylibCoreNamespace(_BaseCoreNamespace):
         if isinstance(radii, int | float): radii = (radii, radii, radii, radii)
         rect_texture = NvRenderTexture(NvVector2(size))
         rect_texture.clear(color)
-        display = nevu_state.window.display
+        display = nevu_state.window.renderer
         assert nevu_state.window.is_raylib(display)
         with subject:
             display.fast_blit_sdf_vec(rect_texture.texture, (0, 0), radii)
@@ -124,12 +124,12 @@ class RaylibRenderer(BaseRenderer):
                 adjust_brightness = unsafe.adjust_brightness
                 HoverState = root.hover_state.__class__
                 match root.hover_state:
-                    case HoverState.HOVERED:
+                    case HoverState.Hovered:
                         if get_value("hoverable"):
                             if not _raylib_gradient_hover_color:
                                 _raylib_gradient_hover_color = adjust_brightness(end_color, -50)
                             end_color = _raylib_gradient_hover_color
-                    case HoverState.CLICKED: 
+                    case HoverState.Clicked: 
                         if get_value("clickable"):
                             if not _raylib_gradient_click_color:
                                 _raylib_gradient_click_color = adjust_brightness(end_color, 50) 
@@ -150,7 +150,7 @@ class RaylibRenderer(BaseRenderer):
                     else: anim_color = None
                     color = anim_color or color
                     if len(color) == 3: color = (*color, 255)
-                    assert is_rgba(color), "color must be a rgba color"
+                    assert is_rgba(color), f"color must be a rgba color: {color}"
                 with texture:
                     if easy_background:
                         texture.clear(color) #type: ignore
@@ -294,7 +294,7 @@ class RaylibRenderer(BaseRenderer):
         return_type = kw_get("return_type", RenderReturnType.Null)
         
         def _add_effects(texture: NvRenderTexture):
-            display = nevu_state.window.display
+            display = nevu_state.window.renderer
             assert nevu_state.window.is_raylib(display)
             begin_blend_mode(md.rl.BlendMode.BLEND_ADDITIVE)
             with click_subject:
@@ -338,7 +338,7 @@ class RaylibRenderer(BaseRenderer):
         radius = core.normalize_radius_relative(radius)
         override_color = kw_get("override_color", root.subtheme_content if root.alt else root.subtheme_border)
         no_borders = kw_get("no_borders", False)
-        display = nevu_state.window.display
+        display = nevu_state.window.renderer
         pos = kw_get("override_position", root.coordinates.to_tuple() if root.get_param_strict("inline").value else (0, 0))
         assert nevu_state.window.is_raylib(display)
         return_type = kw_get("return_type", RenderReturnType.Null)

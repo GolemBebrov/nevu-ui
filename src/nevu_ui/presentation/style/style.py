@@ -82,7 +82,7 @@ class Style:
     def __init__(self, **kwargs: Unpack[StyleKwargs]):
         self._kwargs_for_copy = copy.deepcopy(kwargs)
         self.kwargs_dict = {}
-        self._curr_state = HoverState.UN_HOVERED
+        self._curr_state = HoverState.NotHovered
         self._init_basic()
         self._add_paramethers()
         self._handle_kwargs(**kwargs)
@@ -230,16 +230,16 @@ class Style:
         style._kwargs_for_copy.update(kwargs)
         
         style._handle_kwargs(raise_errors=True, **kwargs)
-        style._curr_state = HoverState.UN_HOVERED
+        style._curr_state = HoverState.NotHovered
         return style
     
     def clone(self): return Style(**self._kwargs_for_copy)
     def __deepcopy__(self, memo): return copy.copy(self)
     
 hstate_to_state = {
-    HoverState.CLICKED: "active",
-    HoverState.HOVERED: "hover",
-    HoverState.UN_HOVERED: "static"
+    HoverState.Clicked: "active",
+    HoverState.Hovered: "hover",
+    HoverState.NotHovered: "static"
 }
 
 default_style = Style()

@@ -3,20 +3,11 @@ import random
 from typing import TypeGuard
 from nevu_ui.core import Annotations
     
-def is_rgb(color) -> TypeGuard[Annotations.rgb_color]:
-    return isinstance(color, tuple) and len(color) == 3 and all(isinstance(c, int) and 0 <= c <= 255 for c in color)
-
-def is_rgba(color) -> TypeGuard[Annotations.rgba_color]:
-    return isinstance(color, tuple) and len(color) == 4 and all(isinstance(c, int) and 0 <= c <= 255 for c in color)
-
-def is_rgb_like(color) -> TypeGuard[Annotations.rgb_like_color]:
-    return is_rgb(color) or is_rgba(color)
-
-def is_hsl(color) -> TypeGuard[Annotations.hsl_color]:
-    return isinstance(color, tuple) and len(color) == 3 and all(isinstance(c, float) and 0 <= c <= 1 for c in color)
-
-def is_hex(color) -> TypeGuard[Annotations.hex_color]:
-    return isinstance(color, str) and color.startswith('#')
+def is_rgb(color) -> TypeGuard[Annotations.rgb_color]: return isinstance(color, tuple) and len(color) == 3 and all(isinstance(c, int) and 0 <= c <= 255 for c in color)
+def is_rgba(color) -> TypeGuard[Annotations.rgba_color]: return isinstance(color, tuple) and len(color) == 4 and all(isinstance(c, (int, float)) and 0 <= c <= 255 for c in color)
+def is_rgb_like(color) -> TypeGuard[Annotations.rgb_like_color]: return is_rgb(color) or is_rgba(color)
+def is_hsl(color) -> TypeGuard[Annotations.hsl_color]: return isinstance(color, tuple) and len(color) == 3 and all(isinstance(c, float) and 0 <= c <= 1 for c in color)
+def is_hex(color) -> TypeGuard[Annotations.hex_color]: return isinstance(color, str) and color.startswith('#')
     
 class Color:
     AliceBlue = (240, 248, 255, 255)
