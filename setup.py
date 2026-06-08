@@ -88,9 +88,13 @@ def get_extensions():
             "nevu_ui.fast.nvrendertex.nv_render_tex",
             "src/nevu_ui/fast/nvrendertex/nv_render_tex.pyx"
         ),
+        get_extension(
+            "nevu_ui.fast.nvspecific.nvspec",
+            "src/nevu_ui/fast/nvspecific/nvspec.pyx"
+        )
     ]
 
-    return cythonize(extensions, compiler_directives=cython_directives, annotate=True, include_path=["src"],)
+    return cythonize(extensions, compiler_directives=cython_directives, annotate=True, include_path=["src"], nthreads=8)
 
 setup(
     ext_modules=get_extensions(),
