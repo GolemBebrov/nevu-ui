@@ -42,7 +42,7 @@ class NevuState:
 nevu_state = NevuState()
 
 def _analize_bg(self):
-    if not nevu_state.window.is_dtype.raylib: return False
+    if not nevu_state.window.renderer_type.raylib: return False
     transparent = False
     if self.style.gradient:
         gr = self.style.gradient
