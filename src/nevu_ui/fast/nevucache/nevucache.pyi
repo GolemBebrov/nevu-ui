@@ -1,4 +1,4 @@
-from nevu_ui.core.enums import CacheName, CacheType
+from nevu_ui.core.enums import CacheType
 
 class Cache:
     def clear(self): ...

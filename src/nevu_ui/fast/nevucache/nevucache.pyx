@@ -1,4 +1,5 @@
-from nevu_ui.core.enums import CacheName, CacheType
+from __future__ import annotations
+from nevu_ui.core.enums import CacheType
 from cpython.dict cimport PyDict_Size, PyDict_Next, PyDict_Keys
 
 cdef class Cache:
