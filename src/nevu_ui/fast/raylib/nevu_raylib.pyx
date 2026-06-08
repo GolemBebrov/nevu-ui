@@ -11,6 +11,7 @@ from cpython.object cimport PyObject
 from cpython.tuple cimport PyTuple_GET_ITEM, PyTuple_GET_SIZE
 from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2
 from nevu_ui.fast.nvrect.nvrect cimport NvRect
+from nevu_ui.fast.nvrendertex.nv_render_tex cimport NvRenderTexture
 from nevu_ui.fast.nvshader.nvshader cimport NvShader
 from libcpp.vector cimport vector
 cdef extern from "Python.h":
@@ -165,8 +166,8 @@ cdef void set_vector2_tuple(Vector2* vec, tuple pos):
     vec.y = PyFloat_AsDouble(PyTuple_GET_ITEM(pos, 1))
 
 cdef void set_vector2_nvvector2(Vector2* vec, NvVector2 pos):
-    vec.x = pos.x
-    vec.y = pos.y
+    vec.x = pos.x + 0.01
+    vec.y = pos.y + 0.01
 
 cdef void set_color(Color* col, tuple color):
     cdef Py_ssize_t color_size = PyTuple_GET_SIZE(color)
@@ -177,6 +178,12 @@ cdef void set_color(Color* col, tuple color):
         col.a = <unsigned char>PyFloat_AsDouble(PyTuple_GET_ITEM(color, 3))
     else:
         col.a = 255
+
+cdef void set_color_nvrect(Color* col, NvRect rect):
+    col.r = <unsigned char>rect.x
+    col.g = <unsigned char>rect.y
+    col.b = <unsigned char>rect.w
+    col.a = <unsigned char>rect.h
 
 cdef void c_draw_texture_rec(object texture, tuple source_rec, tuple position, tuple color):
     cdef Texture2D c_tex = _get_c_texture(texture)
@@ -222,7 +229,7 @@ cpdef void draw_texture_vec(object texture, tuple position, tuple color, bint fl
 cpdef void draw_texture_vec_ez(object texture, tuple position, bint flip):
     c_draw_texture_vec(texture, position, (255, 255, 255, 255), flip)
 
-cdef void c_draw_texture_nvvec(object texture, NvVector2 position, tuple color, bint flip):
+cdef void c_draw_texture_nvvec(object texture, NvVector2 position, NvRect color, bint flip):
     cdef Texture2D c_tex = _get_c_texture(texture)
     cdef Rectangle c_source
     cdef Vector2 c_pos
@@ -236,15 +243,20 @@ cdef void c_draw_texture_nvvec(object texture, NvVector2 position, tuple color, 
 
     set_vector2_nvvector2(&c_pos, position)
 
-    set_color(&c_col, color)
+    set_color_nvrect(&c_col, color)
 
     _c_DrawTextureRec(c_tex, c_source, c_pos, c_col)
 
-cpdef void draw_texture_nvvec(object texture, NvVector2 position, tuple color, bint flip):
+cdef void c_draw_nvtexture_nvvec(NvRenderTexture texture, NvVector2 position, NvRect color, bint flip):
+    c_draw_texture_nvvec(texture.c_get_texture(), position, color, flip)
+
+cpdef void draw_texture_nvvec(object texture, NvVector2 position, NvRect color, bint flip):
     c_draw_texture_nvvec(texture, position, color, flip)
 
+_base_color_nvvec_ez = NvRect.new(255, 255, 255, 255)
+
 cpdef void draw_texture_nvvec_ez(object texture, NvVector2 position, bint flip):
-    c_draw_texture_nvvec(texture, position, (255, 255, 255, 255), flip)
+    c_draw_texture_nvvec(texture, position, _base_color_nvvec_ez, flip)
 
 cdef void c_draw_texture_pro(object texture, tuple source_rec, tuple dest_rec, tuple origin, float rotation, tuple color):
     cdef Texture2D c_tex = _get_c_texture(texture)
