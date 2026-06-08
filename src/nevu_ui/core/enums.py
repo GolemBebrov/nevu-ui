@@ -42,27 +42,12 @@ class ConstantLayer(IntEnum):
     Complicated = 3
     Lazy = 4
 
-class Quality(Enum):
-    Poor = auto()
-    Medium = auto()
-    Decent = auto()
-    Good = auto()
-    Best = auto()
-
-_QUALITY_TO_RESOLUTION = {
-    Quality.Poor:   1,
-    Quality.Medium: 2,
-    Quality.Decent: 4,
-    Quality.Good:   5,
-    Quality.Best:   6,
-}
-
 class AnimationManagerState(IntEnum):
-    START = 0
-    CONTINUOUS = 1
-    TRANSITION = 2
-    IDLE = 3
-    ENDED = 4
+    Start = 0
+    Continuous = 1
+    Transition = 2
+    Idle = 3
+    Ended = 4
 
 class GradientConfig(StrEnum): pass
 
@@ -93,11 +78,7 @@ class ResizeType(Enum):
     CropToRatio = auto()
     FillAllScreen = auto()
     ResizeFromOriginal = auto()
-
-class RenderMode(Enum): # TODO: make use for this #Update: No
-    AA = auto()
-    SDF = auto()
-
+    
 class CacheType(Enum):
     Coords = auto()
     RelSize = auto()
@@ -121,18 +102,12 @@ class CacheType(Enum):
     RlfinalTexture = auto()
     RlBaseTexture = auto()
 
-class CacheName(StrEnum):
-    MAIN = "main"
-    PRESERVED = "preversed"
-    CUSTOM = "custom"
-
 class AnimationType(Enum):
     Color = auto()
     Size = auto()
     Position = auto()
     Rotation = auto()
     Opacity = auto()
-    _not_used = auto()
 
 class EventType(Enum):
     Resize = auto()
@@ -158,9 +133,9 @@ class ScrollBarType(StrEnum):
     Horizontal = "horizontal"
 
 class HoverState(Enum):
-    UN_HOVERED = auto()
-    HOVERED = auto()
-    CLICKED = auto()
+    NotHovered = auto()
+    Hovered = auto()
+    Clicked = auto()
 
 class OvItemType(Enum):
     Texture = auto()
@@ -183,6 +158,11 @@ class RenderReturnType(StrEnum):
     Outside = "outside"
     Modify = "modify"
     CreateNew = "create_new"
+
+class SwitchAxis(StrEnum):
+    Vertical = "vertical"
+    Horizontal = "horizontal"
+    Auto = "auto"
 
 class _RenderArg:
     pass

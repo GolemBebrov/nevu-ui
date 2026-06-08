@@ -2,10 +2,8 @@ from enum import StrEnum, Enum
 import contextlib
 from dataclasses import dataclass
 from typing import Any
-from typing import TYPE_CHECKING, Callable
+from typing import Callable
 from nevu_ui.core.enums import Backend
-if TYPE_CHECKING:
-    from nevu_ui.fast.nvvector2 import NvVector2
     
 class Events:
     __slots__ = ('content', 'on_add')
@@ -123,12 +121,10 @@ class EnumValidator:
 
 
 class GlobalsBase:
-    def __init__(self):
-        pass
+    def __init__(self): pass
     
     @property
-    def library(self): 
-        return nevu_globals
+    def library(self): return nevu_globals
     
     def modify(self, **kwargs): 
         nevu_globals.update(kwargs)
@@ -145,8 +141,7 @@ class GlobalsBase:
                 added_keys.append(key)
         self.modify(**kwargs)
         
-        try:
-            yield
+        try: yield
         finally:
             for key in added_keys:
                 if key in nevu_globals:
@@ -156,3 +151,12 @@ class GlobalsBase:
                 nevu_globals[key] = old_value
 
 nevu_globals = {}
+
+#Namespace
+
+class _strategy_type: pass
+
+class Strategy:
+    class Static(_strategy_type): pass
+    class Relative(_strategy_type): pass
+    
