@@ -1,4 +1,6 @@
-![Example1](assets/title.png)
+<p align="center">
+  <img src="assets/title.png" alt="Nevu UI Intro Banner" width="800" />
+</p>
 
 ![alt text](https://img.shields.io/badge/License:-MIT-orange.svg)
 
@@ -7,7 +9,7 @@
 
 ### Nevu UI means: `Nevu is Eleven times better Versus other UI's User Interface`
 
-# Brief Description
+# Brief Description 
 **Nevu UI** is a library for the declarative creation of user interfaces in python. The project aims to provide developers with a set of ready-made, stylable, and extensible components for the rapid creation of modern and responsive interfaces in games and multimedia applications.
 
 #### The main goal of Nevu UI: to make creating interfaces in python easier and faster
@@ -19,7 +21,13 @@
 *   **Animations:** Built-in support for animations to create dynamic and lively interfaces.
 *   **Declarativeness:** Support for declarative interface creation
 
-## Style
+<br>
+
+<p align="left">
+  <img src="assets/EN/separator_style.png" alt="Style banner" width="600" />
+</p>
+
+---
 
 ### Style - storage of parameters for customizing the appearance
 Editable parameters:
@@ -31,7 +39,13 @@ Editable parameters:
 * **Text Align X/Y**
 * **Transparency**
 
-## Main Features
+<br>
+
+<p align="left">
+  <img src="assets/EN/separator_features.png" alt="Style banner" width="600" />
+</p>
+
+---
 
 ### Nevu UI allows you to describe an interface with a clear structure
 
@@ -98,7 +112,13 @@ Examples of declarativeness:
             #self._block_param('my_var')
     ```
 
-# Installation
+<br>
+
+<p align="left">
+  <img src="assets/EN/separator_installation.png" alt="Style banner" width="600" />
+</p>
+
+---
   ## Dependencies:
   **```Python >= 3.12.*```**
   * For Building:
@@ -117,7 +137,13 @@ Examples of declarativeness:
  pip install nevu-ui[all]
  ```
 
-# Examples
+<br>
+
+<p align="left">
+  <img src="assets/EN/separator_examples.png" alt="Style banner" width="600" />
+</p>
+
+---
 ![Example1](assets/test_grid.png)
 ---
 ![Example2](assets/test_main.png)
@@ -180,8 +206,16 @@ while True: #Main loop
 
 ### Example Result
 ![Example1](assets/result.png)
+
+<br>
+
+<p align="left">
+  <img src="assets/EN/separator_status.png" alt="Style banner" width="600" />
+</p>
+
 ---
-# Nevu UI Status at the Moment
+
+### Nevu UI status at the moment.
 
 ### **Layouts (Layout_Type Heirs)**
 
@@ -198,6 +232,7 @@ while True: #Main loop
 *   ✅ `StackColumn`
 *   ✅ `StackRow`
 *   ✅ `CheckBoxGroup`
+*   ✅ `Panel`
 
 ### **Widgets (Widget Heirs)**
 
@@ -214,6 +249,7 @@ while True: #Main loop
 *   ✅ `ElementSwitcher`
 *   💾 `FileDialog`
 *   ✅ `RectCheckBox`
+*   ✅ `Switch`
 
 ### **Available Backends**
 
@@ -228,15 +264,32 @@ while True: #Main loop
 * `Customizable center and angle of the gradient` - **Raylib exclusive**
 * `Tooltip` - **Pygame exclusive**
 
-# License
+<br>
 
-**Nevu UI is protected by the MIT license**
+<p align="left">
+  <img src="assets/EN/separator_license.png" alt="Style banner" width="600" />
+</p>
 
-# Bugs
+---
+### Nevu UI is protected by the MIT license
 
-* **Nevu UI** is **NOT** a stable framework, you may encounter many bugs in it.
+<br>
 
-# Additional Information
+<p align="left">
+  <img src="assets/EN/separator_bugs.png" alt="Style banner" width="600" />
+</p>
 
-* **Gmail:** bebrovgolem@gmail.com
-* **Creator:** Nikita A.
+---
+### `Nevu UI` is **NOT** a stable framework, you may encounter many bugs in it.
+### If you found a bug, please report it in the [Issues](https://github.com/GolemBebrov/nevu-ui/issues) section
+<br>
+
+<p align="left">
+  <img src="assets/EN/separator_add_info.png" alt="Style banner" width="600" />
+</p>
+
+---
+
+
+### **Gmail:** bebrovgolem@gmail.com
+### **Creator:** Nikita A.
