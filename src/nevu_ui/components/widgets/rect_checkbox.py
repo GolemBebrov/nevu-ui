@@ -5,7 +5,8 @@ from typing import Any, Unpack
 import nevu_ui.core.modules as md
 from nevu_ui.components.nevuobj.nevuobj import NevuObject
 from nevu_ui.components.nevuobj.typehints import nevu_object_globals
-from nevu_ui.components.widgets import RectCheckBoxKwargs, Widget
+from nevu_ui.components.widgets.typehints import RectCheckBoxKwargs
+from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import EventType, RenderConfig, RenderReturnType
 from nevu_ui.core.size.units import SizeRule

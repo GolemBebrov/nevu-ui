@@ -2,7 +2,8 @@ import copy
 from typing import Callable, Unpack
 
 import nevu_ui.core.modules as md
-from nevu_ui.components.widgets import LabelKwargs, LabelTemplate, Widget
+from nevu_ui.components.widgets.typehints import LabelKwargs, LabelTemplate
+from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations, nevu_state
 from nevu_ui.core.enums import CacheType, RenderConfig, RenderReturnType
 from nevu_ui.fast.nvrendertex import NvRenderTexture

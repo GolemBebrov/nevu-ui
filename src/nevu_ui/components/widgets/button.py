@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import copy
 from typing import Callable, Unpack
 
-from nevu_ui.components.widgets import ButtonKwargs, Label
+from nevu_ui.components.widgets.label import Label
+from nevu_ui.components.widgets.typehints import ButtonKwargs
 from nevu_ui.core import Annotations
 
 

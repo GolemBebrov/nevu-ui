@@ -3,7 +3,8 @@ import math
 from typing import Unpack
 
 import nevu_ui.core.modules as md
-from nevu_ui.components.widgets import InputKwargs, Widget
+from nevu_ui.components.widgets.typehints import InputKwargs
+from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import RenderConfig, RenderReturnType
 from nevu_ui.core.state import nevu_state

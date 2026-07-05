@@ -1,6 +1,7 @@
 from typing import Unpack
 
-from nevu_ui.components.widgets import Widget, WidgetKwargs
+from nevu_ui.components.widgets.typehints import WidgetKwargs
+from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.presentation.style import default_style
 

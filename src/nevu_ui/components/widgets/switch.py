@@ -2,7 +2,8 @@ import copy
 from typing import Callable, Unpack
 
 import nevu_ui.core.modules as md
-from nevu_ui.components.widgets import SwitchKwargs, SwitchTemplate, Widget
+from nevu_ui.components.widgets.typehints import SwitchKwargs, SwitchTemplate
+from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations, nevu_state
 from nevu_ui.core.enums import (
     AnimationManagerState,

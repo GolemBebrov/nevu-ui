@@ -2,12 +2,12 @@ import copy
 from typing import Any, Callable, Unpack
 
 import nevu_ui.core.modules as md
-from nevu_ui.components.widgets import (
-    Button,
+from nevu_ui.components.widgets.button import Button
+from nevu_ui.components.widgets.typehints import (
     ElementSwitcherKwargs,
     ElementSwitcherTemplate,
-    Widget,
 )
+from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import CacheType, HoverState, RenderConfig, RenderReturnType
 from nevu_ui.core.state import nevu_state

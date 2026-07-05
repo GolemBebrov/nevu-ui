@@ -1,19 +1,3 @@
-from . import components, core, presentation, utils
-from .components.layouts import (
-    CheckBoxGroup,
-    ColorPicker,
-    Column,
-    Gallery_Pages,
-    Grid,
-    LayoutType,
-    Pages,
-    Panel,
-    Row,
-    ScrollableColumn,
-    ScrollableRow,
-    StackColumn,
-    StackRow,
-)
 from .components.nevuobj import NevuObject
 from .components.nevuobj.typehints import nevu_object_globals
 from .components.widgets import (
@@ -32,6 +16,22 @@ from .components.widgets import (
     Switch,
     Widget,
 )
+from .components.layouts import (
+    CheckBoxGroup,
+    ColorPicker,
+    Column,
+    Gallery_Pages,
+    Grid,
+    LayoutType,
+    Pages,
+    Panel,
+    Row,
+    ScrollableColumn,
+    ScrollableRow,
+    StackColumn,
+    StackRow,
+)
+from . import components, core, presentation, utils
 from .components.widgets.typehints import widget_globals
 from .core import size
 from .core.annotations import VERSION, Annotations

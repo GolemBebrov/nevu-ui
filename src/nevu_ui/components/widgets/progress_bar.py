@@ -2,12 +2,12 @@ import math
 from typing import Any, Callable, Unpack, overload
 
 import nevu_ui.core.modules as md
-from nevu_ui.components.widgets import Widget
 from nevu_ui.components.widgets.typehints import (
     ProgressBarKwargs,
     ProgressBarKwargsLong,
     ProgressBarKwargsShort,
 )
+from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import ParamLayer, RenderConfig, RenderReturnType
 from nevu_ui.core.state import nevu_state
