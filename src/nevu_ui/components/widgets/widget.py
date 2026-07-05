@@ -87,7 +87,7 @@ class Widget(NevuObject):
             "convert_to_sdl2_texture is supported only in SDL backend! UWO"
         )
         assert isinstance(self.surface, md.pygame.Surface)
-        texture = md.pygame._sdl2.Texture.from_surface(
+        texture = md.pygame._sdl2.Texture.from_surface(  # type: ignore
             nevu_state.renderer, self.surface
         )  # type: ignore
         texture = md.pygame._sdl2.Image(texture)  # type: ignore
@@ -412,10 +412,7 @@ class Widget(NevuObject):
             return
         if not self._changed:
             return
-        self._uni_primary_draw_content()
-
-    def _primary_draw_content(self):
-        pass
+        self._primary_draw_content()
 
     def _on_visible_set(self):
         super()._on_visible_set()
@@ -423,7 +420,7 @@ class Widget(NevuObject):
             self.clear_surfaces()
             self.clear_texture()
 
-    def _uni_primary_draw_content(self):
+    def _primary_draw_content(self):
         def build_background() -> SurfaceLike:
             bg: SurfaceLike = self.cache.get_or_exec(
                 CacheType.Background,
@@ -568,9 +565,6 @@ class Widget(NevuObject):
                 else:
                     function()
 
-    def _boot_up(self):
-        pass
-
     def _resize_content(self, resize_ratio: NvVector2):
         super()._resize_content(resize_ratio)
         self._resize_ratio = resize_ratio
@@ -580,10 +574,7 @@ class Widget(NevuObject):
         assert nevu_state.window
         self._regen_surface()
         self._changed = True
-        if not hasattr(self, "_click_texture"):
-            self._click_texture = None
-        if self._click_texture:
-            self._click_texture = None
+        self._click_texture = None
 
     def _kill_base(self):
         super()._kill_base()

@@ -322,6 +322,8 @@ class NevuObject(NevuCobject):
         param.set(value)
 
     # === Initialization ===
+    def _boot_up(self):
+        pass
 
     def _create_template(self, size: NvVector2 | list):
         return NevuObjectTemplate(size)

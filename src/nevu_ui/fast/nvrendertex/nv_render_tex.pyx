@@ -1,9 +1,10 @@
+from __future__ import annotations
 import nevu_ui.core.modules as md
 from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2
 from nevu_ui.fast.nvrect.nvrect cimport NvRect
 from nevu_ui.presentation.color import Color
 from nevu_ui.core.state import nevu_state
-from nevu_ui.core.annotations import Annotations      
+from nevu_ui.core.annotations import Annotations
 from nevu_ui.fast.raylib.nevu_raylib cimport begin_blend_mode, end_blend_mode, begin_texture_mode, end_texture_mode, c_draw_texture_rec, c_draw_texture_vec, clear_background, c_clear_background, c_draw_nvtexture_nvvec
 
 cdef NvRect nv_render_tex_base_color = NvRect.new(255, 255, 255, 0)
@@ -17,7 +18,7 @@ cdef class NvRenderTexture:
         new_self.loaded = True # type: ignore
         return new_self
     @staticmethod
-    cdef NvRenderTexture new(NvVector2 size): 
+    cdef NvRenderTexture new(NvVector2 size):
         cdef NvRenderTexture new_self = NvRenderTexture.__new__(NvRenderTexture)
         new_self.render_texture = md.rl.load_render_texture(int(size.x), int(size.y)) # type: ignore
         new_self.size = size
@@ -28,18 +29,18 @@ cdef class NvRenderTexture:
         self.render_texture = md.rl.load_render_texture(int(size.x), int(size.y)) # type: ignore
         self.size = size
         self.loaded = True # type: ignore
-    
-    @property 
+
+    @property
     def texture(self): return self.render_texture.texture
-    
+
     cdef c_get_texture(self): return self.render_texture.texture
 
     @property
     def id(self): return self.render_texture.id
-    
+
     @property
     def depth(self): return self.render_texture.depth
-    
+
     def blit(self, NvRenderTexture nv_texture not None, tuple dest not None, int blend_mode = 0, bint flip = True, tuple color = Color.White):
         assert self.loaded, "Render texture not loaded"
         begin_blend_mode(blend_mode)
@@ -47,7 +48,7 @@ cdef class NvRenderTexture:
         self.c_fast_blit(nv_texture, dest, flip, color)
         end_texture_mode()
         end_blend_mode()
-    
+
     def nvblit(self, NvRenderTexture nv_texture not None, NvVector2 dest not None, int blend_mode = 0, bint flip = True, NvRect color = nv_render_tex_base_color):
         assert self.loaded, "Render texture not loaded"
         begin_blend_mode(blend_mode)
@@ -77,7 +78,7 @@ cdef class NvRenderTexture:
 
     def fast_blit(self, NvRenderTexture nv_texture, tuple dest, bint flip = True, tuple color = Color.White):
         self.c_fast_blit(nv_texture, dest, flip, color)
-    
+
     cdef void c_fast_blit_texture(self, object texture, tuple dest, bint flip, tuple color):
         display = nevu_state.window.renderer
         display.fast_blit_pro(texture, dest, flip, color)
@@ -89,13 +90,13 @@ cdef class NvRenderTexture:
         self.c_fast_blit_texture(texture, dest, flip, color)
         end_texture_mode()
         end_blend_mode()
-    
+
     def fast_blit_texture(self, texture: object, dest, bint flip = True, tuple color = Color.White):
         self.c_fast_blit_texture(texture, dest, flip, color)
 
     cdef void c_fast_clear(self, tuple color):
         c_clear_background(color)
-    
+
     cdef void c_clear(self, tuple color):
         begin_texture_mode(self.render_texture) # type: ignore
         self.c_fast_clear(color)
@@ -104,23 +105,23 @@ cdef class NvRenderTexture:
     cpdef void clear(self, tuple color):
         assert self.loaded, "Render texture not loaded"
         self.c_clear(color)
-    
+
     cpdef void fast_clear(self, tuple color):
         assert self.loaded, "Render texture not loaded"
         self.c_fast_clear(color)
-    
-    cpdef void fill(self, tuple color): 
+
+    cpdef void fill(self, tuple color):
         assert self.loaded, "Render texture not loaded"
         self.c_clear(color)
-        
+
     cpdef void kill(self):
         assert self.loaded, "Render texture not loaded"
         md.rl.unload_render_texture(self.render_texture) # type: ignore
         self.loaded = False # type: ignore
-    
+
     cpdef NvRect get_rect(self):
         return NvRect.new(0, 0, self.size.x, self.size.y)
-    
+
     cpdef double get_height(self): return self.size.y
     cpdef double get_width(self): return self.size.x
 
@@ -138,13 +139,13 @@ cdef class NvRenderTexture:
             new_nvtexture.fast_blit(self, (0, 0), flip)
             end_blend_mode()
         return new_nvtexture
-    
+
     def __dealloc__(self):
         try:
             if hasattr(self, 'render_texture') and self.loaded and md.rl.is_window_ready():
                 md.rl.unload_render_texture(self.render_texture) # type: ignore
         except Exception: pass
-        
+
     def __enter__(self):
         assert self.loaded, "Render texture not loaded"
         begin_texture_mode(self.render_texture) # type: ignore
