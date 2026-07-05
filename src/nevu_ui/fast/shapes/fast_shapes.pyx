@@ -14,7 +14,6 @@ cimport numpy as np
 cimport cython
 from cython.parallel import prange
 from functools import lru_cache
-import pygame
 from libc.string cimport memcpy
 
 cdef extern from "math.h":
@@ -42,7 +41,7 @@ cpdef object _create_outlined_rounded_rect_sdf(tuple size, int radius, float wid
 
     cdef object surf = md.pygame.Surface((w, h), md.pygame.SRCALPHA)
     surf.fill((0, 0, 0, 0))
-    
+
     cdef uint8_t[:, :, :] pixels3d = md.pygame.surfarray.pixels3d(surf)
     cdef uint8_t[:, :] pixels_alpha = md.pygame.surfarray.pixels_alpha(surf)
 
@@ -54,9 +53,9 @@ cpdef object _create_outlined_rounded_rect_sdf(tuple size, int radius, float wid
     cdef uint8_t g = color[1]
     cdef uint8_t b = color[2]
 
-    cdef float center_x = (w - 1) * 0.5 
+    cdef float center_x = (w - 1) * 0.5
     cdef float center_y = (h - 1) * 0.5
-    
+
     cdef float centerline_w = ((w - width) - 2.0 * center_radius - 1.0) * 0.5
     cdef float centerline_h = ((h - width) - 2.0 * center_radius - 1.0) * 0.5
 
@@ -206,9 +205,9 @@ cpdef object _create_outlined_rounded_rect_sdf(tuple size, int radius, float wid
 cpdef object _create_rounded_rect_surface_optimized(tuple size, object radii_input, tuple color):
     cdef int width = int(size[0])
     cdef int height = int(size[1])
-    
+
     cdef float r_tl, r_tr, r_br, r_bl
-    
+
     if isinstance(radii_input, (int, float)):
         r_tl = r_tr = r_br = r_bl = <float>radii_input
     elif len(radii_input) == 4:
@@ -226,7 +225,7 @@ cpdef object _create_rounded_rect_surface_optimized(tuple size, object radii_inp
     if r_bl > min_dim: r_bl = min_dim
 
     cdef object surf = md.pygame.Surface((width, height), md.pygame.SRCALPHA)
-    
+
     cdef int alpha_base = color[3] if len(color) > 3 else 255
     if alpha_base == 0:
         surf.fill((0, 0, 0, 0))
@@ -236,7 +235,7 @@ cpdef object _create_rounded_rect_surface_optimized(tuple size, object radii_inp
 
     cdef uint8_t[:, :, :] pixels3d = md.pygame.surfarray.pixels3d(surf)
     cdef uint8_t[:, :] pixels_alpha = md.pygame.surfarray.pixels_alpha(surf)
-    
+
     cdef float center_x = (width - 1) * 0.5
     cdef float center_y = (height - 1) * 0.5
     cdef float half_w = width * 0.5
@@ -249,7 +248,7 @@ cpdef object _create_rounded_rect_surface_optimized(tuple size, object radii_inp
     cdef float dist_outside, dist_inside
     cdef float signed_dist, alpha_f
     cdef float qy_base
-    
+
     with nogil:
         if r_tl > 0.0:
             current_r = r_tl
@@ -322,16 +321,16 @@ cpdef object _create_rounded_rect_surface_optimized(tuple size, object radii_inp
                     elif signed_dist > -0.5:
                         alpha_f = 0.5 - signed_dist
                         pixels_alpha[x, y] = <uint8_t>(alpha_f * alpha_base)
-                        
+
     return surf
 
 cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input, float stroke_width, tuple color, object background_color=None):
     cdef int w = surf.get_width()
     cdef int h = surf.get_height()
     cdef float half_width = stroke_width / 2.0
-    
+
     cdef float r_tl, r_tr, r_br, r_bl
-    
+
     if isinstance(radii_input, (int, float)):
         r_tl = r_tr = r_br = r_bl = <float>radii_input
     elif len(radii_input) == 4:
@@ -346,7 +345,7 @@ cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input,
     r_tr = fmaxf(r_tr - half_width, 0.0)
     r_br = fmaxf(r_br - half_width, 0.0)
     r_bl = fmaxf(r_bl - half_width, 0.0)
-    
+
     cdef uint8_t[:, :, :] pixels3d = md.pygame.surfarray.pixels3d(surf)
     cdef uint8_t[:, :] pixels_alpha = md.pygame.surfarray.pixels_alpha(surf)
 
@@ -358,7 +357,7 @@ cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input,
     cdef int has_bg = 1 if background_color is not None else 0
     cdef uint8_t bg_r = 0, bg_g = 0, bg_b = 0, bg_a = 0
     cdef float bg_alpha_mult = 0.0
-    
+
     if has_bg:
         bg_r = background_color[0]
         bg_g = background_color[1]
@@ -373,7 +372,7 @@ cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input,
 
     cdef float center_x = (w - 1) * 0.5
     cdef float center_y = (h - 1) * 0.5
-    
+
     cdef float box_half_w = (w - stroke_width) * 0.5
     cdef float box_half_h = (h - stroke_width) * 0.5
 
@@ -383,10 +382,10 @@ cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input,
     cdef float qx, qy
     cdef float dist_outside, dist_inside
     cdef float signed_dist, dist_from_edge
-    
+
     cdef float sa, ba_eff, total_a, out_r, out_g, out_b, inv_total_a
     cdef float orig_a, orig_r, orig_g, orig_b
-    
+
     cdef float qy_base
     cdef float r_right, r_left
 
@@ -395,53 +394,53 @@ cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input,
             for y in range(h):
                 py = y - center_y
                 qy_base = fabsf(py) - box_half_h
-                
+
                 if py > 0.0:
                     r_right = r_br
                     r_left = r_bl
                 else:
                     r_right = r_tr
                     r_left = r_tl
-                
+
                 for x in range(w):
                     px = x - center_x
-                    
+
                     if px > 0.0:
                         current_r = r_right
                     else:
                         current_r = r_left
-                    
+
                     qx = fabsf(px) - box_half_w + current_r
                     qy = qy_base + current_r
-                    
+
                     dist_outside = sqrtf(fmaxf(qx, 0.0)**2 + fmaxf(qy, 0.0)**2)
                     dist_inside = fminf(fmaxf(qx, qy), 0.0)
-                    
+
                     signed_dist = dist_outside + dist_inside - current_r
-                    
+
                     if signed_dist > half_width + 0.5:
                         pixels_alpha[x, y] = 0
                         continue
-                        
+
                     dist_from_edge = fabsf(signed_dist)
-                    
+
                     sa = 0.5 - (dist_from_edge - half_width)
                     sa = fminf(fmaxf(sa, 0.0), 1.0) * stroke_alpha_mult
-                    
+
                     ba_eff = half_width - signed_dist
                     ba_eff = fminf(fmaxf(ba_eff, 0.0), 1.0) * bg_alpha_mult
-                    
+
                     total_a = sa + ba_eff * (1.0 - sa)
                     if total_a > 0.0:
                         inv_total_a = 1.0 / total_a
                         out_r = (r * sa + bg_r * ba_eff * (1.0 - sa)) * inv_total_a
                         out_g = (g * sa + bg_g * ba_eff * (1.0 - sa)) * inv_total_a
                         out_b = (b * sa + bg_b * ba_eff * (1.0 - sa)) * inv_total_a
-                        
+
                         pixels3d[x, y, 0] = <uint8_t>out_r
                         pixels3d[x, y, 1] = <uint8_t>out_g
                         pixels3d[x, y, 2] = <uint8_t>out_b
-                        
+
                         if total_a >= 1.0:
                             pixels_alpha[x, y] = 255
                         else:
@@ -453,42 +452,42 @@ cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input,
             for y in range(h):
                 py = y - center_y
                 qy_base = fabsf(py) - box_half_h
-                
+
                 if py > 0.0:
                     r_right = r_br
                     r_left = r_bl
                 else:
                     r_right = r_tr
                     r_left = r_tl
-                
+
                 for x in range(w):
                     px = x - center_x
-                    
+
                     if px > 0.0:
                         current_r = r_right
                     else:
                         current_r = r_left
-                    
+
                     qx = fabsf(px) - box_half_w + current_r
                     qy = qy_base + current_r
-                    
+
                     dist_outside = sqrtf(fmaxf(qx, 0.0)**2 + fmaxf(qy, 0.0)**2)
                     dist_inside = fminf(fmaxf(qx, qy), 0.0)
-                    
+
                     signed_dist = dist_outside + dist_inside - current_r
-                    
+
                     if signed_dist > half_width + 0.5:
                         pixels_alpha[x, y] = 0
                         continue
-                        
+
                     dist_from_edge = fabsf(signed_dist)
-                    
+
                     sa = 0.5 - (dist_from_edge - half_width)
                     sa = fminf(fmaxf(sa, 0.0), 1.0) * stroke_alpha_mult
-                    
+
                     if signed_dist < -(half_width + 0.5):
                         continue
-                        
+
                     if sa > 0.0:
                         if signed_dist > 0.0:
                             pixels3d[x, y, 0] = r
@@ -509,18 +508,18 @@ cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input,
                                 orig_r = pixels3d[x, y, 0]
                                 orig_g = pixels3d[x, y, 1]
                                 orig_b = pixels3d[x, y, 2]
-                                
+
                                 total_a = sa + orig_a * (1.0 - sa)
                                 if total_a > 0.0:
                                     inv_total_a = 1.0 / total_a
                                     out_r = (r * sa + orig_r * orig_a * (1.0 - sa)) * inv_total_a
                                     out_g = (g * sa + orig_g * orig_a * (1.0 - sa)) * inv_total_a
                                     out_b = (b * sa + orig_b * orig_a * (1.0 - sa)) * inv_total_a
-                                    
+
                                     pixels3d[x, y, 0] = <uint8_t>out_r
                                     pixels3d[x, y, 1] = <uint8_t>out_g
                                     pixels3d[x, y, 2] = <uint8_t>out_b
-                                    
+
                                     if total_a >= 1.0:
                                         pixels_alpha[x, y] = 255
                                     else:
@@ -534,9 +533,9 @@ cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input,
 cpdef void transform_into_rounded_rect(object surf, object radii_input, object color=None):
     cdef int width = surf.get_width()
     cdef int height = surf.get_height()
-    
+
     cdef float r_tl, r_tr, r_br, r_bl
-    
+
     if isinstance(radii_input, (int, float)):
         r_tl = r_tr = r_br = r_bl = <float>radii_input
     elif len(radii_input) == 4:
@@ -559,7 +558,7 @@ cpdef void transform_into_rounded_rect(object surf, object radii_input, object c
     cdef int has_color = 1 if color is not None else 0
     cdef int alpha_base = 0
     cdef uint8_t r = 0, g = 0, b = 0
-    
+
     if has_color:
         alpha_base = color[3] if len(color) > 3 else 255
         r = color[0]
@@ -580,18 +579,18 @@ cpdef void transform_into_rounded_rect(object surf, object radii_input, object c
 
     cdef uint8_t[:, :, :] pixels3d = md.pygame.surfarray.pixels3d(surf)
     cdef uint8_t[:, :] pixels_alpha = md.pygame.surfarray.pixels_alpha(surf)
-    
+
     cdef float center_x = (width - 1) * 0.5
     cdef float center_y = (height - 1) * 0.5
-    
+
     cdef float box_half_w = (width - 1) * 0.5
     cdef float box_half_h = (height - 1) * 0.5
-    
+
     cdef int x, y
     cdef float px, py, current_r
     cdef float qx, qy, dist_outside, dist_inside, signed_dist, alpha_f
     cdef float qy_base
-    
+
     with nogil:
         if r_tl > 0.0:
             current_r = r_tl
