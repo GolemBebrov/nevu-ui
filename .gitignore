@@ -21,6 +21,9 @@ venv/
 venv313/
 venv312/
 env/
+*.xml
+*.md
+tests/offtopic
 
 test/
 *.ttf
