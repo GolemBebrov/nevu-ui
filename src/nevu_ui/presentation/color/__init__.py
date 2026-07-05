@@ -1,6 +1,13 @@
 from .color import Color
+from .color_theme import (
+    ColorPair,
+    ColorSubTheme,
+    ColorTheme,
+    PairColorRole,
+    SubThemeRole,
+    TupleColorRole,
+)
 from .color_theme_library import ColorThemeLibrary
-from .color_theme import ColorTheme, ColorSubTheme, ColorPair, TupleColorRole, PairColorRole, SubThemeRole
 
 __all__ = [
     "Color",
@@ -10,4 +17,5 @@ __all__ = [
     "ColorPair",
     "TupleColorRole",
     "PairColorRole",
-    "SubThemeRole"]
+    "SubThemeRole",
+]

@@ -1,3 +1,1 @@
-from . import layouts
-from . import widgets
-from . import nevuobj
+from . import layouts, nevuobj, widgets

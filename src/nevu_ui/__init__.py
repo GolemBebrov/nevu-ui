@@ -1,79 +1,248 @@
-
-from . import core
-
-from . import utils
-from . import presentation
-from . import components
-
-from .presentation import animations
-from .core import size
-
+from . import components, core, presentation, utils
+from .components.layouts import (
+    CheckBoxGroup,
+    ColorPicker,
+    Column,
+    Gallery_Pages,
+    Grid,
+    LayoutType,
+    Pages,
+    Panel,
+    Row,
+    ScrollableColumn,
+    ScrollableRow,
+    StackColumn,
+    StackRow,
+)
 from .components.nevuobj import NevuObject
-from .menu import Menu
-
-from .manager import Manager
+from .components.nevuobj.typehints import nevu_object_globals
+from .components.widgets import (
+    Button,
+    Element,
+    ElementSwitcher,
+    EmptyWidget,
+    Gif,
+    Image,
+    Input,
+    Label,
+    MusicPlayer,
+    ProgressBar,
+    RectCheckBox,
+    Slider,
+    Switch,
+    Widget,
+)
+from .components.widgets.typehints import widget_globals
+from .core import size
+from .core.annotations import VERSION, Annotations
+from .core.classes import BorderConfig, TooltipType, nevu_globals
+from .core.enums import (
+    Align,
+    AnimationType,
+    Backend,
+    CacheType,
+    ConfigLoadType,
+    EventType,
+    GradientType,
+    HoverState,
+    LinearSide,
+    RadialPosition,
+)
+from .core.size.units import (
+    Fill,
+    FillH,
+    FillW,
+    Gc,
+    Gch,
+    Gcw,
+    PercentSizeRule,
+    Px,
+    SizeRule,
+    SizeUnit,
+    Vh,
+    Vw,
+    cfill,
+    cfillh,
+    cfillw,
+    cgc,
+    cgch,
+    cgcw,
+    cvh,
+    cvw,
+    fill,
+    fill_all,
+    fill_half,
+    fill_perc,
+    fillh,
+    fillw,
+    gc,
+    gch,
+    gcw,
+    px,
+    vh,
+    vw,
+)
+from .core.state import nevu_state
 from .fast import NvVector2
+from .fast.nevucache.nevucache import Cache
 from .fast.nvrect import NvRect
 from .fast.nvrendertex import NvRenderTexture
-
-from .rendering import Gradient
-from .core.state import nevu_state
-from .parser import apply_config, get_style, get_color, get_all_styles, get_all_colors, get_colortheme, get_all_colorthemes
-from .overlay import overlay, Tooltip
-
-from .core.size.units import (
-    SizeRule, PercentSizeRule, SizeUnit, Fill, FillW, FillH, Vh, Vw, Gc, Gcw, Gch, fill, fillw, fillh, vh, vw, gc, gcw, gch, px, Px, cfill, cfillw, cfillh, cvh, cvw, cgc, cgcw, cgch
+from .manager import Manager
+from .menu import Menu
+from .overlay import Tooltip, overlay
+from .parser import (
+    apply_config,
+    get_all_colors,
+    get_all_colorthemes,
+    get_all_styles,
+    get_color,
+    get_colortheme,
+    get_style,
 )
+from .presentation import animations
 from .presentation.color import (
-    Color, ColorTheme, ColorSubTheme, ColorPair, ColorThemeLibrary, SubThemeRole, PairColorRole, TupleColorRole
+    Color,
+    ColorPair,
+    ColorSubTheme,
+    ColorTheme,
+    ColorThemeLibrary,
+    PairColorRole,
+    SubThemeRole,
+    TupleColorRole,
 )
-from .presentation.style import (
-    Style, default_style, StateVariable
-)
-from .core.enums import (
-    Align, HoverState, LinearSide, RadialPosition, GradientType, CacheType, EventType, Backend, ConfigLoadType, AnimationType
-)
-from .core.classes import TooltipType, BorderConfig, nevu_globals
-from .components.widgets import (
-    Widget, Label, Button, EmptyWidget, RectCheckBox, Image, Gif, Input, MusicPlayer, ElementSwitcher, Element, ProgressBar, Slider, Switch
-)
-
-from .components.widgets.typehints import widget_globals
-from .components.nevuobj.typehints import nevu_object_globals
-
-from .components.layouts import (
-    LayoutType, Grid, Row, Column, ScrollableColumn, ScrollableRow, ColorPicker, Pages, Gallery_Pages, StackRow, StackColumn, CheckBoxGroup, Panel
-)
-from .utils import (
-    time, Time, keyboard, NevuEvent, InputType, mouse, load_font, Keys
-)
-
-from .fast.nevucache.nevucache import Cache
-
+from .presentation.style import StateVariable, Style, default_style
+from .rendering import Gradient
+from .utils import InputType, Keys, NevuEvent, Time, keyboard, load_font, mouse, time
 from .window.window import (
-    Window, ResizeType, ZRequest, ConfiguredWindow, InitializedWindow
+    ConfiguredWindow,
+    InitializedWindow,
+    ResizeType,
+    Window,
+    ZRequest,
 )
 
 __all__ = [
-    #===Most Used===
-    "Menu", "Window", "ConfiguredWindow", "NevuObject", "Manager", "NvVector2", "nevu_state", "apply_config", "get_style", "get_color", "get_all_styles", "get_all_colors", "overlay", "TooltipType",
-    #===Widgets===
-    "Widget", "Label", "Button", "EmptyWidget", "RectCheckBox", "Image", "Gif", "Input", "MusicPlayer", "ElementSwitcher", "Element", "ProgressBar", "Slider", "Tooltip", "Switch",
-    #===Layouts===
-    "LayoutType", "Grid", "Row", "Column", "ScrollableColumn", "ScrollableRow", "ColorPicker", "Pages", "Gallery_Pages", "StackRow", "StackColumn", "CheckBoxGroup", "Panel",
-    #===Utils===
-    "time", "Time", "mouse", "keyboard", "Cache", "NevuEvent", "InputType", "NvRect", "load_font", "load_image", "load_image_texture", "gradient_queue", "Keys", "NvRenderTexture",
-    #===Size vars===
-    "Fill", "FillW", "FillH", "Vh", "Vw", "Gc", "Gcw", "Gch", "fill", "fillw", "fillh", "vh", "vw", "gc", "gcw", "gch", "px", "Px", "cfill", "cfillw", "cfillh", "cvh", "cvw", "cgc", "cgcw", "cgch",
-    #===Color===
-    "Color", "ColorTheme", "ColorSubTheme", "ColorPair", "ColorThemeLibrary", "SubThemeRole", "PairColorRole", "TupleColorRole",
-    #===Style===
-    "Style", "default_style", "StateVariable", "Gradient", "ConfigLoadType",
-    #===Enums===
-    "Align", "LinearSide", "RadialPosition", "GradientType", "EventType", "ResizeType", "Backend", "AnimationType",
-    #===Submodules===
-    "animations", "utils", "size", "core", "presentation", "fast", "rendering", "components",
+    # ===Most Used===
+    "Menu",
+    "Window",
+    "ConfiguredWindow",
+    "NevuObject",
+    "Manager",
+    "NvVector2",
+    "nevu_state",
+    "apply_config",
+    "get_style",
+    "get_color",
+    "get_all_styles",
+    "get_all_colors",
+    "overlay",
+    "TooltipType",
+    # ===Widgets===
+    "Widget",
+    "Label",
+    "Button",
+    "EmptyWidget",
+    "RectCheckBox",
+    "Image",
+    "Gif",
+    "Input",
+    "MusicPlayer",
+    "ElementSwitcher",
+    "Element",
+    "ProgressBar",
+    "Slider",
+    "Tooltip",
+    "Switch",
+    # ===Layouts===
+    "LayoutType",
+    "Grid",
+    "Row",
+    "Column",
+    "ScrollableColumn",
+    "ScrollableRow",
+    "ColorPicker",
+    "Pages",
+    "Gallery_Pages",
+    "StackRow",
+    "StackColumn",
+    "CheckBoxGroup",
+    "Panel",
+    # ===Utils===
+    "time",
+    "Time",
+    "mouse",
+    "keyboard",
+    "Cache",
+    "NevuEvent",
+    "InputType",
+    "NvRect",
+    "load_font",
+    "load_image",
+    "load_image_texture",
+    "gradient_queue",
+    "Keys",
+    "NvRenderTexture",
+    # ===Size vars===
+    "Fill",
+    "FillW",
+    "FillH",
+    "Vh",
+    "Vw",
+    "Gc",
+    "Gcw",
+    "Gch",
+    "fill",
+    "fillw",
+    "fillh",
+    "vh",
+    "vw",
+    "gc",
+    "gcw",
+    "gch",
+    "px",
+    "Px",
+    "cfill",
+    "cfillw",
+    "cfillh",
+    "cvh",
+    "cvw",
+    "cgc",
+    "cgcw",
+    "cgch",
+    # ===Color===
+    "Color",
+    "ColorTheme",
+    "ColorSubTheme",
+    "ColorPair",
+    "ColorThemeLibrary",
+    "SubThemeRole",
+    "PairColorRole",
+    "TupleColorRole",
+    # ===Style===
+    "Style",
+    "default_style",
+    "StateVariable",
+    "Gradient",
+    "ConfigLoadType",
+    # ===Enums===
+    "Align",
+    "LinearSide",
+    "RadialPosition",
+    "GradientType",
+    "EventType",
+    "ResizeType",
+    "Backend",
+    "AnimationType",
+    # ===Submodules===
+    "animations",
+    "utils",
+    "size",
+    "core",
+    "presentation",
+    "fast",
+    "rendering",
+    "components",
 ]
 
-version = "0.8.0" #okabe 1.048596% based, lelush buryatskiy povelevae bagi uydite
-print(f"nevu-ui {version}")
+# okabe 1.048596% based, lelush buryatskiy povelevae bagi uydite
+print(f"nevu-ui {VERSION}")
