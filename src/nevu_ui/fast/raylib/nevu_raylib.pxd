@@ -16,6 +16,8 @@ cpdef void draw_texture_pro(object texture, tuple source_rec, tuple dest_rec, tu
 cpdef void begin_blend_mode(int mode)
 cpdef void end_blend_mode()
 cpdef void begin_texture_mode(object target)
+cdef void nv_clear_background(NvRect color)
+cdef void c_clear_background_blank() noexcept
 cpdef void end_texture_mode()
 cpdef void draw_texture_vec(object texture, tuple position, tuple color, bint flip)
 cpdef void clear_background(tuple color)

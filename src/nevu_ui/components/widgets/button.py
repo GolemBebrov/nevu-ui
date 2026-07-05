@@ -1,17 +1,30 @@
 import copy
-from typing import Unpack, Callable
+from typing import Callable, Unpack
 
+from nevu_ui.components.widgets import ButtonKwargs, Label
 from nevu_ui.core import Annotations
-from nevu_ui.components.widgets import Label, ButtonKwargs
+
 
 class Button(Label):
-    def __init__(self, function: Callable, text: str, size: Annotations.nevuobj_size = None, style: Annotations.nevuobj_style = None, **constant_kwargs: Unpack[ButtonKwargs]):
+    # === Params ===
+    is_active: bool
+    throw_errors: bool
+
+    # ==============
+    def __init__(
+        self,
+        function: Callable,
+        text: str,
+        size: Annotations.nevuobj_size = None,
+        style: Annotations.nevuobj_style = None,
+        **constant_kwargs: Unpack[ButtonKwargs],
+    ):
         super().__init__(text, size, style, **constant_kwargs)
         self.function = function
-        
+
     def _init_booleans(self):
         super()._init_booleans()
-    
+
     def _add_params(self):
         super()._add_params()
         self._add_param("is_active", bool, True)
@@ -21,10 +34,23 @@ class Button(Label):
 
     def _on_keyup_system(self):
         super()._on_keyup_system()
-        if not ((func := self.function) and self.is_active): return
-        try: func()
+        if not ((func := self.function) and self.is_active):
+            return
+        try:
+            func()
         except Exception as e:
-            if self.throw_errors: raise e
-            else: print(f"Error in Button(id = {self.id}, text = {self.text!r}) function: {e}")
-                
-    def _create_clone(self): return Button(self.function, self._template['text'], self._template['size'], copy.deepcopy(self.style), **self.constant_kwargs)
+            if self.throw_errors:
+                raise e
+            else:
+                print(
+                    f"Error in Button(id = {self.id}, text = {self.text!r}) function: {e}"
+                )
+
+    def _create_clone(self):
+        return Button(
+            self.function,
+            self._template["text"],
+            self._template["size"],
+            copy.deepcopy(self.style),
+            **self.constant_kwargs,
+        )

@@ -1,225 +1,292 @@
 import math
-from typing import Unpack
+from typing import Any, Callable, Unpack, overload
 
 import nevu_ui.core.modules as md
+from nevu_ui.components.widgets import Widget
+from nevu_ui.components.widgets.typehints import (
+    ProgressBarKwargs,
+    ProgressBarKwargsLong,
+    ProgressBarKwargsShort,
+)
 from nevu_ui.core import Annotations
-from nevu_ui.fast import NvVector2, NvRenderTexture
-from nevu_ui.core.enums import ConstantLayer, RenderConfig, RenderReturnType
+from nevu_ui.core.enums import ParamLayer, RenderConfig, RenderReturnType
 from nevu_ui.core.state import nevu_state
-from nevu_ui.presentation.color import PairColorRole, Color
+from nevu_ui.fast import NvRenderTexture, NvVector2
 from nevu_ui.fast.raylib.nevu_raylib import begin_blend_mode, end_blend_mode
-from nevu_ui.components.widgets import Widget, ProgressBarKwargs
+from nevu_ui.presentation.color import Color, PairColorRole
+from nevu_ui.rendering import DrawBaseCall
+
 
 class ProgressBar(Widget):
-    _current_value: int | float
-    color_pair_role: PairColorRole
-    def __init__(self, size: Annotations.nevuobj_size = None, style: Annotations.nevuobj_style = None, **constant_kwargs: Unpack[ProgressBarKwargs]):
-        """Initializes a new ProgressBar widget.
+    # === Params ===
+    start_value: int | float
+    end_value: int | float
+    current_value: int | float
+    filled_rect_role: PairColorRole
+    on_current_value_change: Callable | None
 
-        A visual widget that indicates the progress of an operation or a value
-        within a defined range. The filled portion of the bar represents the
-        current value relative to its minimum and maximum bounds.
+    # ==============
+    @overload
+    def __init__(
+        self,
+        size: Annotations.nevuobj_size = None,
+        style: Annotations.nevuobj_style = None,
+        **constant_kwargs: Unpack[ProgressBarKwargsLong],
+    ): ...
 
-        Parameters
-        ----------
-        size : NvVector2 | list
-            The size of the widget.
-        style : Style, optional
-            The style object for the widget. Defaults to default_style.
-        min_value : int or float, optional
-            The minimum value of the progress bar. Alias: 'min'.
-            Passed via keyword arguments. Defaults to 0.
-        max_value : int or float, optional
-            The maximum value of the progress bar. Alias: 'max'.
-            Passed via keyword arguments. Defaults to 100.
-        value : int or float, optional
-            The initial value of the progress bar. This will determine the
-            initial filled percentage. Passed via keyword arguments.
-            Defaults to 0.
-        color_pair_role : PairColorRole, optional
-            The color role used to determine the color of the filled progress
-            portion. Alias: 'role'. Passed via keyword arguments.
-            Defaults to PairColorRole.BACKGROUND.
-        """
+    @overload
+    def __init__(
+        self,
+        size: Annotations.nevuobj_size = None,
+        style: Annotations.nevuobj_style = None,
+        **constant_kwargs: Unpack[ProgressBarKwargsShort],
+    ): ...
+
+    def __init__(
+        self,
+        size: Annotations.nevuobj_size = None,
+        style: Annotations.nevuobj_style = None,
+        **constant_kwargs: Any,
+    ):
         super().__init__(size, style, **constant_kwargs)
-        self.set_progress_by_value(self.value)
-    
+        self.set_progress_by_value(self.current_value)
+
     def _init_booleans(self):
         super()._init_booleans()
         self.hoverable = False
-        self._changed_value = False
+        self._changed_value = True
+        self._changed_curr_val = False
+        self._changed_other_val = False
         self._supports_tuple_borderradius = False
-    
+
     def _add_params(self):
         super()._add_params()
-        self._add_param("min_value", (int, float), 0, layer=ConstantLayer.Top)
-        self._add_param_link("min", "min_value")
-        self._add_param("max_value", (int, float), 100, layer=ConstantLayer.Top)
-        self._add_param_link("max", "max_value")
-        self._add_param("value", (int, float), 0, layer=ConstantLayer.Top)
-        self._add_param("color_pair_role", PairColorRole, PairColorRole.BACKGROUND)
-        self._add_param_link("role", "color_pair_role")
-        
+        self._add_param(
+            "start_value",
+            int | float,
+            0,
+            layer=ParamLayer.Top,
+            setter=self._start_value_setter,
+        )
+        self._add_param_link("start", "start_value")
+        self._add_param(
+            "end_value",
+            int | float,
+            100,
+            layer=ParamLayer.Top,
+            setter=self._end_value_setter,
+        )
+        self._add_param_link("end", "end_value")
+        self._add_param(
+            "current_value",
+            int | float,
+            0,
+            layer=ParamLayer.Complicated,
+            setter=self._current_value_setter,
+        )
+        self._add_param_link("current", "current_value")
+        self._add_param("on_current_value_change", type(None) | Callable, None)
+        self._add_param_link("on_value_change", "on_current_value_change")
+        self._add_param("filled_rect_role", PairColorRole, PairColorRole.BACKGROUND)
+        self._add_param_link("role", "filled_rect_role")
+
     @property
-    def progress(self): return self._progress
+    def progress(self):
+        return self._progress
+
     @progress.setter
     def progress(self, value):
         self._progress = value
-        self.value = self.min_value + (self.max_value - self.min_value) * self._progress
-    
+        self.current_value = (
+            self.start_value + (self.end_value - self.start_value) * self._progress
+        )
+
     def _base_clear(self):
         self._changed = True
+        self._changed_value = True
         self.clear_surfaces()
         self.clear_texture()
-    
-    @property
-    def min_value(self): return self.get_param_value("min_value")
-    @min_value.setter
-    def min_value(self, value): 
-        self.set_param_value("min_value", value)
-        self.set_progress_by_value(self.value)
-        self._base_clear()
-    @property
-    def max_value(self): return self.get_param_value("max_value")
-    @max_value.setter
-    def max_value(self, value): 
-        self.set_param_value("max_value", value)
-        self.set_progress_by_value(self.value)
-        self._base_clear()
-    @property
-    def value(self): return self.get_param_strict("value").value
-    @value.setter
-    def value(self, value): 
-        self.set_param_value("value", value)
-        #self.set_progress_by_value(value)
-        self._base_clear()
-    
-    def set_progress_by_value(self, value: int | float):
-        self.progress = (value - self.min_value) / (self.max_value - self.min_value)
-    
-    def _on_value_change_system(self): pass
-    def on_value_change(self): pass
-    
-    def _init_alt(self):
-        super()._init_alt()
-        self._subtheme_progress = self._alt_subtheme_progress if self.alt else self._main_subtheme_progress
-    
-    @property
-    def _main_subtheme_progress(self):
-        return self.style.colortheme.get_pair(self.color_pair_role).color
 
-    @property
+    def _start_value_setter(self, value):
+        self._base_clear()
+        self._changed_other_val = True
+        return value
+
+    def _end_value_setter(self, value):
+        self._base_clear()
+        self._changed_other_val = True
+        return value
+
+    def _current_value_setter(self, value):
+        self._base_clear()
+        if self._changed_other_val:
+            self._changed_other_val = False
+            return value
+        self._changed_curr_val = True
+        return value
+
+    def set_progress_by_value(self, value: int | float):
+        self.progress = (value - self.start_value) / (self.end_value - self.start_value)
+
+    def _init_inverted(self):
+        super()._init_inverted()
+        self._subtheme_progress = (
+            self._alt_subtheme_progress()
+            if self.inverted
+            else self._main_subtheme_progress()
+        )
+        if len(self._subtheme_progress) == 3:
+            self._subtheme_progress = (
+                self._subtheme_progress[0],
+                self._subtheme_progress[1],
+                self._subtheme_progress[2],
+                255,
+            )
+
+    def _main_subtheme_progress(self):
+        return self.style.colortheme.get_pair(self.filled_rect_role).color
+
     def _alt_subtheme_progress(self):
-        return self.style.colortheme.get_pair(self.color_pair_role).oncolor
-    
+        return self.style.colortheme.get_pair(self.filled_rect_role).oncolor
+
     def _primary_draw(self):
         super()._primary_draw()
         surface = self.surface
-        if not (self._changed and surface): return
+
         dtype = nevu_state.window.renderer_type
-        
+
         if dtype.raylib:
             assert isinstance(surface, NvRenderTexture)
             texture = surface.texture
-            self.bgsurface = NvRenderTexture(NvVector2.from_xy(texture.width, texture.height))
-            display = nevu_state.window.renderer
-            assert nevu_state.window.is_raylib(display)
-            bg_surf = self.bgsurface
+            bg_surf = NvRenderTexture(NvVector2.from_xy(texture.width, texture.height))
             with bg_surf:
                 bg_surf.fast_clear(Color.Blank)
                 begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-                bg_surf.fast_blit(surface, (0,0))
+                bg_surf.fast_blit(surface, (0, 0))
                 end_blend_mode()
-               
+            self.bgsurface = bg_surf
+
         elif dtype.pygame_like:
             pygame = md.pygame
             assert isinstance(surface, pygame.Surface)
-            self.bgsurface = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-            self.bgsurface.blit(surface, (0,0))
-            surface.fill((0,0,0,0))
-            
-        self._changed_value = True
+            bgsurface = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+            bgsurface.blit(surface, (0, 0))
+            self.bgsurface = bgsurface
+            surface.fill(Color.Blank)
+
+        if self._changed_value:
+            curr_value = self.current_value
+            if on_val_change := self.on_current_value_change:
+                on_val_change(self, curr_value)
+            self._changed_value = False
+            if self._changed_curr_val:
+                start_val = self.start_value
+                self._progress = (self.current_value - start_val) / (
+                    self.end_value - start_val
+                )
+            else:
+                self.set_progress_by_value(curr_value)
+
         self.clear_texture()
-    
-    def _create_surface(self, bar_surf = None, coords = None):
+
+    def _create_surface(self, bar_surf=None, coords=None):
         assert self.surface
         assert coords
         self.clear_texture()
         surface = self.surface
         bg_surf = self.bgsurface
-        dtype = nevu_state.window.renderer_type
-        
-        if dtype.raylib:
+        rtype = nevu_state.window.renderer_type
+
+        if rtype.raylib:
             assert isinstance(surface, NvRenderTexture)
             assert isinstance(bg_surf, NvRenderTexture)
             surf_fast_blit = surface.fast_blit
-            with surface: #type: ignore
+            with surface:
                 surface.fast_clear(Color.Blank)
                 begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-                surf_fast_blit(bg_surf, (0,0))
+                surf_fast_blit(bg_surf, (0, 0))
                 if bar_surf:
                     surf_fast_blit(bar_surf, coords)
                 end_blend_mode()
-                
-        elif dtype.pygame_like:
+
+        elif rtype.pygame_like:
             assert isinstance(surface, md.pygame.Surface)
             assert isinstance(bg_surf, md.pygame.Surface)
             surface.fill(Color.Blank)
             surf_blit = surface.blit
-            surf_blit(bg_surf, (0,0))
+            surf_blit(bg_surf, (0, 0))
             if bar_surf:
                 surf_blit(bar_surf, coords)
-    
+
     def secondary_draw_content(self):
         super().secondary_draw_content()
-        if not (self._changed_value) or self.progress < 0: return
+        if self.progress < 0:
+            return
+
         self._changed_value = False
-        rsize = self._rsize
+        self._changed_curr_val = False
+
+        rsize = self._no_borders_size
         ceil = math.ceil
         relm = self.relm
         style = self.style
-        
-        size = NvVector2.from_xy(ceil(rsize.x * self.progress), rsize.y)
+
+        progress = max(0.0, min(1.0, self.progress))
+
+        width = int(rsize.x * progress)
+        if progress > 0 and width == 0:
+            width = 1
+
+        height = int(rsize.y)
+
+        size = NvVector2.from_xy(width, height)
         half_size = size / 2
-        
+
         bw = ceil(relm(style.border_width))
         radius = relm(style.border_radius) - bw
         min_side = min(rsize.x // 2, rsize.y // 2)
         radius = min(min_side, max(radius, 0))
-        
+
         y_decrease = 0
         if half_size.x < radius:
             y_decrease = ceil(radius - half_size.x)
-            if size.y - y_decrease * 2 > 0: size.y -= y_decrease * 2
-        
-        if size.x <= 0 or size.y <= 0: 
+            if size.y - y_decrease * 2 > 0:
+                size.y -= y_decrease * 2
+
+        if size.x <= 0 or size.y <= 0:
             self._create_surface(None, (0, 0))
             return
-        
+
         if isinstance(radius, int | float):
             radius = min(half_size.x, half_size.y, radius)
             radius = tuple((radius, radius, radius, radius))
-            
+
         color = self._subtheme_progress
-        if len(color) == 3: color = (*color, 255)
-        
+
         renderer = self.renderer
-        
         surf = renderer.core.create_clear(size)
-        renderer.run_base(
-                key = RenderConfig.DrawL1,
-                radius = style.border_radius,
-                easy_background = False,
-                size = size,
-                override_color = color,
-                gradient_support = False,
-                return_type = RenderReturnType.Modify,
-                modify_object = surf
-            )
         if nevu_state.window.renderer_type.raylib:
-            md.rl.set_texture_filter(surf.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
-        coords = (self._rsize_marg)
-        coords.y += y_decrease
+            assert isinstance(surf, NvRenderTexture)
+            md.rl.set_texture_filter(
+                surf.texture, md.rl.TextureFilter.TEXTURE_FILTER_TRILINEAR
+            )
+
+        renderer.run_base(
+            DrawBaseCall(
+                radius=style.border_radius,
+                easy_background=False,
+                size=size,
+                color=color,
+                gradient_support=False,
+                return_type=RenderReturnType.Modify,
+                modify_object=surf,
+                standstill=True,
+            )
+        )
+
+        coords = NvVector2.from_xy(
+            self._borders_marg_size.x, self._borders_marg_size.y + y_decrease
+        )
         assert self.surface
-        
+
         self._create_surface(surf, coords.to_tuple())

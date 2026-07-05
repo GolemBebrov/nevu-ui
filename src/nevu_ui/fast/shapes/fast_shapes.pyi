@@ -29,3 +29,9 @@ def transform_into_rounded_rect(
     radius: int | float | tuple, 
     color: Union[Tuple[int, int, int], Tuple[int, int, int, int]]
 ) -> None: ...
+
+def pblit(
+    source_surf: "Surface", 
+    dest_surf: "Surface", 
+    pos: Tuple[int, int], 
+) -> None: ...

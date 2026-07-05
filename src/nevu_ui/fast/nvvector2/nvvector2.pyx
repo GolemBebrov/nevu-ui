@@ -59,25 +59,25 @@ cdef class NvVector2:
     @staticmethod
     cdef inline NvVector2 cfrom_nvvector2(NvVector2 other):
         return NvVector2.new(other.data.x, other.data.y)
-    
+
     @staticmethod
     cdef inline NvVector2 cfrom_tuple(tuple other):
         cdef double x, y
         x = <double><object>PyTuple_GET_ITEM(other, 0)
         y = <double><object>PyTuple_GET_ITEM(other, 1)
         return NvVector2.new(x, y)
-    
+
     @staticmethod
     cdef inline NvVector2 cfrom_list(list other):
         cdef double x, y
         x = <double><object>PyList_GET_ITEM(other, 0)
         y = <double><object>PyList_GET_ITEM(other, 1)
         return NvVector2.new(x, y)
-    
+
     @staticmethod
     cdef inline NvVector2 cfrom_ints(int x, int y):
         return NvVector2.new(x, y)
-    
+
     @staticmethod
     cdef inline NvVector2 cfrom_floats(float x, float y):
         return NvVector2.new(x, y)
@@ -89,19 +89,19 @@ cdef class NvVector2:
     @staticmethod
     def from_nvvector2(NvVector2 other):
         return NvVector2.cfrom_nvvector2(other)
-    
+
     @staticmethod
     def from_tuple(tuple other):
         return NvVector2.cfrom_tuple(other)
-    
+
     @staticmethod
     def from_list(list other):
         return NvVector2.cfrom_list(other)
-    
+
     @staticmethod
     def from_ints(int x, int y):
         return NvVector2.cfrom_ints(x, y)
-    
+
     @staticmethod
     def from_floats(float x, float y):
         return NvVector2.cfrom_floats(x, y)
@@ -232,7 +232,7 @@ cdef class NvVector2:
 
     def get_int(self):
         return NvVector2.new(<int>self.data.x, <int>self.data.y)
-    
+
     def to_round(self):
         self.data.x = round(self.data.x)
         self.data.y = round(self.data.y)
@@ -259,25 +259,25 @@ cdef class NvVector2:
 
     def get_int_tuple(self):
         return (<int>self.data.x, <int>self.data.y)
-    
+
     cdef tuple c_get_int_tuple(self):
         return (<int>self.data.x, <int>self.data.y)
 
     def to_pygame(self):
         return md.pygame.Vector2(self.data.x, self.data.y)
-    
+
     cpdef NvVector2 copy(self):
         return NvVector2.new(self.data.x, self.data.y)
 
     def __copy__(self):
         return NvVector2.new(self.data.x, self.data.y)
-    
+
     def __deepcopy__(self, memo):
         return NvVector2.new(self.data.x, self.data.y)
-    
+
     def __hash__(self):
         return hash((self.data.x, self.data.y))
-    
+
     def __len__(self):
         return 2
 
@@ -289,15 +289,15 @@ cdef class NvVector2:
     @property
     def length(self):
         return nv_vector2_length(self.data)
-    
+
     def normalize(self):
         cdef nv_vector2_t res = nv_vector2_normalize(self.data)
         return NvVector2.new(res.x, res.y)
-    
+
     def normalize_ip(self):
         self.data = nv_vector2_normalize(self.data)
         return self
-    
+
     def distance_to(self, NvVector2 other):
         return nv_vector2_distance_to(self.data, other.data)
 

@@ -1,25 +1,28 @@
-from enum import Enum, auto, StrEnum, IntEnum
 from dataclasses import dataclass
+from enum import Enum, IntEnum, StrEnum, auto
 from typing import Callable
 
-#Svalka
-#faputa approved
+# Svalka
+# faputa approved
+
 
 class PressType(IntEnum):
     Still = 0
     Fdown = 1
     Down = 2
     Up = 3
-    
+
     WheelDown = -10
     WheelUp = 10
     WheelStill = 5
 
+
 class Backend(StrEnum):
     Pygame = "pygame"
-    Sdl = "sdl" 
+    Sdl = "sdl"
     Opengl = "opengl"
     RayLib = "raylib"
+
 
 class Align(StrEnum):
     CENTER = "center"
@@ -28,19 +31,23 @@ class Align(StrEnum):
     TOP = "top"
     BOTTOM = "bottom"
 
+
 class Malign(Enum):
     """This is a mirror of Align with PascalCase"""
+
     Center = Align.CENTER
     Left = Align.LEFT
     Right = Align.RIGHT
     Top = Align.TOP
     Bottom = Align.BOTTOM
 
-class ConstantLayer(IntEnum):
+
+class ParamLayer(IntEnum):
     Top = 1
     Basic = 2
     Complicated = 3
     Lazy = 4
+
 
 class AnimationManagerState(IntEnum):
     Start = 0
@@ -49,36 +56,43 @@ class AnimationManagerState(IntEnum):
     Idle = 3
     Ended = 4
 
-class GradientConfig(StrEnum): pass
+
+class GradientConfig(StrEnum):
+    pass
+
 
 class LinearSide(GradientConfig):
-    Right = 'to right'
-    Left = 'to left'
-    Top = 'to top'
-    Bottom = 'to bottom'
-    TopRight = 'to top right'
-    TopLeft = 'to top left'
-    BottomRight = 'to bottom right'
-    BottomLeft = 'to bottom left'
+    Right = "to right"
+    Left = "to left"
+    Top = "to top"
+    Bottom = "to bottom"
+    TopRight = "to top right"
+    TopLeft = "to top left"
+    BottomRight = "to bottom right"
+    BottomLeft = "to bottom left"
+
 
 class RadialPosition(GradientConfig):
-    Center = 'center'
-    TopCenter = 'top center'
-    TopLeft = 'top left'
-    TopRight = 'top right'
-    BottomCenter = 'bottom center'
-    BottomLeft = 'bottom left'
-    BottomRight = 'bottom right'
+    Center = "center"
+    TopCenter = "top center"
+    TopLeft = "top left"
+    TopRight = "top right"
+    BottomCenter = "bottom center"
+    BottomLeft = "bottom left"
+    BottomRight = "bottom right"
+
 
 class GradientType(StrEnum):
-    Linear = 'linear'
-    Radial = 'radial'
+    Linear = "linear"
+    Radial = "radial"
+
 
 class ResizeType(Enum):
     CropToRatio = auto()
     FillAllScreen = auto()
     ResizeFromOriginal = auto()
-    
+
+
 class CacheType(Enum):
     Coords = auto()
     RelSize = auto()
@@ -94,7 +108,7 @@ class CacheType(Enum):
     Texture = auto()
     TextArgs = auto()
     ClickTexture = auto()
-    
+
     RlFont = auto()
     RlText = auto()
     RlTexture = auto()
@@ -102,12 +116,14 @@ class CacheType(Enum):
     RlfinalTexture = auto()
     RlBaseTexture = auto()
 
+
 class AnimationType(Enum):
     Color = auto()
     Size = auto()
     Position = auto()
     Rotation = auto()
     Opacity = auto()
+
 
 class EventType(Enum):
     Resize = auto()
@@ -123,27 +139,33 @@ class EventType(Enum):
     OnCopy = auto()
     OnChange = auto()
 
+
 class ZRequestType(Enum):
     HoverCandidate = auto()
     Action = auto()
     Unclick = auto()
 
+
 class ScrollBarType(StrEnum):
     Vertical = "vertical"
     Horizontal = "horizontal"
+
 
 class HoverState(Enum):
     NotHovered = auto()
     Hovered = auto()
     Clicked = auto()
 
+
 class OvItemType(Enum):
     Texture = auto()
     DrawCall = auto()
-    
+
+
 class ConfigLoadType(StrEnum):
     Yaml = "yaml"
     Json = "json"
+
 
 class RenderConfig(StrEnum):
     DrawL1 = "draw_l1"
@@ -151,6 +173,8 @@ class RenderConfig(StrEnum):
     DrawL3 = "draw_l3"
     DrawL4 = "draw_l4"
     DrawL5 = "draw_l5"
+    Auto = "auto"
+
 
 class RenderReturnType(StrEnum):
     Raw = "raw"
@@ -159,19 +183,30 @@ class RenderReturnType(StrEnum):
     Modify = "modify"
     CreateNew = "create_new"
 
+
 class SwitchAxis(StrEnum):
     Vertical = "vertical"
     Horizontal = "horizontal"
     Auto = "auto"
 
+
 class _RenderArg:
     pass
 
+
 class RenderArgs:
-    class DrawBase(_RenderArg): pass
-    class DrawBorders(_RenderArg): pass
-    class DrawText(_RenderArg): pass
-    class DrawEffects(_RenderArg): pass
+    class DrawBase(_RenderArg):
+        pass
+
+    class DrawBorders(_RenderArg):
+        pass
+
+    class DrawText(_RenderArg):
+        pass
+
+    class DrawEffects(_RenderArg):
+        pass
+
     @dataclass
     class DrawCustom(_RenderArg):
-        custom_func: Callable 
+        custom_func: Callable

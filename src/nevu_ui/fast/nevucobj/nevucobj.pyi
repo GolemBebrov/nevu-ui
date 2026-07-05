@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, Callable
 from nevu_ui.fast.nvvector2.nvvector2 import NvVector2
 from nevu_ui.fast.nvparam.nvparam import NvParam
 from nevu_ui.fast.nvrect.nvrect import NvRect
@@ -43,9 +43,15 @@ class NevuCobject:
     def __init__(self, *args, **kwargs) -> None: ...
     
     def _get_param_names(self) -> List[str]: ...
-    
-    def _find_param(self, name: str) -> Any: ...
-    
+    @staticmethod
+    def _ensure_func_safety(function) -> Callable | None: ...
+    def _find_param(self, name: str) -> NvParam: ...
+    def _set_node_type(self, node_type: int) -> None: 
+        """
+        1 - Layout\n
+        0 - Widget
+        """
+        ...
     def _add_param(
         self, 
         name: str, 

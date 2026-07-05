@@ -25,7 +25,7 @@ cdef tuple fill_color = Color.White
 
 cdef inline void check_singleton() noexcept:
     global window_renderer_created
-    if window_renderer_created: raise RuntimeError("Window renderer already created")
+    #if window_renderer_created: raise RuntimeError("Window renderer already created")
     window_renderer_created = True
 
 cdef class WindowRendererBase:
@@ -238,10 +238,10 @@ cdef class WindowRendererRaylib:
         self.blit_rect_vec(source, coordinates, flip, mode=mode)
         self._end_shader()
 
-    cpdef fast_blit_sdf_vec(self, source, tuple coordinates, object radii, bint flip = True):
+    cpdef fast_blit_sdf_vec(self, source, tuple coordinates, object radii, bint flip = True, tuple color = Color.White):
         if isinstance(radii, int | float): radii = (radii, radii, radii, radii)
         self._begin_sdf(source.width, source.height, <tuple>radii)
-        self.fast_blit_pro(source, coordinates, flip)
+        self.fast_blit_pro(source, coordinates, flip, color = color)
         self._end_shader()
 
     cpdef blit_borders(self, source, tuple dest_rect, tuple radii, tuple border_color, tuple color = Color.White, double thickness = 1, bint flip = True, int mode = 0):

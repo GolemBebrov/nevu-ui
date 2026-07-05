@@ -15,14 +15,17 @@ from nevu_ui.fast.zsystem.fast_zsystem cimport ZRequest
 cdef class NevuCobject:
     cdef public bint _sended_z_link, _dragging, _is_kup, _kup_abandoned, _force_state_set_continue, _visible, _active, _changed, _first_update, _wait_mode, _dead, booted
     cdef public bint _custom_secondary_update, _custom_animation_update, _custom_logic_update, _custom_event_update
+    cdef public bint _custom_secondary_draw, _custom_secondary_draw_content, _custom_secondary_draw_end, _custom_primary_draw
     cdef public NvVector2 coordinates, absolute_coordinates, size, _resize_ratio
-    cdef public object _style, animation_manager, hover_state
+    cdef public object _style, hover_state
     cdef public list params, _blacklisted_params, _next_frame_functions
+    cdef public unsigned short node_type #1 - layout, 0 - widget
     cdef public dict _params_map, _param_links
     cdef public Cache cache
+    cdef public bint _has_position_anim
     cdef ZRequest _z_request
     cdef list specific_cache_whitelist
-
+    cpdef _set_node_type(self, short node_type)
     cpdef list _get_param_names(self)
     cpdef object _find_param(self, str name)
     cpdef void _add_param(self, str name, supported_classes, default, getter, setter, int layer)

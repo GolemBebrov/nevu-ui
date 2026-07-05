@@ -296,6 +296,20 @@ cdef void c_clear_background(tuple color):
     set_color(&c_col, color)
     _c_ClearBackground(c_col)
 
+cdef void nv_clear_background(NvRect color):
+    cdef Color c_col
+    set_color_nvrect(&c_col, color)
+    _c_ClearBackground(c_col)
+
+cdef void c_clear_background_blank() noexcept:
+    cdef Color c_col
+    c_col.r = <unsigned char>0
+    c_col.g = <unsigned char>0
+    c_col.b = <unsigned char>0
+    c_col.a = <unsigned char>0
+    _c_ClearBackground(c_col)
+
+
 cpdef void clear_background(tuple color):
     c_clear_background(color)
 

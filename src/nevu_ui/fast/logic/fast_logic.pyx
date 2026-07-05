@@ -108,12 +108,11 @@ cdef inline void _light_update_helper(
     
     cdef NevuCobject item 
     
-    cdef NvVector2 coords, anim_coords, coordinates, correct_coords
+    cdef NvVector2 coords, anim_coords
     cdef nv_vector2_t c_coords, c_anim_coords, new_coords
     cdef nv_vector2_t abs_coords
 
-    cdef object raw_anim_val, animation_manager
-    cdef int animation_manager_state
+    cdef object raw_anim_val, animation_manager, anim_state
 
     cdef Py_ssize_t i = 0
 
@@ -121,18 +120,25 @@ cdef inline void _light_update_helper(
     cdef PyObject** items_ptr = (<PyListObject*>items).ob_item
     cdef PyObject** coords_ptr = (<PyListObject*>cached_coordinates).ob_item
 
+    cdef object _pos_type = AnimationType.Position
+    cdef object _state_continuous = AnimationManagerState.Continuous
+    cdef object _state_ended = AnimationManagerState.Ended
+
     while i < n_items:
         item = <NevuCobject><void*>items_ptr[i]
         coords = <NvVector2><void*>coords_ptr[i]
         c_coords = coords.data
 
         animation_manager = item.animation_manager
-        animation_manager_state = <int>animation_manager.state.value # type: ignore
-        if not(animation_manager_state == 3 or animation_manager_state == 4) and (
-            raw_anim_val := animation_manager.get_animation_value(AnimationType.Position)): # type: ignore
-            anim_coords = <NvVector2><void*>raw_anim_val
-            c_anim_coords = anim_coords.data
-            new_coords = nv_vector2_add_triple(c_coords, rel_vec(c_anim_coords, item._resize_ratio.data), add_vec)
+        anim_state = animation_manager.state
+        if anim_state is not _state_ended:
+            raw_anim_val = animation_manager.get_animation_value(_pos_type)
+            if raw_anim_val is not None:
+                anim_coords = <NvVector2><void*>raw_anim_val
+                c_anim_coords = anim_coords.data
+                new_coords = nv_vector2_add_triple(c_coords, rel_vec(c_anim_coords, item._resize_ratio.data), add_vec)
+            else:
+                new_coords = nv_vector2_add(c_coords, add_vec)
         else:
             new_coords = nv_vector2_add(c_coords, add_vec)
 
@@ -167,7 +173,7 @@ cpdef bint collide_vertical(NvVector2 r1_tl, NvVector2 r1_br, NvVector2 r2_tl, N
 cpdef bint collide_vector(NvVector2 r1_tl, NvVector2 r1_br, NvVector2 r2_tl, NvVector2 r2_br):
     return (r1_tl.x < r2_br.x and r1_br.x > r2_tl.x) and (r1_tl.y < r2_br.y and r1_br.y > r2_tl.y)
 
-cdef inline get_item_abs_coords(NevuCobject layout, NevuCobject item):
+cdef inline NvVector2 get_item_abs_coords(NevuCobject layout, NevuCobject item):
     return item.coordinates._add(<NvVector2>layout.first_parent_menu.absolute_coordinates) 
 
 def py_get_item_abs_coords(NevuCobject layout not None, NevuCobject item not None):
@@ -233,12 +239,15 @@ cdef inline start_item(NevuCobject item, NevuCobject layout):
 ctypedef void (*DrawFuncPtr)(NevuCobject, NevuCobject, NvVector2)
 
 cdef inline void draw_item_pygame(NevuCobject layout, NevuCobject item, NvVector2 coordinates):
+    if not layout.surface: return
+    #pblit(item.surface, layout.surface, coordinates.to_tuple())
     layout.surface.blit(item.surface, coordinates.to_tuple()) #type: ignore
 
 cdef inline void draw_item_sdl(NevuCobject layout, NevuCobject item, NvVector2 coordinates):
     if not hasattr(item, '_sdl2_texture'): return
     if not item._sdl2_texture: return
-    nevu_state.window.display.blit(item._sdl2_texture, (coordinates.to_tuple(), item._csize.to_tuple())) #type: ignore
+    cdef object rect = md.pygame.Rect(coordinates.to_tuple(), item._csize.to_tuple())
+    nevu_state.renderer.blit(item._sdl2_texture, rect) #type: ignore
 
 _base_color_raylib = NvRect.new(255, 255, 255, 255)
 
@@ -246,24 +255,32 @@ cdef inline void draw_item_raylib(NevuCobject layout, NevuCobject item, NvVector
     cdef NvRenderTexture rend_tex = <NvRenderTexture>item.surface
     c_draw_nvtexture_nvvec(rend_tex, coordinates, _base_color_raylib, True)
 
-cdef inline void draw_widget_optimized(DrawFuncPtr draw_item, NevuCobject layout, NevuCobject item, type layout_type, type widget_type, bint is_raylib):
-    if isinstance(item, layout_type):
+cdef inline void draw_widget_optimized_pygame(DrawFuncPtr draw_item, NevuCobject layout, NevuCobject item, type layout_type, type widget_type):
+    if item.node_type == 1:
         item.draw()
         return 
 
-    if not is_raylib:
-        if item._changed:
-            item.draw()
+    if item._changed:
+        item.draw()
 
-    if isinstance(item, widget_type):
+    if item.node_type == 0:
+        draw_item(layout, item, item.coordinates)
+
+cdef inline void draw_widget_optimized_raylib(DrawFuncPtr draw_item, NevuCobject layout, NevuCobject item, type layout_type, type widget_type):
+    if item.node_type == 1:
+        item.draw()
+        return 
+
+    if item.node_type == 0:
         draw_item(layout, item, item.coordinates)
 
 cdef DrawFuncPtr _cached_draw_item = NULL
 cdef bint _cached_is_raylib = False
+cdef bint _draw_func_resolved = False
 
 cdef inline void _check_draw_item():
-    global _cached_draw_item, _cached_is_raylib
-    if _cached_draw_item == NULL:
+    global _cached_draw_item, _cached_is_raylib, _draw_func_resolved
+    if not _draw_func_resolved:
         dtype = nevu_state.window.renderer_type
         if dtype.pygame:
             draw_func = draw_item_pygame
@@ -273,6 +290,7 @@ cdef inline void _check_draw_item():
             draw_func = draw_item_raylib
             _cached_is_raylib = True
         _cached_draw_item = draw_func
+        _draw_func_resolved = True
 
 cpdef void draw_widgets_optimized(
     NevuCobject layout,
@@ -286,12 +304,18 @@ cpdef void draw_widgets_optimized(
     _check_draw_item()
 
     cdef Py_ssize_t i = 0
-    while i < n:
-        item = <NevuCobject><void*>items_ptr[i]
-        if not item._visible: i += 1; continue
-        draw_widget_optimized(_cached_draw_item, layout, item, layout_type, widget_type, _cached_is_raylib)
-        i += 1
-        
+    if _cached_is_raylib:
+        while i < n:
+            item = <NevuCobject><void*>items_ptr[i]
+            if not item._visible: i += 1; continue
+            draw_widget_optimized_raylib(_cached_draw_item, layout, item, layout_type, widget_type)
+            i += 1
+    else:
+        while i < n:
+            item = <NevuCobject><void*>items_ptr[i]
+            if not item._visible: i += 1; continue
+            draw_widget_optimized_pygame(_cached_draw_item, layout, item, layout_type, widget_type)
+            i += 1
 @cython.optimize.unpack_method_calls(True)
 cpdef void rl_predraw_widgets(
     list items,

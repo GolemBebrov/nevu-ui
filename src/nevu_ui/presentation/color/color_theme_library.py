@@ -1,298 +1,796 @@
 from dataclasses import dataclass
 
 from .color import Color
-from .color_theme import (
-    ColorTheme, ColorSubTheme, ColorPair
-)
+from .color_theme import ColorPair, ColorSubTheme, ColorTheme
+
 
 class TrackThemeNamesMeta(type):
     def __new__(cls, name, bases, namespace):
-        theme_names =[key for key in namespace.keys() if not key.startswith('_')]
-        namespace['_names'] = theme_names
+        theme_names = [key for key in namespace.keys() if not key.startswith("_")]
+        namespace["_names"] = theme_names
         return super().__new__(cls, name, bases, namespace)
+
 
 @dataclass
 class ColorThemeLibrary(metaclass=TrackThemeNamesMeta):
     material3_light = ColorTheme(
-        name = "Material3 Light",
-        primary=ColorSubTheme(color=(103, 80, 164), oncolor=(255, 255, 255), container=(234, 221, 255), oncontainer=(33, 0, 93)),
-        secondary=ColorSubTheme(color=(98, 91, 113), oncolor=(255, 255, 255), container=(232, 222, 248), oncontainer=(29, 25, 43)),
-        tertiary=ColorSubTheme(color=(125, 82, 96), oncolor=(255, 255, 255), container=(255, 216, 228), oncontainer=(49, 17, 29)),
-        error=ColorSubTheme(color=(179, 38, 30), oncolor=(255, 255, 255), container=(249, 222, 220), oncontainer=(65, 14, 11)),
+        name="Material3 Light",
+        primary=ColorSubTheme(
+            color=(103, 80, 164),
+            oncolor=(255, 255, 255),
+            container=(234, 221, 255),
+            oncontainer=(33, 0, 93),
+        ),
+        secondary=ColorSubTheme(
+            color=(98, 91, 113),
+            oncolor=(255, 255, 255),
+            container=(232, 222, 248),
+            oncontainer=(29, 25, 43),
+        ),
+        tertiary=ColorSubTheme(
+            color=(125, 82, 96),
+            oncolor=(255, 255, 255),
+            container=(255, 216, 228),
+            oncontainer=(49, 17, 29),
+        ),
+        error=ColorSubTheme(
+            color=(179, 38, 30),
+            oncolor=(255, 255, 255),
+            container=(249, 222, 220),
+            oncontainer=(65, 14, 11),
+        ),
         background=ColorPair(color=(255, 251, 254), oncolor=(28, 27, 31)),
         surface=ColorPair(color=(255, 251, 254), oncolor=(28, 27, 31)),
         surface_variant=ColorPair(color=(231, 224, 236), oncolor=(73, 69, 79)),
         outline=(121, 116, 126),
-        inverse_surface=ColorPair(color=(49, 48, 51), oncolor=(244, 239, 244)), inverse_primary=(208, 188, 255))
-
+        inverse_surface=ColorPair(color=(49, 48, 51), oncolor=(244, 239, 244)),
+        inverse_primary=(208, 188, 255),
+    )
 
     ocean_light = ColorTheme(
-        name = "Ocean Light",
-        primary=ColorSubTheme(color=Color.SteelBlue, oncolor=Color.White, container=Color.LightBlue, oncontainer=Color.DarkSlateBlue),
-        secondary=ColorSubTheme(color=Color.MediumAquamarine, oncolor=Color.Black, container=Color.PaleGreen, oncontainer=Color.DarkGreen),
-        tertiary=ColorSubTheme(color=Color.SaddleBrown, oncolor=Color.Black, container=Color.Wheat, oncontainer=Color.SaddleBrown),
-        error=ColorSubTheme(color=Color.Tomato, oncolor=Color.White, container=Color.MistyRose, oncontainer=Color.DarkRed),
+        name="Ocean Light",
+        primary=ColorSubTheme(
+            color=Color.SteelBlue,
+            oncolor=Color.White,
+            container=Color.LightBlue,
+            oncontainer=Color.DarkSlateBlue,
+        ),
+        secondary=ColorSubTheme(
+            color=Color.MediumAquamarine,
+            oncolor=Color.Black,
+            container=Color.PaleGreen,
+            oncontainer=Color.DarkGreen,
+        ),
+        tertiary=ColorSubTheme(
+            color=Color.SaddleBrown,
+            oncolor=Color.Black,
+            container=Color.Wheat,
+            oncontainer=Color.SaddleBrown,
+        ),
+        error=ColorSubTheme(
+            color=Color.Tomato,
+            oncolor=Color.White,
+            container=Color.MistyRose,
+            oncontainer=Color.DarkRed,
+        ),
         background=ColorPair(color=Color.AliceBlue, oncolor=Color.DarkSlateGray),
         surface=ColorPair(color=Color.White, oncolor=Color.DarkSlateGray),
         surface_variant=ColorPair(color=Color.PowderBlue, oncolor=Color.SlateGray),
         outline=Color.LightSlateGray,
-        inverse_surface=ColorPair(color=Color.DarkSlateGray, oncolor=Color.White), inverse_primary=Color.SkyBlue)
+        inverse_surface=ColorPair(color=Color.DarkSlateGray, oncolor=Color.White),
+        inverse_primary=Color.SkyBlue,
+    )
 
     synthwave_dark = ColorTheme(
-        name = "Synthwave Dark",
-        primary=ColorSubTheme(color=Color.DeepPink, oncolor=Color.White, container=(99, 0, 57), oncontainer=Color.Pink),
-        secondary=ColorSubTheme(color=Color.Cyan, oncolor=Color.Black, container=(0, 77, 77), oncontainer=Color.Aquamarine),
-        tertiary=ColorSubTheme(color=Color.Yellow, oncolor=Color.Black, container=(102, 91, 0), oncontainer=Color.LightYellow),
-        error=ColorSubTheme(color=Color.OrangeRed, oncolor=Color.White, container=(150, 40, 0), oncontainer=Color.AliceBlue),
+        name="Synthwave Dark",
+        primary=ColorSubTheme(
+            color=Color.DeepPink,
+            oncolor=Color.White,
+            container=(99, 0, 57),
+            oncontainer=Color.Pink,
+        ),
+        secondary=ColorSubTheme(
+            color=Color.Cyan,
+            oncolor=Color.Black,
+            container=(0, 77, 77),
+            oncontainer=Color.Aquamarine,
+        ),
+        tertiary=ColorSubTheme(
+            color=Color.Yellow,
+            oncolor=Color.Black,
+            container=(102, 91, 0),
+            oncontainer=Color.LightYellow,
+        ),
+        error=ColorSubTheme(
+            color=Color.OrangeRed,
+            oncolor=Color.White,
+            container=(150, 40, 0),
+            oncontainer=Color.AliceBlue,
+        ),
         background=ColorPair(color=(21, 2, 53), oncolor=Color.Lavender),
         surface=ColorPair(color=(36, 17, 68), oncolor=Color.Lavender),
         surface_variant=ColorPair(color=Color.DarkSlateBlue, oncolor=Color.Thistle),
         outline=Color.SlateBlue,
-        inverse_surface=ColorPair(color=Color.Lavender, oncolor=(21, 2, 53)), inverse_primary=Color.Magenta)
+        inverse_surface=ColorPair(color=Color.Lavender, oncolor=(21, 2, 53)),
+        inverse_primary=Color.Magenta,
+    )
 
     catppuccin_latte = ColorTheme(
-        name = "Catppuccin Latte",
-        primary=ColorSubTheme(color=(136, 57, 239), oncolor=(255, 255, 255), container=(234, 221, 255), oncontainer=(28, 0, 80)),
-        secondary=ColorSubTheme(color=(125, 95, 102), oncolor=(255, 255, 255), container=(255, 216, 221), oncontainer=(49, 25, 31)),
-        tertiary=ColorSubTheme(color=(255, 125, 112), oncolor=(255, 255, 255), container=(255, 218, 185), oncontainer=(68, 25, 0)),
-        error=ColorSubTheme(color=(210, 15, 57), oncolor=(255, 255, 255), container=(249, 222, 220), oncontainer=(65, 0, 10)),
+        name="Catppuccin Latte",
+        primary=ColorSubTheme(
+            color=(136, 57, 239),
+            oncolor=(255, 255, 255),
+            container=(234, 221, 255),
+            oncontainer=(28, 0, 80),
+        ),
+        secondary=ColorSubTheme(
+            color=(125, 95, 102),
+            oncolor=(255, 255, 255),
+            container=(255, 216, 221),
+            oncontainer=(49, 25, 31),
+        ),
+        tertiary=ColorSubTheme(
+            color=(255, 125, 112),
+            oncolor=(255, 255, 255),
+            container=(255, 218, 185),
+            oncontainer=(68, 25, 0),
+        ),
+        error=ColorSubTheme(
+            color=(210, 15, 57),
+            oncolor=(255, 255, 255),
+            container=(249, 222, 220),
+            oncontainer=(65, 0, 10),
+        ),
         background=ColorPair(color=(239, 241, 245), oncolor=(76, 79, 105)),
         surface=ColorPair(color=(205, 214, 244), oncolor=(76, 79, 105)),
         surface_variant=ColorPair(color=(220, 224, 232), oncolor=(92, 95, 119)),
         outline=(116, 119, 141),
-        inverse_surface=ColorPair(color=(49, 50, 68), oncolor=(244, 239, 244)), inverse_primary=(186, 187, 241))
+        inverse_surface=ColorPair(color=(49, 50, 68), oncolor=(244, 239, 244)),
+        inverse_primary=(186, 187, 241),
+    )
 
     catppuccin_mocha = ColorTheme(
         name="Catppuccin Mocha",
-        primary=ColorSubTheme(color=(203, 166, 247), oncolor=(30, 30, 46), container=(70, 48, 119), oncontainer=(220, 189, 255)),
-        secondary=ColorSubTheme(color=(245, 194, 231), oncolor=(49, 50, 68), container=(90, 60, 80), oncontainer=(248, 208, 238)),
-        tertiary=ColorSubTheme(color=(137, 220, 235), oncolor=(30, 30, 46), container=(40, 90, 100), oncontainer=(180, 240, 250)),
-        error=ColorSubTheme(color=(243, 139, 168), oncolor=(49, 50, 68), container=(140, 27, 23), oncontainer=(249, 222, 220)),
+        primary=ColorSubTheme(
+            color=(203, 166, 247),
+            oncolor=(30, 30, 46),
+            container=(70, 48, 119),
+            oncontainer=(220, 189, 255),
+        ),
+        secondary=ColorSubTheme(
+            color=(245, 194, 231),
+            oncolor=(49, 50, 68),
+            container=(90, 60, 80),
+            oncontainer=(248, 208, 238),
+        ),
+        tertiary=ColorSubTheme(
+            color=(137, 220, 235),
+            oncolor=(30, 30, 46),
+            container=(40, 90, 100),
+            oncontainer=(180, 240, 250),
+        ),
+        error=ColorSubTheme(
+            color=(243, 139, 168),
+            oncolor=(49, 50, 68),
+            container=(140, 27, 23),
+            oncontainer=(249, 222, 220),
+        ),
         background=ColorPair(color=(30, 30, 46), oncolor=(205, 214, 244)),
         surface=ColorPair(color=(30, 30, 46), oncolor=(205, 214, 244)),
         surface_variant=ColorPair(color=(88, 91, 112), oncolor=(205, 214, 244)),
         outline=(147, 153, 178),
-        inverse_surface=ColorPair(color=(205, 214, 244), oncolor=(49, 50, 68)), 
-        inverse_primary=(137, 180, 250)
+        inverse_surface=ColorPair(color=(205, 214, 244), oncolor=(49, 50, 68)),
+        inverse_primary=(137, 180, 250),
     )
 
     material3_dark = ColorTheme(
-        name = "Material3 Dark",
-        primary=ColorSubTheme(color=(208, 188, 255), oncolor=(56, 30, 114), container=(79, 55, 139), oncontainer=(234, 221, 255)),
-        secondary=ColorSubTheme(color=(204, 194, 220), oncolor=(51, 45, 65), container=(74, 68, 88), oncontainer=(232, 222, 248)),
-        tertiary=ColorSubTheme(color=(239, 184, 200), oncolor=(75, 34, 52), container=(100, 57, 72), oncontainer=(255, 216, 228)),
-        error=ColorSubTheme(color=(242, 184, 181), oncolor=(96, 20, 16), container=(140, 29, 24), oncontainer=(249, 222, 220)),
+        name="Material3 Dark",
+        primary=ColorSubTheme(
+            color=(208, 188, 255),
+            oncolor=(56, 30, 114),
+            container=(79, 55, 139),
+            oncontainer=(234, 221, 255),
+        ),
+        secondary=ColorSubTheme(
+            color=(204, 194, 220),
+            oncolor=(51, 45, 65),
+            container=(74, 68, 88),
+            oncontainer=(232, 222, 248),
+        ),
+        tertiary=ColorSubTheme(
+            color=(239, 184, 200),
+            oncolor=(75, 34, 52),
+            container=(100, 57, 72),
+            oncontainer=(255, 216, 228),
+        ),
+        error=ColorSubTheme(
+            color=(242, 184, 181),
+            oncolor=(96, 20, 16),
+            container=(140, 29, 24),
+            oncontainer=(249, 222, 220),
+        ),
         background=ColorPair(color=(28, 27, 31), oncolor=(230, 225, 229)),
         surface=ColorPair(color=(28, 27, 31), oncolor=(230, 225, 229)),
         surface_variant=ColorPair(color=(73, 69, 79), oncolor=(202, 196, 208)),
         outline=(147, 143, 153),
-        inverse_surface=ColorPair(color=(230, 225, 229), oncolor=(49, 48, 51)), inverse_primary=(103, 80, 164))
+        inverse_surface=ColorPair(color=(230, 225, 229), oncolor=(49, 48, 51)),
+        inverse_primary=(103, 80, 164),
+    )
 
     material3_blue = ColorTheme(
         name="Material3 Blue",
-        primary=ColorSubTheme(color=(168, 199, 250), oncolor=(15, 48, 84), container=(30, 73, 118), oncontainer=(215, 227, 255)),
-        secondary=ColorSubTheme(color=(164, 203, 221), oncolor=(14, 50, 64), container=(36, 75, 91), oncontainer=(194, 232, 250)),
-        tertiary=ColorSubTheme(color=(208, 188, 255), oncolor=(56, 30, 114), container=(79, 55, 139), oncontainer=(234, 221, 255)),
-        error=ColorSubTheme(color=(255, 180, 171), oncolor=(105, 0, 5), container=(147, 0, 10), oncontainer=(255, 218, 214)),
+        primary=ColorSubTheme(
+            color=(168, 199, 250),
+            oncolor=(15, 48, 84),
+            container=(30, 73, 118),
+            oncontainer=(215, 227, 255),
+        ),
+        secondary=ColorSubTheme(
+            color=(164, 203, 221),
+            oncolor=(14, 50, 64),
+            container=(36, 75, 91),
+            oncontainer=(194, 232, 250),
+        ),
+        tertiary=ColorSubTheme(
+            color=(208, 188, 255),
+            oncolor=(56, 30, 114),
+            container=(79, 55, 139),
+            oncontainer=(234, 221, 255),
+        ),
+        error=ColorSubTheme(
+            color=(255, 180, 171),
+            oncolor=(105, 0, 5),
+            container=(147, 0, 10),
+            oncontainer=(255, 218, 214),
+        ),
         background=ColorPair(color=(26, 28, 30), oncolor=(227, 226, 230)),
         surface=ColorPair(color=(26, 28, 30), oncolor=(227, 226, 230)),
         surface_variant=ColorPair(color=(67, 71, 78), oncolor=(195, 198, 207)),
         outline=(141, 145, 153),
-        inverse_surface=ColorPair(color=(227, 226, 230), oncolor=(47, 48, 51)), 
-        inverse_primary=(10, 85, 168)
+        inverse_surface=ColorPair(color=(227, 226, 230), oncolor=(47, 48, 51)),
+        inverse_primary=(10, 85, 168),
     )
 
     material3_green = ColorTheme(
         name="Material3 Green",
-        primary=ColorSubTheme(color=(138, 216, 176), oncolor=(0, 56, 34), container=(0, 81, 51), oncontainer=(165, 245, 204)),
-        secondary=ColorSubTheme(color=(181, 204, 186), oncolor=(33, 53, 38), container=(55, 75, 59), oncontainer=(209, 232, 213)),
-        tertiary=ColorSubTheme(color=(164, 205, 219), oncolor=(7, 53, 64), container=(36, 76, 88), oncontainer=(191, 233, 248)),
-        error=ColorSubTheme(color=(255, 180, 171), oncolor=(105, 0, 5), container=(147, 0, 10), oncontainer=(255, 218, 214)),
+        primary=ColorSubTheme(
+            color=(138, 216, 176),
+            oncolor=(0, 56, 34),
+            container=(0, 81, 51),
+            oncontainer=(165, 245, 204),
+        ),
+        secondary=ColorSubTheme(
+            color=(181, 204, 186),
+            oncolor=(33, 53, 38),
+            container=(55, 75, 59),
+            oncontainer=(209, 232, 213),
+        ),
+        tertiary=ColorSubTheme(
+            color=(164, 205, 219),
+            oncolor=(7, 53, 64),
+            container=(36, 76, 88),
+            oncontainer=(191, 233, 248),
+        ),
+        error=ColorSubTheme(
+            color=(255, 180, 171),
+            oncolor=(105, 0, 5),
+            container=(147, 0, 10),
+            oncontainer=(255, 218, 214),
+        ),
         background=ColorPair(color=(26, 28, 27), oncolor=(226, 227, 223)),
         surface=ColorPair(color=(26, 28, 27), oncolor=(226, 227, 223)),
         surface_variant=ColorPair(color=(66, 73, 64), oncolor=(194, 200, 189)),
         outline=(140, 147, 136),
-        inverse_surface=ColorPair(color=(226, 227, 223), oncolor=(47, 49, 47)), inverse_primary=(0, 108, 70))
+        inverse_surface=ColorPair(color=(226, 227, 223), oncolor=(47, 49, 47)),
+        inverse_primary=(0, 108, 70),
+    )
 
     material3_orange = ColorTheme(
         name="Material3 Orange",
-        primary=ColorSubTheme(color=(255, 183, 124), oncolor=(80, 43, 0), container=(112, 59, 0), oncontainer=(255, 220, 190)),
-        secondary=ColorSubTheme(color=(227, 193, 165), oncolor=(66, 44, 25), container=(90, 66, 45), oncontainer=(255, 221, 191)),
-        tertiary=ColorSubTheme(color=(205, 206, 165), oncolor=(51, 51, 19), container=(74, 74, 39), oncontainer=(232, 234, 191)),
-        error=ColorSubTheme(color=(255, 180, 171), oncolor=(105, 0, 5), container=(147, 0, 10), oncontainer=(255, 218, 214)),
+        primary=ColorSubTheme(
+            color=(255, 183, 124),
+            oncolor=(80, 43, 0),
+            container=(112, 59, 0),
+            oncontainer=(255, 220, 190),
+        ),
+        secondary=ColorSubTheme(
+            color=(227, 193, 165),
+            oncolor=(66, 44, 25),
+            container=(90, 66, 45),
+            oncontainer=(255, 221, 191),
+        ),
+        tertiary=ColorSubTheme(
+            color=(205, 206, 165),
+            oncolor=(51, 51, 19),
+            container=(74, 74, 39),
+            oncontainer=(232, 234, 191),
+        ),
+        error=ColorSubTheme(
+            color=(255, 180, 171),
+            oncolor=(105, 0, 5),
+            container=(147, 0, 10),
+            oncontainer=(255, 218, 214),
+        ),
         background=ColorPair(color=(31, 27, 24), oncolor=(234, 225, 221)),
         surface=ColorPair(color=(31, 27, 24), oncolor=(234, 225, 221)),
         surface_variant=ColorPair(color=(82, 68, 59), oncolor=(215, 194, 182)),
         outline=(159, 141, 130),
-        inverse_surface=ColorPair(color=(234, 225, 221), oncolor=(50, 47, 44)), inverse_primary=(143, 78, 0))
+        inverse_surface=ColorPair(color=(234, 225, 221), oncolor=(50, 47, 44)),
+        inverse_primary=(143, 78, 0),
+    )
 
     material3_teal = ColorTheme(
         name="Material3 Teal",
-        primary=ColorSubTheme(color=(128, 213, 219), oncolor=(0, 55, 58), container=(0, 79, 83), oncontainer=(158, 240, 247)),
-        secondary=ColorSubTheme(color=(177, 203, 206), oncolor=(27, 52, 55), container=(50, 75, 78), oncontainer=(204, 232, 235)),
-        tertiary=ColorSubTheme(color=(189, 199, 236), oncolor=(39, 49, 82), container=(62, 71, 106), oncontainer=(218, 227, 255)),
-        error=ColorSubTheme(color=(255, 180, 171), oncolor=(105, 0, 5), container=(147, 0, 10), oncontainer=(255, 218, 214)),
+        primary=ColorSubTheme(
+            color=(128, 213, 219),
+            oncolor=(0, 55, 58),
+            container=(0, 79, 83),
+            oncontainer=(158, 240, 247),
+        ),
+        secondary=ColorSubTheme(
+            color=(177, 203, 206),
+            oncolor=(27, 52, 55),
+            container=(50, 75, 78),
+            oncontainer=(204, 232, 235),
+        ),
+        tertiary=ColorSubTheme(
+            color=(189, 199, 236),
+            oncolor=(39, 49, 82),
+            container=(62, 71, 106),
+            oncontainer=(218, 227, 255),
+        ),
+        error=ColorSubTheme(
+            color=(255, 180, 171),
+            oncolor=(105, 0, 5),
+            container=(147, 0, 10),
+            oncontainer=(255, 218, 214),
+        ),
         background=ColorPair(color=(25, 28, 29), oncolor=(225, 227, 227)),
         surface=ColorPair(color=(25, 28, 29), oncolor=(225, 227, 227)),
         surface_variant=ColorPair(color=(63, 72, 74), oncolor=(191, 200, 202)),
         outline=(137, 146, 148),
-        inverse_surface=ColorPair(color=(225, 227, 227), oncolor=(46, 49, 49)), inverse_primary=(0, 106, 111))
+        inverse_surface=ColorPair(color=(225, 227, 227), oncolor=(46, 49, 49)),
+        inverse_primary=(0, 106, 111),
+    )
 
-    github_light= ColorTheme(
-        name = "GitHub Light",
-        primary=ColorSubTheme(color=(9, 105, 218), oncolor=(255, 255, 255), container=(221, 235, 252), oncontainer=(0, 28, 58)),
-        secondary=ColorSubTheme(color=(110, 118, 129), oncolor=(255, 255, 255), container=(232, 234, 237), oncontainer=(36, 41, 47)),
-        tertiary=ColorSubTheme(color=(47, 129, 34), oncolor=(255, 255, 255), container=(216, 243, 212), oncontainer=(0, 33, 4)),
-        error=ColorSubTheme(color=(207, 34, 46), oncolor=(255, 255, 255), container=(255, 218, 220), oncontainer=(65, 0, 5)),
+    github_light = ColorTheme(
+        name="GitHub Light",
+        primary=ColorSubTheme(
+            color=(9, 105, 218),
+            oncolor=(255, 255, 255),
+            container=(221, 235, 252),
+            oncontainer=(0, 28, 58),
+        ),
+        secondary=ColorSubTheme(
+            color=(110, 118, 129),
+            oncolor=(255, 255, 255),
+            container=(232, 234, 237),
+            oncontainer=(36, 41, 47),
+        ),
+        tertiary=ColorSubTheme(
+            color=(47, 129, 34),
+            oncolor=(255, 255, 255),
+            container=(216, 243, 212),
+            oncontainer=(0, 33, 4),
+        ),
+        error=ColorSubTheme(
+            color=(207, 34, 46),
+            oncolor=(255, 255, 255),
+            container=(255, 218, 220),
+            oncontainer=(65, 0, 5),
+        ),
         background=ColorPair(color=(255, 255, 255), oncolor=(31, 35, 40)),
         surface=ColorPair(color=(246, 248, 250), oncolor=(31, 35, 40)),
         surface_variant=ColorPair(color=(246, 248, 250), oncolor=(87, 96, 106)),
         outline=(208, 215, 222),
-        inverse_surface=ColorPair(color=(31, 35, 40), oncolor=(240, 246, 252)), inverse_primary=(136, 189, 255))
+        inverse_surface=ColorPair(color=(31, 35, 40), oncolor=(240, 246, 252)),
+        inverse_primary=(136, 189, 255),
+    )
 
     github_dark = ColorTheme(
-        name = "GitHub Dark",
-        primary=ColorSubTheme(color=(88, 166, 255), oncolor=(13, 17, 23), container=(21, 53, 94), oncontainer=(221, 235, 252)),
-        secondary=ColorSubTheme(color=(139, 148, 158), oncolor=(13, 17, 23), container=(52, 58, 67), oncontainer=(232, 234, 237)),
-        tertiary=ColorSubTheme(color=(63, 185, 80), oncolor=(13, 17, 23), container=(15, 61, 23), oncontainer=(216, 243, 212)),
-        error=ColorSubTheme(color=(248, 131, 131), oncolor=(13, 17, 23), container=(114, 21, 24), oncontainer=(255, 218, 220)),
+        name="GitHub Dark",
+        primary=ColorSubTheme(
+            color=(88, 166, 255),
+            oncolor=(13, 17, 23),
+            container=(21, 53, 94),
+            oncontainer=(221, 235, 252),
+        ),
+        secondary=ColorSubTheme(
+            color=(139, 148, 158),
+            oncolor=(13, 17, 23),
+            container=(52, 58, 67),
+            oncontainer=(232, 234, 237),
+        ),
+        tertiary=ColorSubTheme(
+            color=(63, 185, 80),
+            oncolor=(13, 17, 23),
+            container=(15, 61, 23),
+            oncontainer=(216, 243, 212),
+        ),
+        error=ColorSubTheme(
+            color=(248, 131, 131),
+            oncolor=(13, 17, 23),
+            container=(114, 21, 24),
+            oncontainer=(255, 218, 220),
+        ),
         background=ColorPair(color=(13, 17, 23), oncolor=(201, 209, 217)),
         surface=ColorPair(color=(22, 27, 34), oncolor=(201, 209, 217)),
         surface_variant=ColorPair(color=(22, 27, 34), oncolor=(139, 148, 158)),
         outline=(48, 54, 61),
-        inverse_surface=ColorPair(color=(201, 209, 217), oncolor=(13, 17, 23)), inverse_primary=(9, 105, 218))
+        inverse_surface=ColorPair(color=(201, 209, 217), oncolor=(13, 17, 23)),
+        inverse_primary=(9, 105, 218),
+    )
 
     github_dimmed = ColorTheme(
         name="GitHub Dimmed",
-        primary=ColorSubTheme(color=(47, 129, 247), oncolor=(255, 255, 255), container=(21, 53, 94), oncontainer=(221, 235, 252)),
-        secondary=ColorSubTheme(color=(35, 134, 54), oncolor=(255, 255, 255), container=(15, 61, 23), oncontainer=(216, 243, 212)),
-        tertiary=ColorSubTheme(color=(139, 148, 158), oncolor=(13, 17, 23), container=(52, 58, 67), oncontainer=(232, 234, 237)),
-        error=ColorSubTheme(color=(218, 54, 51), oncolor=(255, 255, 255), container=(114, 21, 24), oncontainer=(255, 218, 220)),
+        primary=ColorSubTheme(
+            color=(47, 129, 247),
+            oncolor=(255, 255, 255),
+            container=(21, 53, 94),
+            oncontainer=(221, 235, 252),
+        ),
+        secondary=ColorSubTheme(
+            color=(35, 134, 54),
+            oncolor=(255, 255, 255),
+            container=(15, 61, 23),
+            oncontainer=(216, 243, 212),
+        ),
+        tertiary=ColorSubTheme(
+            color=(139, 148, 158),
+            oncolor=(13, 17, 23),
+            container=(52, 58, 67),
+            oncontainer=(232, 234, 237),
+        ),
+        error=ColorSubTheme(
+            color=(218, 54, 51),
+            oncolor=(255, 255, 255),
+            container=(114, 21, 24),
+            oncontainer=(255, 218, 220),
+        ),
         background=ColorPair(color=(13, 17, 23), oncolor=(230, 237, 243)),
         surface=ColorPair(color=(22, 27, 34), oncolor=(230, 237, 243)),
         surface_variant=ColorPair(color=(33, 38, 45), oncolor=(139, 148, 158)),
         outline=(48, 54, 61),
-        inverse_surface=ColorPair(color=(230, 237, 243), oncolor=(13, 17, 23)), inverse_primary=(9, 105, 218))
+        inverse_surface=ColorPair(color=(230, 237, 243), oncolor=(13, 17, 23)),
+        inverse_primary=(9, 105, 218),
+    )
 
     github_high_contrast = ColorTheme(
         name="GitHub High Contrast",
-        primary=ColorSubTheme(color=(74, 144, 226), oncolor=(255, 255, 255), container=(10, 40, 80), oncontainer=(220, 240, 255)),
-        secondary=ColorSubTheme(color=(46, 160, 67), oncolor=(255, 255, 255), container=(20, 70, 30), oncontainer=(220, 255, 220)),
-        tertiary=ColorSubTheme(color=(240, 246, 252), oncolor=(1, 4, 9), container=(80, 80, 80), oncontainer=(255, 255, 255)),
-        error=ColorSubTheme(color=(255, 85, 85), oncolor=(10, 10, 10), container=(100, 10, 10), oncontainer=(255, 200, 200)),
+        primary=ColorSubTheme(
+            color=(74, 144, 226),
+            oncolor=(255, 255, 255),
+            container=(10, 40, 80),
+            oncontainer=(220, 240, 255),
+        ),
+        secondary=ColorSubTheme(
+            color=(46, 160, 67),
+            oncolor=(255, 255, 255),
+            container=(20, 70, 30),
+            oncontainer=(220, 255, 220),
+        ),
+        tertiary=ColorSubTheme(
+            color=(240, 246, 252),
+            oncolor=(1, 4, 9),
+            container=(80, 80, 80),
+            oncontainer=(255, 255, 255),
+        ),
+        error=ColorSubTheme(
+            color=(255, 85, 85),
+            oncolor=(10, 10, 10),
+            container=(100, 10, 10),
+            oncontainer=(255, 200, 200),
+        ),
         background=ColorPair(color=(10, 12, 16), oncolor=(255, 255, 255)),
         surface=ColorPair(color=(1, 4, 9), oncolor=(255, 255, 255)),
         surface_variant=ColorPair(color=(33, 38, 45), oncolor=(240, 246, 252)),
         outline=(110, 118, 129),
-        inverse_surface=ColorPair(color=(255, 255, 255), oncolor=(1, 4, 9)), inverse_primary=(10, 50, 100))
+        inverse_surface=ColorPair(color=(255, 255, 255), oncolor=(1, 4, 9)),
+        inverse_primary=(10, 50, 100),
+    )
 
     github_green_accent = ColorTheme(
         name="GitHub Green",
-        primary=ColorSubTheme(color=(35, 134, 54), oncolor=(255, 255, 255), container=(15, 61, 23), oncontainer=(216, 243, 212)),
-        secondary=ColorSubTheme(color=(47, 129, 247), oncolor=(255, 255, 255), container=(21, 53, 94), oncontainer=(221, 235, 252)),
-        tertiary=ColorSubTheme(color=(110, 118, 129), oncolor=(13, 17, 23), container=(40, 44, 50), oncontainer=(232, 234, 237)),
-        error=ColorSubTheme(color=(209, 36, 47), oncolor=(255, 255, 255), container=(114, 21, 24), oncontainer=(255, 218, 220)),
+        primary=ColorSubTheme(
+            color=(35, 134, 54),
+            oncolor=(255, 255, 255),
+            container=(15, 61, 23),
+            oncontainer=(216, 243, 212),
+        ),
+        secondary=ColorSubTheme(
+            color=(47, 129, 247),
+            oncolor=(255, 255, 255),
+            container=(21, 53, 94),
+            oncontainer=(221, 235, 252),
+        ),
+        tertiary=ColorSubTheme(
+            color=(110, 118, 129),
+            oncolor=(13, 17, 23),
+            container=(40, 44, 50),
+            oncontainer=(232, 234, 237),
+        ),
+        error=ColorSubTheme(
+            color=(209, 36, 47),
+            oncolor=(255, 255, 255),
+            container=(114, 21, 24),
+            oncontainer=(255, 218, 220),
+        ),
         background=ColorPair(color=(13, 17, 23), oncolor=(201, 209, 217)),
         surface=ColorPair(color=(22, 27, 34), oncolor=(201, 209, 217)),
         surface_variant=ColorPair(color=(48, 54, 61), oncolor=(139, 148, 158)),
         outline=(60, 68, 77),
-        inverse_surface=ColorPair(color=(201, 209, 217), oncolor=(13, 17, 23)), inverse_primary=(20, 100, 40))
+        inverse_surface=ColorPair(color=(201, 209, 217), oncolor=(13, 17, 23)),
+        inverse_primary=(20, 100, 40),
+    )
 
     gruvbox_light = ColorTheme(
-        name = "Gruvbox Light",
-        primary=ColorSubTheme(color=(69, 133, 136), oncolor=(251, 241, 199), container=(211, 222, 194), oncontainer=(40, 40, 40)),
-        secondary=ColorSubTheme(color=(215, 153, 33), oncolor=(40, 40, 40), container=(254, 225, 168), oncontainer=(40, 40, 40)),
-        tertiary=ColorSubTheme(color=(177, 98, 134), oncolor=(251, 241, 199), container=(241, 203, 216), oncontainer=(40, 40, 40)),
-        error=ColorSubTheme(color=(204, 36, 29), oncolor=(251, 241, 199), container=(252, 195, 193), oncontainer=(40, 40, 40)),
+        name="Gruvbox Light",
+        primary=ColorSubTheme(
+            color=(69, 133, 136),
+            oncolor=(251, 241, 199),
+            container=(211, 222, 194),
+            oncontainer=(40, 40, 40),
+        ),
+        secondary=ColorSubTheme(
+            color=(215, 153, 33),
+            oncolor=(40, 40, 40),
+            container=(254, 225, 168),
+            oncontainer=(40, 40, 40),
+        ),
+        tertiary=ColorSubTheme(
+            color=(177, 98, 134),
+            oncolor=(251, 241, 199),
+            container=(241, 203, 216),
+            oncontainer=(40, 40, 40),
+        ),
+        error=ColorSubTheme(
+            color=(204, 36, 29),
+            oncolor=(251, 241, 199),
+            container=(252, 195, 193),
+            oncontainer=(40, 40, 40),
+        ),
         background=ColorPair(color=(251, 241, 199), oncolor=(60, 56, 54)),
         surface=ColorPair(color=(235, 219, 178), oncolor=(60, 56, 54)),
         surface_variant=ColorPair(color=(211, 197, 162), oncolor=(92, 84, 78)),
         outline=(168, 153, 132),
-        inverse_surface=ColorPair(color=(60, 56, 54), oncolor=(251, 241, 199)), inverse_primary=(131, 165, 152))
+        inverse_surface=ColorPair(color=(60, 56, 54), oncolor=(251, 241, 199)),
+        inverse_primary=(131, 165, 152),
+    )
 
     gruvbox_dark = ColorTheme(
-        name = "Gruvbox Dark",
-        primary=ColorSubTheme(color=(131, 165, 152), oncolor=(40, 40, 40), container=(69, 133, 136), oncontainer=(235, 219, 178)),
-        secondary=ColorSubTheme(color=(250, 189, 47), oncolor=(40, 40, 40), container=(215, 153, 33), oncontainer=(40, 40, 40)),
-        tertiary=ColorSubTheme(color=(211, 134, 155), oncolor=(40, 40, 40), container=(177, 98, 134), oncontainer=(235, 219, 178)),
-        error=ColorSubTheme(color=(251, 73, 52), oncolor=(40, 40, 40), container=(204, 36, 29), oncontainer=(235, 219, 178)),
+        name="Gruvbox Dark",
+        primary=ColorSubTheme(
+            color=(131, 165, 152),
+            oncolor=(40, 40, 40),
+            container=(69, 133, 136),
+            oncontainer=(235, 219, 178),
+        ),
+        secondary=ColorSubTheme(
+            color=(250, 189, 47),
+            oncolor=(40, 40, 40),
+            container=(215, 153, 33),
+            oncontainer=(40, 40, 40),
+        ),
+        tertiary=ColorSubTheme(
+            color=(211, 134, 155),
+            oncolor=(40, 40, 40),
+            container=(177, 98, 134),
+            oncontainer=(235, 219, 178),
+        ),
+        error=ColorSubTheme(
+            color=(251, 73, 52),
+            oncolor=(40, 40, 40),
+            container=(204, 36, 29),
+            oncontainer=(235, 219, 178),
+        ),
         background=ColorPair(color=(40, 40, 40), oncolor=(235, 219, 178)),
         surface=ColorPair(color=(60, 56, 54), oncolor=(235, 219, 178)),
         surface_variant=ColorPair(color=(80, 73, 69), oncolor=(189, 174, 147)),
         outline=(124, 111, 100),
-        inverse_surface=ColorPair(color=(235, 219, 178), oncolor=(40, 40, 40)), inverse_primary=(69, 133, 136))
+        inverse_surface=ColorPair(color=(235, 219, 178), oncolor=(40, 40, 40)),
+        inverse_primary=(69, 133, 136),
+    )
 
     pastel_rose_light = ColorTheme(
-        name = "Pastel Rose Light",
-        primary=ColorSubTheme(color=Color.RoyalBlue, oncolor=Color.White, container=Color.LightSteelBlue, oncontainer=Color.DarkBlue),
-        secondary=ColorSubTheme(color=Color.MediumPurple, oncolor=Color.White, container=Color.Plum, oncontainer=Color.DarkViolet),
-        tertiary=ColorSubTheme(color=Color.SeaGreen, oncolor=Color.White, container=Color.MediumSeaGreen, oncontainer=Color.DarkGreen),
-        error=ColorSubTheme(color=Color.Crimson, oncolor=Color.White, container=Color.LightPink, oncontainer=Color.DarkRed),
+        name="Pastel Rose Light",
+        primary=ColorSubTheme(
+            color=Color.RoyalBlue,
+            oncolor=Color.White,
+            container=Color.LightSteelBlue,
+            oncontainer=Color.DarkBlue,
+        ),
+        secondary=ColorSubTheme(
+            color=Color.MediumPurple,
+            oncolor=Color.White,
+            container=Color.Plum,
+            oncontainer=Color.DarkViolet,
+        ),
+        tertiary=ColorSubTheme(
+            color=Color.SeaGreen,
+            oncolor=Color.White,
+            container=Color.MediumSeaGreen,
+            oncontainer=Color.DarkGreen,
+        ),
+        error=ColorSubTheme(
+            color=Color.Crimson,
+            oncolor=Color.White,
+            container=Color.LightPink,
+            oncontainer=Color.DarkRed,
+        ),
         background=ColorPair(color=Color.WhiteSmoke, oncolor=Color.Black),
         surface=ColorPair(color=Color.GhostWhite, oncolor=Color.Black),
         surface_variant=ColorPair(color=Color.LightGray, oncolor=Color.DarkSlateGray),
         outline=Color.SlateGray,
-        inverse_surface=ColorPair(color=Color.DarkSlateGray, oncolor=Color.WhiteSmoke), inverse_primary=Color.CornflowerBlue)
-    
+        inverse_surface=ColorPair(color=Color.DarkSlateGray, oncolor=Color.WhiteSmoke),
+        inverse_primary=Color.CornflowerBlue,
+    )
+
     neon_cyber_dark = ColorTheme(
-        name = "Neon Cyber Dark",
-        primary=ColorSubTheme(color=(191, 0, 255), oncolor=(255, 255, 255), container=(138, 0, 255), oncontainer=(223, 0, 255)),
-        secondary=ColorSubTheme(color=(0, 255, 255), oncolor=(0, 0, 0), container=(0, 204, 255), oncontainer=(0, 0, 0)),
-        tertiary=ColorSubTheme(color=(255, 0, 204), oncolor=(0, 0, 0), container=(255, 61, 148), oncontainer=(0, 0, 0)),
-        error=ColorSubTheme(color=(255, 0, 0), oncolor=(255, 255, 255), container=(207, 34, 46), oncontainer=(255, 255, 255)),
+        name="Neon Cyber Dark",
+        primary=ColorSubTheme(
+            color=(191, 0, 255),
+            oncolor=(255, 255, 255),
+            container=(138, 0, 255),
+            oncontainer=(223, 0, 255),
+        ),
+        secondary=ColorSubTheme(
+            color=(0, 255, 255),
+            oncolor=(0, 0, 0),
+            container=(0, 204, 255),
+            oncontainer=(0, 0, 0),
+        ),
+        tertiary=ColorSubTheme(
+            color=(255, 0, 204),
+            oncolor=(0, 0, 0),
+            container=(255, 61, 148),
+            oncontainer=(0, 0, 0),
+        ),
+        error=ColorSubTheme(
+            color=(255, 0, 0),
+            oncolor=(255, 255, 255),
+            container=(207, 34, 46),
+            oncontainer=(255, 255, 255),
+        ),
         background=ColorPair(color=(12, 12, 12), oncolor=(230, 230, 250)),
         surface=ColorPair(color=(28, 28, 28), oncolor=(230, 230, 250)),
         surface_variant=ColorPair(color=(40, 40, 40), oncolor=(216, 191, 216)),
         outline=(106, 90, 205),
-        inverse_surface=ColorPair(color=(230, 230, 250), oncolor=(12, 12, 12)), inverse_primary=(138, 43, 226))
-    
+        inverse_surface=ColorPair(color=(230, 230, 250), oncolor=(12, 12, 12)),
+        inverse_primary=(138, 43, 226),
+    )
+
     tokyo_night = ColorTheme(
         name="Tokyo Night",
-        primary=ColorSubTheme(color=(122, 162, 247), oncolor=(26, 27, 38), container=(61, 89, 161), oncontainer=(192, 202, 245)),
-        secondary=ColorSubTheme(color=(187, 154, 247), oncolor=(26, 27, 38), container=(102, 102, 153), oncontainer=(219, 203, 245)),
-        tertiary=ColorSubTheme(color=(115, 218, 202), oncolor=(26, 27, 38), container=(42, 195, 222), oncontainer=(167, 254, 235)),
-        error=ColorSubTheme(color=(247, 118, 142), oncolor=(26, 27, 38), container=(219, 75, 75), oncontainer=(255, 189, 189)),
+        primary=ColorSubTheme(
+            color=(122, 162, 247),
+            oncolor=(26, 27, 38),
+            container=(61, 89, 161),
+            oncontainer=(192, 202, 245),
+        ),
+        secondary=ColorSubTheme(
+            color=(187, 154, 247),
+            oncolor=(26, 27, 38),
+            container=(102, 102, 153),
+            oncontainer=(219, 203, 245),
+        ),
+        tertiary=ColorSubTheme(
+            color=(115, 218, 202),
+            oncolor=(26, 27, 38),
+            container=(42, 195, 222),
+            oncontainer=(167, 254, 235),
+        ),
+        error=ColorSubTheme(
+            color=(247, 118, 142),
+            oncolor=(26, 27, 38),
+            container=(219, 75, 75),
+            oncontainer=(255, 189, 189),
+        ),
         background=ColorPair(color=(26, 27, 38), oncolor=(192, 202, 245)),
         surface=ColorPair(color=(36, 40, 59), oncolor=(192, 202, 245)),
         surface_variant=ColorPair(color=(52, 59, 88), oncolor=(169, 177, 214)),
         outline=(68, 75, 106),
-        inverse_surface=ColorPair(color=(192, 202, 245), oncolor=(26, 27, 38)), 
-        inverse_primary=(61, 89, 161)
+        inverse_surface=ColorPair(color=(192, 202, 245), oncolor=(26, 27, 38)),
+        inverse_primary=(61, 89, 161),
     )
 
     dracula = ColorTheme(
         name="Dracula",
-        primary=ColorSubTheme(color=(189, 147, 249), oncolor=(40, 42, 54), container=(74, 55, 106), oncontainer=(216, 189, 255)),
-        secondary=ColorSubTheme(color=(255, 121, 198), oncolor=(40, 42, 54), container=(90, 42, 70), oncontainer=(255, 184, 225)),
-        tertiary=ColorSubTheme(color=(139, 233, 253), oncolor=(40, 42, 54), container=(45, 85, 95), oncontainer=(165, 245, 255)),
-        error=ColorSubTheme(color=(255, 85, 85), oncolor=(248, 248, 242), container=(90, 35, 35), oncontainer=(255, 180, 180)),
+        primary=ColorSubTheme(
+            color=(189, 147, 249),
+            oncolor=(40, 42, 54),
+            container=(74, 55, 106),
+            oncontainer=(216, 189, 255),
+        ),
+        secondary=ColorSubTheme(
+            color=(255, 121, 198),
+            oncolor=(40, 42, 54),
+            container=(90, 42, 70),
+            oncontainer=(255, 184, 225),
+        ),
+        tertiary=ColorSubTheme(
+            color=(139, 233, 253),
+            oncolor=(40, 42, 54),
+            container=(45, 85, 95),
+            oncontainer=(165, 245, 255),
+        ),
+        error=ColorSubTheme(
+            color=(255, 85, 85),
+            oncolor=(248, 248, 242),
+            container=(90, 35, 35),
+            oncontainer=(255, 180, 180),
+        ),
         background=ColorPair(color=(40, 42, 54), oncolor=(248, 248, 242)),
         surface=ColorPair(color=(44, 46, 58), oncolor=(248, 248, 242)),
         surface_variant=ColorPair(color=(57, 59, 73), oncolor=(189, 147, 249)),
         outline=(98, 114, 164),
-        inverse_surface=ColorPair(color=(248, 248, 242), oncolor=(40, 42, 54)), 
-        inverse_primary=(139, 93, 223))
+        inverse_surface=ColorPair(color=(248, 248, 242), oncolor=(40, 42, 54)),
+        inverse_primary=(139, 93, 223),
+    )
 
     nord_dark = ColorTheme(
         name="Nord",
-        primary=ColorSubTheme(color=(136, 192, 208), oncolor=(46, 52, 64), container=(94, 129, 172), oncontainer=(236, 239, 244)),
-        secondary=ColorSubTheme(color=(129, 161, 193), oncolor=(46, 52, 64), container=(76, 86, 106), oncontainer=(216, 222, 233)),
-        tertiary=ColorSubTheme(color=(143, 188, 187), oncolor=(46, 52, 64), container=(67, 76, 94), oncontainer=(229, 233, 240)),
-        error=ColorSubTheme(color=(191, 97, 106), oncolor=(236, 239, 244), container=(110, 52, 58), oncontainer=(216, 222, 233)),
+        primary=ColorSubTheme(
+            color=(136, 192, 208),
+            oncolor=(46, 52, 64),
+            container=(94, 129, 172),
+            oncontainer=(236, 239, 244),
+        ),
+        secondary=ColorSubTheme(
+            color=(129, 161, 193),
+            oncolor=(46, 52, 64),
+            container=(76, 86, 106),
+            oncontainer=(216, 222, 233),
+        ),
+        tertiary=ColorSubTheme(
+            color=(143, 188, 187),
+            oncolor=(46, 52, 64),
+            container=(67, 76, 94),
+            oncontainer=(229, 233, 240),
+        ),
+        error=ColorSubTheme(
+            color=(191, 97, 106),
+            oncolor=(236, 239, 244),
+            container=(110, 52, 58),
+            oncontainer=(216, 222, 233),
+        ),
         background=ColorPair(color=(46, 52, 64), oncolor=(216, 222, 233)),
         surface=ColorPair(color=(59, 66, 82), oncolor=(229, 233, 240)),
         surface_variant=ColorPair(color=(67, 76, 94), oncolor=(216, 222, 233)),
         outline=(76, 86, 106),
-        inverse_surface=ColorPair(color=(216, 222, 233), oncolor=(46, 52, 64)), inverse_primary=(94, 129, 172))
+        inverse_surface=ColorPair(color=(216, 222, 233), oncolor=(46, 52, 64)),
+        inverse_primary=(94, 129, 172),
+    )
 
     solarized_dark = ColorTheme(
         name="Solarized Dark",
-        primary=ColorSubTheme(color=(38, 139, 210), oncolor=(0, 43, 54), container=(7, 54, 66), oncontainer=(147, 161, 161)),
-        secondary=ColorSubTheme(color=(42, 161, 152), oncolor=(0, 43, 54), container=(7, 54, 66), oncontainer=(131, 148, 150)),
-        tertiary=ColorSubTheme(color=(181, 137, 0), oncolor=(0, 43, 54), container=(7, 54, 66), oncontainer=(147, 161, 161)),
-        error=ColorSubTheme(color=(220, 50, 47), oncolor=(253, 246, 227), container=(203, 75, 22), oncontainer=(253, 246, 227)),
+        primary=ColorSubTheme(
+            color=(38, 139, 210),
+            oncolor=(0, 43, 54),
+            container=(7, 54, 66),
+            oncontainer=(147, 161, 161),
+        ),
+        secondary=ColorSubTheme(
+            color=(42, 161, 152),
+            oncolor=(0, 43, 54),
+            container=(7, 54, 66),
+            oncontainer=(131, 148, 150),
+        ),
+        tertiary=ColorSubTheme(
+            color=(181, 137, 0),
+            oncolor=(0, 43, 54),
+            container=(7, 54, 66),
+            oncontainer=(147, 161, 161),
+        ),
+        error=ColorSubTheme(
+            color=(220, 50, 47),
+            oncolor=(253, 246, 227),
+            container=(203, 75, 22),
+            oncontainer=(253, 246, 227),
+        ),
         background=ColorPair(color=(0, 43, 54), oncolor=(131, 148, 150)),
         surface=ColorPair(color=(7, 54, 66), oncolor=(147, 161, 161)),
         surface_variant=ColorPair(color=(88, 110, 117), oncolor=(238, 232, 213)),
         outline=(101, 123, 131),
-        inverse_surface=ColorPair(color=(253, 246, 227), oncolor=(0, 43, 54)), inverse_primary=(42, 161, 152))
+        inverse_surface=ColorPair(color=(253, 246, 227), oncolor=(0, 43, 54)),
+        inverse_primary=(42, 161, 152),
+    )

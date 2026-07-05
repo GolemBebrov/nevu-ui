@@ -1,23 +1,30 @@
 from __future__ import annotations
+
 import copy
-from typing import TypedDict, TypeVar, NotRequired, Unpack, Generic, TYPE_CHECKING
+from typing import TYPE_CHECKING, Generic, NotRequired, TypedDict, TypeVar, Unpack
 
 from nevu_ui.core.enums import Align, HoverState
-if TYPE_CHECKING: 
+
+if TYPE_CHECKING:
     from nevu_ui.rendering.pygame.gradient import GradientPygame
 
 from nevu_ui.presentation.color import (
-    Color, ColorThemeLibrary, ColorTheme, SubThemeRole, PairColorRole
+    Color,
+    ColorTheme,
+    ColorThemeLibrary,
+    PairColorRole,
+    SubThemeRole,
 )
 
 TV = TypeVar("TV")
+
 
 class StateVariable(Generic[TV]):
     def __init__(self, static: TV, hover: TV, active: TV):
         self.static: TV = static
         self.hover: TV = hover
         self.active: TV = active
-        
+
     def __getitem__(self, name: str | int) -> TV:
         if name in [0, "static"]:
             return self.static
@@ -26,7 +33,7 @@ class StateVariable(Generic[TV]):
         elif name in [2, "active"]:
             return self.active
         raise KeyError
-    
+
     def __setitem__(self, name: int, value: TV):
         if name == 0:
             self.static = value
@@ -36,10 +43,13 @@ class StateVariable(Generic[TV]):
             self.active = value
         elif name in {"static", "hover", "active"}:
             setattr(self, name, value)
-        raise KeyError
+        else:
+            raise KeyError
+
 
 T = TypeVar("T")
 type SVar[T] = T | StateVariable[T]
+
 
 class StyleKwargs(TypedDict):
     border_radius: NotRequired[SVar[int | float | tuple]]
@@ -58,7 +68,8 @@ class StyleKwargs(TypedDict):
     font_role: NotRequired[SVar[PairColorRole]]
     color_role: NotRequired[SVar[SubThemeRole]]
     subtheme_role: NotRequired[SVar[SubThemeRole]]
-    
+
+
 class Style:
     parameters_dict = {
         "border_radius": ("border_radius", "_parse_br"),
@@ -86,17 +97,21 @@ class Style:
         self._init_basic()
         self._add_paramethers()
         self._handle_kwargs(**kwargs)
-    
+
     def _parse_int_min0(self, value):
-        return self.parse_int(value, min_restriction = 0)
-    
+        return self.parse_int(value, min_restriction=0)
+
     def _parse_br(self, value):
         if isinstance(value, int | float):
             return self._parse_int_min0(value)
-        elif self.parse_type(value, tuple) and len(value) == 4 and all(isinstance(i, int | float) for i in value):
+        elif (
+            self.parse_type(value, tuple)
+            and len(value) == 4
+            and all(isinstance(i, int | float) for i in value)
+        ):
             return True, None
         return False, None
-    
+
     def _parse_align(self, value):
         return self.parse_type(value, Align)
 
@@ -120,12 +135,12 @@ class Style:
 
     def _parse_font_role(self, value):
         return self.parse_type(value, PairColorRole)
-    
+
     def _add_paramethers(self):
         for name, value in self.parameters_dict.items():
             parameter, checker_func_name = value
             self.add_style_parameter(name, parameter, getattr(self, checker_func_name))
-        
+
     def _init_basic(self):
         self.colortheme = copy.copy(ColorThemeLibrary.material3_blue)
         self.border_width = 1
@@ -140,28 +155,47 @@ class Style:
         self.color_role = None
         self.font_role = None
         self.subtheme_role = None
-    
+
     def add_style_parameter(self, name: str, attribute_name: str, checker_lambda):
         self.kwargs_dict[name] = (attribute_name, checker_lambda)
-        
-    def parse_color(self, value, can_be_gradient: bool = False, can_be_trasparent: bool = False, can_be_string: bool = False) -> tuple[bool, tuple|None]:
+
+    def parse_color(
+        self,
+        value,
+        can_be_gradient: bool = False,
+        can_be_trasparent: bool = False,
+        can_be_string: bool = False,
+    ) -> tuple[bool, tuple | None]:
         if isinstance(value, GradientPygame) and can_be_gradient:
             return True, None
 
-        elif isinstance(value, (tuple, list)) and len(value) in {3, 4} and all(isinstance(c, int) for c in value):
-            return next(((False, None) for item in value if item < 0 or item > 255), (True, None))
-        
+        elif (
+            isinstance(value, (tuple, list))
+            and len(value) in {3, 4}
+            and all(isinstance(c, int) for c in value)
+        ):
+            return next(
+                ((False, None) for item in value if item < 0 or item > 255),
+                (True, None),
+            )
+
         elif isinstance(value, str) and can_be_string:
             try:
                 color_value = Color[value]
-            except KeyError: return False, None
+            except KeyError:
+                return False, None
             else:
                 assert isinstance(color_value, tuple)
                 return True, color_value
 
         return False, None
-    
-    def parse_int(self, value: int, max_restriction: int|None = None, min_restriction: int|None = None) -> tuple[bool, None]:
+
+    def parse_int(
+        self,
+        value: int,
+        max_restriction: int | None = None,
+        min_restriction: int | None = None,
+    ) -> tuple[bool, None]:
         if isinstance(value, int):
             if max_restriction is not None and value > max_restriction:
                 return False, None
@@ -169,21 +203,24 @@ class Style:
                 return False, None
             return True, None
         return False, None
-    
+
     def mark_state(self, state: HoverState):
         self._curr_state = state
-    
+
     def parse_str(self, value: str) -> tuple[bool, None]:
         return self.parse_type(value, str)
-    
+
     def parse_type(self, value: str, type: type | tuple) -> tuple[bool, None]:
         return (True, None) if isinstance(value, type) else (False, None)
-    
+
     def _handle_kwargs(self, raise_errors: bool = False, **kwargs):
         for item_name, item_value in kwargs.items():
             dict_value = self.kwargs_dict.get(item_name.lower(), None)
             if dict_value is None:
-                kwargs_dict = {key.replace("_", ""): value for key, value in self.kwargs_dict.items()}
+                kwargs_dict = {
+                    key.replace("_", ""): value
+                    for key, value in self.kwargs_dict.items()
+                }
                 if item_name not in kwargs_dict:
                     if raise_errors:
                         raise ValueError(f"Unknown attribute '{item_name}'")
@@ -192,16 +229,22 @@ class Style:
                     dict_value = kwargs_dict[item_name]
             self._handle_single_item(item_name, item_value, dict_value, raise_errors)
 
-    def _handle_single_item(self, item_name, item_value, dict_value, raise_errors: bool = False):
+    def _handle_single_item(
+        self, item_name, item_value, dict_value, raise_errors: bool = False
+    ):
         attribute_name, checker = dict_value
         if isinstance(item_value, StateVariable):
             validated_values = {}
-            for state_name in["static", "hover", "active"]:
+            for state_name in ["static", "hover", "active"]:
                 value_to_check = item_value[state_name]
                 is_valid, new_value = checker(value_to_check)
                 if not is_valid and raise_errors:
-                    raise ValueError(f"Invalid value for state '{state_name}' in attribute '{item_name}'")
-                validated_values[state_name] = new_value if new_value is not None else value_to_check
+                    raise ValueError(
+                        f"Invalid value for state '{state_name}' in attribute '{item_name}'"
+                    )
+                validated_values[state_name] = (
+                    new_value if new_value is not None else value_to_check
+                )
             end_value = StateVariable(**validated_values)
             setattr(self, attribute_name, end_value)
         else:
@@ -210,36 +253,44 @@ class Style:
                 end_value = checker_value if checker_value is not None else item_value
                 setattr(self, attribute_name, end_value)
             elif raise_errors:
-                raise ValueError(f"Incorrect value {item_value} for {item_name} of type {type(item_value).__name__}")
+                raise ValueError(
+                    f"Incorrect value {item_value} for {item_name} of type {type(item_value).__name__}"
+                )
 
     def __getattribute__(self, name: str):
         try:
             item = super().__getattribute__(name)
         except AttributeError as e:
-            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'") from e
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no attribute '{name}'"
+            ) from e
 
         if not isinstance(item, StateVariable):
             return item
-        
-        current_state_name = hstate_to_state[super().__getattribute__('_curr_state')]
+
+        current_state_name = hstate_to_state[super().__getattribute__("_curr_state")]
         return item[current_state_name]
 
     def __call__(self, **kwargs: Unpack[StyleKwargs]):
         style = copy.copy(self)
         style._kwargs_for_copy = copy.deepcopy(self._kwargs_for_copy)
         style._kwargs_for_copy.update(kwargs)
-        
+
         style._handle_kwargs(raise_errors=True, **kwargs)
         style._curr_state = HoverState.NotHovered
         return style
-    
-    def clone(self): return Style(**self._kwargs_for_copy)
-    def __deepcopy__(self, memo): return copy.copy(self)
-    
+
+    def clone(self):
+        return Style(**self._kwargs_for_copy)
+
+    def __deepcopy__(self, memo):
+        return copy.copy(self)
+
+
 hstate_to_state = {
     HoverState.Clicked: "active",
     HoverState.Hovered: "hover",
-    HoverState.NotHovered: "static"
+    HoverState.NotHovered: "static",
 }
 
 default_style = Style()

@@ -1,56 +1,77 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 from nevu_ui.core.enums import Backend
 
-
 if TYPE_CHECKING:
-    from nevu_ui.window import Window
-    from nevu_ui.fast.zsystem import ZSystem
     from pygame._sdl2 import Renderer
+
+    from nevu_ui.fast.zsystem import ZSystem
     from nevu_ui.manager import Manager
     from nevu_ui.overlay import OverlayManager
+    from nevu_ui.window import Window
+
 
 class NevuState:
-    __slots__ = ["tooltip_active", "dirty_mode", "window", "manager", "current_events", "current_dirty_rects", "z_system", "renderer", "backend", "overlay"]
-    def __init__(self): self.reset()
-        
+    __slots__ = [
+        "tooltip_active",
+        "dirty_mode",
+        "window",
+        "manager",
+        "current_events",
+        "current_dirty_rects",
+        "z_system",
+        "renderer",
+        "backend",
+        "overlay",
+    ]
+
+    def __init__(self):
+        self.reset()
+
     def reset(self):
         self.dirty_mode: bool = False
 
         self.current_events: list | None = None
         self.current_dirty_rects: list | None = None
-        
-        self.window: Window = None #type: ignore
+
+        self.window: Window = None  # type: ignore
         self.z_system: ZSystem | None = None
         self.manager: Manager | None = None
         self.renderer: Renderer | None = None
         self.overlay: OverlayManager | None = None
 
         self.backend: Backend | None = None
-    
+
     @property
-    def is_gpu(self) -> bool: return self.window != None and self.renderer != None
-    
+    def is_gpu(self) -> bool:
+        return self.window != None and self.renderer != None
+
     def clear_events(self):
         if self.current_events:
             self.current_events.clear()
-    
+
     def clear_dirty_rects(self):
         if self.current_dirty_rects:
             self.current_dirty_rects.clear()
-    
+
+
 nevu_state = NevuState()
 
+
 def _analize_bg(self):
-    if not nevu_state.window.renderer_type.raylib: return False
+    if not nevu_state.window.renderer_type.raylib:
+        return False
     transparent = False
     if self.style.gradient:
         gr = self.style.gradient
-        
+
         for color in gr.raw_colors:
-            if len(color) == 4 and color[3] < 255: transparent = True
-    
+            if len(color) == 4 and color[3] < 255:
+                transparent = True
+
     if self.style.bg_image:
         transparent = True
-        
+
     return transparent

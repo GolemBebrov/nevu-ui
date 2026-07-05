@@ -18,7 +18,7 @@ cpdef object get_rect_helper_pygame(NvVector2 master_coordinates, NvVector2 resi
 cpdef tuple get_rect_helper_cached(NvVector2 master_coordinates, NvVector2 csize)
 
 cpdef object get_rect_helper_cached_pygame(NvVector2 master_coordinates, NvVector2 csize)
-
+cdef inline NvVector2 get_item_abs_coords(NevuCobject layout, NevuCobject item)
 
 cdef NvRect get_nvrect_helper(NvVector2 master_coordinates, NvVector2 resize_ratio, NvVector2 size)
 

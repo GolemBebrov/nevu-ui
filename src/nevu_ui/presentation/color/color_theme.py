@@ -1,7 +1,10 @@
 from dataclasses import dataclass
 from enum import StrEnum
 
-class _RoleAncestor(StrEnum): pass
+
+class _RoleAncestor(StrEnum):
+    pass
+
 
 class SubThemeRole(_RoleAncestor):
     PRIMARY = "primary"
@@ -9,20 +12,24 @@ class SubThemeRole(_RoleAncestor):
     TERTIARY = "tertiary"
     ERROR = "error"
 
+
 class PairColorRole(_RoleAncestor):
     BACKGROUND = "background"
     SURFACE = "surface"
     SURFACE_VARIANT = "surface_variant"
     INVERSE_SURFACE = "inverse_surface"
 
+
 class TupleColorRole(_RoleAncestor):
     OUTLINE = "outline"
     INVERSE_PRIMARY = "inverse_primary"
-    
+
+
 @dataclass
 class ColorPair:
     color: tuple
     oncolor: tuple
+
 
 @dataclass
 class ColorSubTheme:
@@ -30,6 +37,7 @@ class ColorSubTheme:
     oncolor: tuple
     container: tuple
     oncontainer: tuple
+
 
 @dataclass
 class ColorTheme:
@@ -46,17 +54,25 @@ class ColorTheme:
     name: str = "Unnamed"
 
     def get_subtheme(self, role: SubThemeRole) -> ColorSubTheme:
-        assert isinstance(role, SubThemeRole), f"role must be SubThemeRole, {role} given"
+        assert isinstance(role, SubThemeRole), (
+            f"role must be SubThemeRole, {role} given"
+        )
         return getattr(self, role.value)
-    
+
     def get_pair(self, role: PairColorRole) -> ColorPair:
-        assert isinstance(role, PairColorRole), f"role must be PairColorRole, {role} given"
+        assert isinstance(role, PairColorRole), (
+            f"role must be PairColorRole, {role} given"
+        )
         return getattr(self, role.value)
 
     def get_tuple(self, role: TupleColorRole) -> tuple:
-        assert isinstance(role, TupleColorRole), f"role must be TupleColorRole, {role} given"
+        assert isinstance(role, TupleColorRole), (
+            f"role must be TupleColorRole, {role} given"
+        )
         return getattr(self, role.value)
-    
+
     def get(self, any_role) -> ColorSubTheme | ColorPair | tuple:
-        assert isinstance(any_role, _RoleAncestor), f"role must be _RoleAncestor, {any_role} given"
+        assert isinstance(any_role, _RoleAncestor), (
+            f"role must be _RoleAncestor, {any_role} given"
+        )
         return getattr(self, any_role.value)

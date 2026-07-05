@@ -136,18 +136,18 @@ cdef class ZSystem:
             if self.last_hovered_request is not current_winner_request:
                 if self.last_hovered_request is not None:
                     if (<ZRequest>self.last_hovered_request).on_unhover_func is not None:
-                        (<ZRequest>self.last_hovered_request).on_unhover_func()
+                        (<ZRequest>self.last_hovered_request).on_unhover_func()()
                 
                 if current_winner_request is not None:
                     if current_winner_request.on_hover_func is not None:
-                        current_winner_request.on_hover_func()
+                        current_winner_request.on_hover_func()()
 
             self.last_hovered_request = current_winner_request
         
         if mouse_down and current_winner_request is not None:
             self.clicked_request = current_winner_request
             if current_winner_request.on_click_func is not None:
-                current_winner_request.on_click_func()
+                current_winner_request.on_click_func()()
         
         if mouse_up:
             if self.clicked_request is not None:
@@ -155,10 +155,10 @@ cdef class ZSystem:
                 if clicked_req.get_link() is not None:
                     if clicked_req is current_winner_request:
                         if clicked_req.on_keyup_func is not None:
-                            clicked_req.on_keyup_func()
+                            clicked_req.on_keyup_func()()
                     else:
                         if clicked_req.on_keyup_abandon_func is not None:
-                            clicked_req.on_keyup_abandon_func()
+                            clicked_req.on_keyup_abandon_func()()
                 self.clicked_request = None
 
     cdef ZRequest request_cycle(self, NvVector2 mouse_pos, bint any_wheel, bint wheel_down):
@@ -203,7 +203,7 @@ cdef class ZSystem:
             candidate_req = <ZRequest>self.live_requests[best_idx]
             
             if any_wheel and candidate_req.on_scroll_func is not None:
-                candidate_req.on_scroll_func(wheel_down)
+                candidate_req.on_scroll_func()(wheel_down)
                 
             return candidate_req
             

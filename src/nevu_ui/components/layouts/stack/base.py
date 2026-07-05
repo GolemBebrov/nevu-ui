@@ -1,116 +1,143 @@
 from __future__ import annotations
-from abc import ABC, abstractmethod
+
 import copy
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, NotRequired, TypedDict, Unpack
 
-from typing import (
-    Unpack, NotRequired, TypedDict, TYPE_CHECKING
-)
-
-if TYPE_CHECKING: from nevu_ui.menu import Menu
-from nevu_ui.core.size.base import SizeRule
-from nevu_ui.core import Annotations
-from nevu_ui.components.widgets import Widget
-from nevu_ui.components.nevuobj import NevuObject
-from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.fast.logic.fast_logic import draw_widgets_optimized, base_light_update
-from nevu_ui.core.enums import Align
+if TYPE_CHECKING:
+    from nevu_ui.menu import Menu
 from nevu_ui.components.layouts import LayoutType, LayoutTypeKwargs
-from nevu_ui.presentation.style import Style, default_style
+from nevu_ui.components.nevuobj import NevuObject
+from nevu_ui.components.widgets import Widget
+from nevu_ui.core import Annotations
+from nevu_ui.core.enums import Align
+from nevu_ui.core.size.base import SizeRule
+from nevu_ui.fast.logic.fast_logic import base_light_update, draw_widgets_optimized
+from nevu_ui.fast.nvvector2 import NvVector2
+
 
 class _StackKwargs(TypedDict):
     spacing: NotRequired[int | float]
 
-class StackKwargs(_StackKwargs, LayoutTypeKwargs): pass
 
-#Nnna nanachi approved!
+class StackKwargs(_StackKwargs, LayoutTypeKwargs):
+    pass
+
+
+# Nnna nanachi approved!
 class StackBase(LayoutType, ABC):
     _supports_global_size = False
     content_type = list[tuple[Align, NevuObject]]
-    def __init__(self, style: Annotations.nevuobj_style = default_style, content: content_type | None = None, **constant_kwargs: Unpack[StackKwargs]):
+
+    def __init__(
+        self,
+        style: Annotations.nevuobj_style = None,
+        content: content_type | None = None,
+        **constant_kwargs: Unpack[StackKwargs],
+    ):
         super().__init__(NvVector2(), style, content, **constant_kwargs)
-        
+
     def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None):
         super()._lazy_init(size, content)
         self.add_items(content)
 
-    def add_items(self, content: content_type | None): # type: ignore
-        if content is None: return
+    def add_items(self, content: content_type | None):  # type: ignore
+        if content is None:
+            return
         for inner_tuple in content:
             align, item = inner_tuple
             self.add_item(item, align)
-            
+
     def _init_lists(self):
         super()._init_lists()
         self.widgets_alignment = []
-        
+
     def _add_params(self):
         super()._add_params()
-        self._add_param("spacing",(int, float), 10)
-    
+        self._add_param("spacing", (int, float), 10)
+
     def _init_booleans(self):
         super()._init_booleans()
         self._custom_secondary_draw_content = True
-    
+
     def _init_test_flags(self):
         super()._init_test_flags()
         self._test_always_update = False
-    
-    def add_item(self, item: NevuObject, alignment: Align = Align.CENTER): # type: ignore
+
+    def add_item(self, item: NevuObject, alignment: Align = Align.CENTER):  # type: ignore
         super().add_item(item)
         self.widgets_alignment.append(alignment)
         self.cached_coordinates = None
 
     def _parse_fillx(self, coord: SizeRule, pos: int) -> tuple[float, bool] | None:
-        raise ValueError(f"Handling for SizeRule '{type(coord).__name__}' is not supported in {type(self).__name__}")
-    
+        raise ValueError(
+            f"Handling for SizeRule '{type(coord).__name__}' is not supported in {type(self).__name__}"
+        )
+
     def insert_item(self, item: Widget | LayoutType, id: int = -1):
         try:
             self.items.insert(id, item)
             self.widgets_alignment.insert(id, Align.CENTER)
             self._recalculate_size()
-            if self.layout: self.layout._on_item_add(item)
-        except Exception as e: raise e #TODO: FUCK i forgor 
-        
+            if self.layout:
+                self.layout._on_item_add(item)
+        except Exception as e:
+            raise e  # TODO: FUCK i forgor
+
     def _connect_to_layout(self, layout: LayoutType):
         super()._connect_to_layout(layout)
         self._recalculate_widget_coordinates()
-        
+
     def _connect_to_menu(self, menu: Menu):
         super()._connect_to_menu(menu)
-        self._recalculate_widget_coordinates() 
-    
+        self._recalculate_widget_coordinates()
+
     def _on_item_add(self, item: NevuObject):
-        #print(self, item)
+        # print(self, item)
         self.cached_coordinates = None
-        if self.layout: self.layout.cached_coordinates = None
+        if self.layout:
+            self.layout.cached_coordinates = None
         self._recalculate_size()
-        if self.layout: self.layout._on_item_add(item)
-        
+        if self.layout:
+            self.layout._on_item_add(item)
+
     def secondary_update(self, *args):
         base_light_update(self)
-    
+
     def secondary_draw_content(self):
         draw_widgets_optimized(self, self.items, LayoutType, Widget)
-            
+
     @property
-    def spacing(self): return self.get_param_strict("spacing").value
+    def spacing(self):
+        return self.get_param_strict("spacing").value
+
     @spacing.setter
-    def spacing(self, val): self.set_param_value("spacing", val)
-        
+    def spacing(self, val):
+        self.set_param_value("spacing", val)
+
     def _regenerate_coordinates(self):
         super()._regenerate_coordinates()
         self._recalculate_size()
         if self.layout:
             self.layout.cached_coordinates = None
         self._recalculate_widget_coordinates()
-    
-    def _create_clone(self):
-        return self.__class__(copy.deepcopy(self.style), copy.deepcopy(self._template['content']), **self.constant_kwargs)
 
-#=== Placeholders ===
+    def _create_clone(self):
+        return self.__class__(
+            copy.deepcopy(self.style),
+            copy.deepcopy(self._template["content"]),
+            **self.constant_kwargs,
+        )
+
+    # === Placeholders ===
     @abstractmethod
-    def _set_align_coords(self, item: NevuObject, alignment: Align): pass
+    def _set_align_coords(self, item: NevuObject, alignment: Align):
+        pass
+
     @abstractmethod
-    def _recalculate_size(self): pass
+    def _recalculate_size(self):
+        pass
+
     @abstractmethod
-    def _recalculate_widget_coordinates(self): pass
+    def _recalculate_widget_coordinates(self):
+        pass

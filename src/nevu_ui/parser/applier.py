@@ -4,21 +4,23 @@ from enum import StrEnum
 from typing import Any
 
 from nevu_ui.core.classes import ConfigType
-from nevu_ui.parser import check
-from nevu_ui.parser import standart_config
 from nevu_ui.core.enums import ConfigLoadType
-from nevu_ui.presentation.style import Style
-from nevu_ui.presentation.color.color_theme import ColorTheme, ColorSubTheme, ColorPair
+from nevu_ui.parser import check, standart_config
+from nevu_ui.presentation.color.color_theme import ColorPair, ColorSubTheme, ColorTheme
 from nevu_ui.presentation.color.color_theme_library import ColorThemeLibrary
+from nevu_ui.presentation.style import Style
+
 
 class ApplierBuffer:
     def __init__(self) -> None:
         self.lazy_init: dict = {}
         self.final_init: dict = {}
 
+
 styles_buffer = None
 colors_buffer = None
 colorthemes_buffer = None
+
 
 def regen_buffers():
     global styles_buffer
@@ -28,24 +30,35 @@ def regen_buffers():
     colors_buffer = ApplierBuffer()
     colorthemes_buffer = ApplierBuffer()
 
+
 #!WARNING:
 #!DO NOT change order.
-PROCESSING_ORDER = ["colors", "colorthemes", "styles", "window", "animations", "generated"]
+PROCESSING_ORDER = [
+    "colors",
+    "colorthemes",
+    "styles",
+    "window",
+    "animations",
+    "generated",
+]
+
 
 def _apply_config(config: dict):
     veryold_time = time.time()
     print("First stage - base validation...")
     check(config)
     print("Second stage - apply config...")
-    old_time = time.time()  
+    old_time = time.time()
     regen_buffers()
     for key in PROCESSING_ORDER:
-        if key not in config: continue
+        if key not in config:
+            continue
         print(f"Applying {key}...")
         substruct = config[key]
         if not structure_validators.get(key, None):
-            print("Not implemented.. yet, skipping..."); continue
-        
+            print("Not implemented.. yet, skipping...")
+            continue
+
         substruct_validators = structure_validators[key]
         is_any = Any in substruct_validators.keys()
         result, adds = _validate_substruct(key, is_any, substruct, substruct_validators)
@@ -59,23 +72,28 @@ def _apply_config(config: dict):
             if strategy is None and convert_func is None:
                 raise ValueError(f"CRITICAL: Invalid strategy for: {key}")
             match strategy:
-                case ApplierStrategy.CollectDict: getattr(standart_config, attr, {}).update(substruct)
-                case ApplierStrategy.CollectList: getattr(standart_config, attr, []).extend(list(substruct.values()))
-                case ApplierStrategy.AddObjectDict: getattr(standart_config, attr, {}).update(convert_func())
+                case ApplierStrategy.CollectDict:
+                    getattr(standart_config, attr, {}).update(substruct)
+                case ApplierStrategy.CollectList:
+                    getattr(standart_config, attr, []).extend(list(substruct.values()))
+                case ApplierStrategy.AddObjectDict:
+                    getattr(standart_config, attr, {}).update(convert_func())
             print(f"...{key} is applied to {attr}")
     print("Config applied.", end=" ")
-    print(f"time: {(time.time() - old_time)*1000:.2f} ms", end=", ")
-    print(f"total time: {(time.time() - veryold_time)*1000:.2f} ms")
+    print(f"time: {(time.time() - old_time) * 1000:.2f} ms", end=", ")
+    print(f"total time: {(time.time() - veryold_time) * 1000:.2f} ms")
+
 
 def lazy_cycle(buffer: ApplierBuffer):
     first_start = True
-    oldlen = float('inf')
+    oldlen = float("inf")
     next_pop = []
     while first_start or oldlen > len(buffer.lazy_init):
         if first_start:
-            oldlen = float('inf')
+            oldlen = float("inf")
             first_start = False
-        else: oldlen = len(buffer.lazy_init)
+        else:
+            oldlen = len(buffer.lazy_init)
         for popname in next_pop:
             buffer.lazy_init.pop(popname)
             next_pop = []
@@ -94,7 +112,10 @@ def lazy_cycle(buffer: ApplierBuffer):
                     buffer.final_init[name] = buffer.final_init[value]
     if buffer.lazy_init:
         remaining = ", ".join(buffer.lazy_init.keys())
-        raise ValueError(f"Could not resolve style dependencies. Check for circular dependencies or missing styles: {remaining}")
+        raise ValueError(
+            f"Could not resolve style dependencies. Check for circular dependencies or missing styles: {remaining}"
+        )
+
 
 def _get_styles_from_verified_dict(styles_dict):
     styles = {}
@@ -104,12 +125,15 @@ def _get_styles_from_verified_dict(styles_dict):
             theme_name = kwargs["colortheme"]
             theme_obj = colorthemes_buffer.final_init.get(theme_name)
             if not theme_obj:
-                raise ValueError(f"Colortheme '{theme_name}' is not defined, but required in style '{name}'")
+                raise ValueError(
+                    f"Colortheme '{theme_name}' is not defined, but required in style '{name}'"
+                )
             kwargs["colortheme"] = theme_obj
-            
+
         styles[name] = Style(**kwargs)
-        
+
     return styles
+
 
 #! Convertors !#
 def _style_convert_func():
@@ -117,48 +141,58 @@ def _style_convert_func():
     lazy_cycle(styles_buffer)
     return _get_styles_from_verified_dict(styles_buffer.final_init)
 
+
 def _color_convert_func():
     assert colors_buffer
     lazy_cycle(colors_buffer)
     return colors_buffer.final_init
 
+
 def _colortheme_convert_func():
     assert colorthemes_buffer
     assert colors_buffer
-    
+
     lazy_cycle(colorthemes_buffer)
-    
+
     result_themes = {}
     default_color = (0, 0, 0, 255)
-    
+
     def resolve_color(c):
         if isinstance(c, str):
             if c in colors_buffer.final_init:
                 return colors_buffer.final_init[c]
             converted = _is_color_convertable(c)
-            if converted: return converted
+            if converted:
+                return converted
             return default_color
         if _is_color_value(c):
             return tuple(c)
         return default_color
 
     roles = {
-        "primary": ColorSubTheme, "secondary": ColorSubTheme, 
-        "tertiary": ColorSubTheme, "error": ColorSubTheme, 
-        "background": ColorPair, "surface": ColorPair, 
-        "surface_variant": ColorPair, "inverse_surface": ColorPair, 
-        "outline": tuple, "inverse_primary": tuple
+        "primary": ColorSubTheme,
+        "secondary": ColorSubTheme,
+        "tertiary": ColorSubTheme,
+        "error": ColorSubTheme,
+        "background": ColorPair,
+        "surface": ColorPair,
+        "surface_variant": ColorPair,
+        "inverse_surface": ColorPair,
+        "outline": tuple,
+        "inverse_primary": tuple,
     }
 
     for theme_name, theme_dict in colorthemes_buffer.final_init.items():
         kwargs = {"name": theme_dict.get("name", theme_name)}
-        
+
         for role, expected_type in roles.items():
             val = theme_dict.get(role)
 
             if val is None:
                 if expected_type == ColorSubTheme:
-                    kwargs[role] = ColorSubTheme(default_color, default_color, default_color, default_color)
+                    kwargs[role] = ColorSubTheme(
+                        default_color, default_color, default_color, default_color
+                    )
                 elif expected_type == ColorPair:
                     kwargs[role] = ColorPair(default_color, default_color)
                 else:
@@ -170,40 +204,54 @@ def _colortheme_convert_func():
             if expected_type == ColorPair and isinstance(val, ColorPair):
                 kwargs[role] = val
                 continue
-            if expected_type == tuple and isinstance(val, tuple) and _is_color_value(val):
+            if (
+                expected_type == tuple
+                and isinstance(val, tuple)
+                and _is_color_value(val)
+            ):
                 kwargs[role] = val
                 continue
             is_single = isinstance(val, str) or _is_color_value(val)
             if expected_type == tuple:
-                if is_single: kwargs[role] = resolve_color(val)
-                else: kwargs[role] = resolve_color(val[0])
+                if is_single:
+                    kwargs[role] = resolve_color(val)
+                else:
+                    kwargs[role] = resolve_color(val[0])
             elif expected_type == ColorPair:
                 kwargs[role] = ColorPair(resolve_color(val[0]), resolve_color(val[1]))
             elif expected_type == ColorSubTheme:
                 kwargs[role] = ColorSubTheme(
-                    resolve_color(val[0]), resolve_color(val[1]), 
-                    resolve_color(val[2]), resolve_color(val[3])
+                    resolve_color(val[0]),
+                    resolve_color(val[1]),
+                    resolve_color(val[2]),
+                    resolve_color(val[3]),
                 )
-                
+
         result_themes[theme_name] = ColorTheme(**kwargs)
-        
+
     colorthemes_buffer.final_init = result_themes
     return result_themes
+
 
 def _validate_substruct(key, is_any, substruct, validators):
     error_batch = []
     for name in substruct:
         item = substruct[name]
-        if is_any: item_validator = lambda value: validators[Any](key=name, value=value)
-        else: item_validator = validators[name]
+        if is_any:
+            item_validator = lambda value: validators[Any](key=name, value=value)
+        else:
+            item_validator = validators[name]
         result, msg = item_validator(item)
         if not result:
             error_batch.append(f"({name}): {msg}")
-    
+
     return (False, error_batch) if error_batch else (True, "All items are valid")
 
+
 #! Checkers !#
-def skip(): return True, "skipped, no need to validate"
+def skip():
+    return True, "skipped, no need to validate"
+
 
 def check_list_int(item, min):
     for i in item:
@@ -213,7 +261,8 @@ def check_list_int(item, min):
             return False, f"{i} in {item} is less than {min}"
     return True, f"{item} is list of ints"
 
-def check_int(item, min = None, max = None):
+
+def check_int(item, min=None, max=None):
     if not isinstance(item, int):
         return False, f"{item} is not int"
     elif min and item < min:
@@ -222,10 +271,12 @@ def check_int(item, min = None, max = None):
         return False, f"{item} is more than {max}"
     return True, f"{item} is int"
 
+
 def check_in_item(item, list):
     result = item in list
     text = f"{item} is in {list}" if result else f"{item} is not in {list}"
     return result, text
+
 
 def check_contains_in(item, list):
     item = set(item)
@@ -233,6 +284,7 @@ def check_contains_in(item, list):
         if i not in list:
             return False, f"{i} from {item} is not in {list}"
     return True, f"{item} is fully in {list}"
+
 
 def check_color(key, value):
     assert colors_buffer
@@ -246,45 +298,61 @@ def check_color(key, value):
         return True, f"Added {key} to lazy init"
     return False, f"Invalid format for color '{key}'"
 
+
 def check_colortheme(key, value):
     assert colorthemes_buffer
     if not isinstance(value, dict):
         return False, f"Invalid format for colortheme '{key}'"
-    
+
     key_validators = {
-        "primary": ColorSubTheme, "secondary": ColorSubTheme, 
-        "tertiary": ColorSubTheme, "error": ColorSubTheme, 
-        "background": ColorPair, "surface": ColorPair, 
-        "surface_variant": ColorPair, "inverse_surface": ColorPair, 
-        "outline": tuple, "inverse_primary": tuple, 
-        "name": str, "extends": str
+        "primary": ColorSubTheme,
+        "secondary": ColorSubTheme,
+        "tertiary": ColorSubTheme,
+        "error": ColorSubTheme,
+        "background": ColorPair,
+        "surface": ColorPair,
+        "surface_variant": ColorPair,
+        "inverse_surface": ColorPair,
+        "outline": tuple,
+        "inverse_primary": tuple,
+        "name": str,
+        "extends": str,
     }
 
     for k, val in value.items():
         if k not in key_validators:
             return False, f"Unknown key '{k}' in colortheme '{key}'"
-        
+
         expected_type = key_validators[k]
-        
+
         if expected_type == str:
             if not isinstance(val, str):
                 return False, f"Invalid type for {k}, expected string"
             continue
 
         is_single = isinstance(val, str) or _is_color_value(val)
-        
+
         if expected_type == tuple:
             if not is_single and not (isinstance(val, (list, tuple)) and len(val) == 1):
-                return False, f"Invalid format for {k}, expected 1 color (string or [r, g, b])"
+                return (
+                    False,
+                    f"Invalid format for {k}, expected 1 color (string or [r, g, b])",
+                )
         elif expected_type == ColorPair:
             if not isinstance(val, (list, tuple)) or is_single or len(val) != 2:
                 return False, f"Invalid format for {k}, expected 2 colors for ColorPair"
         elif expected_type == ColorSubTheme:
             if not isinstance(val, (list, tuple)) or is_single or len(val) != 4:
-                return False, f"Invalid format for {k}, expected 4 colors for ColorSubTheme"
+                return (
+                    False,
+                    f"Invalid format for {k}, expected 4 colors for ColorSubTheme",
+                )
     extend_name = value.get("extends")
     if extend_name:
-        if hasattr(ColorThemeLibrary, "_names") and extend_name in ColorThemeLibrary._names:
+        if (
+            hasattr(ColorThemeLibrary, "_names")
+            and extend_name in ColorThemeLibrary._names
+        ):
             if extend_name not in colorthemes_buffer.final_init:
                 lib_theme = getattr(ColorThemeLibrary, extend_name)
                 colorthemes_buffer.final_init[extend_name] = {
@@ -298,14 +366,14 @@ def check_colortheme(key, value):
                     "surface_variant": lib_theme.surface_variant,
                     "inverse_surface": lib_theme.inverse_surface,
                     "outline": lib_theme.outline,
-                    "inverse_primary": lib_theme.inverse_primary
+                    "inverse_primary": lib_theme.inverse_primary,
                 }
         colorthemes_buffer.lazy_init[key] = value
     else:
         colorthemes_buffer.final_init[key] = value
-        
+
     return True, f"'{key}' added to colorthemes buffer"
-            
+
 
 def check_style(key, value):
     assert styles_buffer
@@ -317,44 +385,57 @@ def check_style(key, value):
                 param = param.lower().replace("_", "")
         if param.startswith("="):
             param = param.lower().replace("=", "").replace("_", "")
-        
+
         if param == "extends":
             is_lazy = True
             continue
-            
+
         if param == "colortheme":
             if not isinstance(_val, str):
-                return False, f"colortheme must be a string (theme name), got {type(_val)}"
+                return (
+                    False,
+                    f"colortheme must be a string (theme name), got {type(_val)}",
+                )
             continue
-        
+
         result = Style.parameters_dict.get(param)
-        
+
         if not result:
             return False, f"{param} is not in Style parameters"
-        
-        param_name, validator_name = result #type: ignore
+
+        param_name, validator_name = result  # type: ignore
         validator = getattr(Style(), validator_name)
-        if not validator(_val)[0]: 
+        if not validator(_val)[0]:
             return False, f"{_val} is not valid for {param}"
-        
-    if not is_lazy: styles_buffer.final_init[key] = value
-    else: styles_buffer.lazy_init[key] = value
-        
+
+    if not is_lazy:
+        styles_buffer.final_init[key] = value
+    else:
+        styles_buffer.lazy_init[key] = value
+
     return True, f"{value} is valid for {key}"
 
+
 def _is_color_value(value):
-    if not isinstance(value, (list, tuple)): return False
-    if len(value) not in (3, 4): return False
+    if not isinstance(value, (list, tuple)):
+        return False
+    if len(value) not in (3, 4):
+        return False
     return not any(not isinstance(i, int) or not (0 <= i <= 255) for i in value)
 
+
 def _is_color_convertable(value):
-    if not isinstance(value, str): return None
+    if not isinstance(value, str):
+        return None
     if value.count(",") > 0:
         try:
             value = tuple(map(int, value.split(",")))
-        except Exception: return None
-        else: return value
+        except Exception:
+            return None
+        else:
+            return value
     return None
+
 
 #! Helpers !#
 class ApplierStrategy(StrEnum):
@@ -362,26 +443,29 @@ class ApplierStrategy(StrEnum):
     CollectList = "collect_list"
     AddObjectDict = "create_style"
 
+
 structure_validators = {
     "window": {
         "title": lambda item: skip(),
-        "size": lambda item: check_list_int(item, min = 1),
-        "display": lambda item: check_in_item(item, list = ConfigType.Window.Display),
-        "utils": lambda item: check_contains_in(item, list = ConfigType.Window.Utils.All),
-        "fps": lambda item: check_int(item, min = 1),
-        "resizable": lambda item: check_in_item(item, list = [True, False]),
-        "ratio": lambda item: check_list_int(item, min = 1),
+        "size": lambda item: check_list_int(item, min=1),
+        "display": lambda item: check_in_item(item, list=ConfigType.Window.Display),
+        "utils": lambda item: check_contains_in(item, list=ConfigType.Window.Utils.All),
+        "fps": lambda item: check_int(item, min=1),
+        "resizable": lambda item: check_in_item(item, list=[True, False]),
+        "ratio": lambda item: check_list_int(item, min=1),
     },
-    
     "styles": {Any: check_style},
     "colors": {Any: check_color},
     "colorthemes": {Any: check_colortheme},
 }
-    
+
 strategies = {
     "window": (ApplierStrategy.CollectDict, None),
     "styles": (ApplierStrategy.AddObjectDict, _style_convert_func),
-    "colors": (ApplierStrategy.AddObjectDict, _color_convert_func), #Warning: pseudo custom object, actually its just tuple
+    "colors": (
+        ApplierStrategy.AddObjectDict,
+        _color_convert_func,
+    ),  # Warning: pseudo custom object, actually its just tuple
     "colorthemes": (ApplierStrategy.AddObjectDict, _colortheme_convert_func),
 }
 
@@ -390,28 +474,49 @@ transform_to_basic_config = {
     "styles": "styles",
     "animations": "animations",
     "colors": "colors",
-    "colorthemes": "colorthemes"
+    "colorthemes": "colorthemes",
 }
 
+
 #! Global functions
-def apply_config(file_name: str, load_type: ConfigLoadType = ConfigLoadType.Json): 
+def apply_config(file_name: str, load_type: ConfigLoadType = ConfigLoadType.Json):
     with open(file_name, "r", encoding="utf-8") as file:
         if load_type == ConfigLoadType.Yaml:
             try:
                 import yaml
             except ImportError:
-                print("YAML is NOT installed, try installing it via 'pip install pyyaml' or skipping loading...")
+                print(
+                    "YAML is NOT installed, try installing it via 'pip install pyyaml' or skipping loading..."
+                )
                 return
             config_data = yaml.safe_load(file)
         elif load_type == ConfigLoadType.Json:
             config_data = json.load(file)
         else:
             raise ValueError(f"Unknown load type: {load_type}")
-            
+
     _apply_config(config_data)
-def get_style(name: str, default = None) -> Style | None: return standart_config.styles.get(name, default)
-def get_color(name: str, default = None) -> tuple | None: return standart_config.colors.get(name, default)
-def get_colortheme(name: str, default = None) -> ColorTheme | None: return standart_config.colorthemes.get(name, default)
-def get_all_colorthemes(): return standart_config.colorthemes
-def get_all_styles(): return standart_config.styles
-def get_all_colors(): return standart_config.colors
+
+
+def get_style(name: str, default=None) -> Style | None:
+    return standart_config.styles.get(name, default)
+
+
+def get_color(name: str, default=None) -> tuple | None:
+    return standart_config.colors.get(name, default)
+
+
+def get_colortheme(name: str, default=None) -> ColorTheme | None:
+    return standart_config.colorthemes.get(name, default)
+
+
+def get_all_colorthemes():
+    return standart_config.colorthemes
+
+
+def get_all_styles():
+    return standart_config.styles
+
+
+def get_all_colors():
+    return standart_config.colors

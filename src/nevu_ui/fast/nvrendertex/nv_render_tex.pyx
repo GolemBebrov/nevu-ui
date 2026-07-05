@@ -58,7 +58,12 @@ cdef class NvRenderTexture:
 
     cdef void c_fast_nvblit(self, NvRenderTexture nv_texture, NvVector2 dest, int blend_mode, bint flip, NvRect color):
         h = -nv_texture.height if flip else nv_texture.height
+        cdef bint blend_mode_selected = <bint>(blend_mode != -1)
+        if blend_mode_selected:
+            begin_blend_mode(blend_mode)
         c_draw_nvtexture_nvvec(nv_texture, dest, color, flip)
+        if blend_mode_selected:
+            end_blend_mode()
 
     cdef void c_fast_blit(self, NvRenderTexture nv_texture, tuple dest, bint flip, tuple color):
         h = -nv_texture.height if flip else nv_texture.height

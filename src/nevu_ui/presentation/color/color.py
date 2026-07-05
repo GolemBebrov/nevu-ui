@@ -1,14 +1,56 @@
 import colorsys
 import random
 from typing import TypeGuard
+
 from nevu_ui.core import Annotations
-    
-def is_rgb(color) -> TypeGuard[Annotations.rgb_color]: return isinstance(color, tuple) and len(color) == 3 and all(isinstance(c, int) and 0 <= c <= 255 for c in color)
-def is_rgba(color) -> TypeGuard[Annotations.rgba_color]: return isinstance(color, tuple) and len(color) == 4 and all(isinstance(c, (int, float)) and 0 <= c <= 255 for c in color)
-def is_rgb_like(color) -> TypeGuard[Annotations.rgb_like_color]: return is_rgb(color) or is_rgba(color)
-def is_hsl(color) -> TypeGuard[Annotations.hsl_color]: return isinstance(color, tuple) and len(color) == 3 and all(isinstance(c, float) and 0 <= c <= 1 for c in color)
-def is_hex(color) -> TypeGuard[Annotations.hex_color]: return isinstance(color, str) and color.startswith('#')
-    
+
+_num = (int, float)
+
+
+def is_rgb(color) -> TypeGuard[Annotations.rgb_color]:
+    if type(color) is not tuple or len(color) != 3:
+        return False
+    r, g, b = color
+    return (
+        type(r) is int
+        and type(g) is int
+        and type(b) is int
+        and 0 <= r <= 255
+        and 0 <= g <= 255
+        and 0 <= b <= 255
+    )
+
+
+def is_rgba(color) -> TypeGuard[Annotations.rgba_color]:
+    if type(color) is not tuple or len(color) != 4:
+        return False
+    r, g, b, a = color
+    if not (
+        isinstance(r, _num)
+        and isinstance(g, _num)
+        and isinstance(b, _num)
+        and isinstance(a, _num)
+    ):
+        return False
+    return 0 <= r <= 255 and 0 <= g <= 255 and 0 <= b <= 255 and 0 <= a <= 255
+
+
+def is_rgb_like(color) -> TypeGuard[Annotations.rgb_like_color]:
+    return is_rgb(color) or is_rgba(color)
+
+
+def is_hsl(color) -> TypeGuard[Annotations.hsl_color]:
+    return (
+        isinstance(color, tuple)
+        and len(color) == 3
+        and all(isinstance(c, float) and 0 <= c <= 1 for c in color)
+    )
+
+
+def is_hex(color) -> TypeGuard[Annotations.hex_color]:
+    return isinstance(color, str) and color.startswith("#")
+
+
 class Color:
     AliceBlue = (240, 248, 255, 255)
     AntiqueWhite = (250, 235, 215, 255)
@@ -162,27 +204,29 @@ class Color:
     WhiteSmoke = (245, 245, 245, 255)
     Yellow = (255, 255, 0, 255)
     YellowGreen = (154, 205, 50, 255)
-    
+
     _COLOR_MAP = None
-    
+
     @classmethod
     def _get_map(cls):
         if cls._COLOR_MAP is None:
-            cls._COLOR_MAP = {k.lower(): v for k, v in cls.__dict__.items() if isinstance(v, tuple)}
+            cls._COLOR_MAP = {
+                k.lower(): v for k, v in cls.__dict__.items() if isinstance(v, tuple)
+            }
         return cls._COLOR_MAP
 
     @classmethod
     def __getitem__(cls, key: str) -> Annotations.rgb_color | None:
         return cls._get_map().get(key.lower())
 
-
     @staticmethod
     def hex_to_rgb(hex_color: str) -> Annotations.rgb_color:
         """Converts HEX string to RGB tuple."""
         assert is_hex(hex_color), "Invalid HEX color format."
-        hex_color = hex_color.lstrip('#')
-        if len(hex_color) != 6: raise ValueError("Invalid HEX color format. Use #RRGGBB.")
-        return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4)) # type: ignore
+        hex_color = hex_color.lstrip("#")
+        if len(hex_color) != 6:
+            raise ValueError("Invalid HEX color format. Use #RRGGBB.")
+        return tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))  # type: ignore
 
     @staticmethod
     def hsl_to_rgb(color: Annotations.hsl_color) -> Annotations.rgb_color:
@@ -203,9 +247,12 @@ class Color:
     @staticmethod
     def invert(color: Annotations.any_color) -> Annotations.any_color:
         """Inverts the color (makes negative)."""
-        if is_rgb_like(color): return Color._invert_rgb(color)
-        elif is_hsl(color): return Color.invert_hsl(color)
-        elif is_hex(color): raise NotImplementedError("Hex color inversion is not implemented yet.")
+        if is_rgb_like(color):
+            return Color._invert_rgb(color)
+        elif is_hsl(color):
+            return Color.invert_hsl(color)
+        elif is_hex(color):
+            raise NotImplementedError("Hex color inversion is not implemented yet.")
         raise ValueError("Invalid color format.")
 
     @staticmethod
@@ -221,20 +268,25 @@ class Color:
         inverted_h = (h + 0.5) % 1.0
         inverted_l = 1.0 - l
         return (inverted_h, inverted_l, s)
-    
+
     @staticmethod
-    def lighten(color: Annotations.rgb_color, amount: float = 0.2) -> Annotations.rgb_color:
+    def lighten(
+        color: Annotations.rgb_color, amount: float = 0.2
+    ) -> Annotations.rgb_color:
         """
         Lightens the color.
         amount: from 0.0 (no change) to 1.0 (completely white).
         """
-        if not (0.0 <= amount <= 1.0): raise ValueError("The 'amount' value should be between 0.0 and 1.0.")
+        if not (0.0 <= amount <= 1.0):
+            raise ValueError("The 'amount' value should be between 0.0 and 1.0.")
         h, l, s = Color.rgb_to_hsl(color)
         l = l + (1 - l) * amount
         return Color.hsl_to_rgb((h, l, s))
 
     @staticmethod
-    def darken(color: Annotations.rgb_color, amount: float = 0.2) -> Annotations.rgb_color:
+    def darken(
+        color: Annotations.rgb_color, amount: float = 0.2
+    ) -> Annotations.rgb_color:
         """
         Makes the color darker.
         amount: from 0.0 (no change) to 1.0 (completely black).
@@ -249,14 +301,16 @@ class Color:
     def random_rgb() -> Annotations.rgb_color:
         """Returns a random RGB color."""
         return (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-    
+
     @staticmethod
     def random_hsl() -> Annotations.hsl_color:
         """Returns a random HSL color."""
         return (random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1))
-    
+
     @staticmethod
-    def text_color_for_bg(bg_color: Annotations.rgb_like_color) -> Annotations.rgb_like_color:
+    def text_color_for_bg(
+        bg_color: Annotations.rgb_like_color,
+    ) -> Annotations.rgb_like_color:
         """
         Determines which text color (black or white) will be better readable
         on a given background color.
@@ -269,15 +323,19 @@ class Color:
             raise ValueError(f"Invalid color format: {bg_color}")
         luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
         return Color.Black if luminance > 0.5 else Color.White
-    
+
     @staticmethod
-    def with_float_alpha(color: Annotations.rgb_like_color, alpha: float) -> Annotations.rgba_color:
+    def with_float_alpha(
+        color: Annotations.rgb_like_color, alpha: float
+    ) -> Annotations.rgba_color:
         return Color.with_alpha(color, round(alpha * 255))
-    
+
     @staticmethod
-    def with_alpha(color: Annotations.rgb_like_color, alpha: int) -> Annotations.rgba_color:
+    def with_alpha(
+        color: Annotations.rgb_like_color, alpha: int
+    ) -> Annotations.rgba_color:
         return (color[0], color[1], color[2], alpha)
-    
+
     @staticmethod
     def mix(*colors) -> Annotations.rgb_color:
         """
@@ -294,19 +352,21 @@ class Color:
                         color = getattr(Color, color.upper())
                     except AttributeError as e:
                         raise ValueError(f"Unknown color name: {color}") from e
-                    
-            elif is_hsl(color): color = Color.hsl_to_rgb(color)
-                
+
+            elif is_hsl(color):
+                color = Color.hsl_to_rgb(color)
+
             elif not is_rgb_like(color):
                 raise TypeError(f"Invalid color format for: {color}")
 
             final_color_list.append(color)
 
-        if not final_color_list: return (0, 0, 0)
+        if not final_color_list:
+            return (0, 0, 0)
 
         r, g, b = (sum(c) // len(final_color_list) for c in zip(*final_color_list))
         return (r, g, b)
-    
+
     @classmethod
     def get_color(cls, color: str, default=None):
         return cls._get_map().get(color.lower(), default)

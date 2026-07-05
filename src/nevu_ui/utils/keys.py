@@ -1,8 +1,9 @@
-import nevu_ui.core.modules as md 
+import nevu_ui.core.modules as md
 from nevu_ui.core.state import nevu_state
 
 _keys = {}
 _keys_reversed = {}
+
 
 def init_keys():
     global _keys, _keys_reversed
@@ -10,74 +11,342 @@ def init_keys():
     if dtype.pygame_like:
         pg = md.pygame
         _keys = {
-            "A": pg.K_a, "B": pg.K_b, "C": pg.K_c, "D": pg.K_d, "E": pg.K_e, "F": pg.K_f, "G": pg.K_g, "H": pg.K_h,
-            "I": pg.K_i, "J": pg.K_j, "K": pg.K_k, "L": pg.K_l, "M": pg.K_m, "N": pg.K_n, "O": pg.K_o, "P": pg.K_p,
-            "Q": pg.K_q, "R": pg.K_r, "S": pg.K_s, "T": pg.K_t, "U": pg.K_u, "V": pg.K_v, "W": pg.K_w, "X": pg.K_x, "Y": pg.K_y, "Z": pg.K_z,
-            "Num0": pg.K_0, "Num1": pg.K_1, "Num2": pg.K_2, "Num3": pg.K_3, "Num4": pg.K_4, "Num5": pg.K_5, "Num6": pg.K_6, "Num7": pg.K_7, "Num8": pg.K_8, "Num9": pg.K_9,
-            "F1": pg.K_F1, "F2": pg.K_F2, "F3": pg.K_F3, "F4": pg.K_F4, "F5": pg.K_F5, "F6": pg.K_F6, "F7": pg.K_F7, "F8": pg.K_F8, "F9": pg.K_F9, "F10": pg.K_F10, "F11": pg.K_F11, "F12": pg.K_F12,
-            "Space": pg.K_SPACE, "Escape": pg.K_ESCAPE, "Enter": pg.K_RETURN, "Tab": pg.K_TAB, "Backspace": pg.K_BACKSPACE, "Insert": pg.K_INSERT,
-            "Delete": pg.K_DELETE, "Right": pg.K_RIGHT, "Left": pg.K_LEFT, "Down": pg.K_DOWN, "Up": pg.K_UP, "PageUp": pg.K_PAGEUP,
-            "PageDown": pg.K_PAGEDOWN, "Home": pg.K_HOME, "End": pg.K_END, "LeftShift": pg.K_LSHIFT, "RightShift": pg.K_RSHIFT,
-            "LeftCtrl": pg.K_LCTRL, "RightCtrl": pg.K_RCTRL, "LeftAlt": pg.K_LALT, "RightAlt": pg.K_RALT,
-            "LeftSuper": pg.K_LSUPER, "RightSuper": pg.K_RSUPER, "Menu": pg.K_MENU, "Minus": pg.K_MINUS, "Equal": pg.K_EQUALS,
-            "LeftBracket": pg.K_LEFTBRACKET, "RightBracket": pg.K_RIGHTBRACKET, "Backslash": pg.K_BACKSLASH, "Semicolon": pg.K_SEMICOLON,
-            "Apostrophe": pg.K_QUOTE, "Grave": pg.K_BACKQUOTE, "Comma": pg.K_COMMA, "Period": pg.K_PERIOD, "Slash": pg.K_SLASH,
-            "Kp0": pg.K_KP0, "Kp1": pg.K_KP1, "Kp2": pg.K_KP2, "Kp3": pg.K_KP3, "Kp4": pg.K_KP4, "Kp5": pg.K_KP5, "Kp6": pg.K_KP6, "Kp7": pg.K_KP7, "Kp8": pg.K_KP8, "Kp9": pg.K_KP9, "KpDecimal": pg.K_KP_PERIOD,
-            "KpDivide": pg.K_KP_DIVIDE, "KpMultiply": pg.K_KP_MULTIPLY, "KpMinus": pg.K_KP_MINUS, "KpPlus": pg.K_KP_PLUS,
-            "KpEnter": pg.K_KP_ENTER, "KpEqual": pg.K_KP_EQUALS, "CapsLock": pg.K_CAPSLOCK, "ScrollLock": pg.K_SCROLLOCK,
-            "NumLock": pg.K_NUMLOCK, "PrintScreen": pg.K_PRINTSCREEN, "Pause": pg.K_PAUSE
+            "A": pg.K_a,
+            "B": pg.K_b,
+            "C": pg.K_c,
+            "D": pg.K_d,
+            "E": pg.K_e,
+            "F": pg.K_f,
+            "G": pg.K_g,
+            "H": pg.K_h,
+            "I": pg.K_i,
+            "J": pg.K_j,
+            "K": pg.K_k,
+            "L": pg.K_l,
+            "M": pg.K_m,
+            "N": pg.K_n,
+            "O": pg.K_o,
+            "P": pg.K_p,
+            "Q": pg.K_q,
+            "R": pg.K_r,
+            "S": pg.K_s,
+            "T": pg.K_t,
+            "U": pg.K_u,
+            "V": pg.K_v,
+            "W": pg.K_w,
+            "X": pg.K_x,
+            "Y": pg.K_y,
+            "Z": pg.K_z,
+            "Num0": pg.K_0,
+            "Num1": pg.K_1,
+            "Num2": pg.K_2,
+            "Num3": pg.K_3,
+            "Num4": pg.K_4,
+            "Num5": pg.K_5,
+            "Num6": pg.K_6,
+            "Num7": pg.K_7,
+            "Num8": pg.K_8,
+            "Num9": pg.K_9,
+            "F1": pg.K_F1,
+            "F2": pg.K_F2,
+            "F3": pg.K_F3,
+            "F4": pg.K_F4,
+            "F5": pg.K_F5,
+            "F6": pg.K_F6,
+            "F7": pg.K_F7,
+            "F8": pg.K_F8,
+            "F9": pg.K_F9,
+            "F10": pg.K_F10,
+            "F11": pg.K_F11,
+            "F12": pg.K_F12,
+            "Space": pg.K_SPACE,
+            "Escape": pg.K_ESCAPE,
+            "Enter": pg.K_RETURN,
+            "Tab": pg.K_TAB,
+            "Backspace": pg.K_BACKSPACE,
+            "Insert": pg.K_INSERT,
+            "Delete": pg.K_DELETE,
+            "Right": pg.K_RIGHT,
+            "Left": pg.K_LEFT,
+            "Down": pg.K_DOWN,
+            "Up": pg.K_UP,
+            "PageUp": pg.K_PAGEUP,
+            "PageDown": pg.K_PAGEDOWN,
+            "Home": pg.K_HOME,
+            "End": pg.K_END,
+            "LeftShift": pg.K_LSHIFT,
+            "RightShift": pg.K_RSHIFT,
+            "LeftCtrl": pg.K_LCTRL,
+            "RightCtrl": pg.K_RCTRL,
+            "LeftAlt": pg.K_LALT,
+            "RightAlt": pg.K_RALT,
+            "LeftSuper": pg.K_LSUPER,
+            "RightSuper": pg.K_RSUPER,
+            "Menu": pg.K_MENU,
+            "Minus": pg.K_MINUS,
+            "Equal": pg.K_EQUALS,
+            "LeftBracket": pg.K_LEFTBRACKET,
+            "RightBracket": pg.K_RIGHTBRACKET,
+            "Backslash": pg.K_BACKSLASH,
+            "Semicolon": pg.K_SEMICOLON,
+            "Apostrophe": pg.K_QUOTE,
+            "Grave": pg.K_BACKQUOTE,
+            "Comma": pg.K_COMMA,
+            "Period": pg.K_PERIOD,
+            "Slash": pg.K_SLASH,
+            "Kp0": pg.K_KP0,
+            "Kp1": pg.K_KP1,
+            "Kp2": pg.K_KP2,
+            "Kp3": pg.K_KP3,
+            "Kp4": pg.K_KP4,
+            "Kp5": pg.K_KP5,
+            "Kp6": pg.K_KP6,
+            "Kp7": pg.K_KP7,
+            "Kp8": pg.K_KP8,
+            "Kp9": pg.K_KP9,
+            "KpDecimal": pg.K_KP_PERIOD,
+            "KpDivide": pg.K_KP_DIVIDE,
+            "KpMultiply": pg.K_KP_MULTIPLY,
+            "KpMinus": pg.K_KP_MINUS,
+            "KpPlus": pg.K_KP_PLUS,
+            "KpEnter": pg.K_KP_ENTER,
+            "KpEqual": pg.K_KP_EQUALS,
+            "CapsLock": pg.K_CAPSLOCK,
+            "ScrollLock": pg.K_SCROLLOCK,
+            "NumLock": pg.K_NUMLOCK,
+            "PrintScreen": pg.K_PRINTSCREEN,
+            "Pause": pg.K_PAUSE,
         }
     elif dtype.raylib:
         rkey = md.rl.KeyboardKey
         _keys = {
-            "A": rkey.KEY_A, "B": rkey.KEY_B, "C": rkey.KEY_C, "D": rkey.KEY_D, "E": rkey.KEY_E, "F": rkey.KEY_F, "G": rkey.KEY_G, "H": rkey.KEY_H,
-            "I": rkey.KEY_I, "J": rkey.KEY_J, "K": rkey.KEY_K, "L": rkey.KEY_L, "M": rkey.KEY_M, "N": rkey.KEY_N, "O": rkey.KEY_O, "P": rkey.KEY_P,"Q": rkey.KEY_Q, "R": rkey.KEY_R, "S": rkey.KEY_S, "T": rkey.KEY_T,
-            "U": rkey.KEY_U, "V": rkey.KEY_V, "W": rkey.KEY_W, "X": rkey.KEY_X, "Y": rkey.KEY_Y, "Z": rkey.KEY_Z,
-            "Num0": rkey.KEY_ZERO, "Num1": rkey.KEY_ONE, "Num2": rkey.KEY_TWO, "Num3": rkey.KEY_THREE, "Num4": rkey.KEY_FOUR, 
-            "Num5": rkey.KEY_FIVE, "Num6": rkey.KEY_SIX, "Num7": rkey.KEY_SEVEN, "Num8": rkey.KEY_EIGHT, "Num9": rkey.KEY_NINE,
-            "F1": rkey.KEY_F1, "F2": rkey.KEY_F2, "F3": rkey.KEY_F3, "F4": rkey.KEY_F4, "F5": rkey.KEY_F5, "F6": rkey.KEY_F6, "F7": rkey.KEY_F7, "F8": rkey.KEY_F8, "F9": rkey.KEY_F9, "F10": rkey.KEY_F10, "F11": rkey.KEY_F11, "F12": rkey.KEY_F12,
-            "Space": rkey.KEY_SPACE, "Escape": rkey.KEY_ESCAPE, "Enter": rkey.KEY_ENTER, "Tab": rkey.KEY_TAB, "Backspace": rkey.KEY_BACKSPACE, "Insert": rkey.KEY_INSERT,
-            "Delete": rkey.KEY_DELETE, "Right": rkey.KEY_RIGHT, "Left": rkey.KEY_LEFT, "Down": rkey.KEY_DOWN, "Up": rkey.KEY_UP, "PageUp": rkey.KEY_PAGE_UP,
-            "PageDown": rkey.KEY_PAGE_DOWN, "Home": rkey.KEY_HOME, "End": rkey.KEY_END, "LeftShift": rkey.KEY_LEFT_SHIFT, "RightShift": rkey.KEY_RIGHT_SHIFT,
-            "LeftCtrl": rkey.KEY_LEFT_CONTROL, "RightCtrl": rkey.KEY_RIGHT_CONTROL, "LeftAlt": rkey.KEY_LEFT_ALT, "RightAlt": rkey.KEY_RIGHT_ALT,
-            "LeftSuper": rkey.KEY_LEFT_SUPER, "RightSuper": rkey.KEY_RIGHT_SUPER, "Menu": rkey.KEY_KB_MENU, "Minus": rkey.KEY_MINUS, "Equal": rkey.KEY_EQUAL,
-            "LeftBracket": rkey.KEY_LEFT_BRACKET, "RightBracket": rkey.KEY_RIGHT_BRACKET, "Backslash": rkey.KEY_BACKSLASH, "Semicolon": rkey.KEY_SEMICOLON,
-            "Apostrophe": rkey.KEY_APOSTROPHE, "Grave": rkey.KEY_GRAVE, "Comma": rkey.KEY_COMMA, "Period": rkey.KEY_PERIOD, "Slash": rkey.KEY_SLASH,
-            "Kp0": rkey.KEY_KP_0, "Kp1": rkey.KEY_KP_1, "Kp2": rkey.KEY_KP_2, "Kp3": rkey.KEY_KP_3, "Kp4": rkey.KEY_KP_4, "Kp5": rkey.KEY_KP_5, "Kp6": rkey.KEY_KP_6, "Kp7": rkey.KEY_KP_7, "Kp8": rkey.KEY_KP_8, "Kp9": rkey.KEY_KP_9, "KpDecimal": rkey.KEY_KP_DECIMAL,
-            "KpDivide": rkey.KEY_KP_DIVIDE, "KpMultiply": rkey.KEY_KP_MULTIPLY, "KpMinus": rkey.KEY_KP_SUBTRACT, "KpPlus": rkey.KEY_KP_ADD,
-            "KpEnter": rkey.KEY_KP_ENTER, "KpEqual": rkey.KEY_KP_EQUAL, "CapsLock": rkey.KEY_CAPS_LOCK, "ScrollLock": rkey.KEY_SCROLL_LOCK,
-            "NumLock": rkey.KEY_NUM_LOCK, "PrintScreen": rkey.KEY_PRINT_SCREEN, "Pause": rkey.KEY_PAUSE, "VolumeUp": rkey.KEY_VOLUME_UP, "VolumeDown": rkey.KEY_VOLUME_DOWN
+            "A": rkey.KEY_A,
+            "B": rkey.KEY_B,
+            "C": rkey.KEY_C,
+            "D": rkey.KEY_D,
+            "E": rkey.KEY_E,
+            "F": rkey.KEY_F,
+            "G": rkey.KEY_G,
+            "H": rkey.KEY_H,
+            "I": rkey.KEY_I,
+            "J": rkey.KEY_J,
+            "K": rkey.KEY_K,
+            "L": rkey.KEY_L,
+            "M": rkey.KEY_M,
+            "N": rkey.KEY_N,
+            "O": rkey.KEY_O,
+            "P": rkey.KEY_P,
+            "Q": rkey.KEY_Q,
+            "R": rkey.KEY_R,
+            "S": rkey.KEY_S,
+            "T": rkey.KEY_T,
+            "U": rkey.KEY_U,
+            "V": rkey.KEY_V,
+            "W": rkey.KEY_W,
+            "X": rkey.KEY_X,
+            "Y": rkey.KEY_Y,
+            "Z": rkey.KEY_Z,
+            "Num0": rkey.KEY_ZERO,
+            "Num1": rkey.KEY_ONE,
+            "Num2": rkey.KEY_TWO,
+            "Num3": rkey.KEY_THREE,
+            "Num4": rkey.KEY_FOUR,
+            "Num5": rkey.KEY_FIVE,
+            "Num6": rkey.KEY_SIX,
+            "Num7": rkey.KEY_SEVEN,
+            "Num8": rkey.KEY_EIGHT,
+            "Num9": rkey.KEY_NINE,
+            "F1": rkey.KEY_F1,
+            "F2": rkey.KEY_F2,
+            "F3": rkey.KEY_F3,
+            "F4": rkey.KEY_F4,
+            "F5": rkey.KEY_F5,
+            "F6": rkey.KEY_F6,
+            "F7": rkey.KEY_F7,
+            "F8": rkey.KEY_F8,
+            "F9": rkey.KEY_F9,
+            "F10": rkey.KEY_F10,
+            "F11": rkey.KEY_F11,
+            "F12": rkey.KEY_F12,
+            "Space": rkey.KEY_SPACE,
+            "Escape": rkey.KEY_ESCAPE,
+            "Enter": rkey.KEY_ENTER,
+            "Tab": rkey.KEY_TAB,
+            "Backspace": rkey.KEY_BACKSPACE,
+            "Insert": rkey.KEY_INSERT,
+            "Delete": rkey.KEY_DELETE,
+            "Right": rkey.KEY_RIGHT,
+            "Left": rkey.KEY_LEFT,
+            "Down": rkey.KEY_DOWN,
+            "Up": rkey.KEY_UP,
+            "PageUp": rkey.KEY_PAGE_UP,
+            "PageDown": rkey.KEY_PAGE_DOWN,
+            "Home": rkey.KEY_HOME,
+            "End": rkey.KEY_END,
+            "LeftShift": rkey.KEY_LEFT_SHIFT,
+            "RightShift": rkey.KEY_RIGHT_SHIFT,
+            "LeftCtrl": rkey.KEY_LEFT_CONTROL,
+            "RightCtrl": rkey.KEY_RIGHT_CONTROL,
+            "LeftAlt": rkey.KEY_LEFT_ALT,
+            "RightAlt": rkey.KEY_RIGHT_ALT,
+            "LeftSuper": rkey.KEY_LEFT_SUPER,
+            "RightSuper": rkey.KEY_RIGHT_SUPER,
+            "Menu": rkey.KEY_KB_MENU,
+            "Minus": rkey.KEY_MINUS,
+            "Equal": rkey.KEY_EQUAL,
+            "LeftBracket": rkey.KEY_LEFT_BRACKET,
+            "RightBracket": rkey.KEY_RIGHT_BRACKET,
+            "Backslash": rkey.KEY_BACKSLASH,
+            "Semicolon": rkey.KEY_SEMICOLON,
+            "Apostrophe": rkey.KEY_APOSTROPHE,
+            "Grave": rkey.KEY_GRAVE,
+            "Comma": rkey.KEY_COMMA,
+            "Period": rkey.KEY_PERIOD,
+            "Slash": rkey.KEY_SLASH,
+            "Kp0": rkey.KEY_KP_0,
+            "Kp1": rkey.KEY_KP_1,
+            "Kp2": rkey.KEY_KP_2,
+            "Kp3": rkey.KEY_KP_3,
+            "Kp4": rkey.KEY_KP_4,
+            "Kp5": rkey.KEY_KP_5,
+            "Kp6": rkey.KEY_KP_6,
+            "Kp7": rkey.KEY_KP_7,
+            "Kp8": rkey.KEY_KP_8,
+            "Kp9": rkey.KEY_KP_9,
+            "KpDecimal": rkey.KEY_KP_DECIMAL,
+            "KpDivide": rkey.KEY_KP_DIVIDE,
+            "KpMultiply": rkey.KEY_KP_MULTIPLY,
+            "KpMinus": rkey.KEY_KP_SUBTRACT,
+            "KpPlus": rkey.KEY_KP_ADD,
+            "KpEnter": rkey.KEY_KP_ENTER,
+            "KpEqual": rkey.KEY_KP_EQUAL,
+            "CapsLock": rkey.KEY_CAPS_LOCK,
+            "ScrollLock": rkey.KEY_SCROLL_LOCK,
+            "NumLock": rkey.KEY_NUM_LOCK,
+            "PrintScreen": rkey.KEY_PRINT_SCREEN,
+            "Pause": rkey.KEY_PAUSE,
+            "VolumeUp": rkey.KEY_VOLUME_UP,
+            "VolumeDown": rkey.KEY_VOLUME_DOWN,
         }
-    
+
     _keys_reversed = {v: k for k, v in _keys.items()}
+
 
 class KeysMeta(type):
     def __getattr__(cls, key):
         return _keys[key]
 
+
 class Keys(metaclass=KeysMeta):
     _main_keys = None
-    A: int; B: int; C: int; D: int; E: int; F: int; G: int; H: int; I: int; J: int
-    K: int; L: int; M: int; N: int; O: int; P: int; Q: int; R: int; S: int; T: int
-    U: int; V: int; W: int; X: int; Y: int; Z: int
-    Num0: int; Num1: int; Num2: int; Num3: int; Num4: int
-    Num5: int; Num6: int; Num7: int; Num8: int; Num9: int
-    F1: int; F2: int; F3: int; F4: int; F5: int; F6: int
-    F7: int; F8: int; F9: int; F10: int; F11: int; F12: int
-    Space: int; Escape: int; Enter: int; Tab: int; Backspace: int
-    Insert: int; Delete: int; Right: int; Left: int; Down: int; Up: int
-    PageUp: int; PageDown: int; Home: int; End: int
-    LeftShift: int; RightShift: int; LeftCtrl: int; RightCtrl: int
-    LeftAlt: int; RightAlt: int; LeftSuper: int; RightSuper: int; Menu: int
-    Minus: int; Equal: int; LeftBracket: int; RightBracket: int
-    Backslash: int; Semicolon: int; Apostrophe: int; Grave: int
-    Comma: int; Period: int; Slash: int
-    Kp0: int; Kp1: int; Kp2: int; Kp3: int; Kp4: int; Kp5: int
-    Kp6: int; Kp7: int; Kp8: int; Kp9: int
-    KpDecimal: int; KpDivide: int; KpMultiply: int; KpMinus: int
-    KpPlus: int; KpEnter: int; KpEqual: int
-    CapsLock: int; ScrollLock: int; NumLock: int
-    PrintScreen: int; Pause: int; VolumeUp: int; VolumeDown: int
+    A: int
+    B: int
+    C: int
+    D: int
+    E: int
+    F: int
+    G: int
+    H: int
+    I: int
+    J: int
+    K: int
+    L: int
+    M: int
+    N: int
+    O: int
+    P: int
+    Q: int
+    R: int
+    S: int
+    T: int
+    U: int
+    V: int
+    W: int
+    X: int
+    Y: int
+    Z: int
+    Num0: int
+    Num1: int
+    Num2: int
+    Num3: int
+    Num4: int
+    Num5: int
+    Num6: int
+    Num7: int
+    Num8: int
+    Num9: int
+    F1: int
+    F2: int
+    F3: int
+    F4: int
+    F5: int
+    F6: int
+    F7: int
+    F8: int
+    F9: int
+    F10: int
+    F11: int
+    F12: int
+    Space: int
+    Escape: int
+    Enter: int
+    Tab: int
+    Backspace: int
+    Insert: int
+    Delete: int
+    Right: int
+    Left: int
+    Down: int
+    Up: int
+    PageUp: int
+    PageDown: int
+    Home: int
+    End: int
+    LeftShift: int
+    RightShift: int
+    LeftCtrl: int
+    RightCtrl: int
+    LeftAlt: int
+    RightAlt: int
+    LeftSuper: int
+    RightSuper: int
+    Menu: int
+    Minus: int
+    Equal: int
+    LeftBracket: int
+    RightBracket: int
+    Backslash: int
+    Semicolon: int
+    Apostrophe: int
+    Grave: int
+    Comma: int
+    Period: int
+    Slash: int
+    Kp0: int
+    Kp1: int
+    Kp2: int
+    Kp3: int
+    Kp4: int
+    Kp5: int
+    Kp6: int
+    Kp7: int
+    Kp8: int
+    Kp9: int
+    KpDecimal: int
+    KpDivide: int
+    KpMultiply: int
+    KpMinus: int
+    KpPlus: int
+    KpEnter: int
+    KpEqual: int
+    CapsLock: int
+    ScrollLock: int
+    NumLock: int
+    PrintScreen: int
+    Pause: int
+    VolumeUp: int
+    VolumeDown: int
+
     @staticmethod
-    def revert(int_key: int) -> str: # type: ignore
+    def revert(int_key: int) -> str:  # type: ignore
         return _keys_reversed[int_key]

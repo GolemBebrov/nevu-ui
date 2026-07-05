@@ -1,5 +1,5 @@
-from nevu_ui.core.size.rules import *
 from nevu_ui.core.size.base import SizeUnit
+from nevu_ui.core.size.rules import *
 
 px = SizeUnit(Px)
 
@@ -25,7 +25,7 @@ cgcw = SizeUnit(Cgcw)
 cgch = SizeUnit(Cgch)
 _all_gcx_units = {gc, gcw, gch, cgc, cgcw, cgch}
 
-fill_all = (100*fillw, 100*fillh)
-fill_half = (50*fillw, 50*fillh)
+fill_all = (100 * fillw, 100 * fillh)
+fill_half = (50 * fillw, 50 * fillh)
 
-fill_perc = lambda percent: [percent*fillw, percent*fillh] 
+fill_perc = lambda percent: [percent * fillw, percent * fillh]

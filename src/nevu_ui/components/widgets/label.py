@@ -1,73 +1,108 @@
 import copy
-from typing import Unpack
+from typing import Callable, Unpack
 
 import nevu_ui.core.modules as md
-from nevu_ui.core import Annotations
+from nevu_ui.components.widgets import LabelKwargs, LabelTemplate, Widget
+from nevu_ui.core import Annotations, nevu_state
+from nevu_ui.core.enums import CacheType, RenderConfig, RenderReturnType
+from nevu_ui.fast.nvrendertex import NvRenderTexture
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.fast.raylib.nevu_raylib import begin_blend_mode, end_blend_mode
-from nevu_ui.fast.nvrendertex import NvRenderTexture
-from nevu_ui.core import nevu_state
-from nevu_ui.components.widgets import Widget, LabelKwargs, LabelTemplate
-from nevu_ui.core.enums import RenderConfig, RenderReturnType, CacheType
+from nevu_ui.rendering import DrawTextCall
+
 
 class Label(Widget):
-    def __init__(self, text: str, size: Annotations.nevuobj_size = None, style: Annotations.nevuobj_style = None, **constant_kwargs: Unpack[LabelKwargs]):
+    # === Params ===
+    words_indent: bool
+    on_text_change: Callable
+
+    # ==============
+    def __init__(
+        self,
+        text: str,
+        size: Annotations.nevuobj_size = None,
+        style: Annotations.nevuobj_style = None,
+        **constant_kwargs: Unpack[LabelKwargs],
+    ):
         super().__init__(size, style, **constant_kwargs)
         self._template = LabelTemplate(self._template.size, text)
-        self._changed = True
 
-    @property
-    def words_indent(self) -> bool: return self.get_param_strict("words_indent").value
-    
     def _add_params(self):
         super()._add_params()
         self._add_param("words_indent", bool, False)
+        self._add_param("on_text_change", (type(None), Callable), None)
 
-    def _init_booleans(self):
-        super()._init_booleans()
-        self._changed_text = True
-    
-    def _lazy_init(self, size: NvVector2 | list, text: str): # type: ignore
+    def _lazy_init(self, size: NvVector2 | list, text: str):  # type: ignore
         super()._lazy_init(size)
         assert isinstance(text, str)
-        self._text = "" 
-        self.text = text 
-        
+        self.text = text
+
     @property
-    def text(self): return self._text
+    def text(self):
+        return self._text
+
     @text.setter
     def text(self, text: str):
         self._changed = True
         self.clear_surfaces()
         self.clear_texture()
         self._text = text
+        if self.on_text_change:
+            self.on_text_change(self, text)
 
     def _fast_bake_text(self):
-        cached_args = self.cache.get_or_exec(CacheType.TextArgs, lambda: self.renderer.run_text(RenderConfig.DrawL3, text=self._text or "", 
-                                                                                                words_indent=self.words_indent, return_type=RenderReturnType.CreateNew))
-        self._text_rect, self._text_surface = cached_args
+        result = self.cache.get_or_exec(
+            CacheType.TextArgs,
+            lambda: self.renderer.run_text(
+                DrawTextCall(
+                    text=self.text or "",
+                    words_indent=self.words_indent,
+                    return_type=RenderReturnType.CreateNew,
+                    continuous=False,
+                )
+            ),
+        )
+        assert result
+
+        self._text_rect, self._text_surface = result
         if nevu_state.window.renderer_type.raylib:
-            md.rl.set_texture_filter(self._text_surface.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
-            md.rl.set_texture_wrap(self._text_surface.texture, md.rl.TextureWrap.TEXTURE_WRAP_CLAMP)
-        
+            texture = self._text_surface.texture
+            rl = md.rl
+            md.rl.set_texture_filter(
+                texture, rl.TextureFilter.TEXTURE_FILTER_ANISOTROPIC_16X
+            )
+            md.rl.set_texture_wrap(texture, rl.TextureWrap.TEXTURE_WRAP_CLAMP)
+
     def secondary_draw_content(self):
-        if not self.visible: return
-        if not self._changed_text and not self._changed: return
-        self._changed_text = False
         self._fast_bake_text()
-        coordinates = NvVector2(self._text_rect)
-        if self.inline: coordinates += self.coordinates
-        if not (text_surface := self._text_surface): return
-        dtype = nevu_state.window.renderer_type
+
+        if self.inline:
+            coordinates = NvVector2(self._text_rect)
+            coordinates += self.coordinates
+            coordinates = coordinates.get_int_tuple()
+        else:
+            coordinates = (self._text_rect[0], self._text_rect[1])
+
+        text_surface = self._text_surface
+        if not text_surface:
+            return
+        rtype = nevu_state.window.renderer_type
         surf = self.surface
-        if dtype.pygame_like:
-            surf.blit(text_surface, coordinates.get_int_tuple()) 
-        elif dtype.raylib:
+
+        if rtype.pygame_like:
+            surf.blit(text_surface, coordinates)
+
+        elif rtype.raylib:
             assert isinstance(surf, NvRenderTexture)
             with surf:
                 begin_blend_mode(self._correct_blend)
-                surf.fast_blit(text_surface, coordinates.get_int_tuple())
+                surf.fast_blit(text_surface, coordinates)
                 end_blend_mode()
-                  
+
     def _create_clone(self):
-        return self.__class__(self._template['text'], self._template['size'], copy.deepcopy(self.style), **self.constant_kwargs)
+        return self.__class__(
+            self._template["text"],
+            self._template["size"],
+            copy.deepcopy(self.style),
+            **self.constant_kwargs,
+        )

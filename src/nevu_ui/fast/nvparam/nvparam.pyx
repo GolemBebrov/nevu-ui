@@ -1,5 +1,5 @@
 # distutils: language = c++
-
+import weakref
 cdef class NvParam:
     @staticmethod
     cdef NvParam new(str name, int layer, object value, object default, object type, object getter, object setter):
@@ -27,17 +27,35 @@ cdef class NvParam:
     
     cpdef void set(self, value):
         cdef object new_value
+        cdef object actual_setter
         if self.setter != None: 
-            new_value = self.setter(value)
-            if new_value != None:
-                self.value = new_value
-                return
+            actual_setter = self.setter
+
+            if isinstance(actual_setter, (weakref.ReferenceType, weakref.WeakMethod)) or type(actual_setter).__name__ in ('ref', 'WeakMethod'):
+                actual_setter = actual_setter()
+                
+            if actual_setter != None:
+                
+                new_value = actual_setter(value)
+                if new_value != None:
+                    self.value = new_value
+                    return
+                    
         if not self.check(value):
             raise TypeError(f"Parameter '{self.name}' must be of type '{self._get_cool_error_message()}', but got '{value} ({type(value).__name__})'.")
         self.value = value
         
     cpdef object get(self):
-        if self.getter: return self.getter(self.value)
+        cdef object actual_getter
+        
+        if self.getter != None: 
+            actual_getter = self.getter
+            if isinstance(actual_getter, (weakref.ReferenceType, weakref.WeakMethod)) or type(actual_getter).__name__ in ('ref', 'WeakMethod'):
+                actual_getter = actual_getter()
+                
+            if actual_getter != None:
+                return actual_getter(self.value)
+                
         return self.value
 
     def __repr__(self) -> str:
