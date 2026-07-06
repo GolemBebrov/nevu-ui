@@ -206,7 +206,7 @@ cdef class NevuCobject:
             i += 1
 
     cpdef update(self):
-        if not self._active: return
+        if not self._active or self._dead: return
         events = nevu_state.current_events
         self._primary_update(events)
         if self._custom_secondary_update:
@@ -283,7 +283,7 @@ cdef class NevuCobject:
     #======================================
 
     cpdef draw(self):
-        if not self._visible or self._wait_mode: return
+        if not self._visible or self._wait_mode or self._dead: return
         if self._changed:
             call_noarg(self.on_change)
             self._on_change_system()
