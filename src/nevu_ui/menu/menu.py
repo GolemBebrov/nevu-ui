@@ -100,11 +100,11 @@ class MenuLayoutProxy:
 
     @property
     def original_size(self):
-        return self.menu._window.size
+        return self.menu._window.original_size
 
     def __getattr__(self, name):
         if name == "original_size":
-            return self.menu._window.size
+            return self.menu._window.original_size
         return getattr(self.menu, name)
 
 

@@ -46,8 +46,9 @@ class _RaylibCoreNamespace(_BaseCoreNamespace):
         return self.root.relm(override_size or self.style.font_size) * 1.25
 
     @override
-    def get_font(self, override_size=None):
-        font_size = self.get_font_size(override_size)
+    def get_font(self, name: str | None = None, size=None):
+        font_size = self.get_font_size(size)
+        font_name = name or self.style.font_name
 
         def _load_font_with_cyrillic():
             codepoints = list(range(32, 127)) + list(range(1024, 1104)) + [1025, 1105]
@@ -59,11 +60,9 @@ class _RaylibCoreNamespace(_BaseCoreNamespace):
             if self.style.font_name == "Arial":
                 font = rl.get_font_default()
             else:
-                font = rl.load_font_ex(
-                    self.style.font_name, round(font_size), c_ptr, glyph_count
-                )
+                font = rl.load_font_ex(font_name, round(font_size), c_ptr, glyph_count)
             if font.glyphCount == 0:
-                raise ValueError(f"Font {self.style.font_name} not found")
+                raise ValueError(f"Font {font_name} not found")
             return font
 
         return self.root.cache.get_or_exec(CacheType.RlFont, _load_font_with_cyrillic)  # type: ignore
@@ -307,7 +306,7 @@ class RaylibRenderer(BaseRenderer):
                 font_size = font_size * 1.5
                 render_font = root._get_raylib_font_nocache(font_size)
             else:
-                render_font = self.core.get_font(font_size)
+                render_font = self.core.get_font(size=font_size)
             assert isinstance(render_font, rl.Font().__class__)
             font_size = render_font.baseSize
             final_size = override_size or size

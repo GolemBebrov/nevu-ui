@@ -49,12 +49,13 @@ class _PygameCoreNamespace(_BaseCoreNamespace):
         return round(self.root.relm(override_size or self.style.font_size))
 
     @override
-    def get_font(self, override_size=None):
-        font_size = round(self.get_font_size(override_size))
+    def get_font(self, name: str | None = None, size=None):
+        font_size = round(self.get_font_size(size))
+        font_name = name or self.style.font_name
         return (
-            md.pygame.font.SysFont(self.style.font_name, font_size)
-            if self.style.font_name == "Arial" or self.style.font_name is None
-            else md.pygame.font.Font(self.style.font_name, font_size)
+            md.pygame.font.SysFont(font_name, font_size)
+            if font_name == "Arial" or font_name is None
+            else md.pygame.font.Font(font_name, font_size)
         )
 
     @override
@@ -263,7 +264,7 @@ class PygameRenderer(BaseRenderer):
                 text_dims, \
                 render_font
             assert font_size
-            render_font = self.core.get_font(font_size)
+            render_font = self.core.get_font(size=font_size)
             assert isinstance(render_font, md.pygame.font.Font), (
                 "font must be a pygame font"
             )
@@ -273,7 +274,7 @@ class PygameRenderer(BaseRenderer):
             final_max_size.x = min(final_max_size.x, final_size.x)
             final_max_size.y = min(final_max_size.y, final_size.y)
             if not continuous:
-                line_height = self.core.measure_text(render_font, "A", font_size).y
+                line_height = render_font.get_linesize()
                 text_to_split = text.strip().split(" ") if words_indent else list(text)
                 marg = " " if words_indent else ""
                 text_lines = self.core.split_words(

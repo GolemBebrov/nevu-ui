@@ -51,7 +51,7 @@ class _BaseCoreNamespace(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_font(self, override_size=None):
+    def get_font(self, name: str | None = None, size=None):
         raise NotImplementedError
 
     @abstractmethod
