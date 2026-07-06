@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nevu-ui"
-version = "0.8.1" 
+version = "0.8.2"
 authors = [
   { name="GolemNikidastrov", email="bebrovgolem@gmail.com" },
 ]
@@ -33,7 +33,7 @@ keywords = [
 ]
 
 description = "A powerful multibackend GUI framework for Python. Made for declarative UI creation"
-readme = "README.md" 
+readme = "README.md"
 requires-python = ">=3.12"
 classifiers = [
     "Programming Language :: Python :: 3",
