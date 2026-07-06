@@ -765,6 +765,7 @@ class NevuObject(NevuCobject):
             self.renderer = None
         if self._sended_z_link and nevu_state.window:
             nevu_state.window.z_system.mark_dirty()
+            self.z_request = None
 
     def _kill_end(self):
         pass

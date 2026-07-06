@@ -63,6 +63,7 @@ class ElementSwitcher(Widget):
     left_key: Any
     right_key: Any
     offset_perc: NvVector2
+    words_indent: bool
 
     # ==============
     def __init__(
@@ -102,10 +103,11 @@ class ElementSwitcher(Widget):
             CacheType.TextArgs,
             lambda: self.renderer.run_text(
                 DrawTextCall(
+                    continuous=False,
                     text=self.current_element_text,
-                    words_indent=False,
+                    words_indent=self.words_indent,
                     return_type=RenderReturnType.CreateNew,
-                )
+                ),
             ),
         )
         self._text_rect, self._text_surface = cached_args
@@ -131,6 +133,8 @@ class ElementSwitcher(Widget):
 
     def _logic_update(self):
         super()._logic_update()
+        if self._dead:
+            return
         if not self._global_hovered:
             return
         lkey = self.left_key
@@ -387,7 +391,7 @@ class ElementSwitcher(Widget):
             lambda: self.renderer.run_text(
                 DrawTextCall(
                     text=self.current_element_text,
-                    words_indent=False,
+                    words_indent=self.words_indent,
                     max_size=cropped_size,
                     return_type=RenderReturnType.CreateNew,
                 )
@@ -441,3 +445,13 @@ class ElementSwitcher(Widget):
             copy.deepcopy(self.style),
             **self.constant_kwargs,
         )
+
+    def _kill_base(self):
+        super()._kill_base()
+        if hasattr(self, "button_left"):
+            self.button_left.kill()
+        if hasattr(self, "button_right"):
+            self.button_right.kill()
+        self.button_left = None
+        self.button_right = None
+        self._delayed_button_update = False

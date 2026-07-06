@@ -1,3 +1,4 @@
+import copy
 from typing import Unpack
 
 from nevu_ui.components.layouts.grid.base import Grid, GridKwargs_uni
@@ -51,7 +52,7 @@ class Panel(Grid):
                     "check all your Panel objects constructor arguments and if the bg_widget argument is not a Widget object, remove or correct it",
                 )
             )
-
+        self.bg_widget._template.size = self.size.xy
         self.bg_widget._init_start()
         self.bg_widget.booted = True
         self.bg_widget._boot_up()
@@ -124,3 +125,15 @@ class Panel(Grid):
         if hasattr(self, "bg_widget") and self.bg_widget:
             self.bg_widget.style = style
             self.bg_widget.cache.clear()
+
+    def _create_clone(self):
+        cloned_bg = self.bg_widget.clone() if self.bg_widget else None
+
+        kwargs = self.constant_kwargs.copy()
+        return Panel(
+            size=self._template["size"],
+            style=copy.deepcopy(self.style),
+            slot=copy.deepcopy(self._template["content"]),
+            bg_widget=cloned_bg,
+            **kwargs,
+        )

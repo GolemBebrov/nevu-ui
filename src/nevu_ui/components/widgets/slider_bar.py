@@ -331,3 +331,8 @@ class Slider(Widget):
         assert self.surface
         self._create_font()
         self.progress_bar._resize(resize_ratio)
+
+    def _kill_base(self):
+        super()._kill_base()
+        self.progress_bar.kill()
+        self.progress_bar = None

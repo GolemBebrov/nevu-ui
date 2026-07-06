@@ -22,6 +22,7 @@ from nevu_ui.fast.nvspecific.nvspec import (
     scrollable_update_collided,
 )
 from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.overlay import overlay
 from nevu_ui.presentation.color import SubThemeRole
 from nevu_ui.presentation.style import Style
 from nevu_ui.utils import keyboard, mouse
@@ -243,6 +244,10 @@ class ScrollableBase(LayoutType, ABC):
         return rect1.collide_rect(rect2)
 
     def _rl_predraw_widgets(self):
+        if self.borders and self._need_update_overlay:
+            self._need_update_overlay = False
+            abs_coords = self.absolute_coordinates.to_round()
+            overlay.add_draw_call(self, self._rl_border_draw_call, abs_coords, -1)
         need_recollide = (
             self.absolute_coordinates.x != self._last_known_abs_coords.x
             or self.absolute_coordinates.y != self._last_known_abs_coords.y

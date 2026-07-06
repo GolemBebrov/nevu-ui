@@ -4,7 +4,7 @@ from nevu_ui.components.layouts import Grid, GridKwargs_uni
 from nevu_ui.components.widgets import Input, Label
 from nevu_ui.core.enums import Align
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.presentation.style import Style
+from nevu_ui.presentation.style import Style, default_style
 from nevu_ui.utils import InputType
 
 
@@ -58,7 +58,7 @@ class ColorPicker(Grid):
             self.add_item(
                 Input(
                     self.item_size,
-                    self.input_style(text_align_x=Align.CENTER),
+                    self.input_style(align_x=Align.CENTER),
                     "",
                     "0",
                     whitelist=list(InputType.NUMBERS),
@@ -73,7 +73,7 @@ class ColorPicker(Grid):
             self.label = Label(
                 self.title or "",
                 NvVector2(self.size.x, self.item_size.y),
-                self.label_style(text_align_x=Align.CENTER),
+                self.label_style(align_x=Align.CENTER),
             )
             self.add_item(self.label, self.amount_of_colors // 2 + offset, 1)
 
