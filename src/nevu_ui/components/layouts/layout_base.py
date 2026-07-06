@@ -4,6 +4,8 @@ import copy
 from itertools import chain
 from typing import TYPE_CHECKING, Any, Iterator, NotRequired, TypeGuard, Unpack
 
+from pygame import draw
+
 if TYPE_CHECKING:
     from nevu_ui.menu import Menu
 import nevu_ui.core.modules as md
@@ -31,7 +33,7 @@ from nevu_ui.core.size.rules import (
 )
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.logic.fast_logic import (
-    draw_widgets_optimized,
+    draw_floating_items_optimized,
     py_get_item_abs_coords,
     rl_predraw_widgets,
 )
@@ -88,7 +90,7 @@ class LayoutType(NevuObject):
                 )
 
     def _rl_predraw_widgets(self):
-        if self.get_param_strict("borders").value and self._need_update_overlay:
+        if self.borders and self._need_update_overlay:
             self._need_update_overlay = False
             abs_coords = self.absolute_coordinates.to_round()
             overlay.add_draw_call(self, self._rl_border_draw_call, abs_coords, -1)
@@ -168,16 +170,10 @@ class LayoutType(NevuObject):
         return True
 
     def _borders_setter(self, value: BorderConfig):
-        if not value.font:
-            return
-        if nevu_state.window.renderer_type.raylib:
-            rlfont = value.font
-            if not hasattr(rlfont, "glyphCount"):
-                raise ValueError("font must be a raylib font")
-        else:
-            pgfont = value.font
-            if not isinstance(pgfont, md.pygame.font.Font):
-                raise ValueError("font must be a md.pygame font")
+        value = copy.deepcopy(value)
+        font = self.renderer.core.get_font(name=value.font, size=self.style.font_size)
+        value.font = font
+        return value
 
     @staticmethod
     def _percent_helper(size, value):
@@ -389,7 +385,7 @@ class LayoutType(NevuObject):
                 )
             overlay.add_element(self, surf, self.absolute_coordinates.to_round(), -1)
 
-        draw_widgets_optimized(self, self.floating_items, LayoutType, Widget)
+        draw_floating_items_optimized(self, self.floating_items, LayoutType, Widget)
 
     def _logic_update(self):
         if overlay.has_element(self):
@@ -457,6 +453,35 @@ class LayoutType(NevuObject):
             **self.constant_kwargs,
         )
 
+    def get_item_list_pos(self, item: NevuObject) -> int:
+        if item in self.items:
+            return self.items.index(item)
+        elif item in self.floating_items:
+            return self.floating_items.index(item)
+        else:
+            return -1
+
+    def is_item_floating(self, item: NevuObject) -> bool:
+        return item in self.floating_items
+
+    def _on_item_kill(self, item: NevuObject) -> None:
+        pass
+
+    def kill_item_by_id(self, id: str):
+        item = self.get_item_by_id(id)
+        if item:
+            self.kill_item(item)
+
+    def kill_item(self, item: NevuObject):
+        if item in self._all_items():
+            self._on_item_kill(item)
+            item.kill()
+            self.cached_coordinates = None
+        if item in self.items:
+            self.items.remove(item)
+        elif item in self.floating_items:
+            self.floating_items.remove(item)
+
     def _kill_base(self):
         super()._kill_base()
         for item in self._all_items():
@@ -470,7 +495,9 @@ class LayoutType(NevuObject):
                 for item in content:
                     if isinstance(item, tuple):
                         item[-1].kill()
-
+        if self.borders:
+            if overlay.get_element(self):
+                overlay.remove_element(self)
         self.items.clear()
 
         if self.menu:

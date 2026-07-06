@@ -179,6 +179,24 @@ class Grid(LayoutType):
             if coords[1] == y - 1
         ]
 
+    def _on_item_kill(self, item: NevuObject) -> None:
+        super()._on_item_kill(item)
+        if item in self.items:
+            idx = self.items.index(item)
+            self.items.pop(idx)
+            self.grid_coordinates.pop(idx)
+
+    def kill_item_by_pos(self, x: any_number, y: any_number) -> None:
+        widget = self.get_item(x, y)
+        if widget:
+            self.kill_item(widget)
+
+    def get_item_grid(self, item: NevuObject) -> NvVector2 | None:
+        for i, coords in enumerate(self.grid_coordinates):
+            if self.items[i] == item:
+                return coords
+        return None
+
     def get_item(self, x: any_number, y: any_number) -> NevuObject | None:
         target_coords = (x - 1, y - 1)
         for i, coords in enumerate(self.grid_coordinates):
