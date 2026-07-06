@@ -19,7 +19,12 @@ cpdef tuple get_rect_helper_cached(NvVector2 master_coordinates, NvVector2 csize
 
 cpdef object get_rect_helper_cached_pygame(NvVector2 master_coordinates, NvVector2 csize)
 cdef inline NvVector2 get_item_abs_coords(NevuCobject layout, NevuCobject item)
-
+cpdef void draw_floating_items_optimized(
+    NevuCobject layout,
+    list items,
+    type layout_type,
+    type widget_type
+)
 cdef NvRect get_nvrect_helper(NvVector2 master_coordinates, NvVector2 resize_ratio, NvVector2 size)
 
 cpdef void logic_update_helper(
@@ -31,7 +36,7 @@ cpdef void logic_update_helper(
 cdef start_item(NevuCobject item, NevuCobject layout)
 
 cpdef void draw_widgets_optimized(
-    NevuCobject layout, 
+    NevuCobject layout,
     list items,
     type layout_type,
     type widget_type
