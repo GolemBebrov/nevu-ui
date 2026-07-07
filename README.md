@@ -9,7 +9,7 @@
 
 ### Nevu UI means: `Nevu is Eleven times better Versus other UI's User Interface`
 
-# Brief Description 
+# Brief Description
 **Nevu UI** is a library for the declarative creation of user interfaces in python. The project aims to provide developers with a set of ready-made, stylable, and extensible components for the rapid creation of modern and responsive interfaces in games and multimedia applications.
 
 #### The main goal of Nevu UI: to make creating interfaces in python easier and faster
@@ -127,7 +127,6 @@ Examples of declarativeness:
     * ```numpy```
   * For Running:
     * ```numpy```
-    * ```Pillow```
   * Additional libraries:
     * ```pygame-ce>=2.3.0``` 
     * ```raylib```
