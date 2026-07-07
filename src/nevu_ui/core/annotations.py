@@ -10,7 +10,7 @@ from nevu_ui.core.classes import SurfaceLike
 from nevu_ui.core.size.units import SizeRule
 from nevu_ui.core.state import nevu_state
 
-VERSION = "0.8.2"
+VERSION = "0.8.2B"
 
 # Deprecated
 nv_error_message_template = """Error occurred in {class_name} with {id}.\n
