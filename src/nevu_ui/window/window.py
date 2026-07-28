@@ -1,6 +1,7 @@
 import sys
 from typing import TypeGuard
 
+from nevu_ui.core.callbacks import Callbacks
 from typing_extensions import TYPE_CHECKING, NotRequired, TypedDict, Unpack, deprecated
 
 if TYPE_CHECKING:
@@ -10,7 +11,7 @@ if TYPE_CHECKING:
 
 import nevu_ui.core.modules as md
 from nevu_ui.core.classes import ConfigType, Counter
-from nevu_ui.core.enums import Backend, EventType, ResizeType
+from nevu_ui.core.enums import Backend, BindType, EventType, ResizeType
 from nevu_ui.core.modules import init_modules
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.nvdisplay.display import (
@@ -24,7 +25,7 @@ from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.fast.zsystem import ZRequest, ZSystem
 from nevu_ui.overlay import overlay
 from nevu_ui.parser.base import standart_config
-from nevu_ui.utils import NevuEvent, keyboard, mouse, set_keyboard, set_mouse, time
+from nevu_ui.utils import keyboard, mouse, set_keyboard, set_mouse, time
 from nevu_ui.utils.keys import init_keys
 
 
@@ -58,10 +59,6 @@ class WindowKwargs(TypedDict):
     base_fps: NotRequired[int]
     debounce: NotRequired[bool]
 
-
-window_event_cycle = lambda *args, **kwargs: print(
-    "Unexpected something happened in window event cycle"
-)
 window_resize_type = ResizeType.CropToRatio
 window_specific_update = lambda *args, **kwargs: print(
     "Unexpected something happened in window specific update"
@@ -101,6 +98,7 @@ class Window:
         "_x2_offset",
         "_renderer",
         "debounce",
+        "callbacks"
     ]
     _kwargs_to_param = {
         "title": ("_title", str, "nevu window"),
@@ -143,13 +141,12 @@ class Window:
         return super(Window, cls).__new__(cls)
 
     def _init_base(self):
-        global window_event_cycle, window_update_utils
+        global window_update_utils
         self.renderer_type = _IsNamespace(self)
         nevu_state.window = self
         self._debouncing = Counter(0, 0.1)
         self._old_fps = None
         self.pygame_unicode = None
-        window_event_cycle = self._event_cycle
         window_update_utils = self._update_utils
 
     def __init__(self, size, **kwargs: Unpack[WindowKwargs]):
@@ -162,13 +159,13 @@ class Window:
         self._init_lists(size)
         self._init_graphics()
 
-        self._events: list[NevuEvent] = []
         nevu_state.current_events = []
 
         if window_resize_type == ResizeType.CropToRatio:
             self._recalculate_render_area()
 
         self.z_system = ZSystem()
+        self.callbacks = Callbacks()
         self._reset_nevu_state()
 
         init_keys()
@@ -366,7 +363,7 @@ class Window:
             mouse.any_wheel,
             mouse.wheel_down,
         )
-        window_event_cycle(EventType.Update)
+        self.callbacks.run(BindType.Update, self)
         if on_update := self.on_update:
             self._hook_cycle(on_update)
         self.renderer.update()
@@ -376,9 +373,9 @@ class Window:
             self._recalculate_render_area()
             render_width = self.size[0] - self._crop_width_offset
             render_height = self.size[1] - self._crop_height_offset
-            window_event_cycle(EventType.Resize, [render_width, render_height])
+            self.callbacks.run(BindType.Resize, NvVector2(render_width, render_height))
         else:
-            window_event_cycle(EventType.Resize, self.size)
+            self.callbacks.run(BindType.Resize, self.size)
 
         if on_resize := self.on_resize:
             self._hook_cycle(on_resize)
@@ -387,8 +384,16 @@ class Window:
         texture = overlay.get_result(self.size)
         if self.renderer_type.raylib:
             texture = texture.texture  # type: ignore
+            md.rl.begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
 
-        self.renderer.blit(texture, (0, 0))
+        renderer = self.renderer
+        if self.renderer_type.raylib:
+            assert self.is_raylib(renderer)
+            renderer.fast_blit(texture, (0, 0))
+        else:
+            renderer.blit(texture, (0, 0))
+        if self.renderer_type.raylib:
+            md.rl.end_blend_mode()
 
     def _update_utils(self, events):
         mouse.update(events)  # type: ignore
@@ -419,14 +424,6 @@ class Window:
     @property
     def original_size(self):
         return self._original_size
-
-    def add_event(self, event: NevuEvent):
-        self._events.append(event)
-
-    def _event_cycle(self, type: EventType, *args, **kwargs):
-        for event in self._events:
-            if event._type == type:
-                event(*args, **kwargs)
 
     def _hook_cycle(self, hook_list: list):
         for hook in hook_list:
@@ -504,7 +501,6 @@ class InitializedWindow(Window):
         self._init_hooks()
         self._init_lists(self.renderer.get_size_tuple())
 
-        self._events: list[NevuEvent] = []
         nevu_state.current_events = []
 
         if window_resize_type == ResizeType.CropToRatio:
