@@ -8,6 +8,7 @@ from nevu_ui.core import modules as md
 from nevu_ui.core.enums import (
     Align,
     Backend,
+    BindType,
     CacheType,
     EventType,
     HoverState,
@@ -32,7 +33,6 @@ from nevu_ui.presentation.style import Style, StyleKwargs, default_style
 from nevu_ui.rendering import DrawBaseCall, DrawBordersCall
 from nevu_ui.rendering.pygame.new_renderer import PygameRenderer
 from nevu_ui.rendering.raylib.new_renderer import RaylibRenderer
-from nevu_ui.utils import NevuEvent
 from nevu_ui.window import Window
 
 
@@ -41,12 +41,12 @@ class MenuRendererProxy:
         self.menu = menu
         self.clickable = False
         self.hoverable = False
-        self._old_color = (1, 1, 1)
+        self._bg_color_before = (1, 1, 1)
         self.animate_color_change = False
         self._set_new_color = lambda *args: None
         self._changed_size = True
         self.hover_state = HoverState.NotHovered
-        self._color_anim_manager = None
+        self._bg_color_anim_manager = None
         self.inline = NvParam("asd", False, False, False, bool, None, None)
         self.animate_color_change = NvParam(
             "Faputa Solo SOSU!!!!", -1999, False, False, bool, None, None
@@ -327,7 +327,7 @@ class Menu:
         self.style = style
         self._subtheme_role = self.style.subtheme_role or SubThemeRole.PRIMARY
         if self._window:
-            self._window.add_event(NevuEvent(self, self._resize, EventType.Resize))
+            self._window.callbacks.bind(BindType.Resize, self._resize)
 
     def _init_size(self, size: list | tuple | NvVector2):
         self._resize_ratio = NvVector2.from_xy(1, 1)
@@ -368,13 +368,13 @@ class Menu:
             self._subtheme_content = self._alt_subtheme_content
 
     def _main_subtheme_content(self):
-        return self._subtheme.oncolor
+        return self.style.colortheme.background.color
 
     def _main_subtheme_border(self):
         return self._subtheme.color
 
     def _alt_subtheme_content(self):
-        return self._subtheme.oncontainer
+        return self.style.colortheme.surface.color
 
     def _alt_subtheme_border(self):
         return self._subtheme.container
@@ -397,6 +397,7 @@ class Menu:
                         image_support=True,
                         easy_background=easy_background,
                         return_type=RenderReturnType.CreateNew,
+                        glassy=False,
                     ),
                     key=RenderConfig.DrawL1,
                 ),
