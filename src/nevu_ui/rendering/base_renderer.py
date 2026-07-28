@@ -225,6 +225,7 @@ class DrawBaseCall(_BaseCall):
     cache: Any = None
     return_type: RenderReturnType = RenderReturnType.Null
     modify_object: Any = None
+    glassy: bool = False
 
 
 @dataclass(kw_only=True, slots=True)
@@ -263,6 +264,7 @@ class DrawBordersCall(_BaseCall):
     return_type: RenderReturnType = RenderReturnType.Null
     bg_color: Annotations.rgb_like_color | None = None
     modify_object: Any = None
+    glassy: bool = False
 
 
 class BaseRenderer(ABC):

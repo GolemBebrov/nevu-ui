@@ -289,7 +289,7 @@ class GradientPygame:
                     LinearSide.TopRight: LinearSide.BottomLeft,
                     LinearSide.BottomLeft: LinearSide.TopRight,
                     LinearSide.TopLeft: LinearSide.BottomRight,
-                    BottomRight: LinearSide.TopLeft,
+                    LinearSide.BottomRight: LinearSide.TopLeft,
                 }
                 new_direction = mapping.get(self.direction)  # type: ignore
             elif self.type == GradientType.Radial:

@@ -75,6 +75,7 @@ class _RaylibCoreNamespace(_BaseCoreNamespace):
         size: Annotations.dest_like | NvVector2,
         color: Annotations.rgba_color = Color.White,
         radii: Annotations.rect_like | int = 0,
+        glassy: bool = False,
     ):
         assert isinstance(subject, NvRenderTexture), (
             "subject must be a nevu ui render texture"
@@ -92,7 +93,10 @@ class _RaylibCoreNamespace(_BaseCoreNamespace):
         display = nevu_state.window.renderer
         assert nevu_state.window.is_raylib(display)
         with subject:
-            display.fast_blit_sdf_vec(rect_texture.texture, (0, 0), radii)
+            if glassy:
+                display.fast_blit_glassy_sdf_vec(rect_texture.texture, (0, 0), radii)
+            else:
+                display.fast_blit_sdf_vec(rect_texture.texture, (0, 0), radii)
 
     @override
     def load_image(
@@ -129,11 +133,11 @@ class _RaylibSpecifiedDraw(_BaseSpecifiedDraw):
                 if root.get_param_strict("inverted").value
                 else root.subtheme_content
             )
-            old_color = root._old_color
+            old_color = root._bg_color_before
             if old_color is None:
-                root._old_color = new_color_pretendent  # type: ignore
+                root._bg_color_before = new_color_pretendent  # type: ignore
             elif old_color != new_color_pretendent:
-                root._set_new_color(new_color_pretendent)
+                root._set_next_bg_color_anim(new_color_pretendent)
 
 
 class RaylibRenderer(BaseRenderer):
@@ -153,6 +157,7 @@ class RaylibRenderer(BaseRenderer):
         size: NvVector2 = call.size if call.size is not None else root._csize
         cache = call.cache if call.cache is not None else root.cache
         standstill = call.standstill
+        glassy = call.glassy
         override_color = call.color
         cached = call.cached
         radii = call.radius if call.radius is not None else root.style.border_radius
@@ -224,7 +229,7 @@ class RaylibRenderer(BaseRenderer):
             else:
                 if not standstill:
                     unsafe.check_root_color_transition()
-                    if color_manager := root._color_anim_manager:
+                    if color_manager := root._bg_color_anim_manager:
                         anim_color = (
                             color_manager.get_animation_value("main")
                             if color_manager
@@ -240,7 +245,7 @@ class RaylibRenderer(BaseRenderer):
                     if easy_background:
                         texture.clear(color)  # type: ignore
                     else:
-                        self.core.draw_rect(texture, (0, 0), size, color, radii)  # type: ignore
+                        self.core.draw_rect(texture, (0, 0), size, color, radii, glassy=glassy)  # type: ignore
             end_blend_mode()
 
         match return_type:
@@ -459,6 +464,7 @@ class RaylibRenderer(BaseRenderer):
             if call.border_width is not None
             else root.style.border_width
         )
+        glassy = call.glassy
         radius = call.radius if call.radius is not None else root.style.border_radius
         radius = core.normalize_radius_relative(radius)
         override_color = (
@@ -489,14 +495,24 @@ class RaylibRenderer(BaseRenderer):
                 if border_width <= 0 or no_borders:
                     display.fast_blit_sdf_vec(subject.texture, pos, radius, flip=True)
                 elif border_width > 0:
-                    display.fast_blit_borders_vec(
-                        subject.texture,
-                        pos,
-                        radius,
-                        override_color,
-                        thickness=root.relm(border_width),
-                        flip=True,
-                    )
+                    if glassy:
+                        display.fast_blit_glassy_borders_vec(
+                            subject.texture,
+                            pos,
+                            radius,
+                            override_color,
+                            thickness=root.relm(border_width),
+                            flip=True,
+                        )
+                    else:
+                        display.fast_blit_borders_vec(
+                            subject.texture,
+                            pos,
+                            radius,
+                            override_color,
+                            thickness=root.relm(border_width),
+                            flip=True,
+                        )
             end_blend_mode()
 
         match return_type:

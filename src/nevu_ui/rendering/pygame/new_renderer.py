@@ -184,17 +184,17 @@ class PygameRenderer(BaseRenderer):
 
                         new_color_tuple = to_rgba_tuple(new_color_pretendent)
                         old_color_tuple = (
-                            to_rgba_tuple(root._old_color)
-                            if root._old_color is not None
+                            to_rgba_tuple(root._bg_color_before)
+                            if root._bg_color_before is not None
                             else None
                         )
 
                         if old_color_tuple is None:
-                            root._old_color = new_color_pretendent
+                            root._bg_color_before = new_color_pretendent
                         elif old_color_tuple != new_color_tuple:
-                            root._set_new_color(new_color_pretendent)
+                            root._set_next_bg_color_anim(new_color_pretendent)
 
-                    if color_manager := root._color_anim_manager:
+                    if color_manager := root._bg_color_anim_manager:
                         anim_color = color_manager.get_animation_value("main")
                     else:
                         anim_color = None
