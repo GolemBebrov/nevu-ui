@@ -40,6 +40,8 @@ class OverlayManager:
         self.mark_undone()
 
     def add_element(self, name, surface, coordinates: NvVector2, layer: layer_type = 0):
+        if nevu_state.window.renderer_type.raylib:
+            md.rl.set_texture_filter(surface.texture, md.rl.TextureFilter.TEXTURE_FILTER_ANISOTROPIC_16X)
         self.pipeline[name] = (surface, coordinates, layer, OvItemType.Texture)
         self.mark_all()
 
@@ -70,6 +72,8 @@ class OverlayManager:
         type: OvItemType | None = None,
     ):
         if self.has_element(name):
+            if nevu_state.window.renderer_type.raylib:
+                md.rl.set_texture_filter(surface.texture, md.rl.TextureFilter.TEXTURE_FILTER_ANISOTROPIC_16X)
             self.pipeline[name] = (
                 surface,
                 coordinates,
@@ -182,6 +186,7 @@ class OverlayManager:
                 md.rl.begin_texture_mode(surface)
                 display.blit(self._rendered_cache, (0, 0))
                 md.rl.end_texture_mode()
+
             else:
                 surface.blit(self._rendered_cache, (0, 0))
             return
@@ -192,6 +197,7 @@ class OverlayManager:
                 coords: NvVector2 = element[1][1]
                 surface.blit(surf, coords.to_tuple())
         else:
+            md.rl.begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
             md.rl.begin_texture_mode(surface)
             display = nevu_state.window.renderer
             assert nevu_state.window.is_raylib(display)
@@ -204,6 +210,7 @@ class OverlayManager:
                 else:
                     display.blit(surf.texture, coords.to_tuple())
             md.rl.end_texture_mode()
+            md.rl.end_blend_mode()
 
     def get_result(self, size):
         if size.get_int_tuple() != self._cached_size:
@@ -246,7 +253,7 @@ class OverlayManager:
             case Backend.RayLib:
                 txture = md.rl.load_render_texture(int(size[0]), int(size[1]))
                 md.rl.set_texture_filter(
-                    txture.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR
+                    txture.texture, md.rl.TextureFilter.TEXTURE_FILTER_ANISOTROPIC_16X
                 )
                 # md.rl.set_texture_wrap(txture.texture, md.rl.TextureWrap.TEXTURE_WRAP_CLAMP)
                 md.rl.begin_texture_mode(txture)
