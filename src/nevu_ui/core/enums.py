@@ -17,10 +17,30 @@ class PressType(IntEnum):
     WheelStill = 5
 
 
+class BindType(StrEnum):
+    Click = "on_click"
+    Hover = "on_hover"
+    KeyUp = "on_keyup"
+    KeyUpAbandon = "on_keyup_abandon"
+    Unhover = "on_unhover"
+    Scroll = "on_scroll"
+    Change = "on_change"
+    BeforeUpdate = "before_update"
+    Update = "on_update"
+    BeforeDraw = "before_draw"
+    Draw = "on_draw"
+    BeforeCopy = "before_copy"
+    Copy = "on_copy"
+    StateChange = "on_state_change"
+    AfterStateChange = "after_state_change"
+    BeforeStyleChange = "before_style_change"
+    StyleChange = "on_style_change"
+    Resize = "on_resize"
+
 class Backend(StrEnum):
     Pygame = "pygame"
     Sdl = "sdl"
-    Opengl = "opengl"
+    Opengl = "opengl" #Nah bro (scull emoji)
     RayLib = "raylib"
 
 
@@ -125,6 +145,8 @@ class AnimationType(Enum):
     Opacity = auto()
 
 
+#DEPRECATEEEEEEEED..
+# фу бяка тупая
 class EventType(Enum):
     Resize = auto()
     Render = auto()
