@@ -1,3 +1,3 @@
+from .glassy import GlassyBorderShader, GlassySdfShader
+from .standart import BorderShader, SdfShader
 from .gradient import GradientShader
-from .sdf import SdfShader
-from .border import BorderShader
