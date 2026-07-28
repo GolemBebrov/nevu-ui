@@ -9,11 +9,16 @@ from nevu_ui.core.classes import SurfaceLike, TooltipType
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast import Cache, NvRect, NvRenderTexture, NvVector2
 from nevu_ui.fast.raylib import begin_blend_mode, end_blend_mode
+from nevu_ui.presentation.animations.animation_base import Vector2Animation
+from nevu_ui.presentation.animations.animation_manager import AnimationManager
+from nevu_ui.presentation.animations.animations_library import smootherstep
 from nevu_ui.presentation.style import Style, default_style
 
 if TYPE_CHECKING:
     from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.core.enums import (
+    AnimationManagerState,
+    BindType,
     CacheType,
     EventType,
     HoverState,
@@ -103,9 +108,6 @@ class _TooltipBase:
 
     def _get_surf_content(self, renderer: BaseRenderer) -> SurfaceLike:
         br = self.style.border_radius
-        if isinstance(br, list | tuple):
-            br = max(br)
-            self.style.border_radius = br
         title_rect = NvRect(0, 0, *self._csize)
 
         surf = renderer.run_base(
@@ -137,7 +139,11 @@ class _TooltipBase:
         title_width = title_surf.width
         title_rect[0] += self._csize.x / 2 - title_width / 2
 
-        surf.blit(title_surf, title_rect.get_int_tuple())
+        adds = {}
+        if nevu_state.window.renderer_type.raylib:
+            adds["blend_mode"] = md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY
+
+        surf.blit(title_surf, title_rect.get_int_tuple(), **adds)
 
         return surf
 
@@ -155,9 +161,6 @@ class _ExtendedTooltipBase(_TooltipBase):
 
     def _get_surf_content(self, renderer: BaseRenderer) -> SurfaceLike:
         br = self.style.border_radius
-        if isinstance(br, list | tuple):
-            br = max(br)
-            self.style.border_radius = br
 
         surf = renderer.run_base(
             DrawBaseCall(
@@ -207,8 +210,12 @@ class _ExtendedTooltipBase(_TooltipBase):
         title_rect[0] += title_size.x / 2 - title_width / 2 + 0.001
         content_rect[0] += content_size.x / 2 - content_width / 2 + 0.001
 
-        surf.blit(title_surf, (title_rect.x, title_rect.y))
-        surf.blit(content_surf, (content_rect.x, content_rect.y))
+        adds = {}
+        if nevu_state.window.renderer_type.raylib:
+            adds["blend_mode"] = md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY
+
+        surf.blit(title_surf, (title_rect.x, title_rect.y + 0.001), **adds)
+        surf.blit(content_surf, (content_rect.x, content_rect.y + 0.001), **adds)
         return surf
 
 
@@ -261,9 +268,10 @@ class Tooltip:
         self._data = self.unpack_type()
         self.get_surf = self._data.get_surf
         self._counter = 0
-        self._counter_max = 1.5
+        self._counter_max = 1.0
         self._counter_max_opened = self._counter_max * 0.4
         self.old_coord = NvVector2()
+        self.anim_manager = None
 
     def adapted_coords(self):
         assert self.master, "Tooltip is not connected to NevuObject!"
@@ -298,6 +306,8 @@ class Tooltip:
     def _off(self, *args):
         if overlay.has_element(self):
             overlay.remove_element(self)
+        self.anim_manager = None
+        self.old_coord = NvVector2()
 
     def _on(self, *args):
         assert self.master and self.master.renderer, (
@@ -306,7 +316,7 @@ class Tooltip:
         overlay.change_element(
             self,
             self.get_surf(self.master.renderer),
-            self.adapted_coords(),
+            self.old_coord,
             2,
             strict=False,
         )
@@ -322,9 +332,10 @@ class Tooltip:
         ):
             self._off()
             self._counter = 0
+
         elif self.master.hover_state in [HoverState.Hovered, HoverState.Clicked]:
             new_pos = mouse.pos
-            if new_pos != self.old_coord:
+            if new_pos != self.old_coord and self.anim_manager is None:
                 self._counter += 1 * time.dt
                 if (
                     overlay.has_element(self)
@@ -334,14 +345,29 @@ class Tooltip:
                 elif self._counter >= self._counter_max:
                     self._move_to_mouse(new_pos)
 
+            elif self.anim_manager:
+                self.anim_manager.update()
+                if self.anim_manager.state != AnimationManagerState.Start:
+                    self.anim_manager = None
+                    return
+                new_pos = self.anim_manager.get_animation_value("tooltip_animation")
+                if new_pos is None:
+                    return
+                if new_pos.x != self.old_coord.x or new_pos.y != self.old_coord.y:
+                    self.old_coord = new_pos
+                    self._on()
+
     def _move_to_mouse(self, new_pos):
-        self._on()
         self._counter = 0
-        self.old_coord = new_pos
+        if self.old_coord.x == 0 and self.old_coord.y == 0:
+            self.old_coord = mouse.pos
+            new_pos = new_pos + NvVector2(1, 1)
+        self.anim_manager = AnimationManager()
+        self.anim_manager.add_start_animation("tooltip_animation", Vector2Animation(NvVector2(self.old_coord), NvVector2(new_pos), 0.2, smootherstep))
 
     def connect_to_master(self, master: NevuObject):
         self.master = weakref.proxy(master)
         assert self.master, "Tooltip is not connected to NevuObject!"
         self.master.add_first_update_action(self._adjust_size)
-        self.master.subscribe(NevuEvent(self, self._off, EventType.OnUnhover))
-        self.master.subscribe(NevuEvent(self, self._update, EventType.Update))
+        self.master._system_callbacks.bind(BindType.Unhover, self._off, weak = True)
+        self.master._system_callbacks.bind(BindType.Update, self._update, weak = True)
