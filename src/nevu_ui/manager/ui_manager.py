@@ -66,6 +66,7 @@ class Manager:
         if self.menus is not None:
             self.menus.extend(menus)
             return
+        else: self.menus = list(menus)
 
     @property
     def static_run(self):
