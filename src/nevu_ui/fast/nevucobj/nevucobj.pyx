@@ -14,7 +14,8 @@ from cpython.object cimport PyObject, PyObject_GenericSetAttr, PyObject_GenericG
 from cpython.list cimport PyList_GET_SIZE, PyList_GET_ITEM
 from nevu_ui.fast.nevucache.nevucache cimport Cache
 from nevu_ui.core.state import nevu_state
-from nevu_ui.core.enums import CacheType
+from nevu_ui.core.enums import CacheType, BindType
+from nevu_ui.core.callbacks import Callbacks
 from nevu_ui.core.classes import _strategy_type, Strategy
 from nevu_ui.fast.zsystem.fast_zsystem cimport ZSystem, ZRequest
 from nevu_ui.core.enums import (
@@ -63,6 +64,7 @@ cdef class NevuCobject:
         self._dead = False
         self._has_position_anim = False
         self.node_type = 0
+        self._system_callbacks = Callbacks()
         self.specific_cache_whitelist = [CacheType.Scaled_Image, CacheType.Image, CacheType.Scaled_Gradient, CacheType.Surface,  CacheType.Borders, CacheType.Scaled_Borders, CacheType.Scaled_Background, CacheType.Background, CacheType.Texture, CacheType.RlFont, CacheType.TextArgs, CacheType.ClickTexture]
 
     cpdef _set_node_type(self, short node_type):
@@ -208,10 +210,11 @@ cdef class NevuCobject:
     cpdef update(self):
         if not self._active or self._dead: return
         events = nevu_state.current_events
+        self._run_callbacks(BindType.BeforeUpdate, events)
         self._primary_update(events)
         if self._custom_secondary_update:
             call_noarg(self.secondary_update)
-        self._core_event_cycle_clear(EventType.Update)
+        self._run_callbacks(BindType.Update, events)
 
     cdef inline void _primary_update(self, events):
         events = events or []
@@ -233,7 +236,6 @@ cdef class NevuCobject:
         if function is None: return None
 
         if hasattr(function, '__self__') and function.__self__ is not None:
-            # tis shit is bound method
             return weakref.WeakMethod(function)
 
         return weakref.ref(function)
@@ -248,7 +250,7 @@ cdef class NevuCobject:
                 self._ensure_func_safety(self._click),
                 self._ensure_func_safety(self._kup),
                 self._ensure_func_safety(self._kup_abandon),
-                self._ensure_func_safety(self._group_on_scroll),
+                self._ensure_func_safety(self._run_callbacks),
             )
             nevu_state.window.add_request(self._z_request) # type: ignore
         cdef list next_frame_functions = self._next_frame_functions
@@ -284,17 +286,15 @@ cdef class NevuCobject:
 
     cpdef draw(self):
         if not self._visible or self._wait_mode or self._dead: return
+        self._run_callbacks(BindType.BeforeDraw)
         if self._changed:
-            call_noarg(self.on_change)
-            self._on_change_system()
+            self._run_callbacks(BindType.Change)
         if self._custom_primary_draw:
             call_noarg(self._primary_draw)
-        ce = self._core_event_cycle_clear
-        ce(EventType.Draw)
         self._base_secondary_draw()
         if self._custom_secondary_draw:
             call_noarg(self.secondary_draw)
-        ce(EventType.Render)
+        self._run_callbacks(BindType.Draw)
 
     cdef inline void _base_secondary_draw(self):
         if self._custom_secondary_draw_content:
@@ -306,37 +306,9 @@ cdef class NevuCobject:
     cdef inline void _base_secondary_draw_end(self):
         if self._changed: self._changed = False
 
-    def on_state_change(self, state: HoverState): pass
-    def _on_state_change_system(self, state: HoverState): pass
-
-    #=== System hooks ===
-    cpdef _on_click_system(self): self._event_cycle(EventType.OnKeyDown, self)
-    cpdef _on_hover_system(self): self._event_cycle(EventType.OnHover, self)
-    cpdef _on_keyup_system(self): self._event_cycle(EventType.OnKeyUp, self)
-    cpdef _on_keyup_abandon_system(self): self._event_cycle(EventType.OnKeyUpAbandon, self)
-    cpdef _on_unhover_system(self): self._event_cycle(EventType.OnUnhover, self)
-    cpdef _on_scroll_system(self, bint side): self._event_cycle(EventType.OnMouseScroll, self, side)
-    cpdef _on_change_system(self): self._event_cycle(EventType.OnChange, self)
-
-    #=== Group functions ===
-    cpdef _group_on_click(self):
-        self._on_click_system()
-        call_noarg(self.on_click)
-    cpdef _group_on_hover(self):
-        self._on_hover_system()
-        call_noarg(self.on_hover)
-    cpdef _group_on_keyup(self):
-        self._on_keyup_system()
-        call_noarg(self.on_keyup)
-    cpdef _group_on_keyup_abandon(self):
-        self._on_keyup_abandon_system()
-        call_noarg(self.on_keyup_abandon)
-    cpdef _group_on_unhover(self):
-        self._on_unhover_system()
-        call_noarg(self.on_unhover)
-    cpdef _group_on_scroll(self, bint side):
-        self._on_scroll_system(side)
-        self.on_scroll(side)
+    def _run_callbacks(self, bind_type, *args):
+        self._system_callbacks.run(bind_type, self, *args)
+        self.callbacks.run(bind_type, self, *args)
 
     #=== Selection functions ===
     cpdef _click(self):
@@ -353,10 +325,9 @@ cdef class NevuCobject:
         self._force_state_set_continue = True
         self.set_hover_state(HoverState.NotHovered)
 
-    cdef inline set_hover_state(self, value):
+    cpdef set_hover_state(self, value):
         if self._hover_state == value and not self._force_state_set_continue: return
-        self.on_state_change(value)
-        self._on_state_change_system(value)
+        self._run_callbacks(BindType.StateChange, value)
 
         if self._force_state_set_continue: self._force_state_set_continue = False
         self._hover_state = value
@@ -365,20 +336,21 @@ cdef class NevuCobject:
 
 
         if value == HoverState.Clicked:
-            self._group_on_click()
+            self._run_callbacks(BindType.Click)
         elif value == HoverState.Hovered:
             if self._is_kup:
-                self._group_on_keyup()
+                self._run_callbacks(BindType.KeyUp)
                 self._is_kup = False
-            else: self._group_on_hover()
+            else:
+                self._run_callbacks(BindType.Hover)
         elif value == HoverState.NotHovered:
             if self._kup_abandoned:
-                self._group_on_keyup_abandon()
+                self._run_callbacks(BindType.KeyUpAbandon)
                 self._kup_abandoned = False
-            else: self._group_on_unhover()
+            else:
+                self._run_callbacks(BindType.Unhover)
 
-        self.after_state_change()
-        self._after_state_change_system()
+        self._run_callbacks(BindType.AfterStateChange, value)
 
     def __getattribute__(self, name):
         cdef dict params_map

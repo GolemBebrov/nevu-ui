@@ -16,8 +16,8 @@ cdef class NevuCobject:
     cdef public bint _sended_z_link, _dragging, _is_kup, _kup_abandoned, _force_state_set_continue, _visible, _active, _changed, _first_update, _wait_mode, _dead, booted
     cdef public bint _custom_secondary_update, _custom_animation_update, _custom_logic_update, _custom_event_update
     cdef public bint _custom_secondary_draw, _custom_secondary_draw_content, _custom_secondary_draw_end, _custom_primary_draw
-    cdef public NvVector2 coordinates, absolute_coordinates, size, _resize_ratio
-    cdef public object _style, hover_state
+    cdef public NvVector2 coordinates, absolute_coordinates, size, _resize_ratio,
+    cdef public object _style, hover_state, _system_callbacks
     cdef public list params, _blacklisted_params, _next_frame_functions
     cdef public unsigned short node_type #1 - layout, 0 - widget
     cdef public dict _params_map, _param_links
@@ -38,6 +38,7 @@ cdef class NevuCobject:
     cpdef double relm_custom(self, double num, double min, double max)
     cpdef double relx(self, double num)
     cpdef double rely(self, double num)
+    cpdef set_hover_state(self, value)
     cpdef double relm(self, double num)
     cpdef NvVector2 rel(self, NvVector2 vec)
     cpdef NvRect get_nvrect(self)
@@ -50,23 +51,6 @@ cdef class NevuCobject:
     cdef inline void _primary_update(self, events)
     cdef inline void _base_animation_update(self)
     cdef inline void _base_logic_update(self)
-
-
-    cpdef _on_click_system(self)
-    cpdef _on_hover_system(self)
-    cpdef _on_keyup_system(self)
-    cpdef _on_keyup_abandon_system(self)
-    cpdef _on_unhover_system(self)
-    cpdef _on_scroll_system(self, bint side)
-    cpdef _on_change_system(self)
-
-    cpdef _group_on_click(self)
-    cpdef _group_on_hover(self)
-    cpdef _group_on_keyup(self)
-    cpdef _group_on_keyup_abandon(self)
-    cpdef _group_on_unhover(self)
-    cpdef _group_on_scroll(self, bint side)
-
     cpdef _click(self)
     cpdef draw(self)
     cpdef _unhover(self)
@@ -79,4 +63,3 @@ cdef class NevuCobject:
    # cpdef draw(self)
     cdef inline void _base_secondary_draw_end(self)
     cdef inline void _base_secondary_draw(self)
-    cdef set_hover_state(self, value)

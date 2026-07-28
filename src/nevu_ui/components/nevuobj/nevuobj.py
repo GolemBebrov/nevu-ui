@@ -1,6 +1,5 @@
 import copy
 import difflib
-import math
 import weakref
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Unpack, overload
@@ -20,9 +19,11 @@ from nevu_ui.components.nevuobj.typehints import (
     nevu_object_globals,
 )
 from nevu_ui.core import Annotations
-from nevu_ui.core.classes import Events, Strategy, _strategy_type
+from nevu_ui.core.classes import Strategy, _strategy_type
+from nevu_ui.core.callbacks import Callbacks
 from nevu_ui.core.enums import (
     AnimationType,
+    BindType,
     CacheType,
     EventType,
     HoverState,
@@ -40,7 +41,6 @@ from nevu_ui.presentation.style import Style, default_style
 from nevu_ui.rendering.base_renderer import BaseRenderer
 from nevu_ui.rendering.pygame.new_renderer import PygameRenderer
 from nevu_ui.rendering.raylib.new_renderer import RaylibRenderer
-from nevu_ui.utils import NevuEvent
 
 global_counter = 0
 
@@ -56,18 +56,17 @@ def del_obj(self):
     global_counter -= 1
     # rint(self, "deleted, counter:", global_counter)
 
-
 class NevuObject(NevuCobject):
     _supports_tuple_borderradius = True
     # === Params ===
     id: str | None
     floating: bool
     single_instance: bool
-    events: Events
     z: int
     subtheme_role: SubThemeRole
     animation_manager: AnimationManager
     tooltip: Tooltip
+    callbacks: Callbacks
     # ==============
 
     renderer: BaseRenderer
@@ -214,9 +213,6 @@ class NevuObject(NevuCobject):
         self._add_param("id", (str, type(None)), None)
         self._add_param("floating", bool, False)
         self._add_param("single_instance", bool, False)
-        self._add_param(
-            "events", Events, Events(), setter=self._set_events, layer=ParamLayer.Basic
-        )
         self._add_param("z", int, 0)
         self._add_param_link("depth", "z")
         self._add_param(
@@ -243,6 +239,7 @@ class NevuObject(NevuCobject):
         self._add_param(
             "strategy", type(_strategy_type), Strategy.Relative, layer=ParamLayer.Basic
         )
+        self._add_param("callbacks", Callbacks | dict, Callbacks(), layer=ParamLayer.Basic, setter=self._callback_setter)
 
     def _add_param_link(self, link_name: str, name: str):
         self._param_links[link_name] = name
@@ -322,8 +319,17 @@ class NevuObject(NevuCobject):
         param.set(value)
 
     # === Initialization ===
+
+    def _system_callback_binds(self):
+        self._system_callbacks.bind(BindType.BeforeCopy, _nevuobject_after_copy)
+
     def _boot_up(self):
         pass
+
+    def _callback_setter(self, value: Callbacks | dict):
+        if isinstance(value, dict):
+            value = Callbacks(value)
+        return value
 
     def _create_template(self, size: NvVector2 | list):
         return NevuObjectTemplate(size)
@@ -403,6 +409,7 @@ class NevuObject(NevuCobject):
     def _lazy_init(self, size):
         self.size = size if isinstance(size, NvVector2) else NvVector2(size)
         self.original_size = self.size.copy()
+        self._system_callback_binds()
         self.add_first_update_action(self._reset_tooltip)
 
     def _reset_tooltip(self):
@@ -533,28 +540,6 @@ class NevuObject(NevuCobject):
     @active.setter
     def active(self, value: bool):
         self._active = value
-        self._on_active_set()
-
-    def _on_active_set(self):
-        pass
-
-        # === Event functions ===
-
-    def subscribe(self, event: NevuEvent):
-        """Adds a new event listener to the object.
-        Args:
-            event (NevuEvent): The event to subscribe
-        Returns:
-            None
-        """
-        self.get_param_value("events").add(event)
-
-    def _set_events(self, value: Events):
-        value.on_add = self._on_event_add  # type: ignore
-        return self.get_param_value("events")
-
-    def _on_event_add(self):
-        self.constant_kwargs["events"] = self.get_param_value("events")
 
     def _resize(self, resize_ratio: NvVector2):
         if self.get_param_value("strategy") == Strategy.Static:
@@ -575,45 +560,11 @@ class NevuObject(NevuCobject):
     @style.setter
     def style(self, style: Style):
         self._changed = True
+        self._run_callbacks(BindType.BeforeStyleChange)
         self._style = copy.copy(style)
-        self._on_style_change()
+        self._run_callbacks(BindType.StyleChange)
 
-    def _on_style_change(self):
-        self._on_style_change_content()
-        self._on_style_change_additional()
-
-    def _on_style_change_content(self):
-        pass
-
-    def _on_style_change_additional(self):
-        pass
-
-        # === Zsystem functions ===
-
-        # === User hooks ===
-
-    def on_click(self):
-        """Override this function to run code when the object is clicked"""
-
-    def on_hover(self):
-        """Override this function to run code when the object is hovered"""
-
-    def on_keyup(self):
-        """Override this function to run code when a key is released"""
-
-    def on_keyup_abandon(self):
-        """Override this function to run code when a key is released outside of the object"""
-
-    def on_unhover(self):
-        """Override this function to run code when the object is unhovered"""
-
-    def on_scroll(self, side: bool):
-        """Override this function to run code when the object is scrolled"""
-
-    def on_change(self):
-        """Override this function to run code when the object is changed"""
-
-        # === Update stubs ===
+    # === Update stubs ===
 
     def secondary_update(self):
         pass
@@ -649,48 +600,9 @@ class NevuObject(NevuCobject):
 
     @hover_state.setter
     def hover_state(self, value: HoverState):
-        if self._hover_state == value and not self._force_state_set_continue:
-            return
-        self.on_state_change(value)
-        self._on_state_change_system(value)
-
-        if self._force_state_set_continue:
-            self._force_state_set_continue = False
-        self._hover_state = value
-
-        self.style.mark_state(value)
-
-        match self._hover_state:
-            case HoverState.Clicked:
-                self._group_on_click()
-            case HoverState.Hovered:
-                if self._is_kup:
-                    self._group_on_keyup()
-                    self._is_kup = False
-                else:
-                    self._group_on_hover()
-            case HoverState.NotHovered:
-                if self._kup_abandoned:
-                    self._group_on_keyup_abandon()
-                    self._kup_abandoned = False
-                else:
-                    self._group_on_unhover()
-
-        self.after_state_change()
-        self._after_state_change_system()
-
-    def after_state_change(self):
-        pass
-
-    def _after_state_change_system(self):
-        pass
+        self.set_hover_state(value)
 
         # === Rect functions ===
-
-    def get_pygame_rect(self):
-        return get_rect_helper_pygame(
-            self.absolute_coordinates, self._resize_ratio, self.size
-        )
 
     def get_rect_static(self):
         return get_rect_helper(self.coordinates, self._resize_ratio, self.size)
@@ -714,27 +626,9 @@ class NevuObject(NevuCobject):
 
     def clone(self):
         new_self = self._create_clone()
-        self._on_copy_system(new_self)
-        self.on_copy(new_self)
-        new_self._on_copy_system_after()
-        new_self.on_copy_after()
+        self._run_callbacks(BindType.BeforeCopy, new_self)
+        self._run_callbacks(BindType.Copy)
         return new_self
-
-    def _on_copy_system(self, clone: "NevuObject", no_cache: bool = False):
-        clone._active = self._active
-        clone._visible = self._visible
-        clone._dead = self._dead
-        if not no_cache:
-            clone.cache = self.cache.copy()
-
-    def _on_copy_system_after(self):
-        pass
-
-    def on_copy(self, clone):
-        pass
-
-    def on_copy_after(self):
-        pass
 
     def __deepcopy__(self, *args, **kwargs):
         return self.clone()
@@ -769,3 +663,10 @@ class NevuObject(NevuCobject):
 
     def _kill_end(self):
         pass
+
+def _nevuobject_after_copy(self: "NevuObject", clone: "NevuObject", no_cache: bool = False) -> None:
+    clone._active = self._active
+    clone._visible = self._visible
+    clone._dead = self._dead
+    if not no_cache:
+        clone.cache = self.cache.copy()
