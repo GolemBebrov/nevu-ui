@@ -1,5 +1,6 @@
 import copy
-from typing import Callable, Unpack
+from collections.abc import Callable
+from typing import Unpack
 
 import nevu_ui.core.modules as md
 from nevu_ui.components.widgets.typehints import SwitchKwargs, SwitchTemplate
@@ -7,10 +8,9 @@ from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations, nevu_state
 from nevu_ui.core.enums import (
     AnimationManagerState,
+    BindType,
     CacheType,
     ParamLayer,
-    RenderArgs,
-    RenderConfig,
     RenderReturnType,
     SwitchAxis,
 )
@@ -22,7 +22,7 @@ from nevu_ui.presentation.animations import (
     Vector2Animation,
     animations_library,
 )
-from nevu_ui.presentation.color import Color, SubThemeRole
+from nevu_ui.presentation.color import Color
 from nevu_ui.rendering import DrawBaseCall
 from nevu_ui.utils import mouse, time
 
@@ -68,26 +68,6 @@ class Switch(Widget):
         super()._init_numerical()
         self._after_key_down_time = None
 
-    def _on_click_system(self):
-        super()._on_click_system()
-        self._after_key_down_time = 0
-        self._click_pos = mouse.pos
-
-    def _on_keyup_system(self):
-        super()._on_keyup_system()
-        down_time = self._after_key_down_time
-        if self._dragging:
-            self._after_kup()
-        elif down_time is not None and down_time < 0.5:
-            self.state = not self.state
-        self._after_key_down_time = None
-
-    def _on_keyup_abandon_system(self):
-        super()._on_keyup_abandon_system()
-        if self._dragging:
-            self._after_kup()
-        self._after_key_down_time = None
-
     def _after_kup(self):
         self._dragging = False
         self._click_pos = None
@@ -109,6 +89,12 @@ class Switch(Widget):
     def _lazy_init(self, size: NvVector2 | list, state: bool = False):
         super()._lazy_init(size)
         self.state = state
+
+    def _system_callback_binds(self):
+        super()._system_callback_binds()
+        self._system_callbacks.bind(BindType.Click, switch_on_click)
+        self._system_callbacks.bind(BindType.KeyUp, switch_on_keyup)
+        self._system_callbacks.bind(BindType.KeyUpAbandon, switch_on_keyup_abandon)
 
     @property
     def bg_circle_coords(self):
@@ -196,7 +182,7 @@ class Switch(Widget):
             surface.fill((0, 0, 0, 0))
             surface.blit(self._bg_surf, (0, 0))
             surface.blit(
-                self._bg_circle,
+                self._bg_circle, #type: ignore
                 (self._bg_circle_coords + self._borders_marg_size)
                 .get_round()
                 .get_int_tuple(),
@@ -209,7 +195,7 @@ class Switch(Widget):
                 begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
                 surface_fblit(self._bg_surf, (0, 0))
                 surface_fblit(
-                    self._bg_circle,
+                    self._bg_circle, #type: ignore
                     (self._bg_circle_coords + self._borders_marg_size)
                     .get_round()
                     .get_int_tuple(),
@@ -330,3 +316,22 @@ class Switch(Widget):
             copy.deepcopy(self.style),
             **self.constant_kwargs,
         )
+
+# === NOT CLASS FUNCTIONS ===
+
+def switch_on_click(self):
+    self._after_key_down_time = 0
+    self._click_pos = mouse.pos
+
+def switch_on_keyup(self):
+    down_time = self._after_key_down_time
+    if self._dragging:
+        self._after_kup()
+    elif down_time is not None and down_time < 0.5:
+        self.state = not self.state
+    self._after_key_down_time = None
+
+def switch_on_keyup_abandon(self):
+    if self._dragging:
+        self._after_kup()
+    self._after_key_down_time = None

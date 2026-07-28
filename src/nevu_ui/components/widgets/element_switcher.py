@@ -1,5 +1,6 @@
 import copy
-from typing import Any, Callable, Unpack
+from collections.abc import Callable
+from typing import Any, Unpack
 
 import nevu_ui.core.modules as md
 from nevu_ui.components.widgets.button import Button
@@ -9,7 +10,12 @@ from nevu_ui.components.widgets.typehints import (
 )
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
-from nevu_ui.core.enums import CacheType, HoverState, RenderConfig, RenderReturnType
+from nevu_ui.core.enums import (
+    BindType,
+    CacheType,
+    HoverState,
+    RenderReturnType,
+)
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.nvrendertex import NvRenderTexture
 from nevu_ui.fast.nvvector2 import NvVector2
@@ -19,7 +25,7 @@ from nevu_ui.utils import keyboard
 
 
 class Element:
-    __slots__ = ["text", "id"]
+    __slots__ = ["id", "text"]
 
     def __init__(self, text, id: str | None = None):
         self.text = text
@@ -88,11 +94,16 @@ class ElementSwitcher(Widget):
         self._add_param("right_text", (str), ">")
         self._add_param("right_key", Any, None)
 
+    def _system_callback_binds(self):
+        super()._system_callback_binds()
+        self._system_callbacks.bind(
+            BindType.StyleChange, _element_switcher_on_style_change, add_to_end=False
+        )
+
     def _init_booleans(self):
         super()._init_booleans()
         self._delayed_button_update = False
         self.hoverable = False
-        self._easy_mode = False
         self._custom_secondary_update = True
 
     def _lazy_init(self, size: NvVector2 | list, elements: list[Element] | None = None):  # type: ignore
@@ -126,6 +137,7 @@ class ElementSwitcher(Widget):
 
     @property
     def _button_hovered(self):
+        assert self.button_left and self.button_right, "Buttons not initialized"
         return self.button_left.hover_state in [
             HoverState.Hovered,
             HoverState.Clicked,
@@ -148,50 +160,53 @@ class ElementSwitcher(Widget):
     def _change_style_rad(
         self,
         style: Style,
-        norad_idx: tuple[int, int],
-        rad_idx: tuple[int, int],
-        offset: int | float,
+        norad_idxs: tuple[int, int],
+        rad_idxs: tuple[int, int],
+        offset: float,
     ):
-        if isinstance(style.border_radius, tuple):
-            br = list(style.border_radius)
-            br[norad_idx[0]], br[norad_idx[1]] = 0, 0
-            br[rad_idx[0]], br[rad_idx[1]] = (
-                br[rad_idx[0]] - offset,
-                br[rad_idx[1]] - offset,
+        changed_br: list[float]
+
+        r1, r2 = rad_idxs
+
+        if isinstance(style.border_radius, tuple | list):
+            nr1, nr2 = norad_idxs
+            changed_br = list(style.border_radius)
+            changed_br[nr1], changed_br[nr2] = 0, 0
+            changed_br[r1], changed_br[r2] = (
+                changed_br[r1] - offset,
+                changed_br[r2] - offset,
             )
         else:
-            br = [0] * 4
-            br[rad_idx[0]], br[rad_idx[1]] = (
+            changed_br = [0] * 4
+            changed_br[r1], changed_br[r2] = (
                 style.border_radius - offset,
                 style.border_radius - offset,
-            )  # type: ignore
-        style.border_radius = tuple(br)  # type: ignore
+            )
+
+        style.border_radius = tuple(changed_br)
 
     def _correct_style_rad(
         self,
         style: Style,
         size: NvVector2,
-        rad_idx: tuple[int, int],
-        norad_idx: tuple[int, int],
+        rad_idxs: tuple[int, int],
+        norad_idxs: tuple[int, int],
     ):
-        assert isinstance(style.border_radius, tuple)
-        rad = list(rad_idx)
-        norad = list(norad_idx)
-        br = list(style.border_radius)
+        assert isinstance(style.border_radius, tuple | list), "Style must have tuple or list border radius"
+        norad = list(norad_idxs)
+        correct_br: list[float] = list(style.border_radius)
+        hsize_x = size.x / 2
+        hsize_y = size.y / 2
+
         for i in range(2):
-            curr_radius = br[rad[i]]
-            if curr_radius > size.x / 2 or curr_radius > size.y / 2:
-                br[norad[i]] = br[rad[i]]
-        style.border_radius = tuple(br)  # type: ignore
+            curr_radius = correct_br[rad_idxs[i]]
+            if curr_radius > hsize_x or curr_radius > hsize_y:
+                correct_br[norad[i]] = curr_radius
+        style.border_radius = tuple(correct_br)
 
-    def _on_style_change_additional(self):
-        super()._on_style_change_additional()
-        if not self.booted:
-            return
-        self._shape_buttons_radius(self.button_padding + self.style.border_width)
-
-    def _shape_buttons_radius(self, offset: int | float):
-        button_style = self.style(border_width=0)
+    def _shape_buttons_radius(self, offset: float):
+        assert self.button_left and self.button_right, "Buttons not initialized"
+        button_style = self.style(border_width = 0)
         button_style_left = button_style()
         button_style_right = button_style()
         idx_left = (0, 3)
@@ -250,22 +265,25 @@ class ElementSwitcher(Widget):
         button._init_start()
         button.booted = True
         button._boot_up()
-        button._on_style_change_additional = self._mark_dirty
-        button._on_style_change()
+        button._system_callbacks.bind(BindType.StyleChange, self._mark_dirty, weak=True)
+        button._run_callbacks(BindType.StyleChange)
 
     def _style_update_buttons(self):
-        self.button_left._on_style_change()
-        self.button_right._on_style_change()
+        assert self.button_left is not None
+        assert self.button_right is not None
+        self.button_left._run_callbacks(BindType.StyleChange)
+        self.button_right._run_callbacks(BindType.StyleChange)
 
     def _position_buttons(self):
-        self._check_mode()
-        padding = self.button_padding
-        bw = self.relm(self.style.border_width)
-        edge_offset = bw + padding
-        y_pos = (self._csize.y - self.button_left._csize.y) / 2
-        self.button_left.coordinates = NvVector2.from_xy(edge_offset, y_pos)
-        right_x = self._csize.x - edge_offset - self.button_right._csize.x
-        self.button_right.coordinates = NvVector2.from_xy(right_x, y_pos)
+        assert self.button_left and self.button_right, "Buttons not initialized"
+        edge_offset = self.relm(self.style.border_width) + self.button_padding
+        b_right = self.button_right
+        b_left = self.button_left
+        current_size = self._csize
+        y_pos = (current_size.y - b_left._csize.y) / 2
+        b_left.coordinates = NvVector2.from_xy(edge_offset, y_pos)
+        right_x = current_size.x - b_right._csize.x - edge_offset
+        b_right.coordinates = NvVector2.from_xy(right_x, y_pos)
 
     def _get_arrow_width(self):
         return round(
@@ -275,6 +293,7 @@ class ElementSwitcher(Widget):
         )
 
     def _resize_buttons(self):
+        assert self.button_left and self.button_right, "Buttons not initialized"
         self._shape_buttons_radius(self.button_padding + self.style.border_width)
         self.button_left._resize(self._resize_ratio)
         self.button_right._resize(self._resize_ratio)
@@ -351,6 +370,8 @@ class ElementSwitcher(Widget):
 
         update_button = self._update_button
 
+        assert self.button_left and self.button_right, "Buttons not initialized"
+
         update_button(self.button_left)
         update_button(self.button_right)
 
@@ -366,12 +387,14 @@ class ElementSwitcher(Widget):
         button.update()
 
     def _primary_draw(self):
+        assert self.button_left and self.button_right, "Buttons not initialized"
         super()._primary_draw()
         if self._changed:
             self.button_left.surface = self.surface
             self.button_right.surface = self.surface
 
     def secondary_draw_content(self):
+        assert self.button_left and self.button_right, "Buttons not initialized"
         super().secondary_draw_content()
         if not self._changed:
             return
@@ -423,18 +446,16 @@ class ElementSwitcher(Widget):
             assert isinstance(surface, md.pygame.Surface)
             surface.blit(text_surface, coordinates)
 
-    def _mark_dirty(self):
+    def _mark_dirty(self, *args):
+        assert self.button_left and self.button_right, "Buttons not initialized"
         self._changed = True
         self.button_left._changed = True
         self.button_right._changed = True
         self._delayed_button_update = True
         self.clear_texture()
 
-    def _check_mode(self):
-        self._easy_mode = self._csize.y <= 250
-
     def _draw_buttons(self):
-        self._check_mode()
+        assert self.button_left and self.button_right, "Buttons not initialized"
         self.button_left.draw()
         self.button_right.draw()
 
@@ -447,6 +468,7 @@ class ElementSwitcher(Widget):
         )
 
     def _kill_base(self):
+        assert self.button_left and self.button_right, "Buttons not initialized"
         super()._kill_base()
         if hasattr(self, "button_left"):
             self.button_left.kill()
@@ -455,3 +477,12 @@ class ElementSwitcher(Widget):
         self.button_left = None
         self.button_right = None
         self._delayed_button_update = False
+
+
+# === NOT CLASS FUNCTIONS ===
+
+
+def _element_switcher_on_style_change(self):
+    if not self.booted:
+        return
+    self._shape_buttons_radius(self.button_padding + self.style.border_width)

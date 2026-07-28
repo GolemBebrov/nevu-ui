@@ -2,7 +2,8 @@ from dataclasses import dataclass
 from typing import Any, NotRequired, TypedDict, Unpack
 
 from nevu_ui.core import Annotations
-from nevu_ui.core.classes import DictAccessMixin, Events, GlobalsBase, _strategy_type
+from nevu_ui.core.callbacks import Callbacks
+from nevu_ui.core.classes import DictAccessMixin, GlobalsBase, _strategy_type
 from nevu_ui.overlay.tooltip import Tooltip
 from nevu_ui.presentation.animations import AnimationManager
 from nevu_ui.presentation.color import SubThemeRole
@@ -12,9 +13,9 @@ from nevu_ui.presentation.style import Style
 class _NevuObjectKwargsBase(TypedDict, total=False):
     id: Any
     single_instance: bool
-    events: Events
     tooltip: Tooltip
     subtheme_role: SubThemeRole
+    callbacks: Callbacks | dict
 
 
 class _NevuObjectKwargsShort(TypedDict, total=False):

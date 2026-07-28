@@ -3,12 +3,11 @@ from collections.abc import Callable
 from typing import Any, Unpack
 
 import nevu_ui.core.modules as md
-from nevu_ui.components.nevuobj.nevuobj import NevuObject
 from nevu_ui.components.nevuobj.typehints import nevu_object_globals
 from nevu_ui.components.widgets.typehints import RectCheckBoxKwargs
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
-from nevu_ui.core.enums import EventType, RenderConfig, RenderReturnType
+from nevu_ui.core.enums import BindType, RenderReturnType
 from nevu_ui.core.size.units import SizeRule
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.nvvector2 import NvVector2
@@ -38,6 +37,10 @@ class RectCheckBox(Widget):
         elif isinstance(size, list | tuple):
             size = size
         super().__init__(size, style, **constant_kwargs)
+
+    def _system_callback_binds(self):
+        super()._system_callback_binds()
+        self._system_callbacks.bind(BindType.Click, _rect_checkbox_click, weak=True)
 
     def _init_booleans(self):
         super()._init_booleans()
@@ -126,16 +129,10 @@ class RectCheckBox(Widget):
                 inner_surf.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR
             )  # type: ignore
 
-    def _on_click_system(self):
-        self.toggled = not self.toggled
-        super()._on_click_system()
-
     def _create_clone(self):
-        self.constant_kwargs["events"] = self.get_param_strict("events").value.copy()
         return self.__class__(
             self._template["size"], copy.deepcopy(self.style), **self.constant_kwargs
         )  # type: ignore
 
-    def _on_copy_system(self, clone: NevuObject):  # type: ignore
-        super()._on_copy_system(clone, no_cache=True)
-        self._event_cycle(EventType.OnCopy, clone)
+def _rect_checkbox_click(self):
+    self.toggled = not self.toggled

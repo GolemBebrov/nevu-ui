@@ -8,7 +8,6 @@ from nevu_ui.components.layouts.grid.base import (
 )
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.core import Annotations
-from nevu_ui.fast.nvvector2 import NvVector2
 
 
 class Row(Grid):
@@ -17,9 +16,9 @@ class Row(Grid):
     @overload
     def __init__(
         self,
-        size: Annotations.nevuobj_size,
-        style: Annotations.nevuobj_style = None,
         content: content_type | None = None,
+        size: Annotations.nevuobj_size = None,
+        style: Annotations.nevuobj_style = None,
         **constant_kwargs: Unpack[GridKwargs_rc],
     ):
         """
@@ -31,9 +30,9 @@ class Row(Grid):
     @overload
     def __init__(
         self,
-        size: Annotations.nevuobj_size,
-        style: Annotations.nevuobj_style = None,
         content: content_type | None = None,
+        size: Annotations.nevuobj_size = None,
+        style: Annotations.nevuobj_style = None,
         **constant_kwargs: Unpack[GridKwargs_xy],
     ):
         """
@@ -44,20 +43,16 @@ class Row(Grid):
 
     def __init__(
         self,
-        size: Annotations.nevuobj_size,
-        style: Annotations.nevuobj_style = None,
         content: content_type | None = None,
+        size: Annotations.nevuobj_size = None,
+        style: Annotations.nevuobj_style = None,
         **constant_kwargs: Unpack[GridKwargs_uni],
     ):
-        super().__init__(size, style, content, **constant_kwargs)  # type: ignore
+        super().__init__(content, size, style, **constant_kwargs)  # type: ignore
 
     def _add_params(self):
         super()._add_params()
         self._block_param("row")
-
-    def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None):  # type: ignore
-        super()._lazy_init(size)
-        self.add_items(content)
 
     def add_items(self, content: content_type | None):  # type: ignore
         if not content:

@@ -6,7 +6,7 @@ import nevu_ui.core.modules as md
 from nevu_ui.components.widgets.typehints import InputKwargs
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
-from nevu_ui.core.enums import RenderConfig, RenderReturnType
+from nevu_ui.core.enums import BindType, RenderReturnType
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.nvrect import NvRect
 from nevu_ui.fast.nvrendertex import NvRenderTexture
@@ -27,7 +27,7 @@ class Input(Widget):
     multiple: bool
     blacklist: list | tuple | str | None
     whitelist: list | tuple | str | None
-    padding: list | tuple
+    padding: list
     cursor_width: int
 
     # ==============
@@ -89,12 +89,6 @@ class Input(Widget):
             print(f"Warning: {name} padding with value: {value}, will be set to 0")
             return 0
         return value
-
-    def _on_style_change_content(self):
-        super()._on_style_change_content()
-        if self._first_update:
-            return
-        self._process_padding()
 
     def _init_booleans(self):
         super()._init_booleans()
@@ -289,13 +283,6 @@ class Input(Widget):
             rl.set_texture_wrap(
                 self._text_surface.texture, rl.TextureWrap.TEXTURE_WRAP_CLAMP
             )
-        return
-
-    def _on_style_change_additional(self):
-        super()._on_style_change_additional()
-        if not self.booted:
-            return
-        self._right_bake_text()
 
     def _multiline_bake_text(self, text: str | None = None):
         text = text or self.text or ""
@@ -319,8 +306,7 @@ class Input(Widget):
         measure = self._measure_text
         for line in lines:
             w = measure(line)[0]
-            if w > max_width:
-                max_width = w
+            max_width = max(max_width, w)
         total_height = len(lines) * line_height
 
         self._create_textsurf(
@@ -658,9 +644,12 @@ class Input(Widget):
         assert isinstance(unicode_char, int | str)
         self._parse_unicode(unicode_char)
 
-    def _on_click_system(self):
-        super()._on_click_system()
-        self.check_selected()
+    def _system_callback_binds(self):
+        super()._system_callback_binds()
+        self._system_callbacks.bind(BindType.Click, lambda *args: self.check_selected())
+        self._system_callbacks.bind(BindType.Scroll, _input_on_scroll)
+        self._system_callbacks.bind(BindType.StyleChange, _input_on_style_change, add_to_end = False)
+        self._system_callbacks.bind(BindType.StyleChange, _input_on_style_change_2, add_to_end = False)
 
     def _event_update(self, events: list | None = None):
         events = nevu_state.current_events
@@ -726,20 +715,6 @@ class Input(Widget):
             self._changed_text = changed_text
 
         self.selected = selected
-
-    def _on_scroll_system(self, side: bool):
-        super()._on_scroll_system(side)
-        self.clear_texture()
-        direction = -1 if side else 1
-
-        scroll_multiplier = 3
-        line_h = self._get_line_height()
-
-        scroll_amount = direction * line_h * scroll_multiplier
-        self._update_scroll_offset_y()
-        self._scroll_offset.y -= scroll_amount
-        self._scroll_offset.y = max(0, min(self._scroll_offset.y, self.max_scroll_y))
-        self._changed = True
 
     def _measure_text(self, text: str):
         renderFont = self.get_font()
@@ -811,7 +786,7 @@ class Input(Widget):
         return self._entered_text  # type: ignore
 
     @text.setter
-    def text(self, text: str | int | float):
+    def text(self, text: str | float):
         text = str(text)
         original_text = self._entered_text
         if not self.multiple:
@@ -983,3 +958,26 @@ class Input(Widget):
             self._on_change_fun,
             **self.constant_kwargs,
         )
+
+# === NOT CLASS FUNCTIONS ===
+
+def _input_on_scroll(self, side: bool):
+    self.clear_texture()
+    direction = -1 if side else 1
+
+    scroll_multiplier = 3
+    line_h = self._get_line_height()
+
+    scroll_amount = direction * line_h * scroll_multiplier
+    self._update_scroll_offset_y()
+    self._scroll_offset.y -= scroll_amount
+    self._scroll_offset.y = max(0, min(self._scroll_offset.y, self.max_scroll_y))
+    self._changed = True
+
+def _input_on_style_change(self):
+    if self._first_update: return
+    self._process_padding()
+
+def _input_on_style_change_2(self):
+    if not self.booted: return
+    self._right_bake_text()

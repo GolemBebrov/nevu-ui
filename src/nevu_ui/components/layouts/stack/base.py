@@ -31,21 +31,26 @@ class StackBase(LayoutType, ABC):
 
     def __init__(
         self,
-        style: Annotations.nevuobj_style = None,
         content: content_type | None = None,
+        style: Annotations.nevuobj_style = None,
         **constant_kwargs: Unpack[StackKwargs],
     ):
-        super().__init__(NvVector2(), style, content, **constant_kwargs)
+        super().__init__(content, NvVector2(), style, **constant_kwargs)
 
-    def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None):
-        super()._lazy_init(size, content)
-        self.add_items(content)
+    def add_items(self, content: content_type | None):
+        if not content: return
 
-    def add_items(self, content: content_type | None):  # type: ignore
-        if content is None:
-            return
-        for inner_tuple in content:
-            align, item = inner_tuple
+        for content_item in content:
+
+            if isinstance(content_item, tuple):
+                align, item = content_item
+            elif isinstance(content_item, NevuObject):
+                align, item = self.basic_alignment, content_item
+            else:
+                raise TypeError(Annotations.format_nvtype_nvobject_error("list[tuple[Align, NevuObject] or NevuObject]", "content", f"{content}.\nWrong part: {content_item}", self))
+            assert type(align) == Align and isinstance(item, NevuObject), (
+                f"Incorrect align or item ({align}, {item})"
+            )
             self.add_item(item, align)
 
     def _init_lists(self):
@@ -59,10 +64,6 @@ class StackBase(LayoutType, ABC):
     def _init_booleans(self):
         super()._init_booleans()
         self._custom_secondary_draw_content = True
-
-    def _init_test_flags(self):
-        super()._init_test_flags()
-        self._test_always_update = False
 
     def add_item(self, item: NevuObject, alignment: Align = Align.CENTER):  # type: ignore
         super().add_item(item)
@@ -82,7 +83,7 @@ class StackBase(LayoutType, ABC):
             if self.layout:
                 self.layout._on_item_add(item)
         except Exception as e:
-            raise e  # TODO: FUCK i forgor
+            raise e
 
     def _connect_to_layout(self, layout: LayoutType):
         super()._connect_to_layout(layout)
@@ -93,7 +94,6 @@ class StackBase(LayoutType, ABC):
         self._recalculate_widget_coordinates()
 
     def _on_item_add(self, item: NevuObject):
-        # print(self, item)
         self.cached_coordinates = None
         if self.layout:
             self.layout.cached_coordinates = None
@@ -124,8 +124,8 @@ class StackBase(LayoutType, ABC):
 
     def _create_clone(self):
         return self.__class__(
-            copy.deepcopy(self.style),
             copy.deepcopy(self._template["content"]),
+            copy.deepcopy(self.style),
             **self.constant_kwargs,
         )
 

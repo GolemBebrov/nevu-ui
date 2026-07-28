@@ -9,10 +9,9 @@ from nevu_ui.components.layouts.typehints import AlignTemplate
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
-from nevu_ui.core.enums import Align, HoverState, ScrollBarType
+from nevu_ui.core.enums import Align, BindType, HoverState, ScrollBarType
 from nevu_ui.fast.logic.fast_logic import (
     _very_light_update_helper,
-    base_light_update,
     draw_widgets_optimized,
     py_get_item_abs_coords,
     rl_predraw_widgets,
@@ -49,7 +48,7 @@ class ScrollableBase(LayoutType, ABC):
     append_key: Any
     descend_key: Any
     scrollbar_perc: NvVector2
-    content_type = list[tuple[Align, NevuObject]]
+    content_type = list[tuple[Align, NevuObject] | NevuObject]
     basic_alignment: Align
 
     class ScrollBar(Widget):
@@ -94,14 +93,18 @@ class ScrollableBase(LayoutType, ABC):
         def _orientation_to_int(self):
             return 1 if self.orientation == ScrollBarType.Vertical else 0
 
+        def _system_callback_binds(self):
+            super()._system_callback_binds()
+            self._system_callbacks.bind(BindType.Click, _scrollbar_on_click)
+            self._system_callbacks.bind(BindType.KeyUp, _scrollbar_on_keyup)
+            self._system_callbacks.bind(BindType.KeyUpAbandon, _scrollbar_on_keyup_abandon)
+
         @property
         def percentage(self) -> float:
             return self._percentage
 
         @percentage.setter
-        def percentage(self, value: float | int):
-            if value != value:
-                return
+        def percentage(self, value: float):
             axis = self._orientation_to_int()
             self._percentage = max(0.0, min(float(value), 100.0))
 
@@ -121,21 +124,6 @@ class ScrollableBase(LayoutType, ABC):
             self.track_start_abs = start_abs
             self.track_length = length
 
-        def _on_click_system(self):
-            super()._on_click_system()
-            self.scrolling = True
-            axis = self._orientation_to_int()
-            self._drag_start_mouse = mouse.pos[axis]
-            self._drag_start_percentage = self._percentage
-
-        def _on_keyup_system(self):
-            super()._on_keyup_system()
-            self.scrolling = False
-
-        def _on_keyup_abandon_system(self):
-            super()._on_keyup_abandon_system()
-            self.scrolling = False
-
         def secondary_update(self):
             super().secondary_update()
             axis = self._orientation_to_int()
@@ -147,11 +135,11 @@ class ScrollableBase(LayoutType, ABC):
                     perc_delta = (mouse_delta / movable_area) * 100.0
                     self.percentage = self._drag_start_percentage + perc_delta
 
-        def move_by_percents(self, percents: int | float):
+        def move_by_percents(self, percents: float):
             self.percentage = self.percentage + percents
             self.scrolling = False
 
-        def set_percents(self, percents: int | float):
+        def set_percents(self, percents: float):
             self.percentage = percents
             self.scrolling = False
 
@@ -161,17 +149,17 @@ class ScrollableBase(LayoutType, ABC):
 
     def __init__(
         self,
-        size: Annotations.nevuobj_size,
-        style: Annotations.nevuobj_style = None,
         content: content_type | None = None,
+        size: Annotations.nevuobj_size = None,
+        style: Annotations.nevuobj_style = None,
         **constant_kwargs: Unpack[ScrollableKwargs],
     ):
-        super().__init__(size, style, content, **constant_kwargs)
+        super().__init__(content, size, style, **constant_kwargs)
 
-    def _create_template(
-        self, size: Annotations.nevuobj_size, content: content_type | None
-    ):  # type: ignore
-        return AlignTemplate(size, content)
+    def _create_template(  # type: ignore
+        self, size: Annotations.nevuobj_size, content: content_type | None,
+    ):
+        return AlignTemplate(size, content)  # type: ignore
 
     def _init_booleans(self):
         super()._init_booleans()
@@ -179,8 +167,6 @@ class ScrollableBase(LayoutType, ABC):
 
     def _init_numerical(self):
         super()._init_numerical()
-        self.max_secondary = 0
-        self.max_main = 0
         self.actual_max_main = 0
 
     def _init_lists(self):
@@ -210,17 +196,24 @@ class ScrollableBase(LayoutType, ABC):
         self._add_param("descend_key", Any, None)
         self._add_param("spacing", (int, float), 30, layer=1)
 
-    def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None):
-        super()._lazy_init(size, content)
-        self.add_items(content)
+    def _system_callback_binds(self):
+        super()._system_callback_binds()
+        self._system_callbacks.bind(BindType.Scroll, _scrollable_on_scroll)
+
+    def _lazy_init(self, content: content_type | None = None, size: NvVector2 | list | None = None):  # type: ignore
+        super()._lazy_init(size, content)  # type: ignore
         self._init_scroll_bar()
         self._update_scroll_bar()
 
     def add_items(self, content: content_type | None):
-        if not content:
-            return
-        for mass in content:
-            align, item = mass
+        if not content: return
+        for content_item in content:
+            if isinstance(content_item, tuple):
+                align, item = content_item
+            elif isinstance(content_item, NevuObject):
+                align, item = self.basic_alignment, content_item
+            else:
+                raise TypeError(Annotations.format_nvtype_nvobject_error("list[tuple[Align, NevuObject] or NevuObject]", "content", f"{content}.\nWrong part: {content_item}", self))
             assert type(align) == Align and isinstance(item, NevuObject), (
                 f"Incorrect align or item ({align}, {item})"
             )
@@ -383,25 +376,6 @@ class ScrollableBase(LayoutType, ABC):
             scroll_bar._percentage = max(0, min(100, scroll_bar._percentage))
             self._scroll_needs_update = True
 
-    def _on_scroll_system(self, side: bool):
-        super()._on_scroll_system(side)
-        direction = 1 if side else -1
-        if self.inverted_scrolling:
-            direction *= -1
-
-        assert self.scroll_bar
-
-        old_perc = self.scroll_bar._percentage
-        self.scroll_bar._percentage += self.wheel_scroll_power * direction
-        self.scroll_bar._percentage = max(0, min(100, self.scroll_bar._percentage))
-
-        if self.scroll_bar._percentage == old_perc:
-            if self.layout is not None and isinstance(self.layout, ScrollableBase):
-                self.layout._on_scroll_system(side)
-            return
-
-        self._scroll_needs_update = True
-
     def _update_scroll_bar(self):
         if not self.first_parent_menu:
             return
@@ -467,7 +441,6 @@ class ScrollableBase(LayoutType, ABC):
         self.scroll_bar.style = style
 
     def _restart_coordinates(self):
-        self.max_main = self.get_param_strict("spacing").value
         self.actual_max_main = 0
 
     def _create_scroll_bar(self) -> ScrollableBase.ScrollBar:
@@ -530,3 +503,35 @@ class ScrollableBase(LayoutType, ABC):
     @abstractmethod
     def _set_item_main(self, item: NevuObject, align: Align):
         pass
+
+# === NOT CLASS FUNCTIONS ===
+
+def _scrollbar_on_click(self):
+    self.scrolling = True
+    axis = self._orientation_to_int()
+    self._drag_start_mouse = mouse.pos[axis]
+    self._drag_start_percentage = self._percentage
+
+def _scrollbar_on_keyup(self):
+    self.scrolling = False
+
+def _scrollbar_on_keyup_abandon(self):
+    self.scrolling = False
+
+def _scrollable_on_scroll(self, side: bool):
+    direction = 1 if side else -1
+    if self.inverted_scrolling:
+        direction *= -1
+
+    assert self.scroll_bar
+
+    old_perc = self.scroll_bar._percentage
+    self.scroll_bar._percentage += self.wheel_scroll_power * direction
+    self.scroll_bar._percentage = max(0, min(100, self.scroll_bar._percentage))
+
+    if self.scroll_bar._percentage == old_perc:
+        if self.layout is not None and isinstance(self.layout, ScrollableBase):
+            self.layout._run_callbacks(BindType.Scroll, side)
+        return
+
+    self._scroll_needs_update = True

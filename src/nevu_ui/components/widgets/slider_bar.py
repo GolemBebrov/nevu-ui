@@ -11,6 +11,7 @@ from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import (
     Align,
+    BindType,
     CacheType,
     ParamLayer,
     RenderConfig,
@@ -102,7 +103,7 @@ class Slider(Widget):
             z=-999,
         )
 
-        self.progress_bar._on_change_system = self._on_progress_bar_change
+        self.progress_bar._system_callbacks.bind(BindType.Change, self._on_progress_bar_change, weak=True)
         self.progress_bar._init_start()
         self.progress_bar.booted = True
         self.progress_bar._boot_up()
@@ -115,33 +116,6 @@ class Slider(Widget):
     def _init_objects(self):
         super()._init_objects()
         self.progress_bar_surf = None
-
-    def _on_hover_system(self):
-        super()._on_hover_system()
-        self.progress_bar._hover()
-        self.add_next_frame_action(self._create_surf)
-
-    def _on_unhover_system(self):
-        super()._on_unhover_system()
-        self.progress_bar._unhover()
-        self.add_next_frame_action(self._create_surf)
-
-    def _on_click_system(self):
-        super()._on_click_system()
-        self.dragging = True
-        self.progress_bar._click()
-        self.add_next_frame_action(self._create_surf)
-
-    def _on_keyup_system(self):
-        super()._on_keyup_system()
-        self.dragging = False
-        self.progress_bar._kup()
-        self.add_next_frame_action(self._create_surf)
-
-    def _on_keyup_abandon_system(self):
-        super()._on_keyup_abandon_system()
-        self.dragging = False
-        self.progress_bar._kup_abandon()
 
     def _add_params(self):
         super()._add_params()
@@ -171,10 +145,15 @@ class Slider(Widget):
         self._add_param("filled_rect_role", PairColorRole, PairColorRole.BACKGROUND)
         self._add_param_link("role", "filled_rect_role")
 
-    def _on_style_change_additional(self):
-        super()._on_style_change_additional()
-        if hasattr(self, "progress_bar") and self.progress_bar:
-            self.progress_bar._changed = True
+    def _system_callback_binds(self):
+        super()._system_callback_binds()
+        self._system_callbacks.bind(BindType.Hover, slider_on_hover)
+        self._system_callbacks.bind(BindType.Unhover, slider_on_unhover)
+        self._system_callbacks.bind(BindType.Click, slider_on_click)
+        self._system_callbacks.bind(BindType.KeyUp, slider_on_keyup)
+        self._system_callbacks.bind(BindType.KeyUpAbandon, slider_on_keyup_abandon)
+        self._system_callbacks.bind(BindType.AfterStateChange, _slider_after_state_change)
+        self._system_callbacks.bind(BindType.StyleChange, _slider_on_style_change)
 
     def _current_value_getter(self, value):
         return (
@@ -278,13 +257,6 @@ class Slider(Widget):
         assert result
         self._text_rect, self._text_surface = result
 
-    def _after_state_change_system(self):
-        super()._after_state_change_system()
-        self.cache.clear_selected(whitelist=[CacheType.TextArgs])
-        self._create_font()
-        self.adjust_text_rect()
-        self._create_surf()
-
     def secondary_draw_content(self):
         super().secondary_draw_content()
         self.progress_bar.coordinates = NvVector2()
@@ -336,3 +308,37 @@ class Slider(Widget):
         super()._kill_base()
         self.progress_bar.kill()
         self.progress_bar = None
+
+# NOT CLASS FUNCTIONS
+
+def slider_on_hover(self):
+    self.progress_bar._run_callbacks(BindType.Hover)
+    self.add_next_frame_action(self._create_surf)
+
+def slider_on_unhover(self):
+    self.progress_bar._run_callbacks(BindType.Unhover)
+    self.add_next_frame_action(self._create_surf)
+
+def slider_on_click(self):
+    self.dragging = True
+    self.progress_bar._run_callbacks(BindType.Click)
+    self.add_next_frame_action(self._create_surf)
+
+def slider_on_keyup(self):
+    self.dragging = False
+    self.progress_bar._run_callbacks(BindType.KeyUp)
+    self.add_next_frame_action(self._create_surf)
+
+def slider_on_keyup_abandon(self):
+    self.dragging = False
+    self.progress_bar._run_callbacks(BindType.KeyUpAbandon)
+
+def _slider_after_state_change(self, state):
+    self.cache.clear_selected(whitelist=[CacheType.TextArgs])
+    self._create_font()
+    self.adjust_text_rect()
+    self._create_surf()
+
+def _slider_on_style_change(self):
+    if hasattr(self, "progress_bar") and self.progress_bar:
+        self.progress_bar._changed = True

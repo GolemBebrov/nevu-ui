@@ -22,9 +22,12 @@ class Panel(Grid):
         bg_widget: Widget | None = None,
         **constant_kwargs: Unpack[GridKwargs_uni],
     ):
-        super().__init__(size, style, slot, **constant_kwargs)  # type: ignore
+        super().__init__(slot, size, style, **constant_kwargs)  # type: ignore
         self.bg_widget = bg_widget
         self._custom_primary_draw = True
+
+    def add_items(self, *args, **kwargs):
+        return
 
     def _add_params(self):
         super()._add_params()

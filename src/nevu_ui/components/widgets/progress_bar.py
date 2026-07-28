@@ -1,15 +1,15 @@
 import math
-from typing import Any, Callable, Unpack, overload
+from collections.abc import Callable
+from typing import Any, Unpack, overload
 
 import nevu_ui.core.modules as md
 from nevu_ui.components.widgets.typehints import (
-    ProgressBarKwargs,
     ProgressBarKwargsLong,
     ProgressBarKwargsShort,
 )
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
-from nevu_ui.core.enums import ParamLayer, RenderConfig, RenderReturnType
+from nevu_ui.core.enums import ParamLayer, RenderReturnType
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast import NvRenderTexture, NvVector2
 from nevu_ui.fast.raylib.nevu_raylib import begin_blend_mode, end_blend_mode
@@ -104,7 +104,6 @@ class ProgressBar(Widget):
     def _base_clear(self):
         self._changed = True
         self._changed_value = True
-        self.clear_surfaces()
         self.clear_texture()
 
     def _start_value_setter(self, value):
@@ -125,7 +124,7 @@ class ProgressBar(Widget):
         self._changed_curr_val = True
         return value
 
-    def set_progress_by_value(self, value: int | float):
+    def set_progress_by_value(self, value: float):
         self.progress = (value - self.start_value) / (self.end_value - self.start_value)
 
     def _init_inverted(self):
@@ -259,7 +258,7 @@ class ProgressBar(Widget):
 
         if isinstance(radius, int | float):
             radius = min(half_size.x, half_size.y, radius)
-            radius = tuple((radius, radius, radius, radius))
+            radius = (radius, radius, radius, radius)
 
         color = self._subtheme_progress
 

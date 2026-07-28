@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import copy
+from collections.abc import Iterator
 from itertools import chain
-from typing import TYPE_CHECKING, Any, Iterator, NotRequired, TypeGuard, Unpack
-
-from pygame import draw
+from typing import TYPE_CHECKING, Any, NotRequired, TypeGuard, Unpack
 
 if TYPE_CHECKING:
     from nevu_ui.menu import Menu
@@ -13,7 +12,7 @@ from nevu_ui.components.layouts.typehints import LayoutTemplate
 from nevu_ui.components.nevuobj import NevuObject, NevuObjectKwargs
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
-from nevu_ui.core.classes import BorderConfig, Strategy, _strategy_type
+from nevu_ui.core.classes import BorderConfig
 from nevu_ui.core.enums import ParamLayer
 from nevu_ui.core.size.rules import (
     CFill,
@@ -34,12 +33,11 @@ from nevu_ui.core.size.rules import (
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.logic.fast_logic import (
     draw_floating_items_optimized,
-    py_get_item_abs_coords,
     rl_predraw_widgets,
 )
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.overlay import overlay
-from nevu_ui.presentation.style import Style, StyleKwargs, default_style
+from nevu_ui.presentation.style import Style, StyleKwargs
 
 
 class LayoutTypeKwargs(NevuObjectKwargs):
@@ -110,17 +108,18 @@ class LayoutType(NevuObject):
 
     def __init__(
         self,
-        size: Annotations.nevuobj_size,
+        content: Any = None,
+        size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        content: list | None = None,
         **constant_kwargs: Unpack[LayoutTypeKwargs],
     ):
         super().__init__(size, style, **constant_kwargs)
         self._set_node_type(1)
-        self._template = self._create_template(size, content)
+        self.add_items(content)
+        self._template = self._create_template(content = content, size = size)
 
-    def _create_template(self, size: Annotations.nevuobj_size, content: list | None):  # type: ignore
-        return LayoutTemplate(size, content)
+    def _create_template(self, content: Any, size: Any):  # type: ignore
+        return LayoutTemplate(content = content, size = size)
 
     def _init_lists(self):
         super()._init_lists()
@@ -161,8 +160,9 @@ class LayoutType(NevuObject):
             for i in content:
                 self.add_item(i)
 
-    def add_items(self, content: content_type):
-        raise NotImplementedError("Subclasses of LayoutType may implement add_items()")
+    def add_items(self, content: Any):
+        if content is None: return
+        raise NotImplementedError("base LayoutType add_items do NOT support declarative content addition")
 
     def _coordinates_setter(self, coordinates: NvVector2):
         if coordinates.x != self.coordinates.x or coordinates.y != self.coordinates.y:
@@ -170,6 +170,8 @@ class LayoutType(NevuObject):
         return True
 
     def _borders_setter(self, value: BorderConfig):
+        assert isinstance(value, BorderConfig), "value must be BorderConfig"
+
         value = copy.deepcopy(value)
         font = self.renderer.core.get_font(name=value.font, size=self.style.font_size)
         value.font = font
@@ -245,11 +247,11 @@ class LayoutType(NevuObject):
     def read_item_coords(self, item: NevuObject):
         if self.booted == False:
             return
-        w_size = item._template["size"]
-        # print(w_size, type(item).__name__)
+        w_size = item._template.size
+        assert w_size is not None, f"in {self} with {self.id}: {item} with {item.id} has no size"
         x, y = w_size
-        x, is_x_rule = self._convert_item_coord(x, 0)
-        y, is_y_rule = self._convert_item_coord(y, 1)
+        x, _ = self._convert_item_coord(x, 0)
+        y, _ = self._convert_item_coord(y, 1)
 
         item._template["size"] = [x, y]
 
@@ -447,9 +449,9 @@ class LayoutType(NevuObject):
 
     def _create_clone(self):
         return self.__class__(
+            copy.deepcopy(self._template["content"]),
             self._template["size"],
             copy.deepcopy(self.style),
-            copy.deepcopy(self._template["content"]),
             **self.constant_kwargs,
         )
 
@@ -495,9 +497,8 @@ class LayoutType(NevuObject):
                 for item in content:
                     if isinstance(item, tuple):
                         item[-1].kill()
-        if self.borders:
-            if overlay.get_element(self):
-                overlay.remove_element(self)
+        if self.borders and overlay.get_element(self):
+            overlay.remove_element(self)
         self.items.clear()
 
         if self.menu:

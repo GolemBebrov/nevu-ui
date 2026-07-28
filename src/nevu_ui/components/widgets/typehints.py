@@ -1,12 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, NotRequired, TypedDict, Unpack
+from typing import TYPE_CHECKING, Any, TypedDict, Unpack
 
 from nevu_ui.components.nevuobj.typehints import (
     GlobalsBase,
     NevuObjectGlobalsKwargs,
-    NevuObjectKwargs,
     NevuObjectKwargsLong,
     NevuObjectKwargsShort,
     NevuObjectTemplate,

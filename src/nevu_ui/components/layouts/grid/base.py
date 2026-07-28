@@ -2,7 +2,6 @@ import math
 from typing import NotRequired, TypedDict, Unpack, overload
 
 from nevu_ui.components.layouts import LayoutType, LayoutTypeKwargs
-from nevu_ui.components.layouts.typehints import GridTemplate
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
@@ -46,32 +45,27 @@ class Grid(LayoutType):
     @overload
     def __init__(
         self,
-        size: Annotations.nevuobj_size,
-        style: Annotations.nevuobj_style = None,
         content: content_type | None = None,
+        size: Annotations.nevuobj_size = None,
+        style: Annotations.nevuobj_style = None,
         **constant_kwargs: Unpack[GridKwargs_rc],
     ): ...
     @overload
     def __init__(
         self,
-        size: Annotations.nevuobj_size,
-        style: Annotations.nevuobj_style = None,
         content: content_type | None = None,
+        size: Annotations.nevuobj_size = None,
+        style: Annotations.nevuobj_style = None,
         **constant_kwargs: Unpack[GridKwargs_xy],
     ): ...
     def __init__(
         self,
-        size: Annotations.nevuobj_size,
-        style: Annotations.nevuobj_style = None,
         content: content_type | None = None,
+        size: Annotations.nevuobj_size = None,
+        style: Annotations.nevuobj_style = None,
         **constant_kwargs: Unpack[GridKwargs_uni],
     ):
-        super().__init__(size, style, content, **constant_kwargs)  # type: ignore
-
-    def _create_template(
-        self, size: Annotations.nevuobj_size, content: content_type | None
-    ):  # type: ignore
-        return GridTemplate(size, content)
+        super().__init__(content, size, style, **constant_kwargs)  # type: ignore
 
     def _add_params(self):
         super()._add_params()
@@ -88,7 +82,6 @@ class Grid(LayoutType):
         super()._lazy_init(size)
         self.cell_height = self.size[1] / self.row
         self.cell_width = self.size[0] / self.column
-        self.add_items(content)
 
     def _coordinates_setter(self, coordinates: NvVector2):
         result = super()._coordinates_setter(coordinates)
@@ -151,7 +144,7 @@ class Grid(LayoutType):
 
     def add_item(self, item: NevuObject, x: any_number, y: any_number):  # type: ignore
         range_error = ValueError(
-            "Grid index out of range x: {x}, y: {y} ".format(x=x, y=y)
+            f"Grid index out of range x: {x}, y: {y} "
             + f"Grid size: {self.column}x{self.row}"
         )
         if x > self.column or y > self.row or x < 1 or y < 1:
