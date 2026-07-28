@@ -13,6 +13,7 @@ import weakref
 from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2
 from nevu_ui.fast.nvrect.nvrect cimport NvRect
 from nevu_ui.fast.nevucobj.nevucobj cimport NevuCobject
+from nevu_ui.core.enums import BindType
 
 np.import_array()
 
@@ -212,7 +213,7 @@ cdef class ZSystem:
             candidate_req = <ZRequest>self.live_requests[best_idx]
 
             if any_wheel and candidate_req.on_scroll_func is not None:
-                candidate_req.on_scroll_func()(wheel_down)
+                candidate_req.on_scroll_func()(BindType.Scroll, wheel_down)
 
             return candidate_req
 
