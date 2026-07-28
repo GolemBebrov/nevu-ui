@@ -1,34 +1,9 @@
 import contextlib
 from dataclasses import dataclass
-from enum import Enum, StrEnum
+from enum import Enum
 from typing import Any, Callable, TypeGuard
 
 from nevu_ui.core.enums import Backend
-
-
-class Events:
-    __slots__ = ("content", "on_add")
-
-    def __init__(self):
-        self.content = []
-        self.on_add = self._default_on_add_hook
-
-    def add(self, event):
-        self.content.append(event)
-
-    @staticmethod
-    def _default_on_add_hook(event):
-        pass
-
-    def __copy__(self):
-        return self.copy()
-
-    def copy(self):
-        new = self.__new__(self.__class__)
-        new.content = self.content.copy()
-        new.on_add = self.on_add
-        return new
-
 
 class ConfigType:
     class Window:
@@ -113,41 +88,6 @@ class Counter:
     def reset(self, reset_value: int | float | None = None):
         self.val = reset_value or self._initial_val
         self.ended = False
-
-
-class EnumValidator:
-    __slots__ = ("_enum_class", "_handlers")
-
-    def __init__(self, enum_class: type[Enum]):
-        object.__setattr__(self, "_enum_class", enum_class)
-        object.__setattr__(self, "_handlers", {})
-
-    def __enter__(self) -> "EnumValidator":
-        return self
-
-    def __setattr__(self, name: str, value: Callable[..., Any] | bool) -> None:
-        if not __debug__:
-            return
-        if name in self._enum_class.__members__:
-            self._handlers[name] = value
-        else:
-            raise AttributeError(
-                f"'{self._enum_class.__name__}' has no member '{name}'"
-            )
-
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        if not __debug__:
-            return
-        if exc_type is not None:
-            return
-
-        if missing := [
-            name for name in self._enum_class.__members__ if name not in self._handlers
-        ]:
-            raise NotImplementedError(
-                f"Missing definitions for {self._enum_class.__name__} members: {', '.join(missing)}"
-            )
-
 
 class GlobalsBase:
     def __init__(self):
