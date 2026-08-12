@@ -46,7 +46,7 @@ class ScrollableColumn(ScrollableBase):
         )
 
     def _set_item_main(self, item: NevuObject, align: Align):
-        container_width, widget_width = self._csize.x, item._csize.x
+        container_width, widget_width = self.current_size.x, item.current_size.x
         padding = self.relx(self.get_param_strict("spacing").value)
         item_coords = item.coordinates
 
@@ -65,9 +65,9 @@ class ScrollableColumn(ScrollableBase):
         pad = self.rely(self.get_param_strict("spacing").value)
         total_content_height = pad
         for item in self.items:
-            total_content_height += item._csize.y + pad
+            total_content_height += item.current_size.y + pad
 
-        visible_height = self._csize.y
+        visible_height = self.current_size.y
         antirel = nevu_state.window.rel
         if antirel.y == 0:
             self.actual_max_main = 0

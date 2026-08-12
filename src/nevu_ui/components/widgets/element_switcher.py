@@ -226,7 +226,7 @@ class ElementSwitcher(Widget):
         bw = self.relm(self.style.border_width)
 
         button_width = self._get_arrow_width()
-        button_height = self._csize.y - (bw * 2) - self.button_padding * 2
+        button_height = self.current_size.y - (bw * 2) - self.button_padding * 2
         button_size = NvVector2(button_width, button_height)
 
         subtheme_role = self.get_param_strict("subtheme_role").value
@@ -279,10 +279,10 @@ class ElementSwitcher(Widget):
         edge_offset = self.relm(self.style.border_width) + self.button_padding
         b_right = self.button_right
         b_left = self.button_left
-        current_size = self._csize
-        y_pos = (current_size.y - b_left._csize.y) / 2
+        current_size = self.current_size
+        y_pos = (current_size.y - b_left.current_size.y) / 2
         b_left.coordinates = NvVector2.from_xy(edge_offset, y_pos)
-        right_x = current_size.x - b_right._csize.x - edge_offset
+        right_x = current_size.x - b_right.current_size.x - edge_offset
         b_right.coordinates = NvVector2.from_xy(right_x, y_pos)
 
     def _get_arrow_width(self):
@@ -406,8 +406,8 @@ class ElementSwitcher(Widget):
         button_left._changed = True
         button_right._changed = True
 
-        cropped_size = self._csize.xy
-        text_area_offset = button_left.coordinates.x + button_left._csize.x
+        cropped_size = self.current_size.xy
+        text_area_offset = button_left.coordinates.x + button_left.current_size.x
         cropped_size.x -= text_area_offset * 2
         cached_args = self.cache.get_or_exec(
             CacheType.TextArgs,

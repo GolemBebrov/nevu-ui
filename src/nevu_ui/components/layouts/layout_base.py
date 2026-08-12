@@ -64,7 +64,7 @@ class LayoutType(NevuObject):
     def _rl_border_draw_call(self):
         if not self.get_nvrect().collide_rect(nevu_state.window.get_nvrect()):
             return
-        norm_size = self._csize.to_round().get_int_tuple()
+        norm_size = self.current_size.to_round().get_int_tuple()
         abs_coords = self.absolute_coordinates.to_round()
         borders: BorderConfig = self.get_param_strict("borders").value
         if len(borders.color) == 3:
@@ -215,11 +215,11 @@ class LayoutType(NevuObject):
         elif type(coord) == FillH:
             return self._percent_helper(self.original_size.y, coord.value), True
         elif type(coord) == CFill:
-            return self._percent_helper(self._no_borders_size[pos], coord.value), True
+            return self._percent_helper(self._no_borders_current_size[pos], coord.value), True
         elif type(coord) == CFillW:
-            return self._percent_helper(self._no_borders_size.x, coord.value), True
+            return self._percent_helper(self._no_borders_current_size.x, coord.value), True
         elif type(coord) == CFillH:
-            return self._percent_helper(self._no_borders_size.y, coord.value), True
+            return self._percent_helper(self._no_borders_current_size.y, coord.value), True
 
     def _parse_gcx(self, coord, pos: int):
         raise ValueError(
@@ -377,13 +377,13 @@ class LayoutType(NevuObject):
                 self.borders.name, True, self.borders.color
             )
             surf = md.pygame.Surface(
-                self._csize.to_tuple(), flags=md.pygame.SRCALPHA
+                self.current_size.to_tuple(), flags=md.pygame.SRCALPHA
             ).convert_alpha()
             surf.fill((0, 0, 0, 0))
             if hasattr(self, "border_font_surface"):
                 surf.blit(self._border_font_surface, [0, 0])
                 md.pygame.draw.rect(
-                    surf, self.borders.color, [0, 0, self._csize.x, self._csize.y], 1
+                    surf, self.borders.color, [0, 0, self.current_size.x, self.current_size.y], 1
                 )
             overlay.add_element(self, surf, self.absolute_coordinates.to_round(), -1)
 

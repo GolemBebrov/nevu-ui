@@ -6,19 +6,15 @@ from nevu_ui.components.layouts import LayoutType
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import modules as md
 from nevu_ui.core.enums import (
-    Align,
     Backend,
     BindType,
     CacheType,
-    EventType,
     HoverState,
-    ParamLayer,
-    RenderArgs,
     RenderConfig,
     RenderReturnType,
 )
 from nevu_ui.core.size.rules import SizeRule
-from nevu_ui.core.state import _analize_bg, nevu_state
+from nevu_ui.core.state import nevu_state
 from nevu_ui.fast import Cache, NvParam, NvRect, NvRenderTexture, NvVector2
 from nevu_ui.fast.logic.fast_logic import rel_helper, relm_helper, vec_rel_helper
 from nevu_ui.fast.nvspecific.nvspec import (
@@ -73,7 +69,7 @@ class MenuRendererProxy:
         return True
 
     @property
-    def _csize(self):
+    def current_size(self):
         return self.menu.rel(self.menu.size)
 
     @property
@@ -127,52 +123,52 @@ class Menu:
 
     __slots__ = (
         "_absolute_coordinates",
-        "_tuple_absolute_coordinates",
-        "_draw_borders",
-        "_layouts_cook_time",
-        "_layouts_cook_time_max",
-        "_layouts_cook_time_delay",
-        "_first_update_functions",
-        "_next_frame_functions",
-        "_draw_content",
-        "override_color",
-        "alt",
-        "_window",
-        "window_surface",
-        "cache",
-        "_style",
-        "_subtheme_role",
-        "_enable_layouts_cook_time",
-        "original_size",
-        "_renderer_proxy",
-        "_renderer",
-        "_layout_proxy",
+        "_args_menus_to_draw",
+        "_bg_transparent",
+        "_changed",
         "_convert_item_coord",
+        "_draw_borders",
+        "_draw_content",
+        "_enable_layouts_cook_time",
+        "_first_update_functions",
+        "_layout",
+        "_layout_proxy",
+        "_layouts_cook_time",
+        "_layouts_cook_time_delay",
+        "_layouts_cook_time_max",
+        "_main_draw",
+        "_next_frame_functions",
+        "_opened_sub_menu",
         "_parse_fillx",
         "_parse_gcx",
         "_parse_vx",
         "_percent_helper",
         "_read_item_coords",
-        "_resize_ratio",
-        "_size",
         "_rel_size",
-        "coordinates",
-        "_layout",
-        "_changed",
         "_relative_placed",
-        "_bg_transparent",
         "_relative_x",
         "_relative_y",
-        "enabled",
-        "visible",
-        "_main_draw",
+        "_renderer",
+        "_renderer_proxy",
+        "_resize_ratio",
+        "_size",
+        "_style",
         "_subtheme_border",
         "_subtheme_content",
-        "first_window_size",
-        "first_coordinates",
-        "_opened_sub_menu",
-        "_args_menus_to_draw",
+        "_subtheme_role",
         "_surface",
+        "_tuple_absolute_coordinates",
+        "_window",
+        "alt",
+        "cache",
+        "coordinates",
+        "enabled",
+        "first_coordinates",
+        "first_window_size",
+        "original_size",
+        "override_color",
+        "visible",
+        "window_surface",
     )
 
     def __init__(
@@ -528,7 +524,7 @@ class Menu:
 
         if layout := self._layout:
             layout._resize(ratio)
-            layout.coordinates = (rel_size - layout._csize) / 2
+            layout.coordinates = (rel_size - layout.current_size) / 2
             layout.absolute_coordinates = layout.coordinates + self.absolute_coordinates
 
             layout.update()
@@ -579,7 +575,7 @@ class Menu:
         layout._boot_up()
         layout._resize(self._resize_ratio)
         relsize = self.size * self._resize_ratio
-        layout.coordinates = (relsize - layout._csize) / 2
+        layout.coordinates = (relsize - layout.current_size) / 2
         layout.absolute_coordinates = layout.coordinates + self.absolute_coordinates
         self._layout = layout
         layout.update()

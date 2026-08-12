@@ -4,8 +4,6 @@ import weakref
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Unpack, overload
 
-from typing_extensions import deprecated
-
 import nevu_ui.core.modules as md
 
 if TYPE_CHECKING:
@@ -19,20 +17,18 @@ from nevu_ui.components.nevuobj.typehints import (
     nevu_object_globals,
 )
 from nevu_ui.core import Annotations
-from nevu_ui.core.classes import Strategy, _strategy_type
 from nevu_ui.core.callbacks import Callbacks
+from nevu_ui.core.classes import Strategy, _strategy_type
 from nevu_ui.core.enums import (
-    AnimationType,
     BindType,
     CacheType,
-    EventType,
     HoverState,
     ParamLayer,
 )
 from nevu_ui.core.size.rules import Px, SizeRule
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast import NevuCobject, NvVector2, ZRequest
-from nevu_ui.fast.logic import get_rect_helper, get_rect_helper_pygame
+from nevu_ui.fast.logic import get_rect_helper
 from nevu_ui.overlay.tooltip import Tooltip
 from nevu_ui.parser.base import standart_config
 from nevu_ui.presentation.animations import AnimationManager
@@ -118,9 +114,7 @@ class NevuObject(NevuCobject):
         else:
             _size = size
         if _size is None:
-            raise ValueError(
-                f"Size is None in {self.__class__.__name__} and no global size set."
-            )
+            raise ValueError(Annotations.format_param_engine_error("size is None and no global size set", self))
         self._template = NevuObjectTemplate(_size)
         style = style or nevu_object_globals.library.get("style") or default_style
         self._first_update_functions = []
@@ -191,22 +185,22 @@ class NevuObject(NevuCobject):
             return
         param_names = self._get_param_names()
         if name not in param_names:
-            raise KeyError(f"Constant '{name}' does not exist and cannot be renamed.")
+            raise KeyError(f"Param '{name}' does not exist and cannot be renamed.")
         if new_name in param_names:
-            raise ValueError(f"Constant '{new_name}' already exists.")
+            raise ValueError(f"Param '{new_name}' already exists.")
         param = self._find_param(name)
         assert param
         param.name = new_name
 
     def _change_param_default(self, name: str, default: Any):
         if name not in self._get_param_names():
-            raise KeyError(f"Constant '{name}' does not exist and cannot be changed.")
+            raise KeyError(f"Param '{name}' does not exist and cannot be changed.")
         self.get_param_strict(name).default = default
 
     def _block_param(self, name: str):
         param_names = self._get_param_names()
         if name not in param_names:
-            raise KeyError(f"Constant '{name}' does not exist and cannot be renamed.")
+            raise KeyError(f"Param '{name}' does not exist and cannot be renamed.")
         self._blacklisted_params.append(name)
 
     def _add_params(self):
@@ -263,14 +257,14 @@ class NevuObject(NevuCobject):
             if current_layer != layer:
                 continue
             if constant_name in processed:
-                raise ValueError(f"Constant {name}({constant_name}) is already set.")
+                raise ValueError(Annotations.format_param_engine_error(f"Param {name}({constant_name}) is already set.", self))
             self._process_param(name, constant_name, needed_types, value)
             processed.add(constant_name)
 
     def _extract_param_data(self, name):
         if name in self._get_param_names():
             param = self._find_param(name)
-        elif name in self._param_links.keys():
+        elif name in self._param_links:
             param = self._find_param(self._param_links[name])
         else:
             available_param_names = ", ".join(sorted(self._get_param_names()))
@@ -292,28 +286,19 @@ class NevuObject(NevuCobject):
     def _is_valid_type(self, value, needed_types):
         needed_types = (needed_types,)
         for needed_type in needed_types:
-            if needed_type == Callable and callable(value):
-                return True
-            if needed_type == Any:
-                return True
-            if type(needed_type) == tuple:
-                if needed_type[0] == Any:
-                    return True
-            # print(value, needed_type)
-            if isinstance(value, needed_type):
-                return True
+            if needed_type == Callable and callable(value): return True
+            if needed_type == Any: return True
+            if type(needed_type) == tuple and needed_type[0] == Any: return True
+            if isinstance(value, needed_type): return True
         return False
 
     def _process_param(self, name, param_name, needed_types, value):
         assert needed_types
         if param_name not in self._get_param_names():
             if param_name in self._blacklisted_params:
-                raise ValueError(f"Param {name} is unconfigurable")
+                raise ValueError(Annotations.format_param_engine_error(f"Param {name} is unconfigurable", self))
             if not self._is_valid_type(value, needed_types):
-                raise TypeError(
-                    f"Invalid type for param '{param_name}' in {self.__class__.__name__} instance. ",
-                    f"Expected {needed_types}, but got {type(value).__name__}.",
-                )
+                raise TypeError(Annotations.format_nvtype_nvobject_error(needed_types.__name__, param_name, value, self, "__init__"))
         param = self.get_param_strict(param_name)
         assert param
         param.set(value)
@@ -351,12 +336,13 @@ class NevuObject(NevuCobject):
         self._apply_params(layer, **kwargs)
 
     def _init_style(self, style: Style | str):
+
         if isinstance(style, str):
             if result := standart_config.styles.get(style, None):
                 self.style = result
             else:
                 if not standart_config.styles:
-                    raise ValueError("No config styles found")
+                    raise ValueError(Annotations.format_param_engine_error("No config styles found, maybe you forgot to load config", self))
                 suggestions = difflib.get_close_matches(
                     "style", standart_config.styles.keys()
                 )
@@ -417,7 +403,7 @@ class NevuObject(NevuCobject):
             self.tooltip = self.constant_kwargs.get("tooltip")
 
     def _handle_size_rules(
-        self, number: SizeRule | int | float
+        self, number: SizeRule | float
     ) -> SizeRule | int | float:
         if isinstance(number, SizeRule):
             if type(number) == Px:
@@ -440,10 +426,6 @@ class NevuObject(NevuCobject):
         if self._wait_mode == True and not value:
             self._lazy_init_wrapper(**self._template.__dict__)
         self._wait_mode = value
-
-    @property
-    def _csize(self) -> NvVector2:
-        return self.cache.get_or_exec(CacheType.RelSize, self._update_size)
 
     def add_first_update_action(self, function):
         self._first_update_functions.append(self._ensure_func_safety(function))
@@ -478,16 +460,20 @@ class NevuObject(NevuCobject):
 
     @property
     def max_borderradius(self):
-        return min(self._no_borders_size.x, self._no_borders_size.y) / 2
+        return min(self._no_borders_current_size.x, self._no_borders_current_size.y) / 2
 
     @property
-    def _no_borders_size(self) -> NvVector2:
+    def current_size(self) -> NvVector2:
+        return self.cache.get_or_exec(CacheType.RelSize, self._update_size)
+
+    @property
+    def _no_borders_current_size(self) -> NvVector2:
         bw = self.relm(self.style.border_width)
-        return self._csize - (NvVector2.from_xy(bw, bw) * 2) + NvVector2.from_xy(1, 1)
+        return self.current_size - (NvVector2.from_xy(bw, bw) * 2)
 
     @property
-    def _borders_marg_size(self) -> NvVector2:
-        return (self._csize - self._no_borders_size) / 2
+    def _borders_of_current_size(self) -> NvVector2:
+        return (self.current_size - self._no_borders_current_size) / 2
 
     def _subtheme_role_setter(self, value: SubThemeRole):
         self.cache.clear()
@@ -545,6 +531,8 @@ class NevuObject(NevuCobject):
         if self.get_param_value("strategy") == Strategy.Static:
             return
         self._resize_content(resize_ratio)
+        self._run_callbacks(BindType.Resize, resize_ratio)
+
 
     def _resize_content(self, resize_ratio: NvVector2):
         self._changed = True
@@ -578,7 +566,7 @@ class NevuObject(NevuCobject):
     def _event_update(self, events):
         pass
 
-        # === Draw stubs ===
+    # === Draw stubs ===
 
     def _primary_draw(self):
         pass
@@ -592,7 +580,7 @@ class NevuObject(NevuCobject):
     def secondary_draw(self):
         pass
 
-        # === Hover state ===
+    # === Hover state ===
 
     @property
     def hover_state(self):
@@ -602,21 +590,17 @@ class NevuObject(NevuCobject):
     def hover_state(self, value: HoverState):
         self.set_hover_state(value)
 
-        # === Rect functions ===
+    # === Rect functions ===
 
     def get_rect_static(self):
         return get_rect_helper(self.coordinates, self._resize_ratio, self.size)
 
-        # === Cache update functions ===
+    # === Cache update functions ===
 
     def _update_size(self):
         return self.rel(self.size)
 
-        # === Relative functions ===
-        # Empty... :3
-        # Realized in NevuCobject
-
-        # === Clone functions ===
+    # === Clone functions ===
 
     def _create_clone(self):
         cls = self.__class__

@@ -15,7 +15,7 @@ from nevu_ui.core.enums import SwitchAxis
 
 if TYPE_CHECKING:
     from nevu_ui.components.layouts.misc.checkbox_group import CheckBoxGroup
-    from nevu_ui.components.widgets import Label, ProgressBar, Switch
+    from nevu_ui.components.widgets import Label, ProgressBar, Switch, Input
     from nevu_ui.presentation.color import PairColorRole, SubThemeRole, TupleColorRole
     from nevu_ui.presentation.style import Style
 
@@ -37,6 +37,7 @@ class _WidgetKwargsBase(TypedDict, total=False):
     animate_color_change: bool
     override_color: tuple[int, ...] | None
     subtheme_role: SubThemeRole
+    glassy: bool
 
 
 class _WidgetKwargsShort(NevuObjectKwargsShort, total=False):
@@ -88,7 +89,7 @@ class ElementSwitcherKwargs(WidgetKwargs, total=False):
 
 class InputKwargs(WidgetKwargs, total=False):
     is_active: bool
-    multiple: bool
+    multi_line: bool
     allow_paste: bool
     words_indent: bool
     max_characters: int
@@ -96,6 +97,9 @@ class InputKwargs(WidgetKwargs, total=False):
     whitelist: list | tuple | str
     padding: list | tuple
     cursor_width: int
+    default: str
+    placeholder: str
+    on_change_function: Callable[["Input", str], None] | None
 
 
 class _SpecProgressBarKwargsLong(TypedDict, total=False):

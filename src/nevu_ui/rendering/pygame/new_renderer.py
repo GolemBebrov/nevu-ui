@@ -117,7 +117,7 @@ class PygameRenderer(BaseRenderer):
     @override
     def _draw_base(self, call: DrawBaseCall):
         root = self.root
-        size: NvVector2 = call.size if call.size is not None else root._csize
+        size: NvVector2 = call.size if call.size is not None else root.current_size
         standstill = call.standstill
         override_color = call.color
         cached = call.cached
@@ -237,7 +237,7 @@ class PygameRenderer(BaseRenderer):
         style: Style = call.style if call.style is not None else root.style
         font_size: float | None = call.font_size
         font_size = font_size or root.style.font_size
-        size: NvVector2 = call.size if call.size is not None else root._csize
+        size: NvVector2 = call.size if call.size is not None else root.current_size
         unlimited_y = call.unlimited_y
         words_indent = call.words_indent
         continuous = call.continuous
@@ -434,7 +434,7 @@ class PygameRenderer(BaseRenderer):
                 assert texture, "Modify return type selected but no object provided"
                 _draw_on_texture(texture)
             case RenderReturnType.CreateNew:
-                texture = self.core.create_clear(self.root._csize)
+                texture = self.core.create_clear(self.root.current_size)
                 _draw_on_texture(texture)
                 return texture
             case _:

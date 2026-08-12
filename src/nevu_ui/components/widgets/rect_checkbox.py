@@ -89,16 +89,16 @@ class RectCheckBox(Widget):
         if not (self._changed and self.toggled):
             return
 
-        margin = self._csize * (1 - self.toggled_rect_scale)
+        margin = self.current_size * (1 - self.toggled_rect_scale)
         margin.to_round()
 
         self.clear_texture()
-        active_size = self._csize - (margin * 2)
+        active_size = self.current_size - (margin * 2)
 
         active_size.x = max(1, int(active_size.x))
         active_size.y = max(1, int(active_size.y))
 
-        inner_radius = self._borders_marg_size.x * 2
+        inner_radius = self._borders_of_current_size.x * 2
         inner_radius = [inner_radius] * 4
 
         br = self.style.border_radius
@@ -121,6 +121,7 @@ class RectCheckBox(Widget):
                 standstill=True,
                 gradient_support=False,
                 return_type=RenderReturnType.Modify,
+                glassy = self.glassy
             )
         )
         self.surface.blit(inner_surf, margin.get_int_tuple())

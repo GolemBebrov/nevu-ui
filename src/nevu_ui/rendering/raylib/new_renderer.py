@@ -154,7 +154,7 @@ class RaylibRenderer(BaseRenderer):
         root = self.root
         unsafe: _RaylibSpecifiedDraw = self.unsafe  # type: ignore
         core = self.core
-        size: NvVector2 = call.size if call.size is not None else root._csize
+        size: NvVector2 = call.size if call.size is not None else root.current_size
         cache = call.cache if call.cache is not None else root.cache
         standstill = call.standstill
         glassy = call.glassy
@@ -280,7 +280,7 @@ class RaylibRenderer(BaseRenderer):
         font_size: float | None = call.font_size
         font_size_overriden = font_size is not None
         font_size = font_size or root.style.font_size
-        size: NvVector2 = call.size if call.size is not None else root._csize
+        size: NvVector2 = call.size if call.size is not None else root.current_size
         unlimited_y = call.unlimited_y
         words_indent = call.words_indent
         continuous = call.continuous
@@ -415,7 +415,7 @@ class RaylibRenderer(BaseRenderer):
             "click_gradient must be provided"
         )
         click_subject = call.click_subject
-        click_subject = click_subject or NvRenderTexture(root._csize)
+        click_subject = click_subject or NvRenderTexture(root.current_size)
         assert isinstance(click_subject, NvRenderTexture), (
             "click_subject must be a nevu ui render texture"
         )
@@ -448,7 +448,7 @@ class RaylibRenderer(BaseRenderer):
                 assert texture, "Modify return type selected but no object provided"
                 _add_effects(texture)
             case RenderReturnType.CreateNew:
-                texture = core.create_clear(root._csize)
+                texture = core.create_clear(root.current_size)
                 _add_effects(texture)
                 return texture
             case _:
@@ -541,7 +541,7 @@ class RaylibRenderer(BaseRenderer):
                 assert texture, "Modify return type selected but no object provided"
                 _draw_on_texture(texture)
             case RenderReturnType.CreateNew:
-                texture = core.create_clear(root._csize)
+                texture = core.create_clear(root.current_size)
                 _draw_on_texture(texture)
                 return texture
             case _:

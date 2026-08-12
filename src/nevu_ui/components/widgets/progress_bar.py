@@ -225,8 +225,7 @@ class ProgressBar(Widget):
         self._changed_value = False
         self._changed_curr_val = False
 
-        rsize = self._no_borders_size
-        ceil = math.ceil
+        rsize = self._no_borders_current_size
         relm = self.relm
         style = self.style
 
@@ -236,21 +235,23 @@ class ProgressBar(Widget):
         if progress > 0 and width == 0:
             width = 1
 
-        height = int(rsize.y)
+        height = round(rsize.y)
 
         size = NvVector2.from_xy(width, height)
         half_size = size / 2
 
-        bw = ceil(relm(style.border_width))
-        radius = relm(style.border_radius) - bw
+        bw = relm(style.border_width)
+        radius = style.border_radius - bw
         min_side = min(rsize.x // 2, rsize.y // 2)
         radius = min(min_side, max(radius, 0))
 
         y_decrease = 0
-        if half_size.x < radius:
-            y_decrease = ceil(radius - half_size.x)
+        if half_size.x < relm(radius):
+            y_decrease = (relm(radius) - half_size.x)
             if size.y - y_decrease * 2 > 0:
                 size.y -= y_decrease * 2
+        else:
+            print(radius)
 
         if size.x <= 0 or size.y <= 0:
             self._create_surface(None, (0, 0))
@@ -272,7 +273,7 @@ class ProgressBar(Widget):
 
         renderer.run_base(
             DrawBaseCall(
-                radius=style.border_radius,
+                radius=radius,
                 easy_background=False,
                 size=size,
                 color=color,
@@ -280,11 +281,12 @@ class ProgressBar(Widget):
                 return_type=RenderReturnType.Modify,
                 modify_object=surf,
                 standstill=True,
+                glassy = self.glassy
             )
         )
 
         coords = NvVector2.from_xy(
-            self._borders_marg_size.x, self._borders_marg_size.y + y_decrease
+            self._borders_of_current_size.x, self._borders_of_current_size.y + y_decrease
         )
         assert self.surface
 

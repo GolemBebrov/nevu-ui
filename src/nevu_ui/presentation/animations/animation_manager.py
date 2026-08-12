@@ -169,7 +169,7 @@ class AnimationManager:
         if anim := self.current_animations.get(animation_type):
             return anim.current_value
 
-    def get_animation(self, animation_type: AnimationType):
+    def get_animation(self, animation_type: AnimationType | str):
         return self.current_animations.get(animation_type)
 
     def _start_transition_animations(self):

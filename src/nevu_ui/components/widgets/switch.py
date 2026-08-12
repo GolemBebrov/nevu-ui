@@ -75,7 +75,7 @@ class Switch(Widget):
         main_coords = 0 if axis == SwitchAxis.Horizontal else 1
         self.state = (
             self._bg_circle_coords[main_coords]
-            > self._no_borders_size[main_coords] / 2 - self.minimal_side / 2
+            > self._no_borders_current_size[main_coords] / 2 - self.minimal_side / 2
         )
 
     def _add_params(self):
@@ -136,7 +136,7 @@ class Switch(Widget):
         bg_coords = self._bg_circle_coords.xy
         if self._state is True:
             bg_coords[main_coord] = (
-                self._no_borders_size[main_coord] - self.minimal_side
+                self._no_borders_current_size[main_coord] - self.minimal_side
             )
         else:
             bg_coords[main_coord] = 0
@@ -144,7 +144,7 @@ class Switch(Widget):
 
     @property
     def minimal_side(self):
-        return min(self._no_borders_size.x, self._no_borders_size.y)
+        return min(self._no_borders_current_size.x, self._no_borders_current_size.y)
 
     def _create_bg_circle(self):
         minimal_size = self.minimal_side
@@ -168,6 +168,7 @@ class Switch(Widget):
                 color=self.subtheme_font,
                 standstill=True,
                 modify_object=bg_texture,
+                glassy=self.glassy
             )
         )
         return bg_texture
@@ -183,7 +184,7 @@ class Switch(Widget):
             surface.blit(self._bg_surf, (0, 0))
             surface.blit(
                 self._bg_circle, #type: ignore
-                (self._bg_circle_coords + self._borders_marg_size)
+                (self._bg_circle_coords + self._borders_of_current_size)
                 .get_round()
                 .get_int_tuple(),
             )
@@ -196,7 +197,7 @@ class Switch(Widget):
                 surface_fblit(self._bg_surf, (0, 0))
                 surface_fblit(
                     self._bg_circle, #type: ignore
-                    (self._bg_circle_coords + self._borders_marg_size)
+                    (self._bg_circle_coords + self._borders_of_current_size)
                     .get_round()
                     .get_int_tuple(),
                 )
@@ -232,7 +233,7 @@ class Switch(Widget):
             click_pos = self._click_pos
             assert click_pos
             coords_before = self._bg_circle_coords_before
-            rsize = self._no_borders_size
+            rsize = self._no_borders_current_size
             minimal_side = self.minimal_side
 
             if self._get_correct_axis() == SwitchAxis.Horizontal:
@@ -298,7 +299,7 @@ class Switch(Widget):
         bg_coords = self._bg_circle_coords.xy
         if self.state is True:
             bg_coords[main_coord] = (
-                self._no_borders_size[main_coord] - self.minimal_side
+                self._no_borders_current_size[main_coord] - self.minimal_side
             )
         else:
             bg_coords[main_coord] = 0

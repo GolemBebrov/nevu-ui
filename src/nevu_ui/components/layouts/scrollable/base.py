@@ -108,7 +108,7 @@ class ScrollableBase(LayoutType, ABC):
             axis = self._orientation_to_int()
             self._percentage = max(0.0, min(float(value), 100.0))
 
-            movable_area = self.track_length[axis] - self._csize[axis]
+            movable_area = self.track_length[axis] - self.current_size[axis]
 
             if movable_area <= 0:
                 self.coordinates[axis] = self.track_start_local[axis]
@@ -129,7 +129,7 @@ class ScrollableBase(LayoutType, ABC):
             axis = self._orientation_to_int()
 
             if self.scrolling:
-                movable_area = self.track_length[axis] - self._csize[axis]
+                movable_area = self.track_length[axis] - self.current_size[axis]
                 if movable_area > 0:
                     mouse_delta = mouse.pos[axis] - self._drag_start_mouse
                     perc_delta = (mouse_delta / movable_area) * 100.0
@@ -343,7 +343,7 @@ class ScrollableBase(LayoutType, ABC):
 
             cached_coordinates.append(item.coordinates.copy())
             item.absolute_coordinates = get_abs_coords(self, item)
-            padding_offset += item._csize[main_idx] + pad
+            padding_offset += item.current_size[main_idx] + pad
 
         self.cached_coordinates = cached_coordinates
 
@@ -389,7 +389,7 @@ class ScrollableBase(LayoutType, ABC):
         )[sec_idx]
         local_start[main_idx] = abs_coords[main_idx]
         track_length = NvVector2.from_xy(0, 0)
-        track_length[self._main_axis] = self._csize[self._main_axis]
+        track_length[self._main_axis] = self.current_size[self._main_axis]
         assert self.scroll_bar
         self.scroll_bar.set_scroll_params(local_start, abs_coords, track_length)
 

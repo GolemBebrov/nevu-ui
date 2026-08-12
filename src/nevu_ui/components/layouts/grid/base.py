@@ -99,15 +99,15 @@ class Grid(LayoutType):
         self.cached_coordinates = []
         c_vec = (
             NvVector2.from_xy(
-                self._no_borders_size.x / self.column,
-                self._no_borders_size.y / self.row,
+                self._no_borders_current_size.x / self.column,
+                self._no_borders_current_size.y / self.row,
             )
             if self.menu
             else NvVector2.from_xy(
                 self.relx(self.cell_width), self.rely(self.cell_height)
             )
         )
-        coords_marg_vec = self.coordinates + self._borders_marg_size
+        coords_marg_vec = self.coordinates + self._borders_of_current_size
         cached_coords_append = self.cached_coordinates.append
         for item, gr_vec in zip(self.items, self.grid_coordinates):
             curr_cell_vec = gr_vec * c_vec

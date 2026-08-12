@@ -25,7 +25,6 @@ cdef class NvParam:
 
     cpdef bool check(self, value):
         if self.type == typing.Any: return True
-
         return isinstance(value, self.type)
 
     cpdef void set(self, value):

@@ -225,14 +225,19 @@ class Window:
             Backend.Pygame: WindowRendererPygame,
             Backend.Sdl: WindowRendererSdl,
             Backend.RayLib: WindowRendererRaylib,
+            Backend.Opengl: None,
         }
         back_to_update = {
             Backend.RayLib: self._update_raylib,
             Backend.Pygame: self._update_pygame,
             Backend.Sdl: self._update_pygame,
+            Backend.Opengl: None
         }
-        self._renderer = back_to_class[self._backend](**kwargs)
         window_specific_update = back_to_update[self._backend]
+        if not window_specific_update:
+            raise RuntimeError(f"Backend {self._backend} is not supported -w-")
+        self._renderer = back_to_class[self._backend](**kwargs)
+
         self.renderer_type._initial_check()
 
     def _reset_nevu_state(self):

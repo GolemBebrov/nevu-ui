@@ -51,6 +51,7 @@ class Widget(NevuObject):
     z: int
     draw_borders: bool
     draw_content: bool
+    glassy: bool
 
     # ==============
     @overload
@@ -115,7 +116,7 @@ class Widget(NevuObject):
         self._add_param("draw_content", bool, True)
         self._add_param("ripple_effect", bool, True)
         self._add_param("animate_color_change", bool, True)
-        (self._add_param("override_color", tuple | None, None),)
+        self._add_param("override_color", tuple | None, None)
         self._add_param("glassy", bool, False)
         self._change_param_default("subtheme_role", SubThemeRole.SECONDARY)
 
@@ -291,7 +292,7 @@ class Widget(NevuObject):
         if self.inline:
             return
         if nevu_state.window.renderer_type.raylib:
-            self.surface = NvRenderTexture(self._csize)
+            self.surface = NvRenderTexture(self.current_size)
             md.rl.set_texture_filter(
                 self.surface.texture, md.rl.TextureFilter.TEXTURE_FILTER_ANISOTROPIC_16X
             )
@@ -300,7 +301,7 @@ class Widget(NevuObject):
             )
         else:
             self.surface = md.pygame.Surface(
-                self._csize, flags=md.pygame.SRCALPHA
+                self.current_size, flags=md.pygame.SRCALPHA
             ).convert_alpha()
 
     def _lazy_init(self, size: NvVector2 | list):
@@ -376,7 +377,7 @@ class Widget(NevuObject):
         def build_background() -> SurfaceLike:
             bg: SurfaceLike = self.cache.get_or_exec(
                 CacheType.Background,
-                lambda: self.renderer.core.create_clear(self._csize),
+                lambda: self.renderer.core.create_clear(self.current_size),
             )
             bg.fill(Color.Blank)
 
@@ -401,7 +402,7 @@ class Widget(NevuObject):
             if draw_borders:
                 final = self.cache.get_or_exec(
                     CacheType.Borders,
-                    lambda: self.renderer.core.create_clear(self._csize),
+                    lambda: self.renderer.core.create_clear(self.current_size),
                 )
                 final.fill(Color.Blank)
                 self.renderer.run_borders(
@@ -453,7 +454,7 @@ class Widget(NevuObject):
         if self._click_started and nevu_state.window.renderer_type.raylib:
             self._click_texture = self.cache.get_or_exec(
                 CacheType.ClickTexture,
-                lambda: self.renderer.core.create_clear(self._csize),
+                lambda: self.renderer.core.create_clear(self.current_size),
             )
             self.renderer.run_effects(
                 DrawEffectsCall(
@@ -489,25 +490,28 @@ class Widget(NevuObject):
             if click_anim_manager.state == AnimationManagerState.Ended:
                 self._click_started = False
 
-        if self._bg_color_anim_manager:
-            color_anim_manager = self._bg_color_anim_manager
+        color_anim_manager = self._bg_color_anim_manager
+        if color_anim_manager:
             color_anim_manager.update()
-            if anim_value := color_anim_manager.get_animation_value("main"):
-                if anim_value != self._anim_bg_color_old:
-                    self._anim_bg_color_old = anim_value
+            anim = color_anim_manager.get_animation("main")
+            if anim:
+                anim_val = anim.current_value
+                if anim_val and anim_val != self._anim_bg_color_old:
+                    self._anim_bg_color_old = anim_val
                     self._changed = True
                     self.cache.clear_selected(whitelist=[CacheType.Surface])
-            if anim := color_anim_manager.get_animation("main"):  # type: ignore
                 if anim.ended:
                     self._bg_color_anim_manager = None
+
         logic_update_helper(
             self.absolute_coordinates, self._dr_coordinates_old, nevu_state.z_system
         )
 
-        if self._sdl2_cached_texture:
+        sdl2_texture = self._sdl2_cached_texture
+        if sdl2_texture:
             alpha = self.animation_manager.get_animation_value("ripple_opacity")
             if alpha is not None:
-                self._sdl2_cached_texture.alpha = alpha
+                sdl2_texture.alpha = alpha
 
         if self._first_update:
             self._first_update = False
@@ -573,7 +577,7 @@ def _widget_on_click(self):
         )
         pos = mouse.pos.copy()
         pos -= self.absolute_coordinates
-        normalized = pos / self._csize
+        normalized = pos / self.current_size
         self._click_gradient.set_center_nvvec(normalized)
     self._toggle_click_style()
 

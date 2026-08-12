@@ -39,6 +39,7 @@ class Slider(Widget):
     current_value: int | float
 
     # ==============
+    progress_bar: ProgressBar
     @overload
     def __init__(
         self,
@@ -190,10 +191,10 @@ class Slider(Widget):
         relative_x = mouse.pos.x - self.absolute_coordinates.x
 
         slider_pos = max(
-            self._borders_marg_size.x / 2, min(self._no_borders_size.x, relative_x)
+            self._borders_of_current_size.x, min(self._no_borders_current_size.x + self._borders_of_current_size.x, relative_x)
         )
-        slider_perc = (slider_pos - self._borders_marg_size.x / 2) / (
-            self._no_borders_size.x - self._borders_marg_size.x / 2
+        slider_perc = (slider_pos - self._borders_of_current_size.x) / (
+            self._no_borders_current_size.x
         )
 
         value = slider_perc * (self.end_value - self.start_value) + self.start_value
@@ -275,7 +276,7 @@ class Slider(Widget):
         padx = 0
         pady = 0
 
-        border_size = self._borders_marg_size / 2
+        border_size = self._borders_of_current_size / 2
 
         match self.style.align_x:
             case Align.LEFT:
