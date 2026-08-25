@@ -13,7 +13,7 @@ from nevu_ui.components.nevuobj import NevuObject, NevuObjectKwargs
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.classes import BorderConfig
-from nevu_ui.core.enums import ParamLayer
+from nevu_ui.core.enums import CustomFunctions, ParamLayer
 from nevu_ui.core.size.rules import (
     CFill,
     CFillH,
@@ -98,7 +98,7 @@ class LayoutType(NevuObject):
         self.booted = True
         for item in self._all_items():
             assert isinstance(item, (Widget, LayoutType))
-            self.read_item_coords(item)
+            self._normalize_item_size(item)
             self._start_item(item)
             item.booted = True
             item._boot_up()
@@ -116,7 +116,7 @@ class LayoutType(NevuObject):
         super().__init__(size, style, **constant_kwargs)
         self._set_node_type(1)
         self.add_items(content)
-        self._template = self._create_template(content = content, size = size)
+        self._template = self._create_template(content = content, size = self._template.size)
 
     def _create_template(self, content: Any, size: Any):  # type: ignore
         return LayoutTemplate(content = content, size = size)
@@ -125,24 +125,28 @@ class LayoutType(NevuObject):
         super()._init_lists()
         self.floating_items = []
         self.items = []
+        self._size_rule_parsers = {self._parse_vx, self._parse_fillx, self._parse_gcx}
         self.cached_coordinates = None
-        self.all_layouts_coords = NvVector2()
 
     def _init_booleans(self):
         super()._init_booleans()
         self._can_be_main_layout = True
         self._need_update_overlay = True
-        self._custom_logic_update = True
-        self._custom_primary_draw = True
-        self._custom_secondary_draw_content = True
-        self._custom_secondary_update = True
+        self._add_custom_flags(
+            CustomFunctions.logic_update |
+            CustomFunctions.primary_draw |
+            CustomFunctions.secondary_draw_content |
+            CustomFunctions.secondary_update
+        )
 
     def _init_objects(self):
         super()._init_objects()
+        self.surface = None
         self.first_parent_menu = None
         self.menu = None
         self.layout = None
         self._last_border_name = None
+
 
     def _add_params(self):
         super()._add_params()
@@ -150,7 +154,7 @@ class LayoutType(NevuObject):
             "borders",
             BorderConfig | type(None),
             None,
-            layer=ParamLayer.Complicated,
+            layer=ParamLayer.Lazy,
             setter=self._borders_setter,
         )
 
@@ -165,8 +169,20 @@ class LayoutType(NevuObject):
         raise NotImplementedError("base LayoutType add_items do NOT support declarative content addition")
 
     def _coordinates_setter(self, coordinates: NvVector2):
-        if coordinates.x != self.coordinates.x or coordinates.y != self.coordinates.y:
-            self.cached_coordinates = None
+        if self.coordinates.x != coordinates.x or self.coordinates.y != coordinates.y:
+            delta = coordinates - self.coordinates
+            if self.cached_coordinates is not None:
+                for i, item in enumerate(self.items):
+                    if i < len(self.cached_coordinates):
+                        self.cached_coordinates[i] += delta
+                    if isinstance(item, LayoutType):
+                        item.set_coordinates(item.coordinates + delta)
+                        item.absolute_coordinates += delta
+                    else:
+                        item.coordinates += delta
+                        item.absolute_coordinates += delta
+            else:
+                self.cached_coordinates = None
         return True
 
     def _borders_setter(self, value: BorderConfig):
@@ -181,85 +197,71 @@ class LayoutType(NevuObject):
     def _percent_helper(size, value):
         return size / 100 * value
 
-    def _parse_vx(self, coord: SizeRule) -> tuple[float, bool] | None:
+    def _parse_vx(self, viewport_rule: SizeRule, viewport_type: type[SizeRule], pos: int) -> float | None:
         if self.first_parent_menu is None:
             raise self._unconnected_layout_error("Vx like coords")
         if self.first_parent_menu._window is None:
             raise self._uninitialized_layout_error("Vx like coords")
-        if type(coord) == Cvw:
-            return self._percent_helper(
-                self.first_parent_menu._window.size.x, coord.value
-            ), True
-        elif type(coord) == Cvh:
-            return self._percent_helper(
-                self.first_parent_menu._window.size.y, coord.value
-            ), True
-        elif type(coord) == Vw:
-            return self._percent_helper(
-                self.first_parent_menu._window.original_size.x, coord.value
-            ), True
-        elif type(coord) == Vh:
-            return self._percent_helper(
-                self.first_parent_menu._window.original_size.y, coord.value
-            ), True
+        if viewport_type is Cvw:
+            return self._percent_helper(self.first_parent_menu._window.size.x, viewport_rule.value)
+        elif viewport_type is Cvh:
+            return self._percent_helper(self.first_parent_menu._window.size.y, viewport_rule.value)
+        elif viewport_type is Vw:
+            return self._percent_helper(self.first_parent_menu._window.original_size.x, viewport_rule.value)
+        elif viewport_type is Vh:
+            return self._percent_helper(self.first_parent_menu._window.original_size.y, viewport_rule.value)
 
-    def _parse_fillx(self, coord: SizeRule, pos: int) -> tuple[float, bool] | None:
+    def _parse_fillx(self, fill_rule: SizeRule, fill_type: type[SizeRule], pos: int) -> float | None:
         if self.first_parent_menu is None:
             raise self._unconnected_layout_error("FillX coords")
         if self.first_parent_menu._window is None:
             raise self._uninitialized_layout_error("FillX coords")
-        if type(coord) == Fill:
-            return self._percent_helper(self.original_size[pos], coord.value), True
-        elif type(coord) == FillW:
-            return self._percent_helper(self.original_size.x, coord.value), True
-        elif type(coord) == FillH:
-            return self._percent_helper(self.original_size.y, coord.value), True
-        elif type(coord) == CFill:
-            return self._percent_helper(self._no_borders_current_size[pos], coord.value), True
-        elif type(coord) == CFillW:
-            return self._percent_helper(self._no_borders_current_size.x, coord.value), True
-        elif type(coord) == CFillH:
-            return self._percent_helper(self._no_borders_current_size.y, coord.value), True
+        if fill_type is Fill:
+            return self._percent_helper(self.original_size[pos], fill_rule.value)
+        elif fill_type is FillW:
+            return self._percent_helper(self.original_size.x, fill_rule.value)
+        elif fill_type is FillH:
+            return self._percent_helper(self.original_size.y, fill_rule.value)
+        elif fill_type is CFill:
+            return self._percent_helper(self._no_borders_current_size[pos], fill_rule.value)
+        elif fill_type is CFillW:
+            return self._percent_helper(self._no_borders_current_size.x, fill_rule.value)
+        elif fill_type is CFillH:
+            return self._percent_helper(self._no_borders_current_size.y, fill_rule.value)
 
-    def _parse_gcx(self, coord, pos: int):
-        raise ValueError(
-            f"Handling for SizeRule '{type(coord).__name__}' is only Grid feature"
-        )
-
-    def _convert_item_coord(self, coord, pos: int = 0) -> tuple[float, bool]:
-        if not isinstance(coord, SizeRule):
-            return coord, False
-        result = None
-        if type(coord) in _all_vx:
-            result = self._parse_vx(coord)
-        elif type(coord) in _all_fillx:
-            result = self._parse_fillx(coord, pos)
-        elif type(coord) in _all_gcx:
-            result = self._parse_gcx(coord, pos)
-
-        if result is None:
+    def _parse_gcx(self, grid_cell_rule: SizeRule, grid_cell_type: type[SizeRule], pos: int):
+        if grid_cell_type in _all_gcx:
             raise ValueError(
-                f"Handling for SizeRule '{type(coord).__name__}' is not implemented"
+                f"Handling for SizeRule '{grid_cell_type.__name__}' is only Grid feature"
             )
 
-        return result
+    def _size_rule_to_number(self, size_rule, pos: int = 0) -> float:
+        if not isinstance(size_rule, SizeRule):
+            return size_rule
+        result = None
+        rule_type = type(size_rule)
+        for parser in self._size_rule_parsers:
+            result = parser(size_rule, rule_type, pos)
+            if result is not None:
+                return result
 
-    def read_item_coords(self, item: NevuObject):
-        if self.booted == False:
-            return
-        w_size = item._template.size
-        assert w_size is not None, f"in {self} with {self.id}: {item} with {item.id} has no size"
-        x, y = w_size
-        x, _ = self._convert_item_coord(x, 0)
-        y, _ = self._convert_item_coord(y, 1)
+        raise ValueError(f"Handling for SizeRule '{rule_type.__name__}' is not implemented")
+
+    def _normalize_item_size(self, item: NevuObject):
+        if self.booted == False: return
+        item_size = item._template.size
+        assert item_size is not None, f"in {self} with {self.id}: {item} with {item.id} has no size"
+
+        x, y = item_size
+        x = self._size_rule_to_number(x, 0)
+        y = self._size_rule_to_number(y, 1)
 
         item._template["size"] = [x, y]
 
     def _start_item(self, item: NevuObject):
         if isinstance(item, LayoutType):
             item._connect_to_layout(self)
-        if self.booted == False:
-            return
+        if self.booted == False: return
         item._wait_mode = False
         item._init_start()
 
@@ -304,7 +306,7 @@ class LayoutType(NevuObject):
             item = item.clone()
         if self.is_layout(item):
             item._connect_to_layout(self)
-        self.read_item_coords(item)
+        self._normalize_item_size(item)
         self._start_item(item)
         if self.booted:
             item.booted = True
@@ -416,7 +418,7 @@ class LayoutType(NevuObject):
         for item in self._all_items():
             if not item._wait_mode:
                 continue
-            self.read_item_coords(item)
+            self._normalize_item_size(item)
             self._start_item(item)
 
     def _connect_to_parent(
@@ -432,7 +434,7 @@ class LayoutType(NevuObject):
         self._connect_to_parent(("menu", menu), menu._surface, menu)  # type: ignore
 
     def _connect_to_layout(self, layout: LayoutType):
-        self._connect_to_parent(("layout", layout), None, layout.first_parent_menu)
+        self._connect_to_parent(("layout", layout), layout.surface, layout.first_parent_menu)
 
     def get_item_by_id(self, id: str) -> NevuObject | None:
         if id is None:
@@ -503,5 +505,3 @@ class LayoutType(NevuObject):
 
         if self.menu:
             self.menu._layout = None
-
-        # print(objgraph.show_backrefs(self,filename='tests/chain.dot'))
