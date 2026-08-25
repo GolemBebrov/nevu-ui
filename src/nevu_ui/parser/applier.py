@@ -31,8 +31,8 @@ def regen_buffers():
     colorthemes_buffer = ApplierBuffer()
 
 
-#!WARNING:
-#!DO NOT change order.
+# WARNING:
+# DO NOT change order.
 PROCESSING_ORDER = [
     "colors",
     "colorthemes",
@@ -398,13 +398,13 @@ def check_style(key, value):
                 )
             continue
 
-        result = Style.parameters_dict.get(param)
+        result = Style().parameters_dict.get(param)
 
         if not result:
             return False, f"{param} is not in Style parameters"
 
         param_name, validator_name = result  # type: ignore
-        validator = getattr(Style(), validator_name)
+        validator = validator_name
         if not validator(_val)[0]:
             return False, f"{_val} is not valid for {param}"
 

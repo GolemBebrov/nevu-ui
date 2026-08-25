@@ -1,9 +1,31 @@
 from dataclasses import dataclass
-from enum import Enum, IntEnum, StrEnum, auto
+from enum import Enum, IntEnum, StrEnum, auto, IntFlag
 from typing import Callable
 
 # Svalka
 # faputa approved
+
+class CustomFunctions(IntFlag):
+    secondary_update = 1 << 0
+    animation_update = 1 << 1
+    logic_update = 1 << 2
+    event_update = 1 << 3
+    primary_draw = 1 << 4
+    secondary_draw = 1 << 5
+    secondary_draw_content = 1 << 6
+    secondary_draw_end = 1 << 7
+
+class FlexDirection(IntEnum):
+    Row = 0
+    Column = 1
+
+class FlexJustify(StrEnum):
+    Start = "start"
+    Center = "center"
+    End = "end"
+    SpaceBetween = "space_between"
+    SpaceEvenly = "space_evenly"
+    SpaceAround = "space_around"
 
 
 class PressType(IntEnum):

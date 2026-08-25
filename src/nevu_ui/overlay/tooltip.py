@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 import weakref
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, final
 
 import nevu_ui.core.modules as md
 from nevu_ui.core.classes import SurfaceLike, TooltipType
@@ -29,7 +29,7 @@ from nevu_ui.core.enums import (
 from nevu_ui.overlay import overlay
 from nevu_ui.presentation.color import SubThemeRole, TupleColorRole
 from nevu_ui.rendering.base_renderer import BaseRenderer, DrawBaseCall, DrawTextCall
-from nevu_ui.utils import NevuEvent, mouse, time
+from nevu_ui.utils import mouse, time
 
 # include <brain.h>
 # include <not bugs.h>
@@ -93,7 +93,7 @@ class _TooltipBase:
             blacklist=[],
         )
 
-    def adapted_coords(self):
+    def adapted_coords(self) -> NvVector2:
         return mouse.pos
 
     def get_surf(self, renderer: BaseRenderer):
@@ -252,6 +252,7 @@ class _BigCustomTooltip(_ExtendedTooltipBase):
 
 
 # faputa solo sosu
+@final
 class Tooltip:
     tooltip_type = (
         TooltipType.Large
@@ -270,7 +271,7 @@ class Tooltip:
         self._counter = 0
         self._counter_max = 1.0
         self._counter_max_opened = self._counter_max * 0.4
-        self.old_coord = NvVector2()
+        self.old_coord: NvVector2 = NvVector2()
         self.anim_manager = None
 
     def adapted_coords(self):
@@ -288,7 +289,7 @@ class Tooltip:
     def resize(self, resize_ratio: NvVector2):
         self._data.resize(resize_ratio)
 
-    def unpack_type(self):
+    def unpack_type(self) -> _TooltipBase:
         if isinstance(self.type, TooltipType.Small):
             return _SmallTooltip(self.type.title, self.style)
         elif isinstance(self.type, TooltipType.Medium):
@@ -297,22 +298,19 @@ class Tooltip:
             return _LargeTooltip(self.type.title, self.type.content, self.style)
         elif isinstance(self.type, TooltipType.Custom):
             return _CustomTooltip(self.type.ratio, self.type.title, self.style)
-        elif isinstance(self.type, TooltipType.BigCustom):
+        else:
             return _BigCustomTooltip(
                 self.type.ratio, self.type.title, self.type.content, self.style
             )
-        raise ValueError("Invalid tooltip type!")
 
-    def _off(self, *args):
+    def _off(self, *args: Any):
         if overlay.has_element(self):
             overlay.remove_element(self)
         self.anim_manager = None
         self.old_coord = NvVector2()
 
-    def _on(self, *args):
-        assert self.master and self.master.renderer, (
-            "Tooltip is not connected to NevuObject!"
-        )
+    def _on(self, *args: Any):
+        assert self.master and self.master.renderer, ("Tooltip is not connected to NevuObject!")
         overlay.change_element(
             self,
             self.get_surf(self.master.renderer),

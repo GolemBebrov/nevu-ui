@@ -1,8 +1,9 @@
 import contextlib
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, TypeGuard
-
+from typing import Any, Callable, TypeGuard, TYPE_CHECKING
+if TYPE_CHECKING:
+    from nevu_ui import NvVector2
 from nevu_ui.core.enums import Backend
 
 class ConfigType:
@@ -38,12 +39,12 @@ class TooltipType:
 
     @dataclass
     class Custom:
-        ratio: Any
+        ratio: "NvVector2"
         title: str = ""
 
     @dataclass
     class BigCustom:
-        ratio: Any
+        ratio: "NvVector2"
         title: str = ""
         content: str = ""
 
@@ -148,5 +149,5 @@ class SurfaceLike:
     @property
     def height(self) -> int | float: ...
     @staticmethod
-    def as_type(type) -> TypeGuard["SurfaceLike"]:
+    def as_type(type: Any) -> TypeGuard["SurfaceLike"]:
         return True

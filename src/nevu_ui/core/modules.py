@@ -8,7 +8,7 @@ pygame = None
 
 def init_modules():
     global rl, pygame
-    dtype = nevu_state.window._backend
+    dtype = nevu_state.window.backend
     if dtype == Backend.RayLib:
         try:
             import pyray

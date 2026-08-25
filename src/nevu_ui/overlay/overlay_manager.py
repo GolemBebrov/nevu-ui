@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from pygame import Surface
 
+from nevu_ui.core.classes import SurfaceLike
 import nevu_ui.core.modules as md
 from nevu_ui.core.enums import Backend, OvItemType
 from nevu_ui.core.state import nevu_state
@@ -65,7 +66,7 @@ class OverlayManager:
     def change_element(
         self,
         name: Any,
-        surface,
+        surface: SurfaceLike,
         coordinates: NvVector2,
         layer: layer_type = 0,
         strict: bool = False,
@@ -157,13 +158,13 @@ class OverlayManager:
                 lambda: print(f"Element {name} not found and cannot be changed"),
             )
 
-    def has_element(self, name):
+    def has_element(self, name: Any):
         return name in self.pipeline
 
-    def get_element(self, name, default=None):
+    def get_element(self, name: Any, default: Any = None):
         return self.pipeline.get(name, default)
 
-    def get_element_strict(self, name):
+    def get_element_strict(self, name: Any):
         return self.pipeline[name]
 
     @property
@@ -213,7 +214,7 @@ class OverlayManager:
             md.rl.end_blend_mode()
 
     def get_result(self, size):
-        if size.get_int_tuple() != self._cached_size:
+        if self._cached_size is None or size != self._cached_size:
             self.mark_undone()
             self._cached_size = size
         if self._rendered:
@@ -233,21 +234,21 @@ class OverlayManager:
         return result
 
     def _get_surf_size(self, surface):
-        match nevu_state.window._backend:
+        match nevu_state.window.backend:
             case Backend.Pygame | Backend.Sdl:
-                return surface.size
+                return NvVector2(surface.size)
             case Backend.RayLib:
-                return (surface.texture.width, surface.texture.height)
+                return NvVector2(surface.texture.width, surface.texture.height)
 
     def _finish_result(self, result):
-        match nevu_state.window._backend:
+        match nevu_state.window.backend:
             case Backend.Pygame | Backend.RayLib:
                 return result
             case Backend.Sdl:
                 return md.pygame._sdl2.Texture.from_surface(nevu_state.renderer, result)
 
     def _get_result_surface(self, size):
-        match nevu_state.window._backend:
+        match nevu_state.window.backend:
             case Backend.Pygame | Backend.Sdl:
                 return md.pygame.Surface(size, flags=md.pygame.SRCALPHA).convert_alpha()
             case Backend.RayLib:

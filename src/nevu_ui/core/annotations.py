@@ -93,7 +93,7 @@ class Annotations:
         solution: str | None = None,
         method_name: str = "not specified",
     ) -> str:
-        backend = nevu_state.window._backend
+        backend = nevu_state.window.backend
         parts = [
             nv_error_format_template_start2.format(
                 message=error_text,
