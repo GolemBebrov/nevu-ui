@@ -10,14 +10,17 @@ from nevu_ui.components.layouts import LayoutType, LayoutTypeKwargs
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
-from nevu_ui.core.enums import Align
-from nevu_ui.core.size.base import SizeRule
+from nevu_ui.core.enums import Align, CustomFunctions
 from nevu_ui.fast.logic.fast_logic import base_light_update, draw_widgets_optimized
 from nevu_ui.fast.nvvector2 import NvVector2
-
+from nevu_ui.core.size.rules import (
+    SizeRule,
+    _all_fillx,
+)
 
 class _StackKwargs(TypedDict):
     spacing: NotRequired[int | float]
+    basic_alignment: NotRequired[Align]
 
 
 class StackKwargs(_StackKwargs, LayoutTypeKwargs):
@@ -27,7 +30,10 @@ class StackKwargs(_StackKwargs, LayoutTypeKwargs):
 # Nnna nanachi approved!
 class StackBase(LayoutType, ABC):
     _supports_global_size = False
-    content_type = list[tuple[Align, NevuObject]]
+    content_type = list[tuple[Align, NevuObject] | NevuObject]
+
+    spacing: float
+    basic_alignment: Align
 
     def __init__(
         self,
@@ -35,7 +41,7 @@ class StackBase(LayoutType, ABC):
         style: Annotations.nevuobj_style = None,
         **constant_kwargs: Unpack[StackKwargs],
     ):
-        super().__init__(content, NvVector2(), style, **constant_kwargs)
+        super().__init__(content = content, size = NvVector2(), style = style, **constant_kwargs)
 
     def add_items(self, content: content_type | None):
         if not content: return
@@ -60,20 +66,24 @@ class StackBase(LayoutType, ABC):
     def _add_params(self):
         super()._add_params()
         self._add_param("spacing", (int, float), 10)
+        self._add_param("basic_alignment", Align, Align.CENTER)
 
     def _init_booleans(self):
         super()._init_booleans()
-        self._custom_secondary_draw_content = True
+        self._add_custom_flags(
+            CustomFunctions.secondary_draw_content
+        )
 
     def add_item(self, item: NevuObject, alignment: Align = Align.CENTER):  # type: ignore
         super().add_item(item)
         self.widgets_alignment.append(alignment)
         self.cached_coordinates = None
 
-    def _parse_fillx(self, coord: SizeRule, pos: int) -> tuple[float, bool] | None:
-        raise ValueError(
-            f"Handling for SizeRule '{type(coord).__name__}' is not supported in {type(self).__name__}"
-        )
+    def _parse_fillx(self, fill_rule: SizeRule, fill_type: type[SizeRule], pos: int) -> float | None:
+        if fill_rule in _all_fillx:
+            raise ValueError(
+                f"Handling for SizeRule '{fill_type.__name__}' is not supported in {type(self).__name__}"
+            )
 
     def insert_item(self, item: Widget | LayoutType, id: int = -1):
         try:
@@ -117,8 +127,9 @@ class StackBase(LayoutType, ABC):
 
     def _regenerate_coordinates(self):
         super()._regenerate_coordinates()
+        old_size = self.size.copy() if hasattr(self, "size") else None
         self._recalculate_size()
-        if self.layout:
+        if old_size is not None and (old_size.x != self.size.x or old_size.y != self.size.y) and self.layout:
             self.layout.cached_coordinates = None
         self._recalculate_widget_coordinates()
 
