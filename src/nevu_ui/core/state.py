@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, final
 
 from nevu_ui.core.enums import Backend
 
@@ -12,19 +12,19 @@ if TYPE_CHECKING:
     from nevu_ui.overlay import OverlayManager
     from nevu_ui.window import Window
 
-
+@final
 class NevuState:
     __slots__ = [
-        "tooltip_active",
-        "dirty_mode",
-        "window",
-        "manager",
-        "current_events",
-        "current_dirty_rects",
-        "z_system",
-        "renderer",
         "backend",
+        "current_dirty_rects",
+        "current_events",
+        "dirty_mode",
+        "manager",
         "overlay",
+        "renderer",
+        "tooltip_active",
+        "window",
+        "z_system",
     ]
 
     def __init__(self):
@@ -34,7 +34,6 @@ class NevuState:
         self.dirty_mode: bool = False
 
         self.current_events: list | None = None
-        self.current_dirty_rects: list | None = None
 
         self.window: Window = None  # type: ignore
         self.z_system: ZSystem | None = None
@@ -44,21 +43,11 @@ class NevuState:
 
         self.backend: Backend | None = None
 
-    @property
-    def is_gpu(self) -> bool:
-        return self.window != None and self.renderer != None
-
     def clear_events(self):
         if self.current_events:
             self.current_events.clear()
 
-    def clear_dirty_rects(self):
-        if self.current_dirty_rects:
-            self.current_dirty_rects.clear()
-
-
 nevu_state = NevuState()
-
 
 def _analize_bg(self):
     if not nevu_state.window.renderer_type.raylib:

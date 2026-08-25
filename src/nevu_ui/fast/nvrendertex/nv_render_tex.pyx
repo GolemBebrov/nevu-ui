@@ -41,7 +41,7 @@ cdef class NvRenderTexture:
     @property
     def depth(self): return self.render_texture.depth
 
-    def blit(self, NvRenderTexture nv_texture not None, tuple dest not None, int blend_mode = 0, bint flip = True, tuple color = Color.White):
+    def blit(self, NvRenderTexture nv_texture not None, dest: tuple[int, ...], int blend_mode = 0, bint flip = True, tuple color = Color.White) -> None:
         assert self.loaded, "Render texture not loaded"
         begin_blend_mode(blend_mode)
         begin_texture_mode(self.render_texture)
@@ -49,7 +49,7 @@ cdef class NvRenderTexture:
         end_texture_mode()
         end_blend_mode()
 
-    def nvblit(self, NvRenderTexture nv_texture not None, NvVector2 dest not None, int blend_mode = 0, bint flip = True, NvRect color = nv_render_tex_base_color):
+    def nvblit(self, NvRenderTexture nv_texture not None, NvVector2 dest not None, int blend_mode = 0, bint flip = True, NvRect color = nv_render_tex_base_color) -> None:
         assert self.loaded, "Render texture not loaded"
         begin_blend_mode(blend_mode)
         begin_texture_mode(self.render_texture)
@@ -76,14 +76,14 @@ cdef class NvRenderTexture:
         else:
             raise ValueError(f"Invalid dest argument - {dest}, must be (x, y) or (x, y, width, height)")
 
-    def fast_blit(self, NvRenderTexture nv_texture, tuple dest, bint flip = True, tuple color = Color.White):
+    def fast_blit(self, NvRenderTexture nv_texture, tuple dest, bint flip = True, tuple color = Color.White) -> None:
         self.c_fast_blit(nv_texture, dest, flip, color)
 
     cdef void c_fast_blit_texture(self, object texture, tuple dest, bint flip, tuple color):
         display = nevu_state.window.renderer
         display.fast_blit_pro(texture, dest, flip, color)
 
-    def blit_texture(self, texture: object, dest, int blend_mode = 0, bint flip = True, tuple color = Color.White):
+    def blit_texture(self, texture: object, dest, int blend_mode = 0, bint flip = True, tuple color = Color.White) -> None:
         assert self.loaded, "Render texture not loaded"
         begin_blend_mode(blend_mode)
         begin_texture_mode(self.render_texture) # type: ignore
@@ -91,7 +91,7 @@ cdef class NvRenderTexture:
         end_texture_mode()
         end_blend_mode()
 
-    def fast_blit_texture(self, texture: object, dest, bint flip = True, tuple color = Color.White):
+    def fast_blit_texture(self, texture: object, dest, bint flip = True, tuple color = Color.White) -> None:
         self.c_fast_blit_texture(texture, dest, flip, color)
 
     cdef void c_fast_clear(self, tuple color):
@@ -102,7 +102,7 @@ cdef class NvRenderTexture:
         self.c_fast_clear(color)
         end_texture_mode()
 
-    cpdef void clear(self, tuple color):
+    cpdef void clear(self, color: tuple[int, ...]):
         assert self.loaded, "Render texture not loaded"
         self.c_clear(color)
 

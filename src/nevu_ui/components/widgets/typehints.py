@@ -162,6 +162,7 @@ class SliderKwargs(SliderKwargsShort, SliderKwargsLong, WidgetKwargs):
 
 class _RectCheckBoxKwargsDefault(TypedDict, total=False):
     toggled: bool
+    toggled_rect_opacity: int
 
 
 class _RectCheckBoxKwargsShort(_RectCheckBoxKwargsDefault, total=False):
