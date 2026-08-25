@@ -3,7 +3,7 @@ from .grid.base import GridKwargs_uni, GridKwargs_rc, GridKwargs_xy
 from .grid import Grid, Row, Column
 from .scrollable.base import ScrollableKwargs
 from .scrollable import ScrollableColumn, ScrollableRow
-from .misc import ColorPicker, CheckBoxGroup, Panel
+from .misc import ColorPicker, CheckBoxGroup, Panel, FlexLayout
 from .deprecated import Pages, Gallery_Pages
 from .stack import StackColumn, StackRow
 from .typehints import LayoutTemplate, GridTemplate, Grid1xTemplate, AlignTemplate

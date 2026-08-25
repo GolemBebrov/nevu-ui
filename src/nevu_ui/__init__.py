@@ -30,6 +30,7 @@ from .components.layouts import (
     ScrollableRow,
     StackColumn,
     StackRow,
+    FlexLayout
 )
 from . import components, core, presentation, utils
 from .components.widgets.typehints import widget_globals
@@ -48,7 +49,8 @@ from .core.enums import (
     HoverState,
     LinearSide,
     RadialPosition,
-    BindType
+    BindType,
+    FlexDirection, FlexJustify
 )
 from .core.size.units import (
     Fill,
