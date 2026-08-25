@@ -41,7 +41,7 @@ cdef class NvRenderTexture:
     @property
     def depth(self): return self.render_texture.depth
 
-    def blit(self, NvRenderTexture nv_texture not None, dest: tuple[int, ...], int blend_mode = 0, bint flip = True, tuple color = Color.White) -> None:
+    def blit(self, NvRenderTexture nv_texture not None, dest: tuple, int blend_mode = 0, bint flip = True, tuple color = Color.White) -> None:
         assert self.loaded, "Render texture not loaded"
         begin_blend_mode(blend_mode)
         begin_texture_mode(self.render_texture)
