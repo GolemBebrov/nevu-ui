@@ -1,8 +1,9 @@
 import sys
-from typing import TypeGuard
+from typing import TYPE_CHECKING, NotRequired, TypeGuard, Unpack, final
+
+from typing_extensions import TypedDict, deprecated
 
 from nevu_ui.core.callbacks import Callbacks
-from typing_extensions import TYPE_CHECKING, NotRequired, TypedDict, Unpack, deprecated
 
 if TYPE_CHECKING:
     from pygame import Surface
@@ -11,7 +12,7 @@ if TYPE_CHECKING:
 
 import nevu_ui.core.modules as md
 from nevu_ui.core.classes import ConfigType, Counter
-from nevu_ui.core.enums import Backend, BindType, EventType, ResizeType
+from nevu_ui.core.enums import Backend, BindType, ResizeType
 from nevu_ui.core.modules import init_modules
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.nvdisplay.display import (
@@ -29,20 +30,21 @@ from nevu_ui.utils import keyboard, mouse, set_keyboard, set_mouse, time
 from nevu_ui.utils.keys import init_keys
 
 
+@final
 class _IsNamespace:
-    __slots__ = ["master", "_cached_result", "pygame", "sdl", "raylib", "pygame_like"]
+    __slots__ = ("_cached_result", "master", "pygame", "pygame_like", "raylib", "sdl")
 
-    def __init__(self, master):
+    def __init__(self, master: "Window"):
         self.master = master
         self._cached_result = None
-        self.pygame = False
-        self.sdl = False
-        self.raylib = False
-        self.pygame_like = False
+        self.pygame: bool = False
+        self.sdl: bool = False
+        self.raylib: bool = False
+        self.pygame_like: bool = False
 
-    def _initial_check(self):
+    def _initial_check(self) -> None:
         if self._cached_result is None:
-            self._cached_result = self.master._backend
+            self._cached_result = self.master.backend
         self.pygame = self._cached_result == Backend.Pygame
         self.sdl = self._cached_result == Backend.Sdl
         self.raylib = self._cached_result == Backend.RayLib
@@ -69,50 +71,52 @@ window_update_utils = lambda *args, **kwargs: print(
 
 window_initialized = False
 
+_kwargs_to_param = {
+    "title": ("_title", str, "nevu window"),
+    "minsize": ("minsize", NvVector2 | type(None) | tuple | list, None),
+    "resizable": ("resizable", bool, True),
+    "ratio": ("_ratio", NvVector2 | type(None) | tuple | list, None),
+    # "resize_type": ("_resize_type", ResizeType, ResizeType.CropToRatio),
+    "backend": ("backend", Backend, Backend.Pygame),
+    "base_fps": ("_fps", int, 60),
+    "debounce": ("debounce", bool, True),
+}
 
+@final
 class Window:
     _renderer: WindowRendererBase
     __slots__ = [
-        "renderer_type",
-        "_debouncing",
-        "_old_fps",
-        "pygame_unicode",
-        "_events",
-        "z_system",
         "_clock",
-        "begin_frame",
-        "end_frame",
-        "on_update",
-        "on_resize",
-        "_title",
-        "minsize",
-        "resizable",
-        "_ratio",
-        "_backend",
-        "_fps",
-        "_original_size",
-        "size",
-        "_crop_width_offset",
         "_crop_height_offset",
-        "offset",
-        "_x2_offset",
+        "_crop_width_offset",
+        "_debouncing",
+        "_events",
+        "_fps",
+        "_old_fps",
+        "_original_size",
+        "_ratio",
         "_renderer",
+        "_title",
+        "_x2_offset",
+        "backend",
+        "begin_frame",
+        "callbacks",
         "debounce",
-        "callbacks"
+        "end_frame",
+        "minsize",
+        "offset",
+        "on_resize",
+        "on_update",
+        "pygame_unicode",
+        "renderer_type",
+        "resizable",
+        "size",
+        "z_system"
     ]
-    _kwargs_to_param = {
-        "title": ("_title", str, "nevu window"),
-        "minsize": ("minsize", NvVector2 | type(None) | tuple | list, None),
-        "resizable": ("resizable", bool, True),
-        "ratio": ("_ratio", NvVector2 | type(None) | tuple | list, None),
-        # "resize_type": ("_resize_type", ResizeType, ResizeType.CropToRatio),
-        "backend": ("_backend", Backend, Backend.Pygame),
-        "base_fps": ("_fps", int, 60),
-        "debounce": ("debounce", bool, True),
-    }
 
     @staticmethod
-    def crop_to_ratio(width: int, height: int, ratio: NvVector2, default=(0, 0)):
+    def crop_to_ratio(width: int, height: int, ratio: NvVector2, default: tuple[float, float] | None = None):
+        default = default or (0, 0)
         if height == 0 or ratio.y == 0:
             return default
         aspect_ratio = width / height
@@ -123,22 +127,13 @@ class Window:
         crop_height = height - (width * ratio.y / ratio.x)
         return default[0], crop_height
 
-    def _unsupported_back_error(self, name: str):
-        return TypeError(f"Backend {name} is not supported!")
-
-    _backend: Backend
+    backend: Backend
     _title: str
     resizable: bool
     minsize: NvVector2
     _ratio: NvVector2
     _fps: int
     debounce: bool
-
-    def __new__(cls, *args, **kwargs):
-        global window_initialized
-        # if window_initialized: raise RuntimeError("Window is already initialized!")
-        window_initialized = True
-        return super(Window, cls).__new__(cls)
 
     def _init_base(self):
         global window_update_utils
@@ -181,8 +176,8 @@ class Window:
         self.on_resize = []
 
     def _init_kwargs(self, **kwargs):
-        kw_keys = list(self._kwargs_to_param.keys())
-        for key, type_of, default in self._kwargs_to_param.values():
+        kw_keys = list(_kwargs_to_param.keys())
+        for key, type_of, default in _kwargs_to_param.values():
             val = kwargs.get(kw_keys.pop(0), default)
             if isinstance(val, type_of):
                 setattr(self, key, val)
@@ -197,8 +192,8 @@ class Window:
 
     def _init_globals(self):
         global mouse, keyboard
-        set_mouse(self._backend)
-        set_keyboard(self._backend)
+        set_mouse(self.backend)
+        set_keyboard(self.backend)
 
     def set_title(self, title: str):
         self._renderer.set_title(title)
@@ -233,19 +228,19 @@ class Window:
             Backend.Sdl: self._update_pygame,
             Backend.Opengl: None
         }
-        window_specific_update = back_to_update[self._backend]
+        window_specific_update = back_to_update[self.backend]
         if not window_specific_update:
-            raise RuntimeError(f"Backend {self._backend} is not supported -w-")
-        self._renderer = back_to_class[self._backend](**kwargs)
+            raise RuntimeError(f"Backend {self.backend} is not supported -w-")
+        self._renderer = back_to_class[self.backend](**kwargs)
 
         self.renderer_type._initial_check()
 
     def _reset_nevu_state(self):
         nevu_state.window = self
         nevu_state.z_system = self.z_system
-        nevu_state.backend = self._backend
+        nevu_state.backend = self.backend
         nevu_state.overlay = overlay
-        match self._backend:
+        match self.backend:
             case Backend.Sdl:
                 nevu_state.renderer = self._renderer.renderer  # type: ignore
             case _:
@@ -253,7 +248,7 @@ class Window:
 
     def _get_graphics_kwargs(self):
         kwargs = {"title": self.title, "size": self.size.get_int_tuple(), "root": self}
-        match self._backend:
+        match self.backend:
             case Backend.Pygame:
                 flags = 16 if self.resizable else 0
                 flags |= 1 | 1073741824
@@ -487,12 +482,12 @@ class InitializedWindow(Window):
             Backend.Sdl: self._update_pygame,
         }
         if kwargs is None:
-            self._renderer = back_to_class[self._backend].create_initialized(self)
+            self._renderer = back_to_class[self.backend].create_initialized(self)
         else:
-            self._renderer = back_to_class[self._backend].create_initialized(
+            self._renderer = back_to_class[self.backend].create_initialized(
                 self, **kwargs
             )
-        window_specific_update = back_to_update[self._backend]
+        window_specific_update = back_to_update[self.backend]
         self.renderer_type._initial_check()
 
     def __init__(self, **kwargs):
