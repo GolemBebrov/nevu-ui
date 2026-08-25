@@ -6,7 +6,7 @@ import nevu_ui.core.modules as md
 from nevu_ui.components.widgets.typehints import InputKwargs
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
-from nevu_ui.core.enums import BindType, RenderReturnType
+from nevu_ui.core.enums import BindType, CustomFunctions, RenderReturnType
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.nvrect import NvRect
 from nevu_ui.fast.nvrendertex import NvRenderTexture
@@ -66,7 +66,9 @@ class Input(Widget):
         self.selected = False
         self._changed_text = False
         self._changed_cursor = False
-        self._custom_event_update = True
+        self._add_custom_flags(
+            CustomFunctions.event_update
+        )
 
     def _init_text_cache(self):
         self._text_surface = None
@@ -142,14 +144,15 @@ class Input(Widget):
         self._block_param("text")
 
     def _process_padding(self):
-        base_padding = self.padding.copy()
+        base_padding = list(self.padding)
+        bw = self.style.border_width
         br = self.style.border_radius
         if isinstance(br, tuple):
             for i, item in enumerate(br):
-                base_padding[i] += item
+                base_padding[i] += item + bw
         else:
             for i in range(len(base_padding)):
-                base_padding[i] += br
+                base_padding[i] += br + bw
 
         def max_elem(a, b, name):
             return self._ensure_padding(max(a, b) / 2, name)
@@ -159,8 +162,8 @@ class Input(Widget):
         max_top = max_elem(base_padding[0], base_padding[1], "top")
         max_bottom = max_elem(base_padding[2], base_padding[3], "bottom")
 
-        self.top_left_padding += NvVector2(max_left, max_top)
-        self.bottom_right_padding += NvVector2(max_right, max_bottom)
+        self.top_left_padding = NvVector2.from_xy(max_left, max_top)
+        self.bottom_right_padding = NvVector2.from_xy(max_right, max_bottom)
 
     def _ensure_padding(self, value, name):
         if value < 0:
@@ -180,27 +183,27 @@ class Input(Widget):
 
     def _get_cursor_line_col(self, lines=None) -> NvVector2:
         if not self.text:
-            return NvVector2(0, 0)
+            return NvVector2.from_xy(0, 0)
         lines = lines or self.text.split("\n")
         abs_pos = self.cursor_place
         current_pos = 0
         for i, line in enumerate(lines):
             line_len = len(line)
             if abs_pos <= current_pos + line_len:
-                return NvVector2(i, abs_pos - current_pos)
+                return NvVector2.from_xy(i, abs_pos - current_pos)
             current_pos += line_len + 1
         last_line_index = len(lines) - 1
         last_line_len = len(lines[last_line_index]) if last_line_index >= 0 else 0
-        return NvVector2(last_line_index, last_line_len)
+        return NvVector2.from_xy(last_line_index, last_line_len)
 
     def _get_line_abs_pos(self, target_line_index, target_col_index, lines=None):
         lines = lines or self.text.split("\n")
         len_lines = len(lines)
         target_line_index = int(max(0, min(target_line_index, len_lines - 1)))
-        abs_pos = 0
+        abs_pos = target_line_index
 
         for i in range(target_line_index):
-            abs_pos += len(lines[i]) + 1
+            abs_pos += len(lines[i])
 
         current_line_len = (
             len(lines[target_line_index]) if target_line_index < len_lines else 0
@@ -213,19 +216,13 @@ class Input(Widget):
         measure = self._measure_text
         lines = lines or self.text.split("\n")
         cursor_grid = self._get_cursor_line_col(lines)
-        c_grid_x = int(cursor_grid.x)
-        curr_line_text = lines[c_grid_x] if c_grid_x < len(lines) else ""
+        cursor_grid_x = int(cursor_grid.x)
+        curr_line_text = lines[cursor_grid_x] if cursor_grid_x < len(lines) else ""
         ideal_offset_x = measure(curr_line_text[: int(cursor_grid.y)])[0]
         scroll_offset = self._scroll_offset
         relative_cursor_pos = ideal_offset_x - scroll_offset.x
         visible_width = round(
-            max(
-                (
-                    self.current_size
-                    - self.rel(self.top_left_padding + self.bottom_right_padding)
-                ).x,
-                1,
-            )
+            max((self.current_size - self.rel(self.top_left_padding + self.bottom_right_padding)).x, 1)
         )
 
         if relative_cursor_pos < 0:
@@ -247,10 +244,8 @@ class Input(Widget):
             return [0, 0]
 
     def _update_scroll_offset_y(self):
-        if not self.multi_line:
-            return
-        if not (text_surf := self._text_surface):
-            return
+        if not self.multi_line: return
+        if not (text_surf := self._text_surface): return
         line_height = self._get_line_height()
         cursor_grid = self._get_cursor_line_col()
 
@@ -258,11 +253,7 @@ class Input(Widget):
         ideal_offset_y = cursor_grid.x * line_height
         visible_height = round(
             max(
-                (
-                    self.current_size
-                    - self.rel(self.top_left_padding + self.bottom_right_padding)
-                ).y,
-                1,
+                (self.current_size - self.rel(self.top_left_padding + self.bottom_right_padding)).y, 1
             )
         )
 
@@ -284,7 +275,7 @@ class Input(Widget):
         if rtype.raylib:
             rl = md.rl
             ceil = math.ceil
-            result_surfacelike = NvRenderTexture(NvVector2(ceil(size.x), ceil(size.y)))
+            result_surfacelike = NvRenderTexture(NvVector2.from_xy(ceil(size.x), ceil(size.y)))
             texture = result_surfacelike.texture
             rl.set_texture_filter(
                 texture, rl.TextureFilter.TEXTURE_FILTER_ANISOTROPIC_16X
@@ -294,7 +285,7 @@ class Input(Widget):
             result_surfacelike = md.pygame.Surface(
                 size, md.pygame.SRCALPHA
             ).convert_alpha()
-            result_surfacelike.fill((0, 0, 0, 0))
+            result_surfacelike.fill(Color.Blank)
         else:
             raise ValueError("Unsupported backend. Owi")
 
@@ -344,8 +335,8 @@ class Input(Widget):
         max_width = 0
         measure = self._measure_text
         for line in lines:
-            w = measure(line)[0]
-            max_width = max(max_width, w)
+            line_width = measure(line)[0]
+            max_width = max(max_width, line_width)
         total_height = len(lines) * line_height
 
         self._create_text_surfacelike(
@@ -400,22 +391,9 @@ class Input(Widget):
 
     def _resize_content(self, resize_ratio: NvVector2):
         super()._resize_content(resize_ratio)
+        self._process_padding()
         self._init_cursor()
         self._draw_text()
-
-    @property
-    def style(self) -> Style:
-        return self._style
-
-    @style.setter
-    def style(self, style: Style):
-        self.clear_surfaces()
-        self._style = copy.deepcopy(style)
-        if not self.booted:
-            return
-        self._changed = True
-        if self.text:
-            self._draw_text()
 
     @property
     def cursor_place(self):
@@ -467,25 +445,20 @@ class Input(Widget):
         if pasted_text:
             filtered_text = ""
             text = self.text
-            bl_list = self.blacklist
-            wt_list = self.whitelist
-            mult = self.multi_line
-            temp_chars = []
+            blacklist = self.blacklist
+            whitelist = self.whitelist
+            filtered_chars = []
             for char in pasted_text:
                 valid_char = True
-                if bl_list and char in bl_list:
-                    valid_char = False
-                if wt_list and char not in wt_list:
-                    valid_char = False
-                if not mult and char in "\r\n":
+                if (blacklist and char in blacklist) or (whitelist and char not in whitelist) or (not self.multi_line and char in "\r\n"):
                     valid_char = False
                 if valid_char:
-                    temp_chars.append(char)
-            filtered_text = "".join(temp_chars)
+                    filtered_chars.append(char)
+            filtered_text = "".join(filtered_chars)
 
             if (max_chars := self.max_characters) is not None:
-                available_space = max_chars - len(text)
-                filtered_text = filtered_text[: max(0, available_space)]
+                available_space = max(0, max_chars - len(text))
+                filtered_text = filtered_text[: available_space]
 
             if filtered_text:
                 cursor_place = self.cursor_place
@@ -500,31 +473,27 @@ class Input(Widget):
             unicode_char = chr(unicode_char)
 
         unicode_char_len = len(unicode_char)
-        unicode_valid = unicode_char_len == 1 and unicode_char.isprintable()
-        correct_newline = self.multi_line or (unicode_char not in "\r\n")
         text = self.text
         max_chars = self.max_characters
 
-        if not (unicode_valid and correct_newline):
+        if not (unicode_char_len == 1 and unicode_char.isprintable() and (self.multi_line or unicode_char not in "\r\n")):
             return
         if max_chars is not None and len(text) >= max_chars:
             return
 
-        valid_char = True
-        bl_list = self.blacklist
-        wt_list = self.whitelist
-        if bl_list and unicode_char in bl_list:
-            valid_char = False
-        if wt_list and unicode_char not in wt_list:
-            valid_char = False
-        if valid_char:
-            cursor_place = self.cursor_place
-            if cursor_place is not None:
-                text = (
-                    text[: int(cursor_place)] + unicode_char + text[int(cursor_place) :]
-                )
-            cursor_place += unicode_char_len
-            self.cursor_place = cursor_place
+
+        blacklist = self.blacklist
+        whitelist = self.whitelist
+        if (blacklist and unicode_char in blacklist) or (whitelist and unicode_char not in whitelist):
+            return
+
+        cursor_place = self.cursor_place
+        if cursor_place is not None:
+            text = (
+                text[: int(cursor_place)] + unicode_char + text[int(cursor_place) :]
+            )
+        cursor_place += unicode_char_len
+        self.cursor_place = cursor_place
         self.text = text
 
     def _parse_key_right(self, ctrl, initial_cursor_place: int):
@@ -560,14 +529,7 @@ class Input(Widget):
             return
 
         text = self.text
-        prev_space = next(
-            (
-                i
-                for i in range(cursor_place - 1, 0, -1)
-                if not text[i - 1].isalnum() and text[i].isalnum()
-            ),
-            0,
-        )
+        prev_space = next((i for i in range(cursor_place - 1, 0, -1) if not text[i - 1].isalnum() and text[i].isalnum()), 0)
         cursor_place = max(0, prev_space)
         if cursor_place == initial_cursor_place and cursor_place > 0:
             cursor_place -= 1
@@ -676,9 +638,6 @@ class Input(Widget):
         self._system_callbacks.bind(BindType.Scroll, _input_on_scroll)
         self._system_callbacks.bind(
             BindType.StyleChange, _input_on_style_change, add_to_end=False
-        )
-        self._system_callbacks.bind(
-            BindType.StyleChange, _input_on_style_change_2, add_to_end=False
         )
 
     def _event_update(self, events: list | None = None):
@@ -980,12 +939,6 @@ class Input(Widget):
                     color,
                 )
 
-    def _create_clone(self):
-        return self.__class__(
-            self._template["size"],
-            **self.constant_kwargs,
-        )
-
 
 # === NOT CLASS FUNCTIONS ===
 
@@ -1003,14 +956,9 @@ def _input_on_scroll(self, side: bool):
     self._scroll_offset.y = max(0, min(self._scroll_offset.y, self.max_scroll_y))
     self._changed = True
 
-
 def _input_on_style_change(self):
-    if self._first_update:
-        return
     self._process_padding()
-
-
-def _input_on_style_change_2(self):
-    if not self.booted:
-        return
+    self.clear_surfaces()
+    if not self.booted: return
     self._draw_text()
+    self._changed = True
