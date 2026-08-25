@@ -61,7 +61,7 @@ class Row(Grid):
             self.add_item(item, xcoord)
 
     def kill_item_by_pos(self, x: Grid.any_number):  # type: ignore
-        return self.kill_item_by_pos(x, 1)
+        return super().kill_item_by_pos(x, 1)
 
     def add_item(self, item: NevuObject, x: Grid.any_number):  # type: ignore
         return super().add_item(item, x, 1)
