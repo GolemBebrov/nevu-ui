@@ -22,6 +22,14 @@ MAIN_LEN_STR = "main_len"
 SEC_LEN_STR = "sec_len"
 ITEMS_STR = "items"
 
+class FlexLayoutKwargs(LayoutTypeKwargs, total=False):
+    direction: FlexDirection
+    wrap: bool
+    justify_content: FlexJustify
+    align_items: Align
+    gap: int | float | NvVector2
+    max_wrap_size: int | float
+
 class FlexLayout(LayoutType):
     _supports_global_size = False
     content_type = list[NevuObject]
@@ -37,11 +45,11 @@ class FlexLayout(LayoutType):
 
     def __init__(
         self,
-        content: content_type | None = None,
+        *content,
         style=None,
-        **constant_kwargs: Unpack[LayoutTypeKwargs],
+        **constant_kwargs: Unpack[FlexLayoutKwargs],
     ):
-        super().__init__(content, NvVector2(0, 0), style, **constant_kwargs)
+        super().__init__(content, size = NvVector2(0, 0), style = style, **constant_kwargs)
 
     def _init_booleans(self):
         super()._init_booleans()
@@ -59,20 +67,15 @@ class FlexLayout(LayoutType):
         self._add_param("gap", int | float | NvVector2, 10)
         self._add_param("max_wrap_size", int | float, 0)
 
-    def add_items(self, content: content_type | None):
-        if not content:
-            return
+    def _boot_up(self):
+        super()._boot_up()
+        self._sync_layout()
+
+    def add_items(self, content):
         for item in content:
             if not isinstance(item, NevuObject):
                 raise TypeError(f"FlexLayout content must be NevuObject, got {type(item)}")
             self.add_item(item)
-
-    def add_item(self, item: NevuObject):
-        super().add_item(item)
-        self.cached_coordinates = None
-        item._resize(NvVector2.from_xy(1.0, 1.0))
-        self._sync_layout()
-        return item
 
     def _coordinates_setter(self, coordinates: NvVector2) -> bool:
         if self.coordinates.x != coordinates.x or self.coordinates.y != coordinates.y:
@@ -81,10 +84,12 @@ class FlexLayout(LayoutType):
                 for i, item in enumerate(self.items):
                     if i < len(self.cached_coordinates):
                         self.cached_coordinates[i] += delta
-                    item.coordinates += delta
-                    item.absolute_coordinates += delta
                     if isinstance(item, LayoutType):
-                        item._coordinates_setter(item.coordinates)
+                        item.set_coordinates(item.coordinates + delta)
+                        item.absolute_coordinates += delta
+                    else:
+                        item.coordinates += delta
+                        item.absolute_coordinates += delta
         return True
 
     def _connect_to_layout(self, layout: LayoutType):
@@ -95,10 +100,28 @@ class FlexLayout(LayoutType):
         super()._connect_to_menu(menu)
         self._sync_layout()
 
+    def _item_add(self, item: NevuObject):
+        item = super()._item_add(item)
+        if self.booted:
+            item._resize(NvVector2.from_xy(1.0, 1.0))
+            if isinstance(item, LayoutType):
+                item._regenerate_coordinates()
+        return item
+
     def _on_item_add(self, item: NevuObject):
         self._sync_layout()
+        if isinstance(item, LayoutType):
+            item._regenerate_coordinates()
         if self.layout:
             self.layout._on_item_add(item)
+
+    def add_item(self, item: NevuObject):
+        item = super().add_item(item)
+        self.cached_coordinates = None
+        self._sync_layout()
+        if isinstance(item, LayoutType):
+            item._regenerate_coordinates()
+        return item
 
     def _regenerate_coordinates(self):
         super()._regenerate_coordinates()
@@ -190,6 +213,10 @@ class FlexLayout(LayoutType):
         return lines
 
     def _recalculate_layout(self):
+        for item in self.items:
+            if isinstance(item, LayoutType) and hasattr(item, "_recalculate_size"):
+                item._recalculate_size()
+
         direction = self.direction
         justify = self.justify_content
         align = self.align_items
@@ -235,15 +262,28 @@ class FlexLayout(LayoutType):
             main_len = line[MAIN_LEN_STR]
             items = line[ITEMS_STR]
             sec_len = line[SEC_LEN_STR]
+            n_items = len(items)
 
             if justify is FlexJustify.Center:
                 start_main_pos = (total_main_len - main_len) / 2.0
             elif justify is FlexJustify.End:
                 start_main_pos = total_main_len - main_len
-            elif justify is FlexJustify.Space_Between and len(items) > 1:
+            elif justify is FlexJustify.SpaceBetween and len(items) > 1:
                 items_sum = sum((it.size.x if is_row else it.size.y) for it in items)
                 spacing = (total_main_len - items_sum) / (len(items) - 1)
-
+            elif justify is FlexJustify.SpaceAround:
+                if n_items > 0:
+                    items_sum = sum((it.size.x if is_row else it.size.y) for it in items)
+                    free_space = total_main_len - items_sum
+                    unit = free_space / n_items
+                    spacing = unit
+                    start_main_pos = unit / 2.0
+            elif justify is FlexJustify.SpaceEvenly and n_items > 0:
+                items_sum = sum((it.size.x if is_row else it.size.y) for it in items)
+                free_space = total_main_len - items_sum
+                unit = free_space / (n_items + 1)
+                spacing = unit
+                start_main_pos = unit
             current_main_pos = start_main_pos
 
             for item in items:
@@ -266,6 +306,8 @@ class FlexLayout(LayoutType):
 
                 item.coordinates = new_coords
                 item.set_coordinates(new_coords)
+                if isinstance(item, LayoutType):
+                    item._regenerate_coordinates()
 
                 item.absolute_coordinates = py_get_item_abs_coords(self, item)
                 cached_coordinates.append(item.coordinates.copy())
@@ -279,9 +321,13 @@ class FlexLayout(LayoutType):
         parent = self.layout
 
         if (old_size.x != self.size.x or old_size.y != self.size.y) and parent:
-            if hasattr(self.layout, "_recalculate_size"):
+            if hasattr(parent, "_recalculate_size"):
                 parent._recalculate_size()
-            parent.cached_coordinates = None
+            if hasattr(parent, "_regenerate_coordinates") and parent.booted:
+                parent.cached_coordinates = None
+                parent._regenerate_coordinates()
+            else:
+                parent.cached_coordinates = None
 
     def secondary_update(self, *args): base_light_update(self)
 
@@ -290,7 +336,7 @@ class FlexLayout(LayoutType):
 
     def _create_clone(self):
         return self.__class__(
-            copy.deepcopy(self._template["content"]),
-            copy.deepcopy(self.style),
+            *copy.deepcopy(self._template["content"]),
+            style = copy.deepcopy(self.style),
             **self.constant_kwargs,
         )
