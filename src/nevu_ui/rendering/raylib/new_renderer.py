@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing_extensions import TYPE_CHECKING, Any, override
+from typing import TYPE_CHECKING, Any, override
 
 if TYPE_CHECKING:
     from nevu_ui.presentation.style import Style
@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 
 import nevu_ui.core.modules as md
 from nevu_ui.core.annotations import Annotations
+from nevu_ui.core.classes import SurfaceLike
 from nevu_ui.core.enums import CacheType, RenderReturnType
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.nvrendertex import NvRenderTexture
@@ -36,17 +37,18 @@ class _RaylibCoreNamespace(_BaseCoreNamespace):
         return gr
 
     @override
-    def create_clear(self, size: Annotations.dest_like | NvVector2):
+    def create_clear(self, size: Annotations.dest_like | NvVector2) -> SurfaceLike:
         texture = NvRenderTexture(NvVector2(size))
         texture.clear(Color.Blank)
+        assert SurfaceLike.as_type(texture)
         return texture
 
     @override
-    def get_font_size(self, override_size=None):
+    def get_font_size(self, override_size: float | None = None):
         return self.root.relm(override_size or self.style.font_size) * 1.25
 
     @override
-    def get_font(self, name: str | None = None, size=None):
+    def get_font(self, name: str | None = None, size: float | None = None) -> Any: # pyright: ignore[reportAny]
         font_size = self.get_font_size(size)
         font_name = name or self.style.font_name
 
@@ -65,23 +67,23 @@ class _RaylibCoreNamespace(_BaseCoreNamespace):
                 raise ValueError(f"Font {font_name} not found")
             return font
 
-        return self.root.cache.get_or_exec(CacheType.RlFont, _load_font_with_cyrillic)  # type: ignore
+        return self.root.cache.get_or_exec(CacheType.RlFont, _load_font_with_cyrillic)
 
     @override
     def draw_rect(
         self,
-        subject,
+        surface_like,
         pos: Annotations.dest_like | NvVector2,
         size: Annotations.dest_like | NvVector2,
         color: Annotations.rgba_color = Color.White,
         radii: Annotations.rect_like | int = 0,
         glassy: bool = False,
     ):
-        assert isinstance(subject, NvRenderTexture), (
+        assert isinstance(surface_like, NvRenderTexture), (
             "subject must be a nevu ui render texture"
         )
         if radii == 0:
-            with subject:
+            with surface_like:
                 md.rl.draw_rectangle(0, 0, int(size[0]), int(size[1]), color)
             return
         if len(color) == 3:
@@ -92,7 +94,7 @@ class _RaylibCoreNamespace(_BaseCoreNamespace):
         rect_texture.clear(color)
         display = nevu_state.window.renderer
         assert nevu_state.window.is_raylib(display)
-        with subject:
+        with surface_like:
             if glassy:
                 display.fast_blit_glassy_sdf_vec(rect_texture.texture, (0, 0), radii)
             else:
@@ -525,9 +527,7 @@ class RaylibRenderer(BaseRenderer):
             case RenderReturnType.Outside:
                 return subject, border_width, radius, override_color, no_borders
             case RenderReturnType.Raw:
-                return (
-                    subject,
-                    border_width,
+                return (subject, border_width,
                     (
                         call.radius
                         if call.radius is not None

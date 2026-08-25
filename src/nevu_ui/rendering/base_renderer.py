@@ -3,19 +3,12 @@ from __future__ import annotations
 import weakref
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Callable
 
-from typing_extensions import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Literal,
-    NotRequired,
-    TypedDict,
-    Unpack,
-    overload,
-)
+from nevu_ui.core.classes import SurfaceLike
 
 if TYPE_CHECKING:
+    from nevu_ui.components.nevuobj.nevuobj import NevuObject
     from nevu_ui.components.widgets import Widget
     from nevu_ui.presentation.style import Style
     from nevu_ui.rendering.raylib.gradient import ClickGradient
@@ -33,40 +26,40 @@ from nevu_ui.presentation.color import Color
 
 
 class _BaseCoreNamespace(ABC):
-    __slots__ = ["_renderer"]
+    __slots__: list[str] = ["_renderer"]
 
-    def __init__(self, renderer):
-        self._renderer = weakref.proxy(renderer)
+    def __init__(self, renderer: BaseRenderer):
+        self._renderer: BaseRenderer = weakref.proxy(renderer)
 
     @property
-    def root(self) -> "Widget":
+    def root(self) -> Widget:
         return self._renderer.root
 
     @property
-    def style(self) -> "Style":
+    def style(self) -> Style:
         return self.root.style
 
     @abstractmethod
-    def get_gradient(self, style=None):
+    def get_gradient(self, style: Style | None = None) -> Any:  # pyright: ignore[reportAny]
         raise NotImplementedError
 
     @abstractmethod
-    def get_font(self, name: str | None = None, size=None):
+    def get_font(self, name: str | None = None, size: float | None = None) -> Any:  # pyright: ignore[reportAny]
         raise NotImplementedError
 
     @abstractmethod
-    def create_clear(self, size: Annotations.dest_like | NvVector2):
+    def create_clear(self, size: Annotations.dest_like | NvVector2) -> SurfaceLike:
         raise NotImplementedError
 
     @abstractmethod
     def draw_rect(
         self,
-        subject,
+        surface_like: Any,
         pos: Annotations.dest_like | NvVector2,
         size: Annotations.dest_like | NvVector2,
         color: Annotations.rgba_color = Color.White,
         radii: Annotations.rect_like | int = 0,
-    ):
+    ) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -80,12 +73,12 @@ class _BaseCoreNamespace(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_font_size(self, override_size=None) -> int | float:
+    def get_font_size(self, override_size: float | None = None) -> float:
         raise NotImplementedError
 
-    def get_color_on_hover(self, color: Annotations.rgb_color):
+    def get_color_on_hover(self, color: Annotations.rgb_color) -> Annotations.rgb_color:
         root = self.root
-        hover_state = root._hover_state
+        hover_state = root.hover_state
         if (
             hover_state == HoverState.Clicked
             and not root.invert_on_click
@@ -97,16 +90,14 @@ class _BaseCoreNamespace(ABC):
         return color
 
     def split_words(
-        self, words: list[str], font: Any, font_size: float, max_width: float, marg=" "
+        self, words: list[str], font: Any, font_size: float, max_width: float, marg: str = " "
     ) -> list[str]:
         current_line = ""
-        lines = []
+        lines: list[str] = []
 
         for word in words:
             force_next_line = False
-            if word == "\n":
-                force_next_line = True
-            elif len(word) >= 2 and word[0] == "\\" and word[1] == "n":
+            if word == "\n" or len(word) >= 2 and word[0] == "\\" and word[1] == "n":
                 force_next_line = True
 
             if force_next_line:
@@ -126,38 +117,17 @@ class _BaseCoreNamespace(ABC):
         lines.append(current_line)
         return lines
 
-    def select_return(
-        self,
-        returntype: RenderReturnType,
-        null: Callable,
-        outside: Callable,
-        raw: Callable,
-        modify: Callable,
-        create_new: Callable,
-    ):
-        match returntype:
-            case RenderReturnType.Raw:
-                return raw
-            case RenderReturnType.Null:
-                return null
-            case RenderReturnType.Outside:
-                return outside
-            case RenderReturnType.Modify:
-                return modify
-            case RenderReturnType.CreateNew:
-                return create_new
-
-    def normalize_radius(self, radius: int | float | tuple):
+    def normalize_radius(self, radius: float | tuple[float, float, float, float]) -> tuple[float, float, float, float]:
         if isinstance(radius, int | float):
             radius = (radius, radius, radius, radius)
         return radius
 
     def normalize_radius_relative(
-        self, radius: int | float | tuple, mid_ratio: int | float | None = None
+        self, radius: float | tuple[float, float, float, float], mid_ratio: float | None = None
     ) -> Annotations.rect_like:
         ratio = mid_ratio or self.root.relm(1)
         if not isinstance(radius, int | float):
-            return tuple(map(lambda x: x * ratio, radius))  # type: ignore
+            return tuple(x * ratio for x in radius)  # type: ignore
         radius *= ratio
         radius = (radius, radius, radius, radius)
         return radius
@@ -192,14 +162,13 @@ class _BaseCoreNamespace(ABC):
 
 class _BaseSpecifiedDraw(ABC):
     """namespace for backend specific draw functions"""
-
     __slots__ = ["_renderer"]
 
-    def __init__(self, renderer):
-        self._renderer = weakref.proxy(renderer)
+    def __init__(self, renderer: BaseRenderer):
+        self._renderer: BaseRenderer = weakref.proxy(renderer)
 
     @property
-    def root(self) -> "Widget":
+    def root(self) -> Widget:
         return self._renderer.root
 
     @property
@@ -247,7 +216,7 @@ class DrawTextCall(_BaseCall):
 @dataclass(kw_only=True, slots=True)
 class DrawEffectsCall(_BaseCall):
     click_gradient: ClickGradient
-    click_subject: Any | None = None
+    click_subject: Any = None
     radius: tuple[int, int, int, int] | int | float | None = None
     return_type: RenderReturnType = RenderReturnType.Null
     modify_object: Any = None
@@ -269,35 +238,33 @@ class DrawBordersCall(_BaseCall):
 
 class BaseRenderer(ABC):
     __slots__ = [
+        "_key_to_func",
+        "_pipeline",
         "_root",
         "core",
-        "_pipeline",
-        "_key_to_func",
-        "unsafe",
         "release",
-        "_render_arg_to_name",
+        "unsafe",
     ]
 
-    def _get_unexpected_error(self, error, func_name):
+    def _get_unexpected_error(self, error: Exception, func_name: str):
         raise ValueError(
             Annotations.format_nvtype_renderer_error(
                 f"unexpected error - '{error}'", self._root, func_name
             )
         )
 
-    def __init__(self, root):
-        self._root: Widget = weakref.proxy(root)  # type: ignore
+    def __init__(self, root: NevuObject):
+        self._root: Widget = weakref.proxy(root)
         self.core: _BaseCoreNamespace = self._get_core_namespace()
         self.unsafe: _BaseSpecifiedDraw = self._get_unsafe_namespace()
         self.release: bool = False
-        self._pipeline = {}
-        self._key_to_func = {
+        self._pipeline: dict[RenderConfig, type[_RenderArg]] = {}
+        self._key_to_func: dict[type[_RenderArg], Callable[..., Any]] = {
             RenderArgs.DrawBase: self._draw_base,
             RenderArgs.DrawBorders: self._draw_borders,
             RenderArgs.DrawText: self._draw_text,
             RenderArgs.DrawEffects: self._draw_effects,
         }
-        self._render_arg_to_name = {}
 
     def configure(self, render_key: RenderConfig, render_arg: type[_RenderArg]):
         self._pipeline[render_key] = render_arg
@@ -309,29 +276,22 @@ class BaseRenderer(ABC):
         self.configure(RenderConfig.DrawL4, RenderArgs.DrawCustom)
         self.configure(RenderConfig.DrawL5, RenderArgs.DrawEffects)
 
-    def run(self, key: RenderConfig, call: _BaseCall):
-        """Warning: there is no typehints in kwargs, you need to be careful or use specific run functions"""
+    def run(self, key: RenderConfig, call: _BaseCall) -> Any:
         if key not in self._pipeline:
             return
         pipeline_item = self._pipeline[key]
-        if self.release:
-            if pipeline_item in self._key_to_func:
-                return self._key_to_func[pipeline_item](call)
-            elif pipeline_item == RenderArgs.DrawCustom:
-                return pipeline_item.custom_func(call)
-        else:
+        if not self.release:
             try:
                 if pipeline_item in self._key_to_func:
                     return self._key_to_func[pipeline_item](call)
-                elif pipeline_item == RenderArgs.DrawCustom:
+                elif pipeline_item is RenderArgs.DrawCustom:
                     return pipeline_item.custom_func(call)
             except Exception as e:
-                raise self._get_unexpected_error(
-                    e,
-                    (self._key_to_func[pipeline_item].__name__)
-                    .strip("_")
-                    .replace("draw", "run"),
-                )
+                raise self._get_unexpected_error(e, (self._key_to_func[pipeline_item].__name__).strip("_").replace("draw", "run"))
+        if pipeline_item in self._key_to_func:
+            return self._key_to_func[pipeline_item](call)
+        elif pipeline_item is RenderArgs.DrawCustom:
+            return pipeline_item.custom_func(call)
 
     def run_base(self, call: DrawBaseCall, key: RenderConfig = RenderConfig.Auto):
         return self._run_spec(call, RenderArgs.DrawBase, key)
@@ -359,9 +319,9 @@ class BaseRenderer(ABC):
     def _run_spec(
         self,
         call: _BaseCall,
-        needed_arg: Any = RenderArgs.DrawBase,
+        needed_arg: type[_RenderArg] = RenderArgs.DrawBase,
         key: RenderConfig = RenderConfig.Auto,
-    ):
+    ) -> Any:
         if key == RenderConfig.Auto:
             key = next((k for k, v in self._pipeline.items() if v == needed_arg), None)  # type: ignore
 
@@ -397,25 +357,25 @@ class BaseRenderer(ABC):
         return self.root.style
 
     @abstractmethod
-    def _get_core_namespace(self):
+    def _get_core_namespace(self) -> _BaseCoreNamespace:
         raise NotImplementedError
 
     @abstractmethod
-    def _get_unsafe_namespace(self):
+    def _get_unsafe_namespace(self) -> _BaseSpecifiedDraw:
         raise NotImplementedError
 
     @abstractmethod
-    def _draw_base(self, call: DrawBaseCall):
+    def _draw_base(self, call: DrawBaseCall) -> Any:
         raise NotImplementedError
 
     @abstractmethod
-    def _draw_text(self, call: DrawTextCall):
+    def _draw_text(self, call: DrawTextCall) -> Any:
         raise NotImplementedError
 
     @abstractmethod
-    def _draw_effects(self, call: DrawEffectsCall):
+    def _draw_effects(self, call: DrawEffectsCall) -> Any:
         raise NotImplementedError
 
     @abstractmethod
-    def _draw_borders(self, call: DrawBordersCall):
+    def _draw_borders(self, call: DrawBordersCall) -> Any:
         raise NotImplementedError
