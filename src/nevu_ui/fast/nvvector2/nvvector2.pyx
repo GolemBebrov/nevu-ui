@@ -9,7 +9,7 @@ from cpython.tuple cimport PyTuple_GET_ITEM
 cdef class NvVector2:
 
     @property
-    def x(self):
+    def x(self) -> float:
         return self.data.x
 
     @x.setter
@@ -17,7 +17,7 @@ cdef class NvVector2:
         self.data.x = value
 
     @property
-    def y(self):
+    def y(self) -> float:
         return self.data.y
 
     @y.setter
@@ -87,46 +87,46 @@ cdef class NvVector2:
         return NvVector2.new(x, y)
 
     @staticmethod
-    def from_nvvector2(NvVector2 other):
+    def from_nvvector2(NvVector2 other) -> NvVector2:
         return NvVector2.cfrom_nvvector2(other)
 
     @staticmethod
-    def from_tuple(tuple other):
+    def from_tuple(tuple other) -> NvVector2:
         return NvVector2.cfrom_tuple(other)
 
     @staticmethod
-    def from_list(list other):
+    def from_list(list other) -> NvVector2:
         return NvVector2.cfrom_list(other)
 
     @staticmethod
-    def from_ints(int x, int y):
+    def from_ints(int x, int y) -> NvVector2:
         return NvVector2.cfrom_ints(x, y)
 
     @staticmethod
-    def from_floats(float x, float y):
+    def from_floats(float x, float y) -> NvVector2:
         return NvVector2.cfrom_floats(x, y)
 
     @staticmethod
-    def from_xy(double x, double y):
+    def from_xy(double x, double y) -> NvVector2:
         return NvVector2.cfrom_xy(x, y)
 
     @property
-    def xx(self):
+    def xx(self) -> NvVector2:
         return NvVector2.new(self.data.x, self.data.x)
 
     @property
-    def yy(self):
+    def yy(self) -> NvVector2:
         return NvVector2.new(self.data.y, self.data.y)
 
     @property
-    def xy(self):
+    def xy(self) -> NvVector2:
         return NvVector2.new(self.data.x, self.data.y)
 
     @property
-    def yx(self):
+    def yx(self) -> NvVector2:
         return NvVector2.new(self.data.y, self.data.x)
 
-    def to_tuple(self):
+    def to_tuple(self) -> tuple[float, float]:
         return (self.data.x, self.data.y)
 
     def __getitem__(self, int index):
@@ -225,39 +225,39 @@ cdef class NvVector2:
     cpdef void sadd(self, NvVector2 new_vec, NvVector2 old_vec):
         self._sadd(new_vec, old_vec)
 
-    def to_int(self):
+    def to_int(self) -> NvVector2:
         self.data.x = <int>self.data.x
         self.data.y = <int>self.data.y
         return self
 
-    def get_int(self):
+    def get_int(self) -> NvVector2:
         return NvVector2.new(<int>self.data.x, <int>self.data.y)
 
-    def to_round(self):
+    def to_round(self) -> NvVector2:
         self.data.x = round(self.data.x)
         self.data.y = round(self.data.y)
         return self
 
-    def get_round(self):
+    def get_round(self) -> NvVector2:
         return NvVector2.new(round(self.data.x), round(self.data.y))
 
-    def to_abs(self):
+    def to_abs(self) -> NvVector2:
         self.data.x = abs(self.data.x)
         self.data.y = abs(self.data.y)
         return self
 
-    def get_abs(self):
+    def get_abs(self) -> NvVector2:
         return NvVector2.new(abs(self.data.x), abs(self.data.y))
 
-    def to_neg(self):
+    def to_neg(self) -> NvVector2:
         self.data.x = -self.data.x
         self.data.y = -self.data.y
         return self
 
-    def get_neg(self):
+    def get_neg(self) -> NvVector2:
         return NvVector2.new(-self.data.x, -self.data.y)
 
-    def get_int_tuple(self):
+    def get_int_tuple(self) -> tuple[int, int]:
         return (<int>self.data.x, <int>self.data.y)
 
     cdef tuple c_get_int_tuple(self):
@@ -269,32 +269,32 @@ cdef class NvVector2:
     cpdef NvVector2 copy(self):
         return NvVector2.new(self.data.x, self.data.y)
 
-    def __copy__(self):
+    def __copy__(self) -> NvVector2:
         return NvVector2.new(self.data.x, self.data.y)
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo) -> NvVector2:
         return NvVector2.new(self.data.x, self.data.y)
 
     def __hash__(self):
         return hash((self.data.x, self.data.y))
 
-    def __len__(self):
+    def __len__(self) -> int:
         return 2
 
-    def __eq__(self, other):
+    def __eq__(self, other: NvVector2):
         if isinstance(other, NvVector2):
             return self.data.x == (<NvVector2>other).data.x and self.data.y == (<NvVector2>other).data.y
         return NotImplemented
 
     @property
-    def length(self):
+    def length(self) -> float:
         return nv_vector2_length(self.data)
 
-    def normalize(self):
+    def normalize(self) -> NvVector2:
         cdef nv_vector2_t res = nv_vector2_normalize(self.data)
         return NvVector2.new(res.x, res.y)
 
-    def normalize_ip(self):
+    def normalize_ip(self) -> NvVector2:
         self.data = nv_vector2_normalize(self.data)
         return self
 
