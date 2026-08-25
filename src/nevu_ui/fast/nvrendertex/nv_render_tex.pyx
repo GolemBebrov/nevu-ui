@@ -102,7 +102,7 @@ cdef class NvRenderTexture:
         self.c_fast_clear(color)
         end_texture_mode()
 
-    cpdef void clear(self, color: tuple[int, ...]):
+    cpdef void clear(self, color: tuple):
         assert self.loaded, "Render texture not loaded"
         self.c_clear(color)
 
