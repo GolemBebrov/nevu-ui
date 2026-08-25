@@ -1,4 +1,3 @@
-import math
 from collections.abc import Callable
 from typing import Any, Unpack, overload
 
@@ -250,8 +249,6 @@ class ProgressBar(Widget):
             y_decrease = (relm(radius) - half_size.x)
             if size.y - y_decrease * 2 > 0:
                 size.y -= y_decrease * 2
-        else:
-            print(radius)
 
         if size.x <= 0 or size.y <= 0:
             self._create_surface(None, (0, 0))

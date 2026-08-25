@@ -13,6 +13,7 @@ from nevu_ui.core import Annotations
 from nevu_ui.core.enums import (
     BindType,
     CacheType,
+    CustomFunctions,
     HoverState,
     RenderReturnType,
 )
@@ -104,7 +105,9 @@ class ElementSwitcher(Widget):
         super()._init_booleans()
         self._delayed_button_update = False
         self.hoverable = False
-        self._custom_secondary_update = True
+        self._add_custom_flags(
+            CustomFunctions.secondary_update
+        )
 
     def _lazy_init(self, size: NvVector2 | list, elements: list[Element] | None = None):  # type: ignore
         super()._lazy_init(size)
