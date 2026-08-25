@@ -53,4 +53,4 @@ class StackColumn(StackBase):
             item.absolute_coordinates = py_get_item_abs_coords(self, item)
             current_y += item.get_actual_size().y
             current_y += spacing
-            self.cached_coordinates.append(item.coordinates)
+            self.cached_coordinates.append(item.coordinates.xy)

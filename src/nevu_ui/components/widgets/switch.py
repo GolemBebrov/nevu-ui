@@ -10,6 +10,7 @@ from nevu_ui.core.enums import (
     AnimationManagerState,
     BindType,
     CacheType,
+    CustomFunctions,
     ParamLayer,
     RenderReturnType,
     SwitchAxis,
@@ -56,7 +57,9 @@ class Switch(Widget):
     def _init_flags(self):
         super()._init_flags()
         self._changed_bg_circle = True
-        self._custom_secondary_draw = True
+        self._add_custom_flags(
+            CustomFunctions.secondary_draw
+        )
 
     def _init_objects(self):
         super()._init_objects()
@@ -273,7 +276,11 @@ class Switch(Widget):
 
     def secondary_draw_content(self):
         super().secondary_draw_content()
-        self._bg_surf = self.cache.get(CacheType.Borders)
+        self._bg_surf = (
+            self.cache.get(CacheType.Surface)
+            or self.cache.get(CacheType.Borders)
+            or self.cache.get(CacheType.Background)
+        )
 
     def _secondary_draw_end(self):
         super()._secondary_draw_end()

@@ -5,6 +5,7 @@ from nevu_ui.components.layouts.grid.base import Grid, GridKwargs_uni
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
+from nevu_ui.core.enums import CustomFunctions
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.presentation.style import Style
@@ -24,7 +25,9 @@ class Panel(Grid):
     ):
         super().__init__(slot, size, style, **constant_kwargs)  # type: ignore
         self.bg_widget = bg_widget
-        self._custom_primary_draw = True
+        self._add_custom_flags(
+            CustomFunctions.primary_draw
+        )
 
     def add_items(self, *args, **kwargs):
         return

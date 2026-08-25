@@ -20,6 +20,7 @@ class RectCheckBox(Widget):
     toggled: bool
     toggled_rect_scale: int | float
     checkbox_group: Any
+    toggled_rect_opacity: int
 
     # ==============
     def __init__(
@@ -67,6 +68,7 @@ class RectCheckBox(Widget):
         self._add_param_link("toggled_scale", "toggled_rect_scale")
         self._add_param("checkbox_group", type(None) | CheckBoxGroup, None)
         self._add_param_link("group", "checkbox_group")
+        self._add_param("toggled_rect_opacity", int, 255)
         self._change_param_default("hoverable", True)
 
     def _toggled_rect_fill_setter(self, value: int | float):
@@ -112,6 +114,7 @@ class RectCheckBox(Widget):
 
         inner_surf = self.renderer.core.create_clear(active_size)
         color = self.subtheme_border
+        color = (color[0], color[1], color[2], self.toggled_rect_opacity)
         self.renderer.run_base(
             DrawBaseCall(
                 radius=inner_radius,
@@ -129,11 +132,6 @@ class RectCheckBox(Widget):
             md.rl.set_texture_filter(
                 inner_surf.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR
             )  # type: ignore
-
-    def _create_clone(self):
-        return self.__class__(
-            self._template["size"], copy.deepcopy(self.style), **self.constant_kwargs
-        )  # type: ignore
 
 def _rect_checkbox_click(self):
     self.toggled = not self.toggled

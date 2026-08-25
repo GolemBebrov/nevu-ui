@@ -9,7 +9,7 @@ from nevu_ui.components.layouts.typehints import AlignTemplate
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
-from nevu_ui.core.enums import Align, BindType, HoverState, ScrollBarType
+from nevu_ui.core.enums import Align, BindType, CustomFunctions, HoverState, ScrollBarType
 from nevu_ui.fast.logic.fast_logic import (
     _very_light_update_helper,
     draw_widgets_optimized,
@@ -65,7 +65,9 @@ class ScrollableBase(LayoutType, ABC):
             if orientation not in ScrollBarType:
                 raise ValueError("Orientation must be 'vertical' or 'horizontal'")
             self.orientation = orientation
-            self._custom_secondary_update = True
+            self._add_custom_flags(
+                CustomFunctions.secondary_update
+            )
 
         def _add_params(self):
             super()._add_params()
@@ -251,6 +253,9 @@ class ScrollableBase(LayoutType, ABC):
             self._last_known_abs_coords.y = self.absolute_coordinates.y
 
         rl_predraw_widgets(self.collided_items, LayoutType, Widget)
+        if self.floating_items:
+            rl_predraw_widgets(self.floating_items, LayoutType, Widget)
+
         if self.actual_max_main > 0:
             self.scroll_bar.draw()
 

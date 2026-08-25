@@ -11,9 +11,9 @@ from nevu_ui.core import Annotations
 from nevu_ui.core.classes import SurfaceLike
 from nevu_ui.core.enums import (
     AnimationManagerState,
-    Backend,
     BindType,
     CacheType,
+    CustomFunctions,
     ParamLayer,
     RenderConfig,
     RenderReturnType,
@@ -125,7 +125,7 @@ class Widget(NevuObject):
         self._text_surface = None
         self._text_rect = None
         assert nevu_state.window
-        if nevu_state.window._backend == Backend.RayLib:
+        if nevu_state.window.renderer_type.raylib:
             self._text_font_size = None
             self._text_spacing = None
 
@@ -196,10 +196,12 @@ class Widget(NevuObject):
 
     def _init_booleans(self):
         super()._init_booleans()
-        self._custom_secondary_draw_end = True
-        self._custom_logic_update = True
-        self._custom_primary_draw = True
-        self._custom_secondary_draw_content = True
+        self._add_custom_flags(
+            CustomFunctions.secondary_draw_content |
+            CustomFunctions.secondary_draw_end |
+            CustomFunctions.logic_update |
+            CustomFunctions.primary_draw
+        )
         self._click_started = False
         self._supports_tuple_borderradius = True
         self._changed_size = True
@@ -504,7 +506,7 @@ class Widget(NevuObject):
                     self._bg_color_anim_manager = None
 
         logic_update_helper(
-            self.absolute_coordinates, self._dr_coordinates_old, nevu_state.z_system
+            self.absolute_coordinates, self._dr_coordinates_old, nevu_state.z_system #type: ignore
         )
 
         sdl2_texture = self._sdl2_cached_texture

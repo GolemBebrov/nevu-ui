@@ -13,6 +13,7 @@ from nevu_ui.core.enums import (
     Align,
     BindType,
     CacheType,
+    CustomFunctions,
     ParamLayer,
     RenderConfig,
     RenderReturnType,
@@ -65,8 +66,10 @@ class Slider(Widget):
         super().__init__(size, style, **constant_kwargs)
 
     def _init_booleans(self):
-        self._custom_secondary_draw_content = True
-        self._custom_secondary_update = True
+        self._add_custom_flags(
+            CustomFunctions.secondary_draw_content |
+            CustomFunctions.secondary_update
+        )
 
     def _lazy_init(self, size: NvVector2 | list):
         super()._lazy_init(size)

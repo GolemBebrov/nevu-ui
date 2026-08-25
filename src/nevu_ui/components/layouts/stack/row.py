@@ -51,4 +51,4 @@ class StackRow(StackBase):
 
             item.absolute_coordinates = py_get_item_abs_coords(self, item)
             current_x += self.relx(item.size.x + self.spacing)
-            self.cached_coordinates.append(item.coordinates)
+            self.cached_coordinates.append(item.coordinates.xy)
