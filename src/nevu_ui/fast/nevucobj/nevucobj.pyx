@@ -9,27 +9,49 @@ from __future__ import annotations
 import weakref
 from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2
 from nevu_ui.fast.nvparam.nvparam cimport NvParam
+from cpython.unicode cimport PyUnicode_READ_CHAR, PyUnicode_GET_LENGTH
 from cpython.dict cimport PyDict_GetItem
 from cpython.object cimport PyObject, PyObject_GenericSetAttr, PyObject_GenericGetAttr
 from cpython.list cimport PyList_GET_SIZE, PyList_GET_ITEM
 from nevu_ui.fast.nevucache.nevucache cimport Cache
 from nevu_ui.core.state import nevu_state
-from nevu_ui.core.enums import CacheType, BindType
+from nevu_ui.core.enums import CacheType, BindType, CustomFunctions
 from nevu_ui.core.callbacks import Callbacks
 from nevu_ui.core.classes import _strategy_type, Strategy
 from nevu_ui.fast.zsystem.fast_zsystem cimport ZSystem, ZRequest
 from nevu_ui.core.enums import (
     HoverState, EventType, CacheType, ParamLayer, AnimationType
 )
-
+from libc.stdint cimport uint8_t
 cimport cython
 cdef extern from "Python.h":
     object PyObject_CallNoArgs(object func)
+    object PyObject_CallMethodNoArgs(object self, object name)
 
 call_noarg = PyObject_CallNoArgs
 
 from nevu_ui.fast.logic.fast_logic cimport relm_helper, rel_helper, mass_rel_helper, vec_rel_helper, get_nvrect_helper
 from nevu_ui.fast.nvrect.nvrect cimport NvRect
+
+cdef enum C_CustomFunctions:
+    SecondaryUpdate = 1 << 0
+    AnimationUpdate = 1 << 1
+    LogicUpdate = 1 << 2
+    EventUpdate = 1 << 3
+    PrimaryDraw = 1 << 4
+    SecondaryDraw = 1 << 5
+    SecondaryDrawContent = 1 << 6
+    SecondaryDrawEnd = 1 << 7
+
+cdef str STR_SECONDARY_UPDATE = "secondary_update"
+cdef str STR_LOGIC_UPDATE = "_logic_update"
+cdef str STR_ANIMATION_UPDATE = "_animation_update"
+cdef str STR_PRIMARY_DRAW = "_primary_draw"
+cdef str STR_SECONDARY_DRAW = "secondary_draw"
+cdef str STR_SECONDARY_DRAW_CONTENT = "secondary_draw_content"
+cdef str STR_SECONDARY_DRAW_END = "_secondary_draw_end"
+cdef str STR_EVENT_UPDATE = "_event_update"
+
 @cython.freelist(32)
 cdef class NevuCobject:
     def __cinit__(self, *args, **kwargs):
@@ -49,14 +71,7 @@ cdef class NevuCobject:
         self._force_state_set_continue = False
         self._visible = True
         self._active = True
-        self._custom_secondary_update = False
-        self._custom_animation_update = False
-        self._custom_logic_update = False
-        self._custom_event_update = False
-        self._custom_primary_draw = False
-        self._custom_secondary_draw = False
-        self._custom_secondary_draw_content = False
-        self._custom_secondary_draw_end = False
+        self._custom_flags = 0
         self._changed = True
         self._first_update = True
         self.booted = False
@@ -66,6 +81,12 @@ cdef class NevuCobject:
         self.node_type = 0
         self._system_callbacks = Callbacks()
         self.specific_cache_whitelist = [CacheType.Scaled_Image, CacheType.Image, CacheType.Scaled_Gradient, CacheType.Surface,  CacheType.Borders, CacheType.Scaled_Borders, CacheType.Scaled_Background, CacheType.Background, CacheType.Texture, CacheType.RlFont, CacheType.TextArgs, CacheType.ClickTexture]
+
+    def _add_custom_flags(self, int flags: CustomFunctions):
+        self._custom_flags |= <uint8_t>flags
+
+    def _remove_custom_flags(self, int flags: CustomFunctions):
+        self._custom_flags &= ~<uint8_t>flags
 
     cpdef _set_node_type(self, short node_type):
         self.node_type = node_type
@@ -181,51 +202,23 @@ cdef class NevuCobject:
     #        Update event cycle
     #======================================
 
-    def _event_cycle(self, type, *args, **kwargs):
-        cdef NvParam events = self.get_param_strict("events")
-        cdef list content = events.value.content
-        self._core_event_cycle(type, content, args, kwargs)
-
-    cdef inline void _core_event_cycle(self, object type, list content, tuple args, dict kwargs):
-        cdef Py_ssize_t n = PyList_GET_SIZE(content)
-        cdef Py_ssize_t i = 0
-
-        while i < n:
-            event = <object>PyList_GET_ITEM(content, i)
-            if event._type == type:
-                event(*args, **kwargs)
-            i += 1
-
-    cdef inline void _core_event_cycle_clear(self, object type):
-        cdef NvParam events = self.get_param_strict("events")
-        cdef list content = events.value.content
-        cdef Py_ssize_t n = PyList_GET_SIZE(content)
-        cdef Py_ssize_t i = 0
-        while i < n:
-            event = <object>PyList_GET_ITEM(content, i)
-            if event._type == type:
-                call_noarg(event)
-            i += 1
-
     cpdef update(self):
         if not self._active or self._dead: return
-        events = nevu_state.current_events
-        self._run_callbacks(BindType.BeforeUpdate, events)
-        self._primary_update(events)
-        if self._custom_secondary_update:
-            call_noarg(self.secondary_update)
-        self._run_callbacks(BindType.Update, events)
+        self._run_callbacks(BindType.BeforeUpdate)
+        self._primary_update()
+        if self._custom_flags & SecondaryUpdate:
+            PyObject_CallMethodNoArgs(self, STR_SECONDARY_UPDATE)
+        self._run_callbacks(BindType.Update)
 
-    cdef inline void _primary_update(self, events):
-        events = events or []
+    cdef inline void _primary_update(self):
         self._base_logic_update()
-        if self._custom_logic_update:
-            call_noarg(self._logic_update)
+        if self._custom_flags & LogicUpdate:
+            PyObject_CallMethodNoArgs(self, STR_LOGIC_UPDATE)
         self._base_animation_update()
-        if self._custom_animation_update:
-            call_noarg(self._animation_update)
-        if self._custom_event_update:
-            self._event_update(events)
+        if self._custom_flags & AnimationUpdate:
+            PyObject_CallMethodNoArgs(self, STR_ANIMATION_UPDATE)
+        if self._custom_flags & EventUpdate:
+            PyObject_CallMethodNoArgs(self, STR_EVENT_UPDATE)
 
     cdef inline void _base_animation_update(self):
         if not self.animation_manager: return
@@ -289,18 +282,18 @@ cdef class NevuCobject:
         self._run_callbacks(BindType.BeforeDraw)
         if self._changed:
             self._run_callbacks(BindType.Change)
-        if self._custom_primary_draw:
-            call_noarg(self._primary_draw)
+        if self._custom_flags & PrimaryDraw:
+            PyObject_CallMethodNoArgs(self, STR_PRIMARY_DRAW)
         self._base_secondary_draw()
-        if self._custom_secondary_draw:
-            call_noarg(self.secondary_draw)
+        if self._custom_flags & SecondaryDraw:
+            PyObject_CallMethodNoArgs(self, STR_SECONDARY_DRAW)
         self._run_callbacks(BindType.Draw)
 
     cdef inline void _base_secondary_draw(self):
-        if self._custom_secondary_draw_content:
-            call_noarg(self.secondary_draw_content)
-        if self._custom_secondary_draw_end:
-            call_noarg(self._secondary_draw_end)
+        if self._custom_flags & SecondaryDrawContent:
+            PyObject_CallMethodNoArgs(self, STR_SECONDARY_DRAW_CONTENT)
+        if self._custom_flags & SecondaryDrawEnd:
+            PyObject_CallMethodNoArgs(self, STR_SECONDARY_DRAW_END)
         self._base_secondary_draw_end()
 
     cdef inline void _base_secondary_draw_end(self):
@@ -355,14 +348,12 @@ cdef class NevuCobject:
     def __getattribute__(self, name):
         cdef dict params_map
         cdef PyObject* param
-        cdef NvParam c_param
-
-        params_map = self._params_map
-        if params_map is not None:
-            param = PyDict_GetItem(params_map, name)
+        if PyUnicode_GET_LENGTH(name) > 0 and PyUnicode_READ_CHAR(name, 0) == 95:
+            return PyObject_GenericGetAttr(self, name)
+        if self._params_map is not None:
+            param = PyDict_GetItem(self._params_map, name)
             if param != NULL:
-                c_param = <NvParam>param
-                return c_param.get()
+                return (<NvParam>param).get()
 
         return PyObject_GenericGetAttr(self, name)
 

@@ -164,13 +164,15 @@ class NevuObject(NevuCobject):
 
     def _add_param(
         self,
-        name,
+        name: str,
         supported_classes: tuple | Any,
         default: Any,
         getter: Callable | None = None,
         setter: Callable | None = None,
         layer=1,
     ):
+        if name.startswith("_"):
+            raise ValueError(f"Param {name} cannot be private.")
         super()._add_param(
             name,
             supported_classes,
@@ -221,7 +223,7 @@ class NevuObject(NevuCobject):
             SubThemeRole,
             SubThemeRole.TERTIARY,
             setter=self._subtheme_role_setter,
-            layer=ParamLayer.Complicated,
+            layer=ParamLayer.Basic,
         )
         self._add_param(
             "animation_manager",
@@ -360,11 +362,8 @@ class NevuObject(NevuCobject):
         else:
             self.animation_manager = AnimationManager()
         self.z_request: ZRequest | None = None
-        if nevu_state.window.renderer_type.raylib:
-            self.renderer = RaylibRenderer(self)
-        else:
-            self.renderer = PygameRenderer(self)
-        self.renderer.base_configure()
+        if not self.constant_kwargs.get("subtheme_role") and self.style.subtheme_role:
+                self.subtheme_role = self.style.subtheme_role
 
     def _set_position_anim_flag(self, value: bool):
         self._has_position_anim = value
@@ -393,6 +392,12 @@ class NevuObject(NevuCobject):
         self._init_param_layer(ParamLayer.Lazy, **self.constant_kwargs)
 
     def _lazy_init(self, size):
+        if not nevu_state.window: raise ValueError("Window not initialized.")
+        if nevu_state.window.renderer_type.raylib:
+            self.renderer = RaylibRenderer(self)
+        else:
+            self.renderer = PygameRenderer(self)
+        self.renderer.base_configure()
         self.size = size if isinstance(size, NvVector2) else NvVector2(size)
         self.original_size = self.size.copy()
         self._system_callback_binds()
@@ -652,5 +657,3 @@ def _nevuobject_after_copy(self: "NevuObject", clone: "NevuObject", no_cache: bo
     clone._active = self._active
     clone._visible = self._visible
     clone._dead = self._dead
-    if not no_cache:
-        clone.cache = self.cache.copy()

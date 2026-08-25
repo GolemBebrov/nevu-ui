@@ -12,10 +12,10 @@ from nevu_ui.fast.nvparam.nvparam cimport NvParam
 from nevu_ui.fast.nvrect.nvrect cimport NvRect
 from nevu_ui.fast.nevucache.nevucache cimport Cache
 from nevu_ui.fast.zsystem.fast_zsystem cimport ZRequest
+from libc.stdint cimport uint8_t
+
 cdef class NevuCobject:
     cdef public bint _sended_z_link, _dragging, _is_kup, _kup_abandoned, _force_state_set_continue, _visible, _active, _changed, _first_update, _wait_mode, _dead, booted
-    cdef public bint _custom_secondary_update, _custom_animation_update, _custom_logic_update, _custom_event_update
-    cdef public bint _custom_secondary_draw, _custom_secondary_draw_content, _custom_secondary_draw_end, _custom_primary_draw
     cdef public NvVector2 coordinates, absolute_coordinates, size, _resize_ratio,
     cdef public object _style, hover_state, _system_callbacks
     cdef public list params, _blacklisted_params, _next_frame_functions
@@ -23,6 +23,7 @@ cdef class NevuCobject:
     cdef public dict _params_map, _param_links
     cdef public Cache cache
     cdef public bint _has_position_anim
+    cdef uint8_t _custom_flags
     cdef ZRequest _z_request
     cdef list specific_cache_whitelist
     cpdef _set_node_type(self, short node_type)
@@ -48,7 +49,7 @@ cdef class NevuCobject:
     cpdef void clear_surfaces(self)
     cdef inline NvVector2 c_get_actual_size(self)
     cpdef update(self)
-    cdef inline void _primary_update(self, events)
+    cdef inline void _primary_update(self)
     cdef inline void _base_animation_update(self)
     cdef inline void _base_logic_update(self)
     cpdef _click(self)
@@ -58,8 +59,6 @@ cdef class NevuCobject:
     cpdef _kup(self)
     #cpdef _scroll(self, bint scrolled)
     cpdef _kup_abandon(self)
-    cdef inline void _core_event_cycle(self, object type, list content, tuple args, dict kwargs)
-    cdef inline void _core_event_cycle_clear(self, object type)
    # cpdef draw(self)
     cdef inline void _base_secondary_draw_end(self)
     cdef inline void _base_secondary_draw(self)
