@@ -1,12 +1,23 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING, Generic, NotRequired, TypedDict, TypeVar, Unpack
+from collections.abc import Callable
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    NotRequired,
+    TypedDict,
+    TypeVar,
+    Unpack,
+    final,
+    override,
+)
 
 from nevu_ui.core.enums import Align, HoverState
 
 if TYPE_CHECKING:
     from nevu_ui.rendering.pygame.gradient import GradientPygame
+    from nevu_ui.rendering.raylib.gradient import GradientRaylib
 
 from nevu_ui.presentation.color import (
     Color,
@@ -19,7 +30,7 @@ from nevu_ui.presentation.color import (
 TV = TypeVar("TV")
 
 
-class StateVariable(Generic[TV]):
+class StateVariable[TV]:
     def __init__(self, static: TV, hover: TV, active: TV):
         self.static: TV = static
         self.hover: TV = hover
@@ -34,7 +45,7 @@ class StateVariable(Generic[TV]):
             return self.active
         raise KeyError
 
-    def __setitem__(self, name: int, value: TV):
+    def __setitem__(self, name: int | str, value: TV):
         if name == 0:
             self.static = value
         elif name == 1:
@@ -52,8 +63,8 @@ type SVar[T] = T | StateVariable[T]
 
 
 class StyleKwargs(TypedDict):
-    border_radius: NotRequired[SVar[int | float | tuple]]
-    br: NotRequired[SVar[int | float | tuple]]
+    border_radius: NotRequired[SVar[float | tuple[float, float, float, float]]]
+    br: NotRequired[SVar[float | tuple[float, float, float, float]]]
     border_width: NotRequired[SVar[int]]
     bw: NotRequired[SVar[int]]
     font_size: NotRequired[SVar[int]]
@@ -64,84 +75,100 @@ class StyleKwargs(TypedDict):
     transparency: NotRequired[SVar[int]]
     bg_image: NotRequired[SVar[str]]
     colortheme: NotRequired[SVar[ColorTheme]]
-    gradient: NotRequired[SVar[GradientPygame]]
+    gradient: NotRequired[SVar[GradientPygame | GradientRaylib]]
     font_role: NotRequired[SVar[PairColorRole]]
     color_role: NotRequired[SVar[SubThemeRole]]
     subtheme_role: NotRequired[SVar[SubThemeRole]]
 
-
+@final
 class Style:
-    parameters_dict = {
-        "border_radius": ("border_radius", "_parse_br"),
-        "br": ("border_radius", "_parse_int_min0"),
-        "border_width": ("border_width", "_parse_int_min0"),
-        "bw": ("border_width", "_parse_int_min0"),
-        "font_size": ("font_size", "_parse_font_size"),
-        "font_name": ("font_name", "parse_str"),
-        "font_path": ("font_name", "parse_str"),
-        "align_x": ("align_x", "_parse_align"),
-        "align_y": ("align_y", "_parse_align"),
-        "transparency": ("transparency", "_parse_transparency"),
-        "bg_image": ("bg_image", "parse_str"),
-        "colortheme": ("colortheme", "_parse_colortheme"),
-        "gradient": ("gradient", "_parse_gradient"),
-        "color_role": ("color_role", "_parse_color_role"),
-        "subtheme_role": ("subtheme_role", "_parse_subtheme_role"),
-        "font_role": ("font_role", "_parse_font_role"),
-    }
-
     def __init__(self, **kwargs: Unpack[StyleKwargs]):
+        self.parameters_dict: dict[str, tuple[str, Callable[..., tuple[bool, Any]]]] = {
+            "border_radius": ("border_radius", self._parse_br),
+            "br": ("border_radius", self._parse_br),
+            "border_width": ("border_width", self._parse_int_min0),
+            "bw": ("border_width", self._parse_int_min0),
+            "font_size": ("font_size", self._parse_font_size),
+            "font_name": ("font_name", self._parse_str),
+            "font_path": ("font_name", self._parse_str),
+            "align_x": ("align_x", self._parse_align),
+            "align_y": ("align_y", self._parse_align),
+            "transparency": ("transparency", self._parse_transparency),
+            "bg_image": ("bg_image", self._parse_str),
+            "colortheme": ("colortheme", self._parse_colortheme),
+            "gradient": ("gradient", self._parse_gradient),
+            "color_role": ("color_role", self._parse_color_role),
+            "subtheme_role": ("subtheme_role", self._parse_subtheme_role),
+            "font_role": ("font_role", self._parse_font_role),
+        }
         self._kwargs_for_copy = copy.deepcopy(kwargs)
         self.kwargs_dict = {}
         self._curr_state = HoverState.NotHovered
-        self._init_basic()
+        self._init_default()
         self._add_paramethers()
         self._handle_kwargs(**kwargs)
 
-    def _parse_int_min0(self, value):
+    def _parse_int_min0(self, value: float):
         return self.parse_int(value, min_restriction=0)
 
-    def _parse_br(self, value):
+    def _parse_br(self, value: float | tuple[int, ...]):
         if isinstance(value, int | float):
             return self._parse_int_min0(value)
         elif (
-            self.parse_type(value, tuple)
+            self._parse_type(value, tuple)
             and len(value) == 4
             and all(isinstance(i, int | float) for i in value)
         ):
             return True, None
         return False, None
 
-    def _parse_align(self, value):
-        return self.parse_type(value, Align)
+    def _parse_align(self, value: Align) -> tuple[bool, None]:
+        return self._parse_type(value, Align)
 
-    def _parse_font_size(self, value):
+    def _parse_font_size(self, value: int) -> tuple[bool, None]:
         return self.parse_int(value, min_restriction=1)
 
-    def _parse_transparency(self, value):
+    def _parse_transparency(self, value: int) -> tuple[bool, None]:
         return self.parse_int(value, max_restriction=255, min_restriction=0)
 
-    def _parse_colortheme(self, value):
-        return self.parse_type(value, ColorTheme)
+    def _parse_colortheme(self, value: ColorTheme) -> tuple[bool, None]:
+        return self._parse_type(value, ColorTheme)
 
-    def _parse_gradient(self, value):
+    def _parse_gradient(self, value: Any) -> tuple[bool, None]:
         return (True, None)
 
-    def _parse_color_role(self, value):
-        return self.parse_type(value, SubThemeRole)
+    def _parse_color_role(self, value: SubThemeRole) -> tuple[bool, None]:
+        return self._parse_type(value, SubThemeRole)
 
-    def _parse_subtheme_role(self, value):
-        return self.parse_type(value, SubThemeRole)
+    def _parse_subtheme_role(self, value: SubThemeRole) -> tuple[bool, None]:
+        return self._parse_type(value, SubThemeRole)
 
-    def _parse_font_role(self, value):
-        return self.parse_type(value, PairColorRole)
+    def _parse_font_role(self, value: PairColorRole) -> tuple[bool, None]:
+        return self._parse_type(value, PairColorRole)
 
-    def _add_paramethers(self):
+    def parse_int(
+        self,
+        value: int | Any,
+        max_restriction: int | None = None,
+        min_restriction: int | None = None
+    ) -> tuple[bool, None]:
+        if isinstance(value, int):
+            if max_restriction is not None and value > max_restriction:
+                return False, None
+            if min_restriction is not None and value < min_restriction:
+                return False, None
+            return True, None
+        return False, None
+
+    def _parse_type(self, value: Any, types: type | tuple[type, ...]) -> tuple[bool, None]:
+        return isinstance(value, types), None
+
+    def _add_paramethers(self) -> None:
         for name, value in self.parameters_dict.items():
-            parameter, checker_func_name = value
-            self.add_style_parameter(name, parameter, getattr(self, checker_func_name))
+            parameter, checker_func = value
+            self._add_style_parameter(name, parameter, checker_func)
 
-    def _init_basic(self):
+    def _init_default(self) -> None:
         self.colortheme = copy.copy(ColorThemeLibrary.material3_blue)
         self.border_width = 1
         self.border_radius = 0
@@ -156,64 +183,16 @@ class Style:
         self.font_role = None
         self.subtheme_role = None
 
-    def add_style_parameter(self, name: str, attribute_name: str, checker_lambda):
+    def _add_style_parameter(self, name: str, attribute_name: str, checker_lambda: Any):
         self.kwargs_dict[name] = (attribute_name, checker_lambda)
-
-    def parse_color(
-        self,
-        value,
-        can_be_gradient: bool = False,
-        can_be_trasparent: bool = False,
-        can_be_string: bool = False,
-    ) -> tuple[bool, tuple | None]:
-        if isinstance(value, GradientPygame) and can_be_gradient:
-            return True, None
-
-        elif (
-            isinstance(value, (tuple, list))
-            and len(value) in {3, 4}
-            and all(isinstance(c, int) for c in value)
-        ):
-            return next(
-                ((False, None) for item in value if item < 0 or item > 255),
-                (True, None),
-            )
-
-        elif isinstance(value, str) and can_be_string:
-            try:
-                color_value = Color[value]
-            except KeyError:
-                return False, None
-            else:
-                assert isinstance(color_value, tuple)
-                return True, color_value
-
-        return False, None
-
-    def parse_int(
-        self,
-        value: int,
-        max_restriction: int | None = None,
-        min_restriction: int | None = None,
-    ) -> tuple[bool, None]:
-        if isinstance(value, int):
-            if max_restriction is not None and value > max_restriction:
-                return False, None
-            if min_restriction is not None and value < min_restriction:
-                return False, None
-            return True, None
-        return False, None
 
     def mark_state(self, state: HoverState):
         self._curr_state = state
 
-    def parse_str(self, value: str) -> tuple[bool, None]:
-        return self.parse_type(value, str)
+    def _parse_str(self, value: str | Any) -> tuple[bool, None]:
+        return self._parse_type(value, str)
 
-    def parse_type(self, value: str, type: type | tuple) -> tuple[bool, None]:
-        return (True, None) if isinstance(value, type) else (False, None)
-
-    def _handle_kwargs(self, raise_errors: bool = False, **kwargs):
+    def _handle_kwargs(self, raise_errors: bool = False, **kwargs: Any) -> None:
         for item_name, item_value in kwargs.items():
             dict_value = self.kwargs_dict.get(item_name.lower(), None)
             if dict_value is None:
@@ -230,8 +209,8 @@ class Style:
             self._handle_single_item(item_name, item_value, dict_value, raise_errors)
 
     def _handle_single_item(
-        self, item_name, item_value, dict_value, raise_errors: bool = False
-    ):
+        self, item_name: str, item_value: Any, dict_value: tuple[str, Callable[..., tuple[bool, Any]]], raise_errors: bool = False
+    ) -> None:
         attribute_name, checker = dict_value
         if isinstance(item_value, StateVariable):
             validated_values = {}
@@ -257,7 +236,8 @@ class Style:
                     f"Incorrect value {item_value} for {item_name} of type {type(item_value).__name__}"
                 )
 
-    def __getattribute__(self, name: str):
+    @override
+    def __getattribute__(self, name: str) -> Any:  # pyright: ignore[reportAny]
         try:
             item = super().__getattribute__(name)
         except AttributeError as e:
@@ -285,7 +265,6 @@ class Style:
 
     def __deepcopy__(self, memo):
         return copy.copy(self)
-
 
 hstate_to_state = {
     HoverState.Clicked: "active",
