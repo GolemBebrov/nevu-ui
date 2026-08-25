@@ -66,7 +66,7 @@ cdef class NvRenderTexture:
         if blend_mode_selected:
             end_blend_mode()
 
-    cdef void c_fast_blit(self, NvRenderTexture nv_texture, tuple dest, bint flip, tuple color):
+    cpdef void c_fast_blit(self, NvRenderTexture nv_texture, tuple dest, bint flip, tuple color):
         h = -nv_texture.height if flip else nv_texture.height
         cdef Py_ssize_t dest_len = <Py_ssize_t>len(dest)
         if dest_len == 2:
@@ -97,7 +97,7 @@ cdef class NvRenderTexture:
     cdef void c_fast_clear(self, tuple color):
         c_clear_background(color)
 
-    cdef void c_clear(self, tuple color):
+    cpdef void c_clear(self, tuple color):
         begin_texture_mode(self.render_texture) # type: ignore
         self.c_fast_clear(color)
         end_texture_mode()
