@@ -18,12 +18,10 @@ from nevu_ui.core.state import nevu_state
 from nevu_ui.fast import Cache, NvParam, NvRect, NvRenderTexture, NvVector2
 from nevu_ui.fast.logic.fast_logic import rel_helper, relm_helper, vec_rel_helper
 from nevu_ui.fast.nvspecific.nvspec import (
-    menu_draw_pygame,
-    menu_draw_raylib,
-    menu_draw_sdl,
+    menu_draw,
+    menu_update,
 )
-from nevu_ui.fast.raylib.nevu_raylib import begin_blend_mode, end_blend_mode
-from nevu_ui.presentation.color import Color, SubThemeRole
+from nevu_ui.presentation.color import SubThemeRole
 from nevu_ui.presentation.color.color import is_rgba
 from nevu_ui.presentation.style import Style, StyleKwargs, default_style
 from nevu_ui.rendering import DrawBaseCall, DrawBordersCall
@@ -49,7 +47,7 @@ class MenuRendererProxy:
         )  # Only False is used in hereэ
         self.id = NvParam("id", 9999, "Never", "", str)
         self.alt = NvParam(
-            "altushka", 9099, self.menu.alt, None, bool, None, None
+            "altushka", 90199, self.menu.alt, None, bool, None, None
         )  # Only self.menu.alt is used in here
         self.inverted = NvParam(
             "inverted", 9099, self.menu.alt, None, bool, None, None
@@ -93,6 +91,9 @@ class MenuLayoutProxy:
         self.menu = menu
         self.first_parent_menu = self.menu
         self.booted = True
+
+    def boot_up(self):
+        self._size_rule_parsers = {self._parse_vx, self._parse_fillx, self._parse_gcx}
 
     @property
     def original_size(self):
@@ -138,12 +139,12 @@ class Menu:
         "_layouts_cook_time_max",
         "_main_draw",
         "_next_frame_functions",
+        "_normalize_item_size",
         "_opened_sub_menu",
         "_parse_fillx",
         "_parse_gcx",
         "_parse_vx",
         "_percent_helper",
-        "_read_item_coords",
         "_rel_size",
         "_relative_placed",
         "_relative_x",
@@ -152,6 +153,7 @@ class Menu:
         "_renderer_proxy",
         "_resize_ratio",
         "_size",
+        "_size_rule_to_number",
         "_style",
         "_subtheme_border",
         "_subtheme_content",
@@ -228,17 +230,15 @@ class Menu:
             self.layout = layout
 
     # NevuObject like rel API
-    def relx(
-        self, num: int | float, min: int | None = None, max: int | None = None
-    ) -> int | float:
+    def relx(self, num: float, min: int | None = None, max: int | None = None) -> float:
         return rel_helper(num, self._resize_ratio.x, min, max)
 
     def rely(
-        self, num: int | float, min: int | None = None, max: int | None = None
-    ) -> int | float:
+        self, num: float, min: int | None = None, max: int | None = None
+    ) -> float:
         return rel_helper(num, self._resize_ratio.y, min, max)
 
-    def relm(self, num: int | float) -> int | float:
+    def relm(self, num: float) -> float:
         return relm_helper(num, self._resize_ratio.x, self._resize_ratio.y, -1.0, -1.0)
 
     def rel(self, mass: NvVector2) -> NvVector2:
@@ -270,16 +270,17 @@ class Menu:
 
     def _borrow_from_layout(self):
         self._layout_proxy = MenuLayoutProxy(self)
-        self._convert_item_coord = partial(
-            LayoutType._convert_item_coord, self._layout_proxy
+        self._size_rule_to_number = partial(
+            LayoutType._size_rule_to_number, self._layout_proxy
         )  # type: ignore
         self._parse_fillx = partial(LayoutType._parse_fillx, self._layout_proxy)  # type: ignore
         self._parse_gcx = partial(LayoutType._parse_gcx, self._layout_proxy)  # type: ignore
         self._parse_vx = partial(LayoutType._parse_vx, self._layout_proxy)  # type: ignore
         self._percent_helper = partial(LayoutType._percent_helper)
-        self._read_item_coords = partial(
-            LayoutType.read_item_coords, self._layout_proxy
-        )  # type: ignore
+        self._normalize_item_size = partial(
+            LayoutType._normalize_item_size, self._layout_proxy
+        )
+        self._layout_proxy.boot_up()
 
     @property
     def _sdl_texture(self):
@@ -331,7 +332,7 @@ class Menu:
         for i in range(len(initial_size)):
             item = initial_size[i]
             if isinstance(item, SizeRule):
-                converted, is_ruled = self._convert_item_coord(item, i)
+                converted = self._size_rule_to_number(item, i)
                 initial_size[i] = float(converted)
             else:
                 initial_size[i] = float(item)
@@ -349,11 +350,11 @@ class Menu:
         self.enabled = True
         self.visible = True
         backends_to_draw = {
-            Backend.Pygame: menu_draw_pygame,
-            Backend.Sdl: menu_draw_sdl,
-            Backend.RayLib: menu_draw_raylib,
+            Backend.Pygame: 0,
+            Backend.Sdl: 1,
+            Backend.RayLib: 2,
         }
-        self._main_draw = backends_to_draw.get(nevu_state.window._backend)
+        self._main_draw = backends_to_draw.get(nevu_state.window.backend)
 
     def _init_subtheme(self, alt):
         if not alt:
@@ -524,7 +525,7 @@ class Menu:
 
         if layout := self._layout:
             layout._resize(ratio)
-            layout.coordinates = (rel_size - layout.current_size) / 2
+            layout.set_coordinates((rel_size - layout.current_size) / 2)
             layout.absolute_coordinates = layout.coordinates + self.absolute_coordinates
 
             layout.update()
@@ -568,7 +569,7 @@ class Menu:
             raise ValueError(f"Layout {type(layout).__name__} can't be main")
         if self._layout:
             self._layout.kill()
-        self._read_item_coords(layout)
+        self._normalize_item_size(layout)
         layout._init_start()
         layout._connect_to_menu(self)
         layout.first_parent_menu = self
@@ -617,112 +618,15 @@ class Menu:
         self._relative_y = arg2
         self.first_coordinates = self.coordinates
 
-    def _draw_sdl(self, bg):
-        assert self._window, "Window is not initialized!"
-        assert self._window.renderer_type.sdl, "Backend is not SDL!"
-        renderer = nevu_state.renderer
-        assert renderer, "SDL Renderer is not initialized!"
-        layout = self._layout
-        if layout is not None:
-            renderer.target = self._sdl_texture
-            renderer.blit(bg, self.get_rect())
-            layout.draw()
-            renderer.target = None
-        self._window._renderer.blit(self._sdl_texture, self._tuple_absolute_coordinates)
-
-    def _draw_raylib(self, bg):
-        assert self._window, "Window is not initialized!"
-        assert self._window.renderer_type.raylib, "Backend is not Raylib!"
-        display = nevu_state.window.renderer
-        main_nvtex = self._surface
-        assert self._window.is_raylib(display)
-        assert main_nvtex, "Surface is not initialized!"
-        assert isinstance(main_nvtex, NvRenderTexture), (
-            "Surface is not NvRenderTexture!"
-        )
-
-        layout = self._layout
-
-        if layout is not None:
-            layout._rl_predraw_widgets()
-        with main_nvtex:  # type: ignore
-            main_nvtex.fast_clear(Color.Blank)
-            begin_blend_mode(5)
-            main_nvtex.fast_blit(bg, (0, 0))
-            if layout is not None:
-                layout.draw()
-            end_blend_mode()
-
-        begin_blend_mode(5)
-        main_nvtex.fast_blit(
-            main_nvtex, self.absolute_coordinates.get_int_tuple()
-        )  # dirty cython but fustarrr
-        end_blend_mode()
-
-    def _draw_pygame(self, bg):
-        assert self._window, "Window is not initialized!"
-        assert self._window.renderer_type.pygame, "Backend is not Pygame!"
-        surface = self._surface
-        assert isinstance(surface, md.pygame.Surface), (
-            "_surface is not md.pygame surface!"
-        )
-        surface.fill(Color.Blank)
-        surface.blit(bg, (0, 0))
-        layout = self._layout
-        if layout is not None:
-            layout.draw()
-        self._window._renderer.blit(surface, self._tuple_absolute_coordinates)
-
     def draw(self):
-        if not self.visible:
-            return
-        scaled_bg = self.cache.get_or_exec(
-            CacheType.Scaled_Background, self._generate_background
-        )
-        if main_draw := self._main_draw:
-            main_draw(self, scaled_bg)
-        else:
-            raise ValueError(
-                f"Backend {nevu_state.window._backend} is not supported! UWU"
-            )
-        if submenu := self._opened_sub_menu:
-            for item in self._args_menus_to_draw:
-                item.draw()
-            submenu.draw()
+        if not self.visible: return
+        menu_draw(self)
 
     def update(self):
-        if not self.enabled:
-            return
-        if self._window is None:
-            return
+        if not self.enabled: return
+        menu_update(self)
 
-        assert isinstance(self._window, Window)
-
-        if self._first_update_functions:
-            for action in self._first_update_functions:
-                action()
-            self._first_update_functions.clear()
-
-        if self._next_frame_functions:
-            for action in self._next_frame_functions:
-                action()
-            self._next_frame_functions.clear()
-
-        if grad := self.style.gradient:
-            if hasattr(grad, "update"):
-                self._changed = grad.update()
-                if self._changed:
-                    self._clear_surfaces()
-
-        if submenu := self._opened_sub_menu:
-            submenu.update()
-            return
-
-        if layout := self._layout:
-            layout.absolute_coordinates = layout.coordinates + self.absolute_coordinates
-            layout.update()
-
-    def get_rect(self):
+    def get_pygame_rect(self):
         return md.pygame.Rect((0, 0), self._rel_size)
 
     def get_nvrect(self):

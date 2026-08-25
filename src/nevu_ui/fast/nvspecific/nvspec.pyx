@@ -2,7 +2,10 @@ from cpython.list cimport PyList_GET_SIZE, PyList_GET_ITEM
 from nevu_ui.fast.logic.fast_logic cimport get_item_abs_coords
 from cpython.list cimport PyList_GET_SIZE
 from cpython.object cimport PyObject
+from nevu_ui.core.enums import (
 
+    CacheType,
+)
 from nevu_ui.presentation.color import Color
 from nevu_ui.fast.nevucobj.nevucobj cimport NevuCobject
 from nevu_ui.fast.nvrect.nvrect cimport NvRect
@@ -35,19 +38,19 @@ cdef inline list _scrollable_recollide_items(NevuCobject self, list items) noexc
     cdef NvRect true_rect = self.get_nvrect()
     self.absolute_coordinates.data.x = <double>true_rect.x
     self.absolute_coordinates.data.y = <double>true_rect.y
-    
+
     cdef Py_ssize_t n = PyList_GET_SIZE(items)
     cdef NevuCobject item
     cdef Py_ssize_t i = 0 #type: ignore
     cdef list collided_items = []
-    
+
     while i < n:
         item = <NevuCobject><void*>PyList_GET_ITEM(items, i)
         item.absolute_coordinates = get_item_abs_coords(self, item)
         if _widget_drawable_rect(item.get_nvrect(), true_rect):
             collided_items.append(item)
         i += 1
-    
+
     return collided_items
 
 cdef bint _widget_drawable_rect(NvRect item_rect, NvRect layout_rect) noexcept:
@@ -109,6 +112,70 @@ cdef inline void _menu_draw_pygame(self, bg):
     surface.fill(Color.Blank)
     surface.blit(bg, (0, 0))
     layout = self._layout
-    if layout is not None: 
-        layout.draw() 
+    if layout is not None:
+        layout.draw()
     self._window._renderer.blit(surface, self._tuple_absolute_coordinates)
+
+def menu_update(object self not None):
+    _menu_update(self)
+
+cdef inline void _menu_update(self):
+    cdef Py_ssize_t i, length
+
+    cdef list first_update_functions = self._first_update_functions
+    cdef list next_frame_functions = self._next_frame_functions
+
+    if first_update_functions is not None:
+        i = 0
+        length = len(first_update_functions)
+        while i < length:
+            PyObject_CallNoArgs(first_update_functions[i])
+            i += 1
+        first_update_functions.clear()
+
+    if next_frame_functions is not None:
+        i = 0
+        length = len(next_frame_functions)
+        while i < length:
+            PyObject_CallNoArgs(next_frame_functions[i])
+            i += 1
+        next_frame_functions.clear()
+
+    if grad := self.style.gradient:
+        if hasattr(grad, "update"):
+            self._changed = grad.update()
+            if self._changed:
+                self._clear_surfaces()
+
+    if submenu := self._opened_sub_menu:
+        submenu.update()
+        return
+
+    cdef NevuCobject layout = self._layout
+    if layout is not None:
+        layout.absolute_coordinates = layout.coordinates + self.absolute_coordinates
+        layout.update()
+
+def menu_draw(object self not None):
+    _menu_draw(self)
+
+cdef inline void _menu_draw(self):
+    scaled_bg = self.cache.get_or_exec(CacheType.Scaled_Background, self._generate_background)
+    cdef int main_draw = self._main_draw
+    if main_draw == 0:
+        _menu_draw_pygame(self, scaled_bg)
+    elif main_draw == 1:
+        _menu_draw_sdl(self, scaled_bg)
+    elif main_draw == 2:
+        _menu_draw_raylib(self, scaled_bg)
+    else:
+        raise ValueError(
+            f"Backend {nevu_state.window._backend} is not supported! UWU"
+        )
+
+    cdef list args_menus_to_draw
+    if submenu := self._opened_sub_menu:
+        args_menus_to_draw = self._args_menus_to_draw
+        for item in args_menus_to_draw:
+            item.draw()
+        submenu.draw()
