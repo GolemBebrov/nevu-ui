@@ -1,11 +1,12 @@
 import string
 from dataclasses import dataclass
+from typing import final
 
 
-def connect(text):
+def connect(text: str) -> str:
     return "".join(set(text))
 
-
+@final
 @dataclass(frozen=True)
 class _Letters:
     ENG = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
@@ -45,7 +46,7 @@ class _Letters:
 
 letters = _Letters()
 
-
+@final
 @dataclass(frozen=True)
 class InputType:
     NUMBERS = string.digits

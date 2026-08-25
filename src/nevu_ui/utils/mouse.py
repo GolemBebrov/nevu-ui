@@ -1,3 +1,5 @@
+from typing import final
+
 import nevu_ui.core.modules as md
 from nevu_ui.core.enums import Backend, PressType
 from nevu_ui.fast.nvvector2 import NvVector2
@@ -5,22 +7,22 @@ from nevu_ui.fast.nvvector2 import NvVector2
 
 class _BaseMouse:
     __slots__ = (
-        "pos",
-        "_wheel_side",
+        "_mouse_keys",
         "_states",
         "_up_states",
+        "_wheel_side",
         "dragging",
+        "pos",
         "wheel_y",
-        "_mouse_keys",
     )
 
     def __init__(self):
-        self.pos = NvVector2.from_xy(0, 0)
-        self._wheel_side = PressType.WheelStill
-        self._states = [PressType.Still, PressType.Still, PressType.Still]
-        self._up_states = {PressType.Still, PressType.Up}
-        self.dragging = False
-        self.wheel_y = 0
+        self.pos: NvVector2 = NvVector2.from_xy(0, 0)
+        self._wheel_side: PressType = PressType.WheelStill
+        self._states: list[PressType] = [PressType.Still, PressType.Still, PressType.Still]
+        self._up_states: set[PressType] = {PressType.Still, PressType.Up}
+        self.dragging: bool = False
+        self.wheel_y: float = 0
 
     # === Left props ===
     @property
@@ -111,15 +113,16 @@ class _BaseMouse:
     def any_wheel(self):
         return self._wheel_side in (PressType.WheelDown, PressType.WheelUp)
 
-
+@final
 class PygameMouse(_BaseMouse):
-    def update_wheel(self, events):
+    def update_wheel(self, events) -> None:
         wheel_event_found = False
         MouseWheelType = md.pygame.MOUSEWHEEL
         for event in events:
             if event.type == MouseWheelType:
                 wheel_event_found = True
-                new_wheel_y = event.y
+                y: float = event.y
+                new_wheel_y: float = y
                 if new_wheel_y > 0:
                     self._wheel_side = PressType.WheelUp
                 elif new_wheel_y < 0:
@@ -131,7 +134,7 @@ class PygameMouse(_BaseMouse):
         if not wheel_event_found:
             self._wheel_side = PressType.WheelStill
 
-    def update(self, events: list | None = None):
+    def update(self, events: list | None = None) -> None:
         if self.left_fdown:
             self.dragging = True
         elif self.left_up:
@@ -157,7 +160,7 @@ class PygameMouse(_BaseMouse):
             else:
                 states[i] = PressType.Up if is_up else PressType.Still
 
-
+@final
 class RaylibMouse(_BaseMouse):
     def __init__(self):
         super().__init__()
@@ -171,7 +174,7 @@ class RaylibMouse(_BaseMouse):
             )
         )
 
-    def update_wheel(self):  # type: ignore
+    def update_wheel(self) -> None:  # type: ignore
         wheel_y = md.rl.get_mouse_wheel_move_v().y
         if wheel_y > 0:
             self._wheel_side = PressType.WheelUp
@@ -181,7 +184,7 @@ class RaylibMouse(_BaseMouse):
             self._wheel_side = PressType.WheelStill
         self.wheel_y = wheel_y
 
-    def update(self, *args, **kwargs):  # type: ignore
+    def update(self, *args, **kwargs) -> None:  # type: ignore
         self.update_wheel()
         rl = md.rl
         if rl.is_mouse_button_pressed(md.rl.MouseButton.MOUSE_BUTTON_LEFT):
@@ -211,17 +214,16 @@ def set_mouse(backend: Backend):
         mouse = UnselectedMouse()
     mouse.select(backend)
 
-
+@final
 class UnselectedMouse(_BaseMouse):
-    def __init__(self):
-        pass
+    def __init__(self): pass
 
     def select(self, backend: Backend):
         match backend:
             case Backend.Pygame | Backend.Sdl:
-                self.__class__ = PygameMouse  # type: ignore
+                self.__class__ = PygameMouse
             case Backend.RayLib:
-                self.__class__ = RaylibMouse  # type: ignore
+                self.__class__ = RaylibMouse
         self.__init__()
 
 

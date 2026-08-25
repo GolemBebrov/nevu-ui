@@ -1,8 +1,10 @@
 import time as tt
+from typing import final
 
 
+@final
 class Time:
-    __slots__ = ("delta_time", "float_fps", "fps", "after")
+    __slots__ = ("_last_time", "delta_time", "float_fps", "fps")
 
     def __init__(self):
         """Initializes the Time object with default delta time, frames per second (fps),
@@ -11,19 +13,19 @@ class Time:
             delta_time/dt (float): The time difference between the current and last frame.
             fps (int): Frames per second, calculated based on delta time.
             float_fps (float): A floating-point representation of the frames per second."""
-        self.delta_time = 1.0
-        self.float_fps = 0.0
-        self.fps = 0
-        self.after = tt.perf_counter()
+        self.delta_time: float = 1.0
+        self.float_fps: float = 0.0
+        self.fps: int = 0
+        self._last_time: float = tt.perf_counter()
 
     @property
-    def dt(self):
+    def dt(self) -> float:
         return self.delta_time
 
-    def update(self):
+    def update(self) -> None:
         now = tt.perf_counter()
-        dt = now - self.after
-        self.after = now
+        dt = now - self._last_time
+        self._last_time = now
         self.delta_time = dt
         if dt == 0:
             return

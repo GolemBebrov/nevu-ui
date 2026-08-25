@@ -1,10 +1,8 @@
-from typing import TYPE_CHECKING
-
 import nevu_ui.core.modules as md
 from nevu_ui.core.state import nevu_state
 
 
-def _load_font_with_cyrillic(name, size):
+def load_font_with_cyrillic(name: str, size: float):
     codepoints = list(range(32, 127)) + list(range(1024, 1104)) + [1025, 1105]
     glyph_count = len(codepoints)
     c_array = md.rl.ffi.new("int[]", codepoints)
@@ -12,7 +10,7 @@ def _load_font_with_cyrillic(name, size):
     return md.rl.load_font_ex(name, round(size), c_ptr, glyph_count)
 
 
-def load_font(name, size):
+def load_font(name: str, size: float):
     if nevu_state.window.renderer_type.raylib:
-        return _load_font_with_cyrillic(name, size * 1.25)
-    return md.pygame.Font(name, size)
+        return load_font_with_cyrillic(name, size * 1.25)
+    return md.pygame.Font(name, round(size))
