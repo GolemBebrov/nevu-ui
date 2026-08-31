@@ -4,45 +4,91 @@ import sys
 import numpy
 from Cython.Build import cythonize
 from setuptools import Extension, setup
+from setuptools.command.build_ext import build_ext
 
-if sys.platform == "win32":
-    c_opts = [
-        "/std:c++17",
-        "/O2",
-        "/arch:AVX2",
-        "/fp:fast",
-        "/openmp",
-        "/GL",
-    ]
-    l_opts = [
-        "/LTCG",
-    ]
+no_opt = sys.flags.optimize > 0
+if "-O" in sys.argv:
+    no_opt = True
+    sys.argv[:] = [arg for arg in sys.argv if arg != "-O"]
+
+if no_opt:
+    os.environ["CFLAGS"] = "-O0 -pipe -g0 -w"
+    os.environ["CXXFLAGS"] = "-O0 -pipe -g0 -w"
+
+    if sys.platform == "win32":
+        c_opts = [
+            "/std:c++17",
+            "/Od",
+            "/MP",
+            "/w",
+        ]
+        l_opts = []
+    else:
+        c_opts = [
+            "-std=c++17",
+            "-O0",
+            "-pipe",
+            "-fno-var-tracking",
+            "-g0",
+            "-w",
+        ]
+        l_opts = []
+
+    cython_directives = {
+        "language_level": "3",
+        "boundscheck": True,
+        "wraparound": True,
+        "cdivision": False,
+        "nonecheck": True,
+        "initializedcheck": True,
+        "infer_types": True,
+        "unraisable_tracebacks": True,
+    }
 else:
-    c_opts = [
-        "-std=c++17",
-        "-O3",
-        "-march=x86-64-v3",
-        "-mavx2",
-        "-mfma",
-        "-ffast-math",
-        "-fopenmp",
-        "-flto",
-    ]
-    l_opts = [
-        "-fopenmp",
-        "-flto",
-    ]
+    if sys.platform == "win32":
+        c_opts = [
+            "/std:c++17",
+            "/O2",
+            "/arch:AVX2",
+            "/fp:fast",
+            "/openmp",
+            "/GL",
+        ]
+        l_opts = [
+            "/LTCG",
+        ]
+    else:
+        c_opts = [
+            "-std=c++17",
+            "-O3",
+            "-march=x86-64-v3",
+            "-mavx2",
+            "-mfma",
+            "-ffast-math",
+            "-fopenmp",
+            "-flto",
+        ]
+        l_opts = [
+            "-fopenmp",
+            "-flto",
+        ]
 
-cython_directives = {
-    "language_level": "3",
-    "boundscheck": False,
-    "wraparound": False,
-    "cdivision": True,
-    "nonecheck": False,
-    "initializedcheck": False,
-    "infer_types": True,
-    "unraisable_tracebacks": True,
-}
+    cython_directives = {
+        "language_level": "3",
+        "boundscheck": False,
+        "wraparound": False,
+        "cdivision": True,
+        "nonecheck": False,
+        "initializedcheck": False,
+        "infer_types": True,
+        "unraisable_tracebacks": True,
+    }
+
+
+class FastBuildExt(build_ext):
+    def initialize_options(self):
+        super().initialize_options()
+        self.parallel = os.cpu_count() or 8
 
 
 def get_extension(name: str, source: str) -> Extension:
@@ -52,6 +98,7 @@ def get_extension(name: str, source: str) -> Extension:
         include_dirs=[numpy.get_include(), "src"],
         extra_compile_args=c_opts,
         extra_link_args=l_opts,
+        language="c++",
     )
 
 
@@ -109,10 +156,14 @@ def get_extensions():
     return cythonize(
         extensions,
         compiler_directives=cython_directives,
-        annotate=True,
+        annotate=not no_opt,
         include_path=["src"],
-        nthreads=8,
+        nthreads=os.cpu_count() or 8,
     )
 
 
-setup(ext_modules=get_extensions(), package_dir={"": "src"})
+setup(
+    ext_modules=get_extensions(),
+    package_dir={"": "src"},
+    cmdclass={"build_ext": FastBuildExt},
+)
