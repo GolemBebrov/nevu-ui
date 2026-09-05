@@ -1,7 +1,8 @@
 import math
 from typing import NotRequired, TypedDict, Unpack, overload
 
-from nevu_ui.components.layouts import LayoutType, LayoutTypeKwargs as _LayoutTypeKwargs
+from nevu_ui.components.layouts import LayoutType
+from nevu_ui.components.layouts import LayoutTypeKwargs as _LayoutTypeKwargs
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
@@ -25,15 +26,15 @@ class _Grid_Specifics_xy(TypedDict):
     y: NotRequired[int | float]
 
 
-class GridKwargs_rc(_Grid_Specifics_rc, _LayoutTypeKwargs):
+class _GridKwargs_rc(_Grid_Specifics_rc, _LayoutTypeKwargs):
     pass
 
 
-class GridKwargs_xy(_Grid_Specifics_xy, _LayoutTypeKwargs):
+class _GridKwargs_xy(_Grid_Specifics_xy, _LayoutTypeKwargs):
     pass
 
 
-class GridKwargs_uni(GridKwargs_rc, GridKwargs_xy, _LayoutTypeKwargs):
+class _GridKwargs_uni(_GridKwargs_rc, _GridKwargs_xy, _LayoutTypeKwargs):
     pass
 
 
@@ -49,7 +50,7 @@ class Grid(LayoutType):
         content: content_type | None = None,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[GridKwargs_rc],
+        **constant_kwargs: Unpack[_GridKwargs_rc],
     ): ...
     @overload
     def __init__(
@@ -57,14 +58,14 @@ class Grid(LayoutType):
         content: content_type | None = None,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[GridKwargs_xy],
+        **constant_kwargs: Unpack[_GridKwargs_xy],
     ): ...
     def __init__(
         self,
         content: content_type | None = None,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[GridKwargs_uni],
+        **constant_kwargs: Unpack[_GridKwargs_uni],
     ):
         super().__init__(content, size, style, **constant_kwargs)  # type: ignore
 
@@ -198,3 +199,5 @@ class Grid(LayoutType):
                 coords[1], target_coords[1]
             ):
                 return self.items[i]
+
+__all__ = []
