@@ -9,7 +9,14 @@ from nevu_ui.components.layouts.typehints import AlignTemplate
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
-from nevu_ui.core.enums import Align, BindType, CustomFunctions, HoverState, ScrollBarType
+from nevu_ui.core.enums import (
+    Align,
+    BindType,
+    CustomFunctions,
+    HoverState,
+    ScrollBarType,
+)
+from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.logic.fast_logic import (
     _very_light_update_helper,
     draw_widgets_optimized,
@@ -144,10 +151,6 @@ class ScrollableBase(LayoutType, ABC):
         def set_percents(self, percents: float):
             self.percentage = percents
             self.scrolling = False
-
-    @property
-    def inverted_scrolling(self) -> bool:
-        return self.get_param_strict("inverted_scrolling").value
 
     def __init__(
         self,
@@ -366,16 +369,17 @@ class ScrollableBase(LayoutType, ABC):
         super()._logic_update()
         if self.hover_state == HoverState.NotHovered:
             return
+        if nevu_state.keyboard_focused:
+            return
         assert self.scroll_bar
         inverse = -1 if self.inverted_scrolling else 1
         fdown = keyboard.is_fdown
-        get = self.get_param_value
-        if fdown(get("append_key")):
+        if fdown(self.append_key):
             scroll_bar = self.scroll_bar
             scroll_bar._percentage += self.arrow_scroll_power * -inverse
             scroll_bar._percentage = max(0, min(100, scroll_bar._percentage))
             self._scroll_needs_update = True
-        if fdown(get("descend_key")):
+        if fdown(self.descend_key):
             scroll_bar = self.scroll_bar
             scroll_bar._percentage += self.arrow_scroll_power * inverse
             scroll_bar._percentage = max(0, min(100, scroll_bar._percentage))
