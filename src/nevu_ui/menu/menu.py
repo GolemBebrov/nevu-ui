@@ -5,6 +5,7 @@ from typing import Unpack
 from nevu_ui.components.layouts import LayoutType
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import modules as md
+from nevu_ui.core.annotations import Annotations
 from nevu_ui.core.enums import (
     Backend,
     BindType,
@@ -97,11 +98,11 @@ class MenuLayoutProxy:
 
     @property
     def original_size(self):
-        return self.menu._window.original_size
+        return self.menu.original_size
 
     def __getattr__(self, name):
         if name == "original_size":
-            return self.menu._window.original_size
+            return self.menu.original_size
         return getattr(self.menu, name)
 
 
@@ -114,7 +115,7 @@ class Menu:
             ):
                 self.add_next_frame_action(
                     lambda: (
-                        self._resize_with_ratio(self._resize_ratio),
+                        self.resize_with_ratio(self._resize_ratio),
                         self._initial_resize(),
                     )
                 )
@@ -254,14 +255,12 @@ class Menu:
             self._clear_rl_specific()
         self.cache.clear_selected(
             whitelist=[
-                CacheType.Scaled_Image,
-                CacheType.Scaled_Gradient,
+                CacheType.Image,
+                CacheType.Gradient,
                 CacheType.Surface,
                 CacheType.Borders,
-                CacheType.Scaled_Borders,
-                CacheType.Scaled_Background,
                 CacheType.Background,
-                CacheType.Texture,
+                CacheType.SDLTexture,
                 CacheType.RlFont,
                 CacheType.Background,
                 CacheType.Borders,
@@ -284,7 +283,7 @@ class Menu:
 
     @property
     def _sdl_texture(self):
-        return self.cache.get_or_exec(CacheType.Texture, self.convert_to_sdl2_texture)
+        return self.cache.get_or_exec(CacheType.SDLTexture, self.convert_to_sdl2_texture)
 
     def convert_to_sdl2_texture(self, surface=None):
         if nevu_state.renderer is None:
@@ -324,7 +323,7 @@ class Menu:
         self.style = style
         self._subtheme_role = self.style.subtheme_role or SubThemeRole.PRIMARY
         if self._window:
-            self._window.callbacks.bind(BindType.Resize, self._resize)
+            self._window.callbacks.bind(BindType.Resize, self._resize_from_window)
 
     def _init_size(self, size: list | tuple | NvVector2):
         self._resize_ratio = NvVector2.from_xy(1, 1)
@@ -337,6 +336,7 @@ class Menu:
             else:
                 initial_size[i] = float(item)
         self.size = NvVector2(initial_size)
+        self.original_size = self.size.xy
         self.coordinates = NvVector2()
         self._layout: LayoutType | None = None
 
@@ -445,6 +445,10 @@ class Menu:
         self._tuple_absolute_coordinates = self._absolute_coordinates.get_int_tuple()
 
     @property
+    def current_size(self) -> NvVector2:
+        return self._rel_size
+
+    @property
     def size(self) -> NvVector2:
         return self._size
 
@@ -466,7 +470,7 @@ class Menu:
             self._args_menus_to_draw.extend(item)
         if style:
             self._opened_sub_menu.apply_style_to_layout(style)
-        self._opened_sub_menu._resize_with_ratio(self._resize_ratio)
+        self._opened_sub_menu.resize_with_ratio(self._resize_ratio)
 
     def close_submenu(self):
         self._opened_sub_menu = None
@@ -487,13 +491,19 @@ class Menu:
         if self.style.transparency:
             self._surface.set_alpha(self.style.transparency)
 
-    def _resize(self, size: NvVector2):
+    def _resize_from_window(self, size: NvVector2 | Annotations.dest_like):
         self._resize_ratio = NvVector2.from_xy(
             size[0] / self.first_window_size[0], size[1] / self.first_window_size[1]
         )
         self._resize_base()
 
-    def _resize_with_ratio(self, ratio: NvVector2):
+    def resize(self, size: NvVector2 | Annotations.dest_like):
+        self._resize_ratio = NvVector2.from_xy(
+            size[0] / self.original_size.x, size[1] / self.original_size.y
+        )
+        self._resize_base()
+
+    def resize_with_ratio(self, ratio: NvVector2):
         self._resize_ratio = ratio
         self._resize_base()
 
