@@ -1,7 +1,7 @@
 import math
 from typing import NotRequired, TypedDict, Unpack, overload
 
-from nevu_ui.components.layouts import LayoutType, LayoutTypeKwargs
+from nevu_ui.components.layouts import LayoutType, LayoutTypeKwargs as _LayoutTypeKwargs
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
@@ -25,15 +25,15 @@ class _Grid_Specifics_xy(TypedDict):
     y: NotRequired[int | float]
 
 
-class GridKwargs_rc(_Grid_Specifics_rc, LayoutTypeKwargs):
+class GridKwargs_rc(_Grid_Specifics_rc, _LayoutTypeKwargs):
     pass
 
 
-class GridKwargs_xy(_Grid_Specifics_xy, LayoutTypeKwargs):
+class GridKwargs_xy(_Grid_Specifics_xy, _LayoutTypeKwargs):
     pass
 
 
-class GridKwargs_uni(GridKwargs_rc, GridKwargs_xy, LayoutTypeKwargs):
+class GridKwargs_uni(GridKwargs_rc, GridKwargs_xy, _LayoutTypeKwargs):
     pass
 
 

@@ -1,6 +1,6 @@
 from typing import Unpack, overload
 
-from nevu_ui.components.layouts.grid.base import (
+from nevu_ui.components.layouts.grid._base import (
     Grid,
     GridKwargs_rc,
     GridKwargs_uni,
@@ -10,7 +10,7 @@ from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.core import Annotations
 
 
-class Row(Grid):
+class Column(Grid):
     content_type = dict[Grid.any_number, NevuObject]
 
     @overload
@@ -22,9 +22,9 @@ class Row(Grid):
         **constant_kwargs: Unpack[GridKwargs_rc],
     ):
         """
-        Initializes a Row object.
+        Initializes a Column object.
         Parameters:
-        row (int | float): **WARNING: row constant cannot be changed in Row**
+        column (int | float): **WARNING: column param cannot be changed in Column**
         """
 
     @overload
@@ -36,9 +36,9 @@ class Row(Grid):
         **constant_kwargs: Unpack[GridKwargs_xy],
     ):
         """
-        Initializes a Row object.
+        Initializes a Column object.
         Parameters:
-        y (int | float): **WARNING: y constant cannot be changed in Row**
+        x (int | float): **WARNING: x param cannot be changed in Column**
         """
 
     def __init__(
@@ -52,19 +52,19 @@ class Row(Grid):
 
     def _add_params(self):
         super()._add_params()
-        self._block_param("row")
+        self._block_param("column")
 
     def add_items(self, content: content_type | None):  # type: ignore
         if not content:
             return
-        for xcoord, item in content.items():
-            self.add_item(item, xcoord)
+        for ycoord, item in content.items():
+            self.add_item(item, ycoord)
 
-    def kill_item_by_pos(self, x: Grid.any_number):  # type: ignore
-        return super().kill_item_by_pos(x, 1)
+    def kill_item_by_pos(self, y: Grid.any_number):  # type: ignore
+        return super().kill_item_by_pos(1, y)
 
-    def add_item(self, item: NevuObject, x: Grid.any_number):  # type: ignore
-        return super().add_item(item, x, 1)
+    def add_item(self, item: NevuObject, y: Grid.any_number):  # type: ignore
+        return super().add_item(item, 1, y)
 
-    def get_item(self, x: Grid.any_number) -> NevuObject | None:  # type: ignore
-        return super().get_item(x, 1)
+    def get_item(self, y: Grid.any_number) -> NevuObject | None:  # type: ignore
+        return super().get_item(1, y)
