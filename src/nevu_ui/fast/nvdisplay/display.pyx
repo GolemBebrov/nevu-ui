@@ -4,7 +4,7 @@ if TYPE_CHECKING:
     from pyray import Texture
 from nevu_ui.core import Annotations
 from nevu_ui.presentation.color import Color
-from nevu_ui.fast.shaders import SdfShader, BorderShader, GlassySdfShader, GlassyBorderShader
+from nevu_ui.fast.shaders import SdfShader, BorderShader, GlassySdfShader, GlassyBorderShader, LineSdfShader
 from nevu_ui.fast.nvrect.nvrect cimport NvRect
 from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2
 from nevu_ui.fast.raylib.nevu_raylib cimport (
@@ -124,9 +124,9 @@ cdef class WindowRendererSdl:
     cpdef load_image(self, str path): return md.pygame.image.load(path)
 
 cdef class WindowRendererRaylib:
-    cdef public NvShader _sdf_shader, _border_shader, _glassy_sdf_shader, _glassy_border_shader
-    cdef public dict _sdf_locs, _border_locs, _glassy_sdf_locs, _glassy_border_locs
-    cdef public object root
+    cdef public NvShader _sdf_shader, _border_shader, _glassy_sdf_shader, _glassy_border_shader, _line_sdf_shader
+    cdef public dict _sdf_locs, _border_locs, _glassy_sdf_locs, _glassy_border_locs, _line_sdf_locs
+    cdef public object root, _blank_texture
 
     @staticmethod
     def create_initialized(window):
@@ -185,6 +185,21 @@ cdef class WindowRendererRaylib:
         }
         set_nvshader_value_vec4_tuple(self._border_shader, self._border_locs['colDiffuse'], (1.0, 1.0, 1.0, 1.0),)
 
+        self._line_sdf_shader = NvShader.c_create_from_code(LineSdfShader.VERTEX_SHADER, LineSdfShader.FRAGMENT_SHADER)
+        self._line_sdf_locs = {
+            "p1": get_nvshader_location(self._line_sdf_shader, "p1"),
+            "p2": get_nvshader_location(self._line_sdf_shader, "p2"),
+            "thickness": get_nvshader_location(self._line_sdf_shader, "thickness"),
+            "radius": get_nvshader_location(self._line_sdf_shader, "radius"),
+            "lineColor": get_nvshader_location(self._line_sdf_shader, "lineColor"),
+            "bboxPos": get_nvshader_location(self._line_sdf_shader, "bboxPos"),
+            "bboxSize": get_nvshader_location(self._line_sdf_shader, "bboxSize"),
+        }
+
+        img = md.rl.gen_image_color(1, 1, md.rl.WHITE)
+        self._blank_texture = md.rl.load_texture_from_image(img)
+        md.rl.unload_image(img)
+
     cpdef load_raylib_fast_bindings(self):
         functions_to_load = [
             "DrawTextureRec",
@@ -212,6 +227,53 @@ cdef class WindowRendererRaylib:
                 print(f"Warning: Could not load function {func_name} from raylib backend")
         init_raylib_pointers(pointer_dict) # type: ignore
         print(f"Successfully loaded {len(pointer_dict)} fast raylib functions.")
+
+    cpdef void draw_sdf_line(self, object pos_from, object pos_to, float width, object radius, tuple color, tuple max_bounds):
+        if width <= 0.0:
+            return
+
+        cdef float p1_x = <float>pos_from[0]
+        cdef float p1_y = <float>pos_from[1]
+        cdef float p2_x = <float>pos_to[0]
+        cdef float p2_y = <float>pos_to[1]
+
+        cdef float r_val
+        if isinstance(radius, (tuple, list)):
+            r_val = <float>radius[0] if len(radius) > 0 else (width * 0.5)
+        elif radius is not None:
+            r_val = <float>radius
+        else:
+            r_val = width * 0.5
+
+        cdef float pad = width * 0.5 + 2.0
+        cdef float min_x = max(0.0, min(p1_x, p2_x) - pad)
+        cdef float min_y = max(0.0, min(p1_y, p2_y) - pad)
+        cdef float max_x = min(<float>max_bounds[0], max(p1_x, p2_x) + pad)
+        cdef float max_y = min(<float>max_bounds[1], max(p1_y, p2_y) + pad)
+        cdef float bbox_w = max_x - min_x
+        cdef float bbox_h = max_y - min_y
+
+        if bbox_w <= 0.0 or bbox_h <= 0.0:
+            return
+
+        cdef float r = color[0] / 255.0
+        cdef float g = color[1] / 255.0
+        cdef float b = color[2] / 255.0
+        cdef float a = (color[3] / 255.0) if len(color) > 3 else 1.0
+
+        begin_nvshader_mode(self._line_sdf_shader)
+        set_nvshader_value_vec2_tuple(self._line_sdf_shader, self._line_sdf_locs["p1"], (p1_x, p1_y))
+        set_nvshader_value_vec2_tuple(self._line_sdf_shader, self._line_sdf_locs["p2"], (p2_x, p2_y))
+        set_nvshader_value_float(self._line_sdf_shader, self._line_sdf_locs["thickness"], width)
+        set_nvshader_value_float(self._line_sdf_shader, self._line_sdf_locs["radius"], r_val)
+        set_nvshader_value_vec4_tuple(self._line_sdf_shader, self._line_sdf_locs["lineColor"], (r, g, b, a))
+        set_nvshader_value_vec2_tuple(self._line_sdf_shader, self._line_sdf_locs["bboxPos"], (min_x, min_y))
+        set_nvshader_value_vec2_tuple(self._line_sdf_shader, self._line_sdf_locs["bboxSize"], (bbox_w, bbox_h))
+
+        begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+        c_draw_texture_pro(self._blank_texture, (0.0, 0.0, 1.0, 1.0), (min_x, min_y, bbox_w, bbox_h), (0.0, 0.0), 0.0, (255, 255, 255, 255))
+        end_blend_mode()
+        self._end_shader()
 
     # === Blit ===
     cpdef blit(self, source, tuple dest, bint flip = True, tuple color = Color.White, double angle = 0.0):
