@@ -66,6 +66,7 @@ class Slider(Widget):
         super().__init__(size, style, **constant_kwargs)
 
     def _init_booleans(self):
+        super()._init_booleans()
         self._add_custom_flags(
             CustomFunctions.secondary_draw_content |
             CustomFunctions.secondary_update

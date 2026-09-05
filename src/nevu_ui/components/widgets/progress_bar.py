@@ -126,27 +126,6 @@ class ProgressBar(Widget):
     def set_progress_by_value(self, value: float):
         self.progress = (value - self.start_value) / (self.end_value - self.start_value)
 
-    def _init_inverted(self):
-        super()._init_inverted()
-        self._subtheme_progress = (
-            self._alt_subtheme_progress()
-            if self.inverted
-            else self._main_subtheme_progress()
-        )
-        if len(self._subtheme_progress) == 3:
-            self._subtheme_progress = (
-                self._subtheme_progress[0],
-                self._subtheme_progress[1],
-                self._subtheme_progress[2],
-                255,
-            )
-
-    def _main_subtheme_progress(self):
-        return self.style.colortheme.get_pair(self.filled_rect_role).color
-
-    def _alt_subtheme_progress(self):
-        return self.style.colortheme.get_pair(self.filled_rect_role).oncolor
-
     def _primary_draw(self):
         super()._primary_draw()
         surface = self.surface
@@ -258,7 +237,7 @@ class ProgressBar(Widget):
             radius = min(half_size.x, half_size.y, radius)
             radius = (radius, radius, radius, radius)
 
-        color = self._subtheme_progress
+        color = self.style.get_pair_color(self.filled_rect_role, inverted = self.inverted)
 
         renderer = self.renderer
         surf = renderer.core.create_clear(size)

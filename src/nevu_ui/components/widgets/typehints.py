@@ -25,7 +25,6 @@ if TYPE_CHECKING:
 
 
 class _WidgetKwargsBase(TypedDict, total=False):
-    bg_variant: bool
     clickable: bool
     hoverable: bool
     invert_on_click: bool
