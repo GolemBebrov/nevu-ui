@@ -102,7 +102,6 @@ class Window:
         "begin_frame",
         "callbacks",
         "debounce",
-        "end_frame",
         "minsize",
         "offset",
         "on_resize",
@@ -169,7 +168,6 @@ class Window:
             self._clock = md.pygame.time.Clock()
 
         self.begin_frame = self._renderer.begin_frame
-        self.end_frame = self._renderer.end_frame
 
     def _init_hooks(self):
         self.on_update = []
@@ -298,6 +296,19 @@ class Window:
 
     def add_request(self, z_request: ZRequest):
         self.z_system.add(z_request)
+
+    def end_frame(self):
+        self._renderer.end_frame()
+        nevu_state._hovered = 0
+        nevu_state._clicked_recently = 0
+
+    @property
+    def gui_hovered(self) -> bool:
+        return self.z_system.last_hovered_request is not None
+
+    @property
+    def keyboard_available(self) -> bool:
+        return not nevu_state.keyboard_focused
 
     def mark_dirty(self):
         self.z_system.mark_dirty()
@@ -505,7 +516,7 @@ class InitializedWindow(Window):
 
         if window_resize_type == ResizeType.CropToRatio:
             self._recalculate_render_area()
-
+        self.callbacks = Callbacks()
         self.z_system = ZSystem()
         self._reset_nevu_state()
 
