@@ -14,6 +14,7 @@ from typing import (
 )
 
 from nevu_ui.core.enums import Align, HoverState
+from nevu_ui.presentation.color.color_theme import ColorSubTheme
 
 if TYPE_CHECKING:
     from nevu_ui.rendering.pygame.gradient import GradientPygame
@@ -109,7 +110,7 @@ class Style:
         self._handle_kwargs(**kwargs)
 
     def _parse_int_min0(self, value: float):
-        return self.parse_int(value, min_restriction=0)
+        return self._parse_int(value, min_restriction=0)
 
     def _parse_br(self, value: float | tuple[int, ...]):
         if isinstance(value, int | float):
@@ -126,10 +127,10 @@ class Style:
         return self._parse_type(value, Align)
 
     def _parse_font_size(self, value: int) -> tuple[bool, None]:
-        return self.parse_int(value, min_restriction=1)
+        return self._parse_int(value, min_restriction=1)
 
     def _parse_transparency(self, value: int) -> tuple[bool, None]:
-        return self.parse_int(value, max_restriction=255, min_restriction=0)
+        return self._parse_int(value, max_restriction=255, min_restriction=0)
 
     def _parse_colortheme(self, value: ColorTheme) -> tuple[bool, None]:
         return self._parse_type(value, ColorTheme)
@@ -146,7 +147,7 @@ class Style:
     def _parse_font_role(self, value: PairColorRole) -> tuple[bool, None]:
         return self._parse_type(value, PairColorRole)
 
-    def parse_int(
+    def _parse_int(
         self,
         value: int | Any,
         max_restriction: int | None = None,
@@ -167,6 +168,24 @@ class Style:
         for name, value in self.parameters_dict.items():
             parameter, checker_func = value
             self._add_style_parameter(name, parameter, checker_func)
+
+    def _get_color(self, subtheme: SubThemeRole | ColorSubTheme, *, inverted: bool = False, swap: bool = False):
+        if type(subtheme) is SubThemeRole:
+            subtheme = self.colortheme.get_subtheme(subtheme)
+        assert isinstance(subtheme, ColorSubTheme)
+        if inverted:
+            return subtheme.oncolor if swap else subtheme.oncontainer
+        return subtheme.color if swap else subtheme.container
+
+    def get_content_color(self, subtheme: SubThemeRole | ColorSubTheme, *, inverted: bool = False, swap: bool = False):
+        return self._get_color(subtheme, inverted=inverted, swap=swap)
+
+    def get_border_color(self, subtheme: SubThemeRole | ColorSubTheme, *, inverted: bool = False, swap: bool = False):
+        return self._get_color(subtheme, inverted=not inverted, swap=swap)
+
+    def get_pair_color(self, font_role: PairColorRole, *, inverted: bool = False):
+        pair = self.colortheme.get_pair(font_role)
+        return pair.oncolor if inverted else pair.color
 
     def _init_default(self) -> None:
         self.colortheme = copy.copy(ColorThemeLibrary.material3_blue)
