@@ -15,6 +15,11 @@ class CustomFunctions(IntFlag):
     secondary_draw_content = 1 << 6
     secondary_draw_end = 1 << 7
 
+class CanvasType(StrEnum):
+    Rect = "rect"
+    Line = "line"
+    Circle = "circle"
+
 class FlexDirection(IntEnum):
     Row = 0
     Column = 1
@@ -136,28 +141,28 @@ class ResizeType(Enum):
 
 
 class CacheType(Enum):
-    Coords = auto()
     RelSize = auto()
+
+    #Basic
     Surface = auto()
     Gradient = auto()
     Image = auto()
-    Scaled_Image = auto()
+
+    #Render layers
     Borders = auto()
-    Scaled_Borders = auto()
-    Scaled_Background = auto()
-    Scaled_Gradient = auto()
     Background = auto()
-    Texture = auto()
     TextArgs = auto()
+
+    #Text specific
+    TextSurface = auto()
+    TextPos = auto()
+
+    #Raylib specific
+    RlFont = auto()
     ClickTexture = auto()
 
-    RlFont = auto()
-    RlText = auto()
-    RlTexture = auto()
-    RlradTexture = auto()
-    RlfinalTexture = auto()
-    RlBaseTexture = auto()
-
+    #SDL specific
+    SDLTexture = auto()
 
 class AnimationType(Enum):
     Color = auto()
@@ -217,6 +222,7 @@ class RenderConfig(StrEnum):
     DrawL3 = "draw_l3"
     DrawL4 = "draw_l4"
     DrawL5 = "draw_l5"
+    Special = "special"
     Auto = "auto"
 
 
@@ -249,6 +255,9 @@ class RenderArgs:
         pass
 
     class DrawEffects(_RenderArg):
+        pass
+
+    class DrawBg(_RenderArg):
         pass
 
     @dataclass
