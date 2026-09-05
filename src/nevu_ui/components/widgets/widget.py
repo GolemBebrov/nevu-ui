@@ -39,7 +39,6 @@ from nevu_ui.utils import mouse
 class Widget(NevuObject):
     # === Params ===
     inverted: bool
-    bg_variant: bool
     clickable: bool
     hoverable: bool
     inline: bool
@@ -77,8 +76,6 @@ class Widget(NevuObject):
         super().__init__(size, style, **constant_kwargs)
         # === Text Cache ===
         self._init_text_cache()
-        # === Alt ===
-        self._init_inverted()
 
     def _convert_to_sdl2_texture(self):
         if nevu_state.renderer is None:
@@ -105,7 +102,6 @@ class Widget(NevuObject):
             layer=ParamLayer.Complicated,
         )
         self._add_param_link("alt", "inverted")
-        self._add_param("bg_variant", bool, False)
         self._add_param("clickable", bool, False)
         self._add_param("hoverable", bool, False)
         self._add_param("invert_on_click", bool, False)
@@ -121,13 +117,8 @@ class Widget(NevuObject):
         self._change_param_default("subtheme_role", SubThemeRole.SECONDARY)
 
     def _init_text_cache(self):
-        self._text_baked = None
         self._text_surface = None
         self._text_rect = None
-        assert nevu_state.window
-        if nevu_state.window.renderer_type.raylib:
-            self._text_font_size = None
-            self._text_spacing = None
 
     def _set_next_bg_color_anim(self, color):
         if self._bg_color_anim_manager:
@@ -251,31 +242,17 @@ class Widget(NevuObject):
             self.clear_surfaces()
             self.clear_texture()
 
-    def _init_inverted(self):
-        if self.inverted:
-            self._subtheme_border = self._ensure_func_safety(self._alt_subtheme_border)
-            self._subtheme_content = self._ensure_func_safety(
-                self._alt_subtheme_content
-            )
-            self._subtheme_font = self._ensure_func_safety(self._alt_subtheme_font)
-        else:
-            self._subtheme_border = self._ensure_func_safety(self._main_subtheme_border)
-            self._subtheme_content = self._ensure_func_safety(
-                self._main_subtheme_content
-            )
-            self._subtheme_font = self._ensure_func_safety(self._main_subtheme_font)
-
     @property
     def subtheme_border(self):
-        return self._subtheme_border()()  # type: ignore
+        return self.style.get_border_color(self.subtheme_role, inverted = self.inverted, swap = self.bg_variant)
 
     @property
     def subtheme_content(self):
-        return self._subtheme_content()()  # type: ignore
+        return self.style.get_content_color(self.subtheme_role, inverted = self.inverted, swap = self.bg_variant)
 
     @property
     def subtheme_font(self):
-        return self._subtheme_font()()  # type: ignore
+        return self.style.get_pair_color(self.font_role, inverted = self.inverted)
 
     @property
     def _correct_blend(self):
@@ -319,12 +296,9 @@ class Widget(NevuObject):
 
     def _on_subtheme_role_change(self):
         super()._on_subtheme_role_change()
-        if self.booted:
-            self._init_inverted()
         self._run_callbacks(BindType.StyleChange)
 
     def _inverted_setter(self, value):
-        self._init_inverted()
         self._run_callbacks(BindType.StyleChange)
         return value
 
@@ -340,26 +314,8 @@ class Widget(NevuObject):
         assert nevu_state.window
         if self.cache.get(CacheType.RlFont):
             md.rl.unload_font(self.cache.get(CacheType.RlFont))  # type: ignore
-        if self.cache.get(CacheType.Scaled_Image):
-            md.rl.unload_texture(self.cache.get(CacheType.Scaled_Image))  # type: ignore
-
-    def _main_subtheme_content(self):
-        return self._subtheme.color if self.bg_variant else self._subtheme.container
-
-    def _main_subtheme_border(self):
-        return self._subtheme.oncolor if self.bg_variant else self._subtheme.oncontainer
-
-    def _alt_subtheme_content(self):
-        return self._subtheme.oncolor if self.bg_variant else self._subtheme.oncontainer
-
-    def _alt_subtheme_border(self):
-        return self._subtheme.color if self.bg_variant else self._subtheme.container
-
-    def _main_subtheme_font(self):
-        return self.style.colortheme.get_pair(self.font_role).color
-
-    def _alt_subtheme_font(self):
-        return self.style.colortheme.get_pair(self.font_role).oncolor
+        if self.cache.get(CacheType.Image):
+            md.rl.unload_texture(self.cache.get(CacheType.Image))  # type: ignore
 
     def _primary_draw(self):
         super()._primary_draw()
@@ -446,9 +402,10 @@ class Widget(NevuObject):
             surface.blit(cached_bg, coords)
 
     def _secondary_draw_end(self):
+        super()._secondary_draw_end()
         if self._changed and nevu_state.renderer:
             self._sdl2_cached_texture = self.cache.get_or_exec(
-                CacheType.Texture, self._convert_to_sdl2_texture
+                CacheType.SDLTexture, self._convert_to_sdl2_texture
             )
         if self._changed_size:
             self._changed_size = False
@@ -467,7 +424,7 @@ class Widget(NevuObject):
             )
 
     def clear_texture(self):
-        self.cache.clear_selected(whitelist=[CacheType.Texture])
+        self.cache.clear_selected(whitelist=[CacheType.SDLTexture])
 
     def _logic_update(self):
         if self._click_started:
