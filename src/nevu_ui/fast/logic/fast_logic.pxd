@@ -33,8 +33,6 @@ cpdef void logic_update_helper(
     ZSystem z_system
 )
 
-cdef start_item(NevuCobject item, NevuCobject layout)
-
 cpdef void draw_widgets_optimized(
     NevuCobject layout,
     list items,

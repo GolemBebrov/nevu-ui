@@ -228,13 +228,6 @@ cdef inline void c_very_light_update_helper(
         item.absolute_coordinates.data = nv_vector2_add(added_vec, c_menu_vec)
         i += 1
 
-cdef inline start_item(NevuCobject item, NevuCobject layout):
-    if hasattr(item , "first_parent_menu"):
-        #This shit check checks for LayoutType :D
-        item._connect_to_layout(layout) # type: ignore
-    if layout.booted == False:  return
-    item._wait_mode = False # type: ignore
-    PyObject_CallNoArgs(item._init_start) # type: ignore
 
 ctypedef void (*DrawFuncPtr)(NevuCobject, NevuCobject, NvVector2)
 
@@ -298,19 +291,22 @@ cdef DrawFuncPtr _cached_draw_item = NULL
 cdef bint _cached_is_raylib = False
 cdef bint _draw_func_resolved = False
 
-cdef inline void _check_draw_item():
+cdef inline void _check_draw_item() noexcept:
     global _cached_draw_item, _cached_is_raylib, _draw_func_resolved
-    if not _draw_func_resolved:
-        dtype = nevu_state.window.renderer_type
-        if dtype.pygame:
-            draw_func = draw_item_pygame
-        elif dtype.sdl:
-            draw_func = draw_item_sdl
-        elif dtype.raylib:
-            draw_func = draw_item_raylib
-            _cached_is_raylib = True
-        _cached_draw_item = draw_func
-        _draw_func_resolved = True
+    if _draw_func_resolved: return
+    cdef DrawFuncPtr draw_func
+    dtype = nevu_state.window.renderer_type
+    if dtype.pygame:
+        draw_func = draw_item_pygame
+    elif dtype.sdl:
+        draw_func = draw_item_sdl
+    elif dtype.raylib:
+        draw_func = draw_item_raylib
+        _cached_is_raylib = True
+    _cached_draw_item = <DrawFuncPtr>draw_func
+    _draw_func_resolved = True
+
+
 
 cpdef void draw_widgets_optimized(
     NevuCobject layout,
@@ -417,10 +413,3 @@ cdef inline void _fast_cycle_in_list(str func_name, list items):
         item = <object>PyList_GET_ITEM(items, i)
         PyObject_CallMethodNoArgs(item, func_name)
         i += 1
-
-def fast_cycle_tuple(func, tuple items not None):
-    cdef Py_ssize_t n = PyTuple_GET_SIZE(items)
-    cdef Py_ssize_t i
-    for i in range(n):
-        item = <object>PyTuple_GET_ITEM(items, i)
-        func(item)
