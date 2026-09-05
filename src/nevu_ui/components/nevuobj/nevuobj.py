@@ -5,6 +5,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Unpack, overload
 
 import nevu_ui.core.modules as md
+from nevu_ui.rendering.canvas import Canvas, CanvasLineData, CanvasRectData
 
 if TYPE_CHECKING:
     from pyray import Font
@@ -22,19 +23,21 @@ from nevu_ui.core.classes import Strategy, _strategy_type
 from nevu_ui.core.enums import (
     BindType,
     CacheType,
+    CanvasType,
     HoverState,
     ParamLayer,
+    RenderReturnType,
 )
 from nevu_ui.core.size.rules import Px, SizeRule
 from nevu_ui.core.state import nevu_state
-from nevu_ui.fast import NevuCobject, NvVector2, ZRequest
+from nevu_ui.fast import Cache, NevuCobject, NvVector2, ZRequest
 from nevu_ui.fast.logic import get_rect_helper
 from nevu_ui.overlay.tooltip import Tooltip
 from nevu_ui.parser.base import standart_config
 from nevu_ui.presentation.animations import AnimationManager
 from nevu_ui.presentation.color import SubThemeRole
 from nevu_ui.presentation.style import Style, default_style
-from nevu_ui.rendering.base_renderer import BaseRenderer
+from nevu_ui.rendering.base_renderer import BaseRenderer, DrawBaseCall, DrawBgCall
 from nevu_ui.rendering.pygame.new_renderer import PygameRenderer
 from nevu_ui.rendering.raylib.new_renderer import RaylibRenderer
 
@@ -63,6 +66,8 @@ class NevuObject(NevuCobject):
     animation_manager: AnimationManager
     tooltip: Tooltip
     callbacks: Callbacks
+    canvas: Canvas | None
+    bg_variant: bool
     # ==============
 
     renderer: BaseRenderer
@@ -206,11 +211,13 @@ class NevuObject(NevuCobject):
         self._blacklisted_params.append(name)
 
     def _add_params(self):
-        self._add_param("id", (str, type(None)), None)
+        self._add_param("id", str | type(None), None)
         self._add_param("floating", bool, False)
         self._add_param("single_instance", bool, False)
         self._add_param("z", int, 0)
         self._add_param_link("depth", "z")
+        self._add_param("canvas", Canvas | None, None, setter = self._canvas_setter, layer = ParamLayer.Lazy)
+        self._add_param("bg_variant", bool, False)
         self._add_param(
             "tooltip",
             Tooltip | type(None),
@@ -309,6 +316,8 @@ class NevuObject(NevuCobject):
 
     def _system_callback_binds(self):
         self._system_callbacks.bind(BindType.BeforeCopy, _nevuobject_after_copy)
+        self._system_callbacks.bind(BindType.Unhover, _nevuobject_on_unhover)
+        self._system_callbacks.bind(BindType.Hover, _nevuobject_on_hover)
 
     def _boot_up(self):
         pass
@@ -385,7 +394,7 @@ class NevuObject(NevuCobject):
         for i, item in enumerate(self._template.size):  # type: ignore
             self._template.size[i] = self._handle_size_rules(item)  # type: ignore
         if not self._wait_mode:
-            self._lazy_init(**self._template.__dict__)
+            self._lazy_init_wrapper(**self._template.__dict__)
 
     def _lazy_init_wrapper(self, *args, **kwargs):
         self._lazy_init(*args, **kwargs)
@@ -401,11 +410,6 @@ class NevuObject(NevuCobject):
         self.size = size if isinstance(size, NvVector2) else NvVector2(size)
         self.original_size = self.size.copy()
         self._system_callback_binds()
-        self.add_first_update_action(self._reset_tooltip)
-
-    def _reset_tooltip(self):
-        if self.constant_kwargs.get("tooltip"):
-            self.tooltip = self.constant_kwargs.get("tooltip")
 
     def _handle_size_rules(
         self, number: SizeRule | float
@@ -489,14 +493,24 @@ class NevuObject(NevuCobject):
         pass
 
     @property
-    def _subtheme(self):
+    def subtheme(self):
         return self.style.colortheme.get_subtheme(
-            self.get_param_strict("subtheme_role").value
+            self.subtheme_role
         )
 
     def _tooltip_setter(self, value: Tooltip | None):
         if value:
             value.connect_to_master(self)
+        return value
+
+    def _canvas_setter(self, value: Canvas | None):
+        old_canvas = self.canvas
+        if old_canvas:
+            old_canvas._root = None
+        if not value: return value
+        if not value._single_instance:
+           value = value.copy()
+        value._connect_to_root(self)
         return value
 
     # === Action functions ===
@@ -580,10 +594,48 @@ class NevuObject(NevuCobject):
         pass
 
     def _secondary_draw_end(self):
-        pass
+        self._draw_canvas()
 
     def secondary_draw(self):
         pass
+
+    def _draw_canvas(self):
+        if not self.canvas: return
+        for item in self.canvas._content:
+
+            item_type = type(item)
+            if item_type is CanvasRectData:
+                style = item.style
+                if item.relative:
+                    pos = self.rel(item.pos)
+                    size = self.rel(item.size)
+                else:
+                    pos, size = item.pos, item.size
+                surflike = self.renderer.run_bg(
+                    call = DrawBgCall(
+                        size = size,
+                        style = style,
+                        image_support = True,
+                        easy_background=True,
+                        gradient_support = True,
+                        return_type = RenderReturnType.CreateNew
+                    )
+                )
+                if hasattr(self, "surface"):
+                    self.surface.blit(surflike, pos.get_int_tuple())
+            elif item_type is CanvasLineData:
+                style = item.style
+                if item.relative:
+                    pos_from = self.rel(item.pos_from)
+                    pos_to = self.rel(item.pos_to)
+                    width = max(1, self.relm(item.width))
+                else:
+                    pos_from, pos_to, width = item.pos_from, item.pos_to, item.width
+                rad = style.border_radius
+                color = item.color or self.style.get_border_color(self.subtheme_role, inverted = self.inverted, swap = self.bg_variant)
+                if hasattr(self, "surface"):
+                    self.renderer.core.draw_line(self.surface, pos_from, pos_to, width, rad, color)
+
 
     # === Hover state ===
 
@@ -652,6 +704,12 @@ class NevuObject(NevuCobject):
 
     def _kill_end(self):
         pass
+
+def _nevuobject_on_hover(self: "NevuObject"):
+    nevu_state._hovered += 1
+
+def _nevuobject_on_unhover(self: "NevuObject"):
+    nevu_state._hovered -= 1
 
 def _nevuobject_after_copy(self: "NevuObject", clone: "NevuObject", no_cache: bool = False) -> None:
     clone._active = self._active
