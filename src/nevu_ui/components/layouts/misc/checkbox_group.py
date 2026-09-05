@@ -76,3 +76,5 @@ class CheckBoxGroup:
     def get_checkbox_by_id(self, id: str) -> RectCheckBox | None:
         assert id, "Id can not be None."
         return next((item for item in self._content if item.id == id), None)
+
+__all__ = ["CheckBoxGroup"]

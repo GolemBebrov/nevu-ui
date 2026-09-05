@@ -1,7 +1,7 @@
 import copy
 from typing import Unpack
 
-from nevu_ui.components.layouts.grid.base import Grid, GridKwargs_uni
+from nevu_ui.components.layouts.grid.base import Grid, _GridKwargs_uni
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
@@ -21,7 +21,7 @@ class Panel(Grid):
         style: Annotations.nevuobj_style = None,
         slot: NevuObject | None = None,
         bg_widget: Widget | None = None,
-        **constant_kwargs: Unpack[GridKwargs_uni],
+        **constant_kwargs: Unpack[_GridKwargs_uni],
     ):
         super().__init__(slot, size, style, **constant_kwargs)  # type: ignore
         self.bg_widget = bg_widget
@@ -143,3 +143,5 @@ class Panel(Grid):
             bg_widget=cloned_bg,
             **kwargs,
         )
+
+__all__ = ["Panel"]

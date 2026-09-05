@@ -22,7 +22,7 @@ MAIN_LEN_STR = "main_len"
 SEC_LEN_STR = "sec_len"
 ITEMS_STR = "items"
 
-class FlexLayoutKwargs(LayoutTypeKwargs, total=False):
+class _FlexLayoutKwargs(LayoutTypeKwargs, total=False):
     direction: FlexDirection
     wrap: bool
     justify_content: FlexJustify
@@ -47,7 +47,7 @@ class FlexLayout(LayoutType):
         self,
         *content,
         style=None,
-        **constant_kwargs: Unpack[FlexLayoutKwargs],
+        **constant_kwargs: Unpack[_FlexLayoutKwargs],
     ):
         super().__init__(content, size = NvVector2(0, 0), style = style, **constant_kwargs)
 
@@ -340,3 +340,5 @@ class FlexLayout(LayoutType):
             style = copy.deepcopy(self.style),
             **self.constant_kwargs,
         )
+
+__all__ = ["FlexLayout"]
