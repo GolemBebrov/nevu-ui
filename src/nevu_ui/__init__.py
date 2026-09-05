@@ -160,6 +160,7 @@ __all__ = [
     # ===Layouts===
     "LayoutType",
     "Grid",
+    "FlexLayout",
     "Row",
     "Column",
     "ScrollableColumn",
