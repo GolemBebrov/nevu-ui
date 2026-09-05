@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing_extensions import TYPE_CHECKING, Any, override
 
+from nevu_ui.fast.shapes.fast_shapes import draw_sdf_line
+
 if TYPE_CHECKING:
     from nevu_ui.presentation.style import Style
     from nevu_ui.rendering.uni_gradient import GradientPygame
@@ -18,6 +20,7 @@ from nevu_ui.presentation.color.color import Color, is_rgba
 from nevu_ui.rendering.base_renderer import (
     BaseRenderer,
     DrawBaseCall,
+    DrawBgCall,
     DrawBordersCall,
     DrawEffectsCall,
     DrawTextCall,
@@ -78,6 +81,21 @@ class _PygameCoreNamespace(_BaseCoreNamespace):
         transform_into_rounded_rect(subject, radii, color)
 
     @override
+    def draw_line(
+        self,
+        surface_like: Any,
+        pos_from: Annotations.dest_like | NvVector2,
+        pos_to: Annotations.dest_like | NvVector2,
+        width: int,
+        radius: int,
+        color: Annotations.rgba_color = Color.White,
+    ) -> None:
+        assert isinstance(surface_like, md.pygame.Surface), (
+            "surf_like must be a pygame Surface"
+        )
+        draw_sdf_line(surface_like, pos_from, pos_to, width, radius, color)
+
+    @override
     def load_image(
         self, path: str, size: Annotations.dest_like | NvVector2 | None = None
     ):
@@ -104,6 +122,22 @@ class _PygameSpecifiedDraw(_BaseSpecifiedDraw):
     def adjust_brightness(self, color: tuple, offset: int) -> tuple:
         return tuple(max(0, min(255, c + offset)) for c in color[:3]) + (color[3],)
 
+    def to_rgba_tuple(self, color):
+        if color is None:
+            return (0, 0, 0, 0)
+        if hasattr(color, "to_tuple"):
+            val = color.to_tuple()
+        elif hasattr(color, "r") and hasattr(color, "g") and hasattr(color, "b"):
+            val = (color.r, color.g, color.b, getattr(color, "a", 255))
+        else:
+            val = color
+        try:
+            val = list(val)
+        except TypeError:
+            return (0, 0, 0, 0)
+        if len(val) == 3:
+            val.append(255)
+        return tuple(int(x) for x in val)
 
 class PygameRenderer(BaseRenderer):
     @override
@@ -120,8 +154,9 @@ class PygameRenderer(BaseRenderer):
         size: NvVector2 = call.size if call.size is not None else root.current_size
         standstill = call.standstill
         override_color = call.color
+        style = call.style or root.style
         cached = call.cached
-        radii = call.radius if call.radius is not None else root.style.border_radius
+        radii = call.radius if call.radius is not None else style.border_radius
         radii = self.core.normalize_radius_relative(radii)
         inline = call.inline
         return_type = call.return_type
@@ -132,23 +167,6 @@ class PygameRenderer(BaseRenderer):
         if not standstill:
             color = self.core.get_color_on_hover(color)
 
-        def to_rgba_tuple(c):
-            if c is None:
-                return (0, 0, 0, 0)
-            if hasattr(c, "to_tuple"):
-                val = c.to_tuple()
-            elif hasattr(c, "r") and hasattr(c, "g") and hasattr(c, "b"):
-                val = (c.r, c.g, c.b, getattr(c, "a", 255))
-            else:
-                val = c
-            try:
-                val = list(val)
-            except TypeError:
-                return (0, 0, 0, 0)
-            if len(val) == 3:
-                val.append(255)
-            return tuple(int(x) for x in val)
-
         def _draw_on_texture(surface):
             assert isinstance(surface, md.pygame.Surface), (
                 "surface must be a pygame Surface"
@@ -158,19 +176,19 @@ class PygameRenderer(BaseRenderer):
             image_support = call.image_support
             easy_background = call.easy_background
 
-            if gradient_support and root.style.gradient:
+            if gradient_support and style.gradient:
                 gradient = root.cache.get_or_exec(
-                    CacheType.Scaled_Gradient,
-                    lambda: self.core.get_gradient().apply_gradient(
+                    CacheType.Gradient,
+                    lambda: self.core.get_gradient(style=style).apply_gradient(
                         surface.width, surface.height
                     ),
                 )
                 surface.blit(gradient, (0, 0))
 
-            elif image_support and root.style.bg_image:
+            elif image_support and style.bg_image:
                 image = root.cache.get_or_exec(
-                    CacheType.Scaled_Image,
-                    lambda: self.core.load_image(root.style.bg_image, size),
+                    CacheType.Image,
+                    lambda: self.core.load_image(style.bg_image, size),
                 )
                 surface.blit(image, (0, 0))
             else:
@@ -182,9 +200,9 @@ class PygameRenderer(BaseRenderer):
                             else root.subtheme_content
                         )
 
-                        new_color_tuple = to_rgba_tuple(new_color_pretendent)
+                        new_color_tuple = self.unsafe.to_rgba_tuple(new_color_pretendent)
                         old_color_tuple = (
-                            to_rgba_tuple(root._bg_color_before)
+                            self.unsafe.to_rgba_tuple(root._bg_color_before)
                             if root._bg_color_before is not None
                             else None
                         )
@@ -201,7 +219,7 @@ class PygameRenderer(BaseRenderer):
 
                     color = anim_color or color
 
-                color = to_rgba_tuple(color)
+                color = self.unsafe.to_rgba_tuple(color)
 
                 if easy_background:
                     surface.fill(color)
@@ -436,6 +454,158 @@ class PygameRenderer(BaseRenderer):
             case RenderReturnType.CreateNew:
                 texture = self.core.create_clear(self.root.current_size)
                 _draw_on_texture(texture)
+                return texture
+            case _:
+                raise ValueError(f"Invalid return type: {return_type}")
+
+    @override
+    def _draw_bg(self, call: DrawBgCall):
+        root = self.root
+        size: NvVector2 = call.size if call.size is not None else root.current_size
+        standstill = call.standstill
+        style = call.style or root.style
+        return_type = call.return_type
+        alt = root.inverted
+
+        radii = call.radius if call.radius is not None else style.border_radius
+        radii = self.core.normalize_radius_relative(radii)
+
+        bg_color = call.color or style.get_content_color(root.subtheme_role, inverted = alt)
+
+        if not standstill:
+            if not root.inline:
+                new_color_pretendent = self.core.get_color_on_hover(
+                    root.subtheme_border
+                    if root.get_param_strict("inverted").value
+                    else root.subtheme_content
+                )
+                new_color_tuple = self.unsafe.to_rgba_tuple(new_color_pretendent)
+                old_color_tuple = (
+                    self.unsafe.to_rgba_tuple(root._bg_color_before)
+                    if root._bg_color_before is not None
+                    else None
+                )
+
+                if old_color_tuple is None:
+                    root._bg_color_before = new_color_pretendent
+                elif old_color_tuple != new_color_tuple:
+                    root._set_next_bg_color_anim(new_color_pretendent)
+
+            if color_manager := root._bg_color_anim_manager:
+                anim_color = color_manager.get_animation_value("main")
+            else:
+                anim_color = None
+
+            bg_color = anim_color or bg_color
+
+        bg_color = self.unsafe.to_rgba_tuple(bg_color)
+
+        border_width = (
+            call.border_width
+            if call.border_width is not None
+            else style.border_width
+        )
+        border_color = call.border_color or style.get_border_color(root.subtheme_role, inverted = alt)
+        border_color = self.unsafe.to_rgba_tuple(border_color)
+        no_borders = call.no_borders or (border_width <= 0)
+
+        pos = (
+            call.pos
+            if call.pos is not None
+            else (
+                root.coordinates.to_tuple()
+                if root.inline
+                else (0, 0)
+            )
+        )
+
+        def _draw_on_surface(target_surf: md.pygame.Surface):
+            assert isinstance(target_surf, md.pygame.Surface), (
+                "surface must be a pygame Surface"
+            )
+
+            direct_draw = (
+                pos == (0, 0)
+                and target_surf.get_width() == int(size[0])
+                and target_surf.get_height() == int(size[1])
+            )
+            surf = target_surf if direct_draw else self.core.create_clear(size)
+
+            if call.gradient_support and style.gradient:
+                gradient = root.cache.get_or_exec(
+                    CacheType.Gradient,
+                    lambda: self.core.get_gradient(style=style).apply_gradient(
+                        surf.get_width(), surf.get_height()
+                    ),
+                )
+                surf.blit(gradient, (0, 0))
+                if no_borders:
+                    if radii != (0, 0, 0, 0) and radii != 0:
+                        transform_into_rounded_rect(surf, radii, None)
+                else:
+                    transform_into_outlined_rounded_rect(
+                        surf,
+                        radii,
+                        root.relm(border_width),
+                        border_color,
+                        background_color=None,
+                    )
+
+            elif call.image_support and style.bg_image:
+                image = root.cache.get_or_exec(
+                    CacheType.Image,
+                    lambda: self.core.load_image(style.bg_image, size),
+                )
+                surf.blit(image, (0, 0))
+                if no_borders:
+                    if radii != (0, 0, 0, 0) and radii != 0:
+                        transform_into_rounded_rect(surf, radii, None)
+                else:
+                    transform_into_outlined_rounded_rect(
+                        surf,
+                        radii,
+                        root.relm(border_width),
+                        border_color,
+                        background_color=None,
+                    )
+
+            else:
+                if call.easy_background and no_borders and (radii == (0, 0, 0, 0) or radii == 0):
+                    surf.fill(bg_color)
+                elif no_borders:
+                    if radii == 0 or radii == (0, 0, 0, 0):
+                        md.pygame.draw.rect(surf, bg_color, (0, 0, int(size[0]), int(size[1])))
+                    else:
+                        transform_into_rounded_rect(surf, radii, bg_color)
+                else:
+                    transform_into_outlined_rounded_rect(
+                        surf,
+                        radii,
+                        root.relm(border_width),
+                        border_color,
+                        background_color=bg_color,
+                    )
+
+            if not direct_draw:
+                target_surf.blit(surf, pos)
+
+        match return_type:
+            case RenderReturnType.Null:
+                assert isinstance(root.surface, md.pygame.Surface), (
+                    "root.surface must be a pygame Surface"
+                )
+                _draw_on_surface(root.surface)
+            case RenderReturnType.Outside:
+                return size, bg_color, border_color, radii, border_width
+            case RenderReturnType.Raw:
+                return size, radii, bg_color, border_color, border_width, standstill
+            case RenderReturnType.Modify:
+                texture = call.modify_object
+                assert texture, "Modify return type selected but no object provided"
+                _draw_on_surface(texture)
+            case RenderReturnType.CreateNew:
+                texture = self.core.create_clear(size)
+                _draw_on_surface(texture)
                 return texture
             case _:
                 raise ValueError(f"Invalid return type: {return_type}")

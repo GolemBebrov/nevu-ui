@@ -18,6 +18,7 @@ from nevu_ui.presentation.color.color import Color, is_rgba
 from nevu_ui.rendering.base_renderer import (
     BaseRenderer,
     DrawBaseCall,
+    DrawBgCall,
     DrawBordersCall,
     DrawEffectsCall,
     DrawTextCall,
@@ -37,6 +38,31 @@ class _RaylibCoreNamespace(_BaseCoreNamespace):
         return gr
 
     @override
+    def draw_line(
+        self,
+        surface_like: Any,
+        pos_from: Annotations.dest_like | NvVector2,
+        pos_to: Annotations.dest_like | NvVector2,
+        width: int,
+        radius: int,
+        color: Annotations.rgba_color = Color.White,
+    ) -> None:
+        assert isinstance(surface_like, NvRenderTexture), (
+            "surface_like must be an NvRenderTexture"
+        )
+        display = nevu_state.window.renderer
+        assert nevu_state.window.is_raylib(display)
+        with surface_like:
+            display.draw_sdf_line(
+                pos_from,
+                pos_to,
+                float(width),
+                radius,
+                color,
+                (surface_like.width, surface_like.height),
+            )
+
+    @override
     def create_clear(self, size: Annotations.dest_like | NvVector2) -> SurfaceLike:
         texture = NvRenderTexture(NvVector2(size))
         texture.clear(Color.Blank)
@@ -45,7 +71,8 @@ class _RaylibCoreNamespace(_BaseCoreNamespace):
 
     @override
     def get_font_size(self, override_size: float | None = None):
-        return self.root.relm(override_size or self.style.font_size) * 1.25
+        result = self.root.relm(override_size or self.style.font_size)
+        return result
 
     @override
     def get_font(self, name: str | None = None, size: float | None = None) -> Any: # pyright: ignore[reportAny]
@@ -162,7 +189,8 @@ class RaylibRenderer(BaseRenderer):
         glassy = call.glassy
         override_color = call.color
         cached = call.cached
-        radii = call.radius if call.radius is not None else root.style.border_radius
+        style = call.style or self.root.style
+        radii = call.radius if call.radius is not None else style.border_radius
         radii = core.normalize_radius_relative(radii)
 
         return_type = call.return_type
@@ -184,30 +212,29 @@ class RaylibRenderer(BaseRenderer):
             easy_background = call.easy_background
             begin_blend_mode(
                 md.rl.BlendMode.BLEND_ALPHA
-                if image_support and root.style.bg_image
+                if image_support and style.bg_image
                 else md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY
             )
-            if gradient_support and root.style.gradient:
+            if gradient_support and style.gradient:
                 gradient = cache.get_or_exec(
-                    CacheType.Scaled_Gradient,
-                    lambda: core.get_gradient().generate_texture(
+                    CacheType.Gradient,
+                    lambda: core.get_gradient(style = style).generate_texture(
                         int(size[0]), int(size[1])
                     ),
                 )
                 end_color = _raylib_gradient_base_color
-                get_value = root.get_param_value
                 adjust_brightness = unsafe.adjust_brightness
                 HoverState = root.hover_state.__class__
                 match root.hover_state:
                     case HoverState.Hovered:
-                        if get_value("hoverable"):
+                        if root.hoverable:
                             if not _raylib_gradient_hover_color:
                                 _raylib_gradient_hover_color = adjust_brightness(
                                     end_color, -50
                                 )
                             end_color = _raylib_gradient_hover_color
                     case HoverState.Clicked:
-                        if get_value("clickable"):
+                        if root.clickable:
                             if not _raylib_gradient_click_color:
                                 _raylib_gradient_click_color = adjust_brightness(
                                     end_color, 50
@@ -221,10 +248,10 @@ class RaylibRenderer(BaseRenderer):
                         gradient.texture, (0, 0), radii=radii, color=end_color
                     )
                     # texture.fast_blit(gradient, (0, 0), color = end_color)
-            elif image_support and root.style.bg_image:
+            elif image_support and style.bg_image:
                 image = cache.get_or_exec(
-                    CacheType.Scaled_Image,
-                    lambda: self.core.load_image(root.style.bg_image, size),
+                    CacheType.Image,
+                    lambda: self.core.load_image(style.bg_image, size),
                 )  # type: ignore
                 with texture:
                     texture.fast_blit_texture(image, (0, 0), flip=False)
@@ -317,18 +344,17 @@ class RaylibRenderer(BaseRenderer):
             assert isinstance(render_font, rl.Font().__class__)
             font_size = render_font.baseSize
             final_size = override_size or size
-            final_max_size = max_size
-            final_max_size.x = min(final_max_size.x, final_size.x)
-            final_max_size.y = min(final_max_size.y, final_size.y)
+            max_size.x = min(max_size.x, final_size.x)
+            max_size.y = min(max_size.y, final_size.y)
             if not continuous:
                 line_height = core.measure_text(render_font, "A", font_size).y
                 text_to_split = text.strip().split(" ") if words_indent else list(text)
                 marg = " " if words_indent else ""
                 text_lines = core.split_words(
-                    text_to_split, render_font, font_size, final_max_size.x, marg=marg
+                    text_to_split, render_font, font_size, max_size.x, marg=marg
                 )
                 if not unlimited_y:
-                    while len(text_lines) * line_height > final_max_size.y:
+                    while len(text_lines) * line_height > max_size.y:
                         text_lines.pop()
                         cropped = True
                 baked_text = "\n".join(text_lines)
@@ -351,13 +377,13 @@ class RaylibRenderer(BaseRenderer):
             rl.rl_set_blend_factors_separate(0x0302, 0x0303, 1, 0x0303, 0x8006, 0x8006)
 
             with texture:
-                rl.begin_blend_mode(rl.BlendMode.BLEND_CUSTOM_SEPARATE)
+                begin_blend_mode(rl.BlendMode.BLEND_CUSTOM_SEPARATE)
 
                 rl.draw_text_ex(
                     render_font, baked_text, coordinates, font_size, spacing, color
                 )
 
-                rl.end_blend_mode()
+                end_blend_mode()
             if font_size_overriden:
                 rl.unload_font(render_font)
 
@@ -469,22 +495,25 @@ class RaylibRenderer(BaseRenderer):
         glassy = call.glassy
         radius = call.radius if call.radius is not None else root.style.border_radius
         radius = core.normalize_radius_relative(radius)
-        override_color = (
-            call.color
-            if call.color is not None
-            else (root.subtheme_content if root.inverted else root.subtheme_border)
-        )
         no_borders = call.no_borders
         display = nevu_state.window.renderer
-        pos = (
-            call.pos
-            if call.pos is not None
-            else (
-                root.coordinates.to_tuple()
-                if root.get_param_strict("inline").value
-                else (0, 0)
-            )
-        )
+
+        call_color = call.color
+        call_pos = call.pos
+
+        if call_color is not None:
+            override_color = call_color
+        elif root.inverted:
+            override_color = root.subtheme_content
+        else:
+            override_color = root.subtheme_border
+
+        if call_pos is not None:
+            pos = call_pos
+        elif root.inline:
+            pos = root.coordinates.to_tuple()
+        else:
+            pos = (0, 0)
         assert nevu_state.window.is_raylib(display)
         return_type = call.return_type
         assert isinstance(subject, NvRenderTexture), (
@@ -498,23 +527,17 @@ class RaylibRenderer(BaseRenderer):
                     display.fast_blit_sdf_vec(subject.texture, pos, radius, flip=True)
                 elif border_width > 0:
                     if glassy:
-                        display.fast_blit_glassy_borders_vec(
-                            subject.texture,
-                            pos,
-                            radius,
-                            override_color,
-                            thickness=root.relm(border_width),
-                            flip=True,
-                        )
+                        fast_blit_vec = display.fast_blit_glassy_borders_vec
                     else:
-                        display.fast_blit_borders_vec(
-                            subject.texture,
-                            pos,
-                            radius,
-                            override_color,
-                            thickness=root.relm(border_width),
-                            flip=True,
-                        )
+                        fast_blit_vec = display.fast_blit_borders_vec
+                    fast_blit_vec(
+                        subject.texture,
+                        pos,
+                        radius,
+                        override_color,
+                        thickness=root.relm(border_width),
+                        flip=True,
+                    )
             end_blend_mode()
 
         match return_type:
@@ -544,5 +567,133 @@ class RaylibRenderer(BaseRenderer):
                 texture = core.create_clear(root.current_size)
                 _draw_on_texture(texture)
                 return texture
+            case _:
+                raise ValueError(f"Invalid return type: {return_type}")
+
+    @override
+    def _draw_bg(self, call: DrawBgCall):
+        root = self.root
+        unsafe: _RaylibSpecifiedDraw = self.unsafe  # type: ignore
+        core = self.core
+        size: NvVector2 = call.size if call.size is not None else root.current_size
+        cache = call.cache if call.cache is not None else root.cache
+        standstill = call.standstill
+        glassy = call.glassy
+        style = call.style or root.style
+
+        radii = call.radius if call.radius is not None else style.border_radius
+        radii = core.normalize_radius_relative(radii)
+
+        alt = root.inverted
+        bg_color = call.color or style.get_content_color(root.subtheme_role, inverted = alt)
+        if not standstill:
+            bg_color = core.get_color_on_hover(bg_color)
+            unsafe.check_root_color_transition()
+            if color_manager := root._bg_color_anim_manager:
+                anim_color = color_manager.get_animation_value("main")
+                bg_color = anim_color or bg_color
+        if len(bg_color) == 3:
+            bg_color = (*bg_color, 255)
+
+        border_width = call.border_width if call.border_width is not None else style.border_width
+        border_color = call.border_color or style.get_border_color(root.subtheme_role, inverted = alt)
+        if len(border_color) == 3:
+            border_color = (*border_color, 255)
+        no_borders = call.no_borders or (border_width <= 0)
+
+        call_pos = call.pos
+        if call_pos is not None:
+            pos = call_pos
+        elif root.inline:
+            pos = root.coordinates.to_tuple()
+        else:
+            pos = (0, 0)
+        return_type = call.return_type
+
+        def _draw_on_texture(texture: NvRenderTexture):
+            global _raylib_gradient_base_color, _raylib_gradient_hover_color, _raylib_gradient_click_color
+            renderer = nevu_state.window.renderer
+            assert nevu_state.window.is_raylib(renderer)
+
+            if call.easy_background and no_borders and (radii == (0, 0, 0, 0) or radii == 0):
+                with texture:
+                    texture.clear(bg_color)
+                return
+
+            flip = False
+            if call.gradient_support and style.gradient:
+                gradient = cache.get_or_exec(
+                    CacheType.Gradient,
+                    lambda: core.get_gradient(style=style).generate_texture(int(size[0]), int(size[1])),
+                )
+                end_color = _raylib_gradient_base_color
+                adjust_brightness = unsafe.adjust_brightness
+                HoverState = root.hover_state.__class__
+                match root.hover_state:
+                    case HoverState.Hovered:
+                        if root.hoverable:
+                            if not _raylib_gradient_hover_color:
+                                _raylib_gradient_hover_color = adjust_brightness(end_color, -50)
+                            end_color = _raylib_gradient_hover_color
+                    case HoverState.Clicked:
+                        if root.clickable:
+                            if not _raylib_gradient_click_color:
+                                _raylib_gradient_click_color = adjust_brightness(end_color, 50)
+                            end_color = _raylib_gradient_click_color
+                    case _:
+                        pass
+                src_tex = gradient.texture
+            elif call.image_support and style.bg_image:
+                src_tex = cache.get_or_exec(
+                    CacheType.Image,
+                    lambda: self.core.load_image(style.bg_image, size),
+                )
+            else:
+                rect_texture = NvRenderTexture(NvVector2(size))
+                rect_texture.clear(bg_color)
+                src_tex = rect_texture.texture
+                flip = True
+
+            blend_mode = (
+                md.rl.BlendMode.BLEND_ALPHA
+                if call.image_support and style.bg_image
+                else md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY
+            )
+
+            begin_blend_mode(blend_mode)
+            with texture:
+                if no_borders:
+                    if glassy:
+                        fast_blit_vec = renderer.fast_blit_glassy_sdf_vec
+                    else:
+                        fast_blit_vec = renderer.fast_blit_sdf_vec
+                    fast_blit_vec(src_tex, pos, radii, flip=flip)
+                else:
+                    thickness = root.relm(border_width)
+                    if glassy:
+                        fast_blit_border_vec = renderer.fast_blit_glassy_borders_vec
+                    else:
+                        fast_blit_border_vec = renderer.fast_blit_borders_vec
+                    fast_blit_border_vec(
+                        src_tex, pos, radii, border_color, thickness=thickness, flip=flip
+                    )
+            end_blend_mode()
+
+        match return_type:
+            case RenderReturnType.Null:
+                assert isinstance(root.surface, NvRenderTexture), "root.surface must be a nevu ui render texture"
+                _draw_on_texture(root.surface)
+            case RenderReturnType.Outside:
+                return size, bg_color, border_color, radii, border_width
+            case RenderReturnType.Raw:
+                return size, radii, bg_color, border_color, border_width, standstill
+            case RenderReturnType.Modify:
+                target = call.modify_object
+                assert target, "Modify return type selected but no object provided"
+                _draw_on_texture(target)
+            case RenderReturnType.CreateNew:
+                target = self.core.create_clear(size)
+                _draw_on_texture(target)
+                return target
             case _:
                 raise ValueError(f"Invalid return type: {return_type}")

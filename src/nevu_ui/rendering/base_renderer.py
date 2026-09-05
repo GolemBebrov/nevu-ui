@@ -63,6 +63,18 @@ class _BaseCoreNamespace(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def draw_line(
+        self,
+        surface_like: Any,
+        pos_from: Annotations.dest_like | NvVector2,
+        pos_to: Annotations.dest_like | NvVector2,
+        width: int,
+        radius: int,
+        color: Annotations.rgba_color = Color.White,
+    ) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
     def load_image(
         self, path: str, size: Annotations.dest_like | NvVector2 | None = None
     ):
@@ -179,10 +191,31 @@ class _BaseSpecifiedDraw(ABC):
 class _BaseCall:
     pass
 
+@dataclass(kw_only=True, slots=True)
+class DrawBgCall(_BaseCall):
+    size: NvVector2 | None = None
+    style: Style | None = None
+    radius: tuple[int, int, int, int] | int | float | None = None
+    color: Annotations.rgba_color | None = None
+    border_color: Annotations.rgba_color | None = None
+    border_width: int | float | None = None
+    no_borders: bool = False
+    pos: tuple[int, int] | None = None
+    cached: bool = False
+    standstill: bool = False
+    gradient_support: bool = False
+    image_support: bool = False
+    easy_background: bool = False
+    inline: bool = False
+    cache: Any = None
+    return_type: RenderReturnType = RenderReturnType.Null
+    modify_object: Any = None
+    glassy: bool = False
 
 @dataclass(kw_only=True, slots=True)
 class DrawBaseCall(_BaseCall):
     size: NvVector2 | None = None
+    style: Style | None = None
     radius: tuple[int, int, int, int] | int | float | None = None
     color: Annotations.rgba_color | None = None
     cached: bool = False
@@ -264,6 +297,7 @@ class BaseRenderer(ABC):
             RenderArgs.DrawBorders: self._draw_borders,
             RenderArgs.DrawText: self._draw_text,
             RenderArgs.DrawEffects: self._draw_effects,
+            RenderArgs.DrawBg: self._draw_bg
         }
 
     def configure(self, render_key: RenderConfig, render_arg: type[_RenderArg]):
@@ -275,6 +309,7 @@ class BaseRenderer(ABC):
         self.configure(RenderConfig.DrawL3, RenderArgs.DrawText)
         self.configure(RenderConfig.DrawL4, RenderArgs.DrawCustom)
         self.configure(RenderConfig.DrawL5, RenderArgs.DrawEffects)
+        self.configure(RenderConfig.Special, RenderArgs.DrawBg)
 
     def run(self, key: RenderConfig, call: _BaseCall) -> Any:
         if key not in self._pipeline:
@@ -315,6 +350,9 @@ class BaseRenderer(ABC):
 
     def run_effects(self, call: DrawEffectsCall, key: RenderConfig = RenderConfig.Auto):
         return self._run_spec(call, RenderArgs.DrawEffects, key)
+
+    def run_bg(self, call: DrawBgCall, key: RenderConfig = RenderConfig.Auto):
+        return self._run_spec(call, RenderArgs.DrawBg, key)
 
     def _run_spec(
         self,
@@ -378,4 +416,8 @@ class BaseRenderer(ABC):
 
     @abstractmethod
     def _draw_borders(self, call: DrawBordersCall) -> Any:
+        raise NotImplementedError
+
+    @abstractmethod
+    def _draw_bg(self, call: DrawBgCall) -> Any:
         raise NotImplementedError
