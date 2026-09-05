@@ -36,6 +36,11 @@ cdef class NvParam:
         constant.type = type
         constant.getter = getter
         constant.setter = setter
+        constant.flags = 0
+        if setter is not None:
+            constant.flags |= NvParamFlagSetter
+        if getter is not None:
+            constant.flags |= NvParamFlagGetter
         return constant
 
     def __init__(self, str name, int layer, object value, object default, object type, object getter=None, object setter=None):
@@ -46,6 +51,11 @@ cdef class NvParam:
         self.type = type
         self.getter = getter
         self.setter = setter
+        self.flags = 0
+        if setter is not None:
+            self.flags |= NvParamFlagSetter
+        if getter is not None:
+            self.flags |= NvParamFlagGetter
 
     cpdef bool check(self, value):
         if self.type is TYPING_ANY:
@@ -54,25 +64,30 @@ cdef class NvParam:
 
     cpdef void set(self, value):
         cdef object new_value
-        cdef object actual_setter = _resolve_callable(self.setter)
-
-        if actual_setter is not None:
-            new_value = actual_setter(value)
-            if new_value is not None:
-                self.value = new_value
-                return
+        cdef object actual_setter
 
         if not self.check(value):
             raise TypeError(
                 f"Parameter '{self.name}' must be of type '{self._get_cool_error_message()}', "
                 f"but got '{value} ({type(value).__name__})'."
             )
+
+        if self.flags & NvParamFlagSetter:
+            actual_setter = _resolve_callable(self.setter)
+            if actual_setter is not None:
+                new_value = actual_setter(value)
+                if new_value is not None:
+                    self.value = new_value
+                    return
+
         self.value = value
 
     cpdef object get(self):
-        cdef object actual_getter = _resolve_callable(self.getter)
-        if actual_getter is not None:
-            return actual_getter(self.value)
+        cdef object actual_getter
+        if self.flags & NvParamFlagGetter:
+            actual_getter = _resolve_callable(self.getter)
+            if actual_getter is not None:
+                return actual_getter(self.value)
         return self.value
 
     def __repr__(self) -> str:
@@ -87,4 +102,4 @@ cdef class NvParam:
         return self.type.__name__
 
     cpdef void reset(self):
-        self.value = self.default
+        self.set(self.default)
