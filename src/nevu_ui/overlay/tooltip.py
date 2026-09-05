@@ -64,8 +64,8 @@ class _TooltipBase:
 
         if self.cache.get(CacheType.RlFont):
             md.rl.unload_font(self.cache.get(CacheType.RlFont))  # type: ignore
-        if self.cache.get(CacheType.Scaled_Image):
-            md.rl.unload_texture(self.cache.get(CacheType.Scaled_Image))  # type: ignore
+        if self.cache.get(CacheType.Image):
+            md.rl.unload_texture(self.cache.get(CacheType.Image))  # type: ignore
 
     def clear_all(self):
         if nevu_state.window.renderer_type.raylib:
@@ -77,15 +77,12 @@ class _TooltipBase:
             self._clear_rl_specific()
         self.cache.clear_selected(
             whitelist=[
-                CacheType.Scaled_Image,
                 CacheType.Image,
-                CacheType.Scaled_Gradient,
+                CacheType.Gradient,
                 CacheType.Surface,
                 CacheType.Borders,
-                CacheType.Scaled_Borders,
-                CacheType.Scaled_Background,
                 CacheType.Background,
-                CacheType.Texture,
+                CacheType.SDLTexture,
                 CacheType.RlFont,
                 CacheType.TextArgs,
                 CacheType.ClickTexture,

@@ -136,7 +136,8 @@ class LayoutType(NevuObject):
             CustomFunctions.logic_update |
             CustomFunctions.primary_draw |
             CustomFunctions.secondary_draw_content |
-            CustomFunctions.secondary_update
+            CustomFunctions.secondary_update |
+            CustomFunctions.secondary_draw_end
         )
 
     def _init_objects(self):

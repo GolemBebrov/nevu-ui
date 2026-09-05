@@ -160,7 +160,7 @@ def menu_draw(object self not None):
     _menu_draw(self)
 
 cdef inline void _menu_draw(self):
-    scaled_bg = self.cache.get_or_exec(CacheType.Scaled_Background, self._generate_background)
+    scaled_bg = self.cache.get_or_exec(CacheType.Background, self._generate_background)
     cdef int main_draw = self._main_draw
     if main_draw == 0:
         _menu_draw_pygame(self, scaled_bg)

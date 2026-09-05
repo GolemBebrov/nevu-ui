@@ -80,7 +80,7 @@ cdef class NevuCobject:
         self._has_position_anim = False
         self.node_type = 0
         self._system_callbacks = Callbacks()
-        self.specific_cache_whitelist = [CacheType.Scaled_Image, CacheType.Image, CacheType.Scaled_Gradient, CacheType.Surface,  CacheType.Borders, CacheType.Scaled_Borders, CacheType.Scaled_Background, CacheType.Background, CacheType.Texture, CacheType.RlFont, CacheType.TextArgs, CacheType.ClickTexture]
+        self.specific_cache_whitelist = [CacheType.Image, CacheType.Gradient, CacheType.Surface,  CacheType.Borders, CacheType.Background, CacheType.SDLTexture, CacheType.RlFont, CacheType.TextArgs, CacheType.ClickTexture]
 
     def _add_custom_flags(self, int flags: CustomFunctions):
         self._custom_flags |= <uint8_t>flags

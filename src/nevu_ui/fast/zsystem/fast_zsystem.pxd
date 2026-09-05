@@ -4,8 +4,8 @@ from nevu_ui.fast.nevucobj.nevucobj cimport NevuCobject
 
 cdef class ZRequest:
     @staticmethod
-    cdef ZRequest new(link, 
-                  on_hover_func, on_unhover_func, on_click_func, 
+    cdef ZRequest new(link,
+                  on_hover_func, on_unhover_func, on_click_func,
                   on_keyup_func, on_keyup_abandon_func, on_scroll_func)
     cdef object _link_ref
     cdef public object on_hover_func
@@ -20,7 +20,7 @@ cdef class ZRequest:
 cdef class ZSystem:
     cdef list _registered_requests
     cdef public object last_hovered_request
-    cdef public object clicked_request  
+    cdef public object clicked_request
     cdef public list live_requests
     cdef public bint is_dirty
 

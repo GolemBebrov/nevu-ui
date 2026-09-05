@@ -113,7 +113,7 @@ class ElementSwitcher(Widget):
         super()._lazy_init(size)
         elements: list[Element] = elements or []
         self.elements = Elements.create(*elements)
-        cached_args = self.cache.get_or_exec(
+        self.cache.get_or_exec(
             CacheType.TextArgs,
             lambda: self.renderer.run_text(
                 DrawTextCall(
@@ -124,7 +124,6 @@ class ElementSwitcher(Widget):
                 ),
             ),
         )
-        self._text_rect, self._text_surface = cached_args
         self._create_buttons()
 
     def _init_numerical(self):
@@ -232,7 +231,7 @@ class ElementSwitcher(Widget):
         button_height = self.current_size.y - (bw * 2) - self.button_padding * 2
         button_size = NvVector2(button_width, button_height)
 
-        subtheme_role = self.get_param_strict("subtheme_role").value
+        subtheme_role = self.subtheme_role
         self.button_left = Button(
             self.previous,
             self.left_text,
@@ -240,7 +239,6 @@ class ElementSwitcher(Widget):
             self.style,
             z=self.z + 1,
             inline=True,
-            throw_errors=True,
             invert_on_click=False,
             inverted=self.inverted,
             subtheme_role=subtheme_role,
@@ -423,10 +421,7 @@ class ElementSwitcher(Widget):
                 )
             ),
         )
-        self._text_rect, self._text_surface = cached_args
-        text_rect = self._text_rect
-        text_surface = self._text_surface
-
+        text_rect, text_surface = cached_args
         coordinates = tuple(text_rect)
         self._draw_buttons()
 
@@ -471,7 +466,6 @@ class ElementSwitcher(Widget):
         )
 
     def _kill_base(self):
-        assert self.button_left and self.button_right, "Buttons not initialized"
         super()._kill_base()
         if hasattr(self, "button_left"):
             self.button_left.kill()

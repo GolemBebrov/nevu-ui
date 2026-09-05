@@ -12,5 +12,5 @@ def load_font_with_cyrillic(name: str, size: float):
 
 def load_font(name: str, size: float):
     if nevu_state.window.renderer_type.raylib:
-        return load_font_with_cyrillic(name, size * 1.25)
+        return load_font_with_cyrillic(name, size)
     return md.pygame.Font(name, round(size))
