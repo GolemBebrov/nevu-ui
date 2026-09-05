@@ -8,7 +8,7 @@ from .base_renderer import (
     _BaseSpecifiedDraw,
 )
 from .uni_gradient import Gradient, GradientPygame, GradientRaylib
-
+from .canvas import Canvas
 __all__ = [
     "GradientPygame",
     "GradientRaylib",
