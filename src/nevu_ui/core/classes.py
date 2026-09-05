@@ -1,10 +1,13 @@
 import contextlib
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, TypeGuard, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, TypeGuard
+
 if TYPE_CHECKING:
     from nevu_ui import NvVector2
 from nevu_ui.core.enums import Backend
+
 
 class ConfigType:
     class Window:

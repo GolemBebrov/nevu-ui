@@ -8,6 +8,7 @@ from nevu_ui.overlay.tooltip import Tooltip
 from nevu_ui.presentation.animations import AnimationManager
 from nevu_ui.presentation.color import SubThemeRole
 from nevu_ui.presentation.style import Style
+from nevu_ui.rendering.canvas import Canvas
 
 
 class _NevuObjectKwargsBase(TypedDict, total=False):
@@ -16,6 +17,8 @@ class _NevuObjectKwargsBase(TypedDict, total=False):
     tooltip: Tooltip
     subtheme_role: SubThemeRole
     callbacks: Callbacks | dict
+    canvas: Canvas
+    bg_variant: bool
 
 
 class _NevuObjectKwargsShort(TypedDict, total=False):

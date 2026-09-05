@@ -15,16 +15,19 @@ if TYPE_CHECKING:
 @final
 class NevuState:
     __slots__ = [
+        "_clicked_recently",
+        "_hovered",
         "backend",
         "current_dirty_rects",
         "current_events",
         "dirty_mode",
+        "keyboard_focused",
         "manager",
         "overlay",
         "renderer",
         "tooltip_active",
         "window",
-        "z_system",
+        "z_system"
     ]
 
     def __init__(self):
@@ -42,6 +45,10 @@ class NevuState:
         self.overlay: OverlayManager | None = None
 
         self.backend: Backend | None = None
+
+        self._clicked_recently: int = 0
+        self._hovered: int = 0
+        self.keyboard_focused: bool = False
 
     def clear_events(self):
         if self.current_events:
