@@ -1,9 +1,9 @@
 from .border import BorderShader
-from .sdf import SdfShader
 from .line import LineSdfShader
+from .sdf import SdfShader
 
 __all__ = [
     "BorderShader",
-    "SdfShader",
-    "LineSdfShader"
+    "LineSdfShader",
+    "SdfShader"
 ]
