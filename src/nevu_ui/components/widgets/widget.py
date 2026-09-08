@@ -1,12 +1,12 @@
 from typing import Unpack, overload
 
 import nevu_ui.core.modules as md
-from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components._typehints import (
     WidgetKwargs,
     WidgetKwargsLong,
     WidgetKwargsShort,
 )
+from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.core import Annotations
 from nevu_ui.core.classes import SurfaceLike
 from nevu_ui.core.enums import (
