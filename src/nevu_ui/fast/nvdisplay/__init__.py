@@ -1,8 +1,13 @@
-from .display import WindowRendererBase, WindowRendererPygame, WindowRendererSdl, WindowRendererRaylib
+from .display import (
+    WindowRendererBase,
+    WindowRendererPygame,
+    WindowRendererRaylib,
+    WindowRendererSdl,
+)
 
 __all__ = [
     "WindowRendererBase",
     "WindowRendererPygame",
-    "WindowRendererSdl",
-    "WindowRendererRaylib"
+    "WindowRendererRaylib",
+    "WindowRendererSdl"
 ]

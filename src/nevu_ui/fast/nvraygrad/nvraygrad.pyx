@@ -4,13 +4,13 @@ from nevu_ui.fast.nvrendertex.nv_render_tex cimport NvRenderTexture
 from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2
 from nevu_ui.fast.nvshader.nvshader cimport NvShader
 import nevu_ui.core.modules as md
-from nevu_ui.fast import GradientShader
+from nevu_ui.fast.shaders import GradientShader
 from nevu_ui.rendering.pygame.gradient import GradientPygame
 from nevu_ui.core import GradientType
 from libcpp.vector cimport vector
 from nevu_ui.fast.raylib.nevu_raylib cimport (
     begin_blend_mode, end_blend_mode, begin_texture_mode, end_texture_mode, begin_nvshader_mode, end_shader_mode, draw_texture_pro,
-    set_nvshader_value_float, get_nvshader_location, set_nvshader_value_vec4_v, set_nvshader_value_float_v, set_nvshader_value_int, 
+    set_nvshader_value_float, get_nvshader_location, set_nvshader_value_vec4_v, set_nvshader_value_float_v, set_nvshader_value_int,
     set_nvshader_value_vec2_nvvec, Vector4, set_nvshader_value_vec2_tuple
     )
 from libcpp.numeric cimport accumulate
@@ -46,7 +46,7 @@ cdef class GradientRaylib:
         self.raw_colors = colors
         self.type = type
         self._transparency = transparency if transparency is not None else 255
-        
+
         self._angle = 0.0
         self._center = NvVector2.new(0.5, 0.5)
 
@@ -78,7 +78,7 @@ cdef class GradientRaylib:
             self._angle = <float>angle
         if center is not None:
             self._center = NvVector2.new(center[0], center[1])
-        
+
         self._update_colors(colors)
         self._ensure_resources()
 
@@ -86,7 +86,7 @@ cdef class GradientRaylib:
         self._colors.clear()
         cdef vector[float] weights
         weights.clear()
-        
+
         self._colors.reserve(len(colors))
         weights.reserve(len(colors))
         for item in colors:
@@ -99,13 +99,13 @@ cdef class GradientRaylib:
         total_weight = accumulate(weights.begin(), weights.end(), 0.0)
         if total_weight <= 0:
             total_weight = 1.0
-        
+
         cdef vector[float] boundaries = <vector[float]>[0.0]
         cdef float current = 0.0
         for w in weights:
             current += w / total_weight
             boundaries.push_back(current)
-        
+
         self._stops = <vector[float]>[]
         n = weights.size()
         for i in range(n):
@@ -165,7 +165,7 @@ cdef class GradientRaylib:
         global _LOC_TYPE, _LOC_ANGLE, _LOC_CENTER, _LOC_COLORS, _LOC_STOPS, _LOC_COUNT, _LOC_ALPHA, _LOC_SIZE
         if _SHARED_SHADER == None:
             _SHARED_SHADER = NvShader.c_create_from_code(GradientShader.VERTEX_SHADER, GradientShader.FRAGMENT_SHADER)
-            
+
             _LOC_TYPE = get_nvshader_location(_SHARED_SHADER, "gradientType")
             _LOC_ANGLE = get_nvshader_location(_SHARED_SHADER, "angle")
             _LOC_CENTER = get_nvshader_location(_SHARED_SHADER, "centerPos")
@@ -195,16 +195,16 @@ cdef class GradientRaylib:
         set_nvshader_value_vec2_nvvec(_SHARED_SHADER, _LOC_SIZE, size)
 
         cdef NvRenderTexture target = NvRenderTexture.new(size)
-        
+
         begin_texture_mode(target.render_texture)
         begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
         begin_nvshader_mode(_SHARED_SHADER)
         target.c_fast_clear((0, 0, 0, 0))
-        
+
         source_rec = (0, 0, 1, 1)
         dest_rec = (0, 0, width, height)
         draw_texture_pro(_SHARED_BLANK_TEXTURE, source_rec, dest_rec, (0, 0), 0.0, (255, 255, 255, 255))
-        
+
         end_shader_mode()
         end_blend_mode()
         end_texture_mode()
@@ -224,7 +224,7 @@ cdef class ClickGradient(GradientRaylib):
                 self.weights.push_back(float(item[1]))
             else:
                 self.weights.push_back(1.0)
-        
+
         self._colors.clear()
         self._colors.reserve(len(colors))
         for item in colors:
@@ -252,7 +252,7 @@ cdef class ClickGradient(GradientRaylib):
         total_weight = accumulate(self.weights.begin(), self.weights.end(), 0.0)
         if total_weight <= 0:
             total_weight = 1.0
-            
+
         cdef vector[float] boundaries
         boundaries.clear()
         boundaries.push_back(0.0)
@@ -261,7 +261,7 @@ cdef class ClickGradient(GradientRaylib):
             w = self.weights[i]
             current += w / total_weight
             boundaries.push_back(current)
-            
+
         self._stops.clear()
         cdef size_t n = self.weights.size()
         for i in range(n):
@@ -278,12 +278,12 @@ cdef class ClickGradient(GradientRaylib):
 
     def draw(self, float x, float y, float width, float height):
         self._ensure_resources()
-    
+
         gradient_type_int = 0 if self.type == GradientType.Linear else 1
         alpha_val = (self._transparency / 255.0)
-        
+
         cdef NvVector2 size = NvVector2.new(width, height)
-        
+
         set_nvshader_value_int(_SHARED_SHADER, _LOC_TYPE, gradient_type_int)
         set_nvshader_value_float(_SHARED_SHADER, _LOC_ANGLE, self._angle)
         set_nvshader_value_vec2_tuple(_SHARED_SHADER, _LOC_CENTER, (self._center.x, self._center.y))
@@ -292,11 +292,11 @@ cdef class ClickGradient(GradientRaylib):
         set_nvshader_value_vec4_v(_SHARED_SHADER, _LOC_COLORS, self._colors)
         set_nvshader_value_float_v(_SHARED_SHADER, _LOC_STOPS, self._stops)
         set_nvshader_value_vec2_nvvec(_SHARED_SHADER, _LOC_SIZE, size)
-        
+
         begin_nvshader_mode(_SHARED_SHADER)
-        
+
         source_rec = (0, 0, 1, 1)
         dest_rec = (x, y, width, height)
         draw_texture_pro(_SHARED_BLANK_TEXTURE, source_rec, dest_rec, (0, 0), 0.0, md.rl.WHITE)
-        
+
         end_shader_mode()

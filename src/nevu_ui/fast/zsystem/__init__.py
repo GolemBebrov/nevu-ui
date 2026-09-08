@@ -1,3 +1,3 @@
-from .fast_zsystem import ZSystem, ZRequest
+from .fast_zsystem import ZRequest, ZSystem
 
-__all__ = ["ZSystem", "ZRequest"]
+__all__ = ["ZRequest", "ZSystem"]
