@@ -3,13 +3,13 @@ from __future__ import annotations
 import copy
 from collections.abc import Iterator
 from itertools import chain
-from typing import TYPE_CHECKING, Any, NotRequired, TypeGuard, Unpack
+from typing import TYPE_CHECKING, Any, TypeGuard, Unpack
 
 if TYPE_CHECKING:
     from nevu_ui.menu import Menu
 import nevu_ui.core.modules as md
-from nevu_ui.components.layouts.typehints import LayoutTemplate
-from nevu_ui.components.nevuobj import NevuObject, NevuObjectKwargs
+from nevu_ui.components._typehints import LayoutTemplate, LayoutTypeKwargs
+from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.classes import BorderConfig
@@ -40,10 +40,6 @@ from nevu_ui.overlay import overlay
 from nevu_ui.presentation.style import Style, StyleKwargs
 
 
-class LayoutTypeKwargs(NevuObjectKwargs):
-    borders: NotRequired[BorderConfig]
-
-
 class LayoutType(NevuObject):
     items: list[NevuObject]
     floating_items: list[NevuObject]
@@ -66,7 +62,8 @@ class LayoutType(NevuObject):
             return
         norm_size = self.current_size.to_round().get_int_tuple()
         abs_coords = self.absolute_coordinates.to_round()
-        borders: BorderConfig = self.get_param_strict("borders").value
+        borders = self.borders
+        assert borders
         if len(borders.color) == 3:
             borders.color = (*borders.color, 255)
         md.rl.draw_rectangle_lines_ex(

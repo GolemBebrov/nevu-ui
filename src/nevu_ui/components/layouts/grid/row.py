@@ -1,11 +1,11 @@
 from typing import Unpack, overload
 
-from nevu_ui.components.layouts.grid.base import (
-    Grid,
+from nevu_ui.components._typehints import (
     _GridKwargs_rc,
     _GridKwargs_uni,
     _GridKwargs_xy,
 )
+from nevu_ui.components.layouts.grid.base import Grid
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.core import Annotations
 

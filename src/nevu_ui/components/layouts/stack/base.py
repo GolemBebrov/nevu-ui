@@ -2,29 +2,22 @@ from __future__ import annotations
 
 import copy
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, NotRequired, TypedDict, Unpack
+from typing import TYPE_CHECKING, Unpack
 
 if TYPE_CHECKING:
     from nevu_ui.menu import Menu
-from nevu_ui.components.layouts import LayoutType, LayoutTypeKwargs
+from nevu_ui.components._typehints import StackKwargs
+from nevu_ui.components.layouts import LayoutType
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import Align, CustomFunctions
-from nevu_ui.fast.logic.fast_logic import base_light_update, draw_widgets_optimized
-from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.core.size.rules import (
     SizeRule,
     _all_fillx,
 )
-
-class _StackKwargs(TypedDict):
-    spacing: NotRequired[int | float]
-    basic_alignment: NotRequired[Align]
-
-
-class StackKwargs(_StackKwargs, LayoutTypeKwargs):
-    pass
+from nevu_ui.fast.logic.fast_logic import base_light_update, draw_widgets_optimized
+from nevu_ui.fast.nvvector2 import NvVector2
 
 
 # Nnna nanachi approved!
@@ -116,14 +109,6 @@ class StackBase(LayoutType, ABC):
 
     def secondary_draw_content(self):
         draw_widgets_optimized(self, self.items, LayoutType, Widget)
-
-    @property
-    def spacing(self):
-        return self.get_param_strict("spacing").value
-
-    @spacing.setter
-    def spacing(self, val):
-        self.set_param_value("spacing", val)
 
     def _regenerate_coordinates(self):
         super()._regenerate_coordinates()

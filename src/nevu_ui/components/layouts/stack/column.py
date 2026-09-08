@@ -1,7 +1,7 @@
 from nevu_ui.components.layouts.stack.base import StackBase
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.core.enums import Align
-from nevu_ui.fast.logic.fast_logic import py_get_item_abs_coords, rl_predraw_widgets
+from nevu_ui.fast.logic.fast_logic import py_get_item_abs_coords
 
 
 class StackColumn(StackBase):

@@ -2,7 +2,7 @@ from collections.abc import Callable
 from typing import Any, Unpack, overload
 
 import nevu_ui.core.modules as md
-from nevu_ui.components.widgets.typehints import (
+from nevu_ui.components._typehints import (
     ProgressBarKwargsLong,
     ProgressBarKwargsShort,
 )

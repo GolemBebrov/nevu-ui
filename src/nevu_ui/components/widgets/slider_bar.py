@@ -1,12 +1,12 @@
 from typing import Unpack, overload
 
 import nevu_ui.core.modules as md
-from nevu_ui.components.widgets.progress_bar import ProgressBar
-from nevu_ui.components.widgets.typehints import (
+from nevu_ui.components._typehints import (
     SliderKwargs,
     SliderKwargsLong,
     SliderKwargsShort,
 )
+from nevu_ui.components.widgets.progress_bar import ProgressBar
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import (
@@ -15,7 +15,6 @@ from nevu_ui.core.enums import (
     CacheType,
     CustomFunctions,
     ParamLayer,
-    RenderConfig,
     RenderReturnType,
 )
 from nevu_ui.core.state import nevu_state
@@ -311,8 +310,9 @@ class Slider(Widget):
 
     def _kill_base(self):
         super()._kill_base()
-        self.progress_bar.kill()
-        self.progress_bar = None
+        if self.progress_bar:
+            self.progress_bar.kill()
+            self.progress_bar = None
 
 # NOT CLASS FUNCTIONS
 

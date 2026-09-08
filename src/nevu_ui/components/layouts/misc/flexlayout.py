@@ -1,7 +1,8 @@
 import copy
 from typing import Unpack
 
-from nevu_ui.components.layouts.layout_base import LayoutType, LayoutTypeKwargs
+from nevu_ui.components._typehints import _FlexLayoutKwargs
+from nevu_ui.components.layouts.layout_base import LayoutType
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core.enums import (
@@ -21,14 +22,6 @@ from nevu_ui.fast.nvvector2 import NvVector2
 MAIN_LEN_STR = "main_len"
 SEC_LEN_STR = "sec_len"
 ITEMS_STR = "items"
-
-class _FlexLayoutKwargs(LayoutTypeKwargs, total=False):
-    direction: FlexDirection
-    wrap: bool
-    justify_content: FlexJustify
-    align_items: Align
-    gap: int | float | NvVector2
-    max_wrap_size: int | float
 
 class FlexLayout(LayoutType):
     _supports_global_size = False

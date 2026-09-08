@@ -1,8 +1,12 @@
 import math
-from typing import NotRequired, TypedDict, Unpack, overload
+from typing import Unpack, overload
 
+from nevu_ui.components._typehints import (
+    _GridKwargs_rc,
+    _GridKwargs_uni,
+    _GridKwargs_xy,
+)
 from nevu_ui.components.layouts import LayoutType
-from nevu_ui.components.layouts import LayoutTypeKwargs as _LayoutTypeKwargs
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
@@ -14,28 +18,6 @@ from nevu_ui.fast.logic.fast_logic import (
     py_get_item_abs_coords,
 )
 from nevu_ui.fast.nvvector2 import NvVector2
-
-
-class _Grid_Specifics_rc(TypedDict):
-    row: NotRequired[int | float]
-    column: NotRequired[int | float]
-
-
-class _Grid_Specifics_xy(TypedDict):
-    x: NotRequired[int | float]
-    y: NotRequired[int | float]
-
-
-class _GridKwargs_rc(_Grid_Specifics_rc, _LayoutTypeKwargs):
-    pass
-
-
-class _GridKwargs_xy(_Grid_Specifics_xy, _LayoutTypeKwargs):
-    pass
-
-
-class _GridKwargs_uni(_GridKwargs_rc, _GridKwargs_xy, _LayoutTypeKwargs):
-    pass
 
 
 class Grid(LayoutType):

@@ -47,7 +47,7 @@ class ScrollableRow(ScrollableBase):
 
     def _set_item_main(self, item: NevuObject, align: Align):
         container_height, widget_height = self.current_size.y, item.current_size.y
-        padding = self.rely(self.get_param_strict("spacing").value)
+        padding = self.rely(self.spacing)
         item_coords = item.coordinates
 
         value = 0
@@ -61,7 +61,7 @@ class ScrollableRow(ScrollableBase):
 
     def _regenerate_max_values(self):
         assert nevu_state.window, "Window is not initialized"
-        pad = self.relx(self.get_param_strict("spacing").value)
+        pad = self.relx(self.spacing)
         total_content_width = pad
         for item in self.items:
             total_content_width += item.current_size.x + pad

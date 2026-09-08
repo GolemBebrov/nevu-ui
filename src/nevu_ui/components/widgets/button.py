@@ -4,8 +4,8 @@ import copy
 from collections.abc import Callable
 from typing import Unpack
 
+from nevu_ui.components._typehints import ButtonKwargs
 from nevu_ui.components.widgets.label import Label
-from nevu_ui.components.widgets.typehints import ButtonKwargs
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import BindType
 
@@ -61,3 +61,5 @@ def _button_on_keyup(self):
             print(
                 f"Error in Button(id = {self.id}, text = {self.text!r}) function: {e}"
             )
+
+__all__ = ["Button"]

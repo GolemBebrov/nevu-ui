@@ -1,9 +1,9 @@
-import copy
 import math
-from typing import Any, Callable, Unpack
+from collections.abc import Callable
+from typing import Any, Unpack
 
 import nevu_ui.core.modules as md
-from nevu_ui.components.widgets.typehints import InputKwargs
+from nevu_ui.components._typehints import InputKwargs
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import BindType, CustomFunctions, RenderReturnType
@@ -13,7 +13,6 @@ from nevu_ui.fast.nvrendertex import NvRenderTexture
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.fast.raylib.nevu_raylib import begin_blend_mode, end_blend_mode
 from nevu_ui.presentation.color import Color
-from nevu_ui.presentation.style import Style
 from nevu_ui.rendering import DrawTextCall
 from nevu_ui.utils import Keys, keyboard, mouse
 

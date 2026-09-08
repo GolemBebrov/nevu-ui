@@ -1,10 +1,8 @@
-import copy
 from collections.abc import Callable
 from typing import Any, Unpack
 
 import nevu_ui.core.modules as md
-from nevu_ui.components.nevuobj.typehints import nevu_object_globals
-from nevu_ui.components.widgets.typehints import RectCheckBoxKwargs
+from nevu_ui.components._typehints import RectCheckBoxKwargs, nevu_object_globals
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import BindType, RenderReturnType

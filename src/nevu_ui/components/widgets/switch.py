@@ -3,7 +3,7 @@ from collections.abc import Callable
 from typing import Unpack
 
 import nevu_ui.core.modules as md
-from nevu_ui.components.widgets.typehints import SwitchKwargs, SwitchTemplate
+from nevu_ui.components._typehints import SwitchKwargs, SwitchTemplate
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations, nevu_state
 from nevu_ui.core.enums import (

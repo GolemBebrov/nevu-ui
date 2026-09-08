@@ -1,20 +1,11 @@
-from typing import Any, NotRequired
+from typing import Any
 
-from nevu_ui.components.layouts import Grid, _GridKwargs_uni
+from nevu_ui.components.layouts import Grid
 from nevu_ui.components.widgets import Input, Label
 from nevu_ui.core.enums import Align
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.presentation.style import Style, default_style
 from nevu_ui.utils import InputType
-
-
-class ColorPickerKwargs(_GridKwargs_uni):
-    on_change_function: NotRequired[Any]
-    raise_errors: NotRequired[bool]
-    item_size: NotRequired[NvVector2]
-    margin: NotRequired[int]
-    input_style: NotRequired[Style]
-    label_style: NotRequired[Style]
 
 
 class ColorPicker(Grid):

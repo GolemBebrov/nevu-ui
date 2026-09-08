@@ -2,7 +2,7 @@ from typing import Unpack, overload
 
 import nevu_ui.core.modules as md
 from nevu_ui.components.nevuobj import NevuObject
-from nevu_ui.components.widgets.typehints import (
+from nevu_ui.components._typehints import (
     WidgetKwargs,
     WidgetKwargsLong,
     WidgetKwargsShort,
@@ -151,20 +151,6 @@ class Widget(NevuObject):
         self._anim_bg_color_old = None
         self._sdl2_cached_texture = None
 
-        assert nevu_state.window, "Window not initialized!"
-
-        if (
-            self.get_param_strict("ripple_effect").value
-            and nevu_state.window.renderer_type.raylib
-        ):
-            self._click_anim_manager = AnimationManager(warn=False)
-            self._click_gradient = ClickGradient(
-                [((255, 255, 255, 255), 0), (255, 255, 255, 0)], center=(0.5, 0.5)
-            )
-            self._click_texture = None
-        else:
-            self._click_anim_manager = None
-
     def _system_callback_binds(self):
         super()._system_callback_binds()
         self._system_callbacks.bind(BindType.Hover, _widget_on_hover_change)
@@ -293,6 +279,17 @@ class Widget(NevuObject):
             return
         self._normalize_borderradius()
         self._regen_surface()
+        if (
+            self.ripple_effect
+            and nevu_state.window.renderer_type.raylib
+        ):
+            self._click_anim_manager = AnimationManager(warn=False)
+            self._click_gradient = ClickGradient(
+                [((255, 255, 255, 255), 0), (255, 255, 255, 0)], center=(0.5, 0.5)
+            )
+            self._click_texture = None
+        else:
+            self._click_anim_manager = None
 
     def _on_subtheme_role_change(self):
         super()._on_subtheme_role_change()
@@ -519,7 +516,7 @@ def _widget_on_click(self):
     if not self.clickable:
         return
     if (
-        self.get_param_strict("ripple_effect").value
+        self.ripple_effect
         and nevu_state.window.renderer_type.raylib
     ):
         self._click_started = True

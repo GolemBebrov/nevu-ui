@@ -10,7 +10,8 @@ from nevu_ui.rendering.canvas import Canvas, CanvasLineData, CanvasRectData
 if TYPE_CHECKING:
     from pyray import Font
 
-from nevu_ui.components.nevuobj.typehints import (
+#Киширика киширису наносит ответный удар.
+from nevu_ui.components._typehints import (
     NevuObjectKwargs,
     NevuObjectKwargsLong,
     NevuObjectKwargsShort,
@@ -33,7 +34,6 @@ from nevu_ui.core.state import nevu_state
 from nevu_ui.fast import Cache, NevuCobject, NvVector2, ZRequest
 from nevu_ui.fast.logic import get_rect_helper
 from nevu_ui.overlay.tooltip import Tooltip
-from nevu_ui.parser.base import standart_config
 from nevu_ui.presentation.animations import AnimationManager
 from nevu_ui.presentation.color import SubThemeRole
 from nevu_ui.presentation.style import Style, default_style
@@ -347,8 +347,8 @@ class NevuObject(NevuCobject):
         self._apply_params(layer, **kwargs)
 
     def _init_style(self, style: Style | str):
-
         if isinstance(style, str):
+            from nevu_ui.parser.base import standart_config
             if result := standart_config.styles.get(style, None):
                 self.style = result
             else:

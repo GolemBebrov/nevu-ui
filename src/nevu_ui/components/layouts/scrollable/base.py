@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import weakref
 from abc import ABC, abstractmethod
-from typing import Any, NotRequired, TypeGuard, Unpack
+from typing import Any, TypeGuard, Unpack
 
-from nevu_ui.components.layouts import LayoutType, LayoutTypeKwargs
-from nevu_ui.components.layouts.typehints import AlignTemplate
+from nevu_ui.components._typehints import AlignTemplate, ScrollableKwargs
+from nevu_ui.components.layouts import LayoutType
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
@@ -32,21 +32,6 @@ from nevu_ui.overlay import overlay
 from nevu_ui.presentation.color import SubThemeRole
 from nevu_ui.presentation.style import Style
 from nevu_ui.utils import keyboard, mouse
-
-
-class _ScrollableKwargs(LayoutTypeKwargs):
-    arrow_scroll_power: NotRequired[float | int]
-    wheel_scroll_power: NotRequired[float | int]
-    inverted_scrolling: NotRequired[bool]
-    scrollbar_perc: NotRequired[NvVector2 | None]
-    basic_alignment: NotRequired[Align]
-    append_key: NotRequired[Any]
-    descend_key: NotRequired[Any]
-    spacing: NotRequired[int | float]
-
-
-class ScrollableKwargs(_ScrollableKwargs, LayoutTypeKwargs):
-    pass
 
 
 class ScrollableBase(LayoutType, ABC):
