@@ -1,76 +1,80 @@
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.utils.time import time
 
-if TYPE_CHECKING:
-    from nevu_ui.core.annotations import Annotations
-
 
 class Animation:
+    """
+    Base Nevu-UI animation class.
+    ### do not use.
+    """
     __slots__ = [
-        "max_time",
-        "curr_time",
-        "start",
-        "end",
-        "ended",
+        "_check_errors",
+        "current_time",
         "current_value",
         "easing_func",
-        "check_errors",
+        "end",
+        "ended",
+        "max_time",
+        "start",
     ]
 
     def __init__(
         self,
-        start,
-        end,
-        time: int | float = 1,
+        start: Any,
+        end: Any,
+        time: float = 1,
         easing_func: Callable | None = None,
         check_errors: bool = False,
     ):
         self.max_time = time
-        self.curr_time = 0
+        self.current_time = 0
         self.start = start
         self.end = end
         self.ended = False
         self.current_value = None
         self.easing_func = easing_func
-        self.check_errors = check_errors
+        self._check_errors = check_errors
 
     def _update_current_value(self, value):
-        if not self.easing_func:
+        easing_func = self.easing_func
+        if not easing_func:
             return value
-        if not self.check_errors:
-            return self.easing_func(value)
+        if not self._check_errors:
+            return easing_func(value)
         try:
-            return self.easing_func(value)
+            return easing_func(value)
         except Exception as e:
             print(f"Error occured during execution of Animation easing function: {e}")
             return value
 
-    def _apply_easing(self, eased_value):
+    def _apply_easing(self, eased_value: float):
         pass
 
     def update(self):
         if self.ended:
             return
-        curtime = self.curr_time
-        maxtime = self.max_time
-        eased_value = self._update_current_value(curtime / maxtime)
+        current_time = self.current_time
+        max_time = self.max_time
+        eased_value = self._update_current_value(current_time / max_time)
         self._apply_easing(eased_value)
-        curtime += time.dt
-        if curtime >= maxtime:
-            curtime = maxtime
+        current_time += time.dt
+        if current_time >= max_time:
+            current_time = max_time
             self.ended = True
             self.current_value = self.end
-        self.curr_time = curtime
+        self.current_time = current_time
 
     def reset(self):
-        self.curr_time = 0
+        self.current_time = 0
         self.ended = False
 
     def revert_time(self):
-        self.curr_time = self.max_time
+        self.current_time = self.max_time
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}<from {self.start} to {self.end}; {self.current_time:.2f}:{self.max_time}s>"
 
 class Vector2Animation(Animation):
     __slots__ = ()
@@ -79,7 +83,7 @@ class Vector2Animation(Animation):
         self,
         start: NvVector2 | tuple | list,
         end: NvVector2 | tuple | list,
-        time: int | float = 1,
+        time: float = 1,
         easing_func: Callable | None = None,
         check_errors: bool = False,
     ):
@@ -90,9 +94,11 @@ class Vector2Animation(Animation):
     def _apply_easing(self, eased_value):
         if isinstance(eased_value, tuple):
             progress, offset = eased_value
+            start, end = self.start, self.end
+            start_x, start_y = start[0], start[1]
             self.current_value = NvVector2.from_xy(
-                self.start[0] + (self.end[0] - self.start[0]) * progress + offset[0],
-                self.start[1] + (self.end[1] - self.start[1]) * progress + offset[1],
+                start_x + (end[0] - start_x) * progress + offset[0],
+                start_y + (end[1] - start_y) * progress + offset[1],
             )
         else:
             self.current_value = NvVector2(
@@ -110,7 +116,7 @@ class ColorAnimation(Animation):
         self,
         start,
         end,
-        time: int | float = 1,
+        time: float = 1,
         easing_func: Callable | None = None,
         check_errors: bool = False,
     ):
@@ -141,7 +147,7 @@ class FloatAnimation(Animation):
         self,
         start: float,
         end: float,
-        time: int | float = 1,
+        time: float = 1,
         easing_func: Callable | None = None,
         check_errors: bool = False,
     ):
@@ -183,7 +189,7 @@ class AnimationQueue(Animation):
             else:
                 self.ended = True
                 self.current_value = self.end
-        self.curr_time = min(self.max_time, self.curr_time + time.dt)
+        self.current_time = min(self.max_time, self.current_time + time.dt)
 
     def reset(self):
         super().reset()
