@@ -10,15 +10,15 @@ manager_created = False
 
 class Manager:
     __slots__ = (
-        "_window",
-        "running",
-        "force_quit",
         "_background",
         "_fps",
-        "_static_run",
-        "init",
         "_started",
+        "_static_run",
+        "_window",
+        "force_quit",
+        "init",
         "menus",
+        "running",
     )
 
     def __new__(cls, *args, **kwargs):

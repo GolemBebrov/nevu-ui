@@ -82,7 +82,6 @@ _kwargs_to_param = {
     "debounce": ("debounce", bool, True),
 }
 
-@final
 class Window:
     _renderer: WindowRendererBase
     __slots__ = [
@@ -548,3 +547,5 @@ class ConfiguredWindow(Window):
             resizable=resizeable,
             base_fps=base_fps,
         )
+
+__all__ = ["ConfiguredWindow", "InitializedWindow", "Window"]
