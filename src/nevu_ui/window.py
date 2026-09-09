@@ -348,6 +348,31 @@ class Window:
             self.pygame_unicode = None
         self._clock.tick(fps)
 
+    def update_events(self, events: list | None = None):
+        """Manual event update for pygame backend"""
+        nevu_state.current_events = events
+
+    def update_utils(self, events: list | None = None):
+        """Manual utils update"""
+        window_update_utils(events)
+
+    def update_zsystem(self):
+        """Manual zsystem update"""
+        self.z_system.cycle(
+            mouse.pos,
+            mouse.left_fdown,
+            mouse.left_up,
+            mouse.any_wheel,
+            mouse.wheel_down,
+        )
+
+    def update_minimal(self, events: list | None = None):
+        """NOT recomended, may cause bugs"""
+        self.update_events(events)
+        self.update_utils(events)
+        self.update_zsystem()
+        self.renderer.update()
+
     def update(self, events=None, fps: int | None = None):
         """Events required only for pygame backend"""
         if events is None and self.renderer_type.pygame_like:
@@ -525,7 +550,6 @@ class InitializedWindow(Window):
             self._clock = md.pygame.time.Clock()
 
         self.begin_frame = self._renderer.begin_frame
-        self.end_frame = self._renderer.end_frame
 
 
 class ConfiguredWindow(Window):
