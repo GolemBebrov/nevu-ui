@@ -17,7 +17,8 @@ from libc.stdint cimport uint8_t
 cdef class NevuCobject:
     cdef public bint _sended_z_link, _dragging, _is_kup, _kup_abandoned, _force_state_set_continue, _visible, _active, _changed, _first_update, _wait_mode, _dead, booted
     cdef public NvVector2 coordinates, absolute_coordinates, size, _resize_ratio,
-    cdef public object _style, hover_state, _system_callbacks
+    cdef public object _style, hover_state
+    cdef public object _system_callbacks # type: Callbacks
     cdef public list params, _blacklisted_params, _next_frame_functions
     cdef public unsigned short node_type #1 - layout, 0 - widget
     cdef public dict _params_map, _param_links

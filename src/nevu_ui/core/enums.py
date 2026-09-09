@@ -1,6 +1,6 @@
+from collections.abc import Callable
 from dataclasses import dataclass
-from enum import Enum, IntEnum, StrEnum, auto, IntFlag
-from typing import Callable
+from enum import Enum, IntEnum, IntFlag, StrEnum, auto
 
 # Svalka
 # faputa approved

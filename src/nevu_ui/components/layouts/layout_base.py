@@ -23,7 +23,7 @@ from nevu_ui.core.size.rules import (
     Fill,
     FillH,
     FillW,
-    SizeRule,
+    _SizeRule,
     Vh,
     Vw,
     _all_fillx,
@@ -195,7 +195,7 @@ class LayoutType(NevuObject):
     def _percent_helper(size, value):
         return size / 100 * value
 
-    def _parse_vx(self, viewport_rule: SizeRule, viewport_type: type[SizeRule], pos: int) -> float | None:
+    def _parse_vx(self, viewport_rule: _SizeRule, viewport_type: type[_SizeRule], pos: int) -> float | None:
         if self.first_parent_menu is None:
             raise self._unconnected_layout_error("Vx like coords")
         if self.first_parent_menu._window is None:
@@ -209,7 +209,7 @@ class LayoutType(NevuObject):
         elif viewport_type is Vh:
             return self._percent_helper(self.first_parent_menu._window.original_size.y, viewport_rule.value)
 
-    def _parse_fillx(self, fill_rule: SizeRule, fill_type: type[SizeRule], pos: int) -> float | None:
+    def _parse_fillx(self, fill_rule: _SizeRule, fill_type: type[_SizeRule], pos: int) -> float | None:
         if self.first_parent_menu is None:
             raise self._unconnected_layout_error("FillX coords")
         if self.first_parent_menu._window is None:
@@ -227,14 +227,14 @@ class LayoutType(NevuObject):
         elif fill_type is CFillH:
             return self._percent_helper(self._no_borders_current_size.y, fill_rule.value)
 
-    def _parse_gcx(self, grid_cell_rule: SizeRule, grid_cell_type: type[SizeRule], pos: int):
+    def _parse_gcx(self, grid_cell_rule: _SizeRule, grid_cell_type: type[_SizeRule], pos: int):
         if grid_cell_type in _all_gcx:
             raise ValueError(
                 f"Handling for SizeRule '{grid_cell_type.__name__}' is only Grid feature"
             )
 
     def _size_rule_to_number(self, size_rule, pos: int = 0) -> float:
-        if not isinstance(size_rule, SizeRule):
+        if not isinstance(size_rule, _SizeRule):
             return size_rule
         result = None
         rule_type = type(size_rule)

@@ -29,7 +29,7 @@ from nevu_ui.core.enums import (
     ParamLayer,
     RenderReturnType,
 )
-from nevu_ui.core.size.rules import Px, SizeRule
+from nevu_ui.core.size.rules import Px, _SizeRule
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast import Cache, NevuCobject, NvVector2, ZRequest
 from nevu_ui.fast.logic import get_rect_helper
@@ -68,6 +68,7 @@ class NevuObject(NevuCobject):
     callbacks: Callbacks
     canvas: Canvas | None
     bg_variant: bool
+    _system_callbacks: Callbacks
     # ==============
 
     renderer: BaseRenderer
@@ -407,14 +408,15 @@ class NevuObject(NevuCobject):
         else:
             self.renderer = PygameRenderer(self)
         self.renderer.base_configure()
+        print(size)
         self.size = size if isinstance(size, NvVector2) else NvVector2(size)
         self.original_size = self.size.copy()
         self._system_callback_binds()
 
     def _handle_size_rules(
-        self, number: SizeRule | float
-    ) -> SizeRule | int | float:
-        if isinstance(number, SizeRule):
+        self, number: _SizeRule | float
+    ) -> _SizeRule | int | float:
+        if isinstance(number, _SizeRule):
             if type(number) == Px:
                 return number.value
             else:

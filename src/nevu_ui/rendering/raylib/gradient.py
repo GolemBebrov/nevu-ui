@@ -137,7 +137,7 @@ class AnimatedGradient(GradientRaylib):
                 changed = True
         if self.center_initalized:
             new_center = self.animation_manager.get_animation_value(self.CenterBase)
-            if new_center != old_center and new_center is not None:
+            if new_center is not None and old_center is not None and new_center != old_center :
                 self.center = new_center
                 changed = True
         if self.transparency_initalized:

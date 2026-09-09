@@ -10,7 +10,7 @@ from nevu_ui.components.layouts import LayoutType
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
-from nevu_ui.core.size.base import SizeRule
+from nevu_ui.core.size.base import _SizeRule
 from nevu_ui.core.size.rules import Cgc, Cgch, Cgcw, Gc, Gch, Gcw
 from nevu_ui.fast.logic.fast_logic import (
     base_light_update,
@@ -103,7 +103,7 @@ class Grid(LayoutType):
     def secondary_update(self, *args):
         base_light_update(self)
 
-    def _parse_gcx(self, grid_cell_rule: SizeRule, grid_cell_type: type[SizeRule], pos: int):  # type: ignore
+    def _parse_gcx(self, grid_cell_rule: _SizeRule, grid_cell_type: type[_SizeRule], pos: int):  # type: ignore
         if self.first_parent_menu is None:
             raise self._unconnected_layout_error("Gcx coords")
         if self.first_parent_menu._window is None:
@@ -112,19 +112,19 @@ class Grid(LayoutType):
         if coord_type is Gc:
             return self._percent_helper(
                 (self.cell_width, self.cell_height)[pos], grid_cell_rule.value
-            ), True
+            )
         elif coord_type is Gcw:
-            return self._percent_helper((self.cell_width), grid_cell_rule.value), True
+            return self._percent_helper((self.cell_width), grid_cell_rule.value)
         elif coord_type is Gch:
-            return self._percent_helper((self.cell_height), grid_cell_rule.value), True
+            return self._percent_helper((self.cell_height), grid_cell_rule.value)
         elif coord_type is Cgc:
             return self._percent_helper(
                 self.rel(NvVector2(self.cell_width, self.cell_height))[pos], grid_cell_rule.value
-            ), True
+            )
         elif coord_type is Cgcw:
-            return self._percent_helper(self.relx(self.cell_width), grid_cell_rule.value), True
+            return self._percent_helper(self.relx(self.cell_width), grid_cell_rule.value)
         elif coord_type is Cgch:
-            return self._percent_helper(self.rely(self.cell_height), grid_cell_rule.value), True
+            return self._percent_helper(self.rely(self.cell_height), grid_cell_rule.value)
 
     def add_item(self, item: NevuObject, x: any_number, y: any_number):  # type: ignore
         range_error = ValueError(

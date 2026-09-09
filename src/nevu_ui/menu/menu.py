@@ -14,7 +14,7 @@ from nevu_ui.core.enums import (
     RenderConfig,
     RenderReturnType,
 )
-from nevu_ui.core.size.rules import SizeRule
+from nevu_ui.core.size.rules import _SizeRule
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast import Cache, NvParam, NvRect, NvRenderTexture, NvVector2
 from nevu_ui.fast.logic.fast_logic import rel_helper, relm_helper, vec_rel_helper
@@ -102,7 +102,8 @@ class MenuLayoutProxy:
 
     def __getattr__(self, name):
         if name == "original_size":
-            return self.menu.original_size
+            return self.menu._window.original_size
+
         return getattr(self.menu, name)
 
 
@@ -330,7 +331,7 @@ class Menu:
         initial_size = list(size)  # type: ignore
         for i in range(len(initial_size)):
             item = initial_size[i]
-            if isinstance(item, SizeRule):
+            if isinstance(item, _SizeRule):
                 converted = self._size_rule_to_number(item, i)
                 initial_size[i] = float(converted)
             else:

@@ -4,13 +4,15 @@ from typing import TYPE_CHECKING, Any, TypeGuard
 
 if TYPE_CHECKING:
     from nevu_ui.components.nevuobj import NevuObject
-    from nevu_ui.presentation.style import Style
 
 from nevu_ui.core.classes import SurfaceLike
-from nevu_ui.core.size.units import SizeRule
+from nevu_ui.core.size.base import _SizeRule
 from nevu_ui.core.state import nevu_state
 
-VERSION = "0.8.4"
+__all__ = ["Annotations"]
+
+
+VERSION = "0.8.5"
 
 # Deprecated
 nv_error_message_template = """Error occurred in {class_name} with {id}.\n
@@ -44,7 +46,7 @@ class Annotations:
     any_color = rgb_like_color | hsl_color | hex_color
 
     # === NevuObject annotation ===
-    size_item = int | SizeRule | float
+    size_item = int | _SizeRule | float
     nevuobj_size = tuple[size_item, size_item] | list[size_item] | Any | None
     nevuobj_style = Any | str | None
 

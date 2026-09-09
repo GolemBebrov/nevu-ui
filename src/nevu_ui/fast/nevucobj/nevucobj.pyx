@@ -300,6 +300,8 @@ cdef class NevuCobject:
         if self._changed: self._changed = False
 
     def _run_callbacks(self, bind_type, *args):
+        if not self._system_callbacks: return
+        if not self.callbacks: return
         self._system_callbacks.run(bind_type, self, *args)
         self.callbacks.run(bind_type, self, *args)
 

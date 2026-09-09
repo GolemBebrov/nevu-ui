@@ -6,7 +6,7 @@ from nevu_ui.components._typehints import RectCheckBoxKwargs, nevu_object_global
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import BindType, RenderReturnType
-from nevu_ui.core.size.units import SizeRule
+from nevu_ui.core.size.base import _SizeRule
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.rendering import DrawBaseCall
@@ -30,11 +30,10 @@ class RectCheckBox(Widget):
         if size is None:
             size = nevu_object_globals.library.get("size")
         if isinstance(size, int | float):
-            size = NvVector2([size, size])
-        elif isinstance(size, SizeRule):
+            size = NvVector2.from_xy(size, size)
+        elif isinstance(size, _SizeRule):
             size = (size, size)
-        elif isinstance(size, list | tuple):
-            size = size
+
         super().__init__(size, style, **constant_kwargs)
 
     def _system_callback_binds(self):
@@ -69,7 +68,7 @@ class RectCheckBox(Widget):
         self._add_param("toggled_rect_opacity", int, 255)
         self._change_param_default("hoverable", True)
 
-    def _toggled_rect_fill_setter(self, value: int | float):
+    def _toggled_rect_fill_setter(self, value: float):
         self._changed = True
         return value
 

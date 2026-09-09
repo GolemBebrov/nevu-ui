@@ -1,7 +1,5 @@
 import contextlib
-from collections.abc import Callable
 from dataclasses import dataclass
-from enum import Enum
 from typing import TYPE_CHECKING, Any, TypeGuard
 
 if TYPE_CHECKING:

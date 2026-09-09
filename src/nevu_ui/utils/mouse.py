@@ -113,6 +113,8 @@ class _BaseMouse:
     def any_wheel(self):
         return self._wheel_side in (PressType.WheelDown, PressType.WheelUp)
 
+    def update(self, events: list | None = None) -> None: ...
+
 @final
 class PygameMouse(_BaseMouse):
     def update_wheel(self, events) -> None:

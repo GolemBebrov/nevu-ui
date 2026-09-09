@@ -2,14 +2,11 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from weakref import ReferenceType, ref
 
-from typing_extensions import Any
-
 from nevu_ui.core.annotations import Annotations
-from nevu_ui.core.enums import CanvasType
-from nevu_ui.core.size.base import SizeRule
+from nevu_ui.core.size.base import _SizeRule
 from nevu_ui.core.size.rules import (
     CFill,
     CFillH,
@@ -21,13 +18,10 @@ from nevu_ui.core.size.rules import (
     FillW,
     Vh,
     Vw,
-    _all_fillx,
     _all_gcx,
-    _all_vx,
 )
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.nvvector2.nvvector2 import NvVector2
-from nevu_ui.presentation.color.color import Color
 from nevu_ui.presentation.style.style import Style, default_style
 
 if TYPE_CHECKING:
@@ -63,7 +57,7 @@ class Canvas:
     def _percent_helper(size, value):
         return size / 100 * value
 
-    def _parse_vx(self, viewport_rule: SizeRule, viewport_type: type[SizeRule], pos: int) -> float | None:
+    def _parse_vx(self, viewport_rule: _SizeRule, viewport_type: type[_SizeRule], pos: int) -> float | None:
         window = nevu_state.window
         if viewport_type is Cvw:
             return self._percent_helper(window.size.x, viewport_rule.value)
@@ -74,7 +68,7 @@ class Canvas:
         elif viewport_type is Vh:
             return self._percent_helper(window.original_size.y, viewport_rule.value)
 
-    def _parse_fillx(self, fill_rule: SizeRule, fill_type: type[SizeRule], pos: int) -> float | None:
+    def _parse_fillx(self, fill_rule: _SizeRule, fill_type: type[_SizeRule], pos: int) -> float | None:
         root = self._valid_root()
         if not root: return
         if fill_type is Fill:
@@ -90,7 +84,7 @@ class Canvas:
         elif fill_type is CFillH:
             return self._percent_helper(root._no_borders_current_size.y, fill_rule.value)
 
-    def _parse_gcx(self, grid_cell_rule: SizeRule, grid_cell_type: type[SizeRule], pos: int):
+    def _parse_gcx(self, grid_cell_rule: _SizeRule, grid_cell_type: type[_SizeRule], pos: int):
         if grid_cell_type in _all_gcx:
             raise ValueError(
                 f"Handling for SizeRule '{grid_cell_type.__name__}' is only Grid feature"
@@ -99,11 +93,11 @@ class Canvas:
     def _resolvable_value(self, value):
         if not isinstance(value, tuple | list): return False
         if len(value) != 2: return False
-        if not isinstance(value[0], int | float | SizeRule) or not isinstance(value[1], int | float | SizeRule): return False
+        if not isinstance(value[0], int | float | _SizeRule) or not isinstance(value[1], int | float | _SizeRule): return False
         return True
 
     def _resolve_number(self, size_rule, pos: int = 0) -> float | None:
-        if not isinstance(size_rule, SizeRule):
+        if not isinstance(size_rule, _SizeRule):
             return size_rule
         result = None
         rule_type = type(size_rule)

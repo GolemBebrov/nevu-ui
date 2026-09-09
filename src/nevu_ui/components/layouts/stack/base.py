@@ -13,7 +13,7 @@ from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import Align, CustomFunctions
 from nevu_ui.core.size.rules import (
-    SizeRule,
+    _SizeRule,
     _all_fillx,
 )
 from nevu_ui.fast.logic.fast_logic import base_light_update, draw_widgets_optimized
@@ -72,7 +72,7 @@ class StackBase(LayoutType, ABC):
         self.widgets_alignment.append(alignment)
         self.cached_coordinates = None
 
-    def _parse_fillx(self, fill_rule: SizeRule, fill_type: type[SizeRule], pos: int) -> float | None:
+    def _parse_fillx(self, fill_rule: _SizeRule, fill_type: type[_SizeRule], pos: int) -> float | None:
         if fill_rule in _all_fillx:
             raise ValueError(
                 f"Handling for SizeRule '{fill_type.__name__}' is not supported in {type(self).__name__}"

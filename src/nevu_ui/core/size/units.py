@@ -1,28 +1,28 @@
-from nevu_ui.core.size.base import SizeUnit
+from nevu_ui.core.size.base import _SizeUnit
 from nevu_ui.core.size.rules import *
 
-px = SizeUnit(Px)
+px = _SizeUnit(Px)
 
-fill = SizeUnit(Fill)
-fillw = SizeUnit(FillW)
-fillh = SizeUnit(FillH)
-cfill = SizeUnit(CFill)
-cfillw = SizeUnit(CFillW)
-cfillh = SizeUnit(CFillH)
+fill = _SizeUnit(Fill)
+fillw = _SizeUnit(FillW)
+fillh = _SizeUnit(FillH)
+cfill = _SizeUnit(CFill)
+cfillw = _SizeUnit(CFillW)
+cfillh = _SizeUnit(CFillH)
 _all_fillx_units = {fill, fillw, fillh, cfill, cfillw, cfillh}
 
-vh = SizeUnit(Vh)
-vw = SizeUnit(Vw)
-cvh = SizeUnit(Cvh)
-cvw = SizeUnit(Cvw)
+vh = _SizeUnit(Vh)
+vw = _SizeUnit(Vw)
+cvh = _SizeUnit(Cvh)
+cvw = _SizeUnit(Cvw)
 _all_vx_units = {vh, vw, cvh, cvw}
 
-gc = SizeUnit(Gc)
-gcw = SizeUnit(Gcw)
-gch = SizeUnit(Gch)
-cgc = SizeUnit(Cgc)
-cgcw = SizeUnit(Cgcw)
-cgch = SizeUnit(Cgch)
+gc = _SizeUnit(Gc)
+gcw = _SizeUnit(Gcw)
+gch = _SizeUnit(Gch)
+cgc = _SizeUnit(Cgc)
+cgcw = _SizeUnit(Cgcw)
+cgch = _SizeUnit(Cgch)
 _all_gcx_units = {gc, gcw, gch, cgc, cgcw, cgch}
 
 fill_all = (100 * fillw, 100 * fillh)

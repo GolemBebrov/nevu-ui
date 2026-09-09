@@ -7,6 +7,7 @@ from nevu_ui.core.enums import BindType
 if TYPE_CHECKING:
     from nevu_ui.components.nevuobj import NevuObject
 
+
 # FA
 # PU
 # TA

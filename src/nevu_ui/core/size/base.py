@@ -1,17 +1,17 @@
-class SizeRule:
+class _SizeRule:
     __slots__ = ("value",)
 
     def __init__(self, value: int | float) -> None:
         self.value = value
 
 
-class PercentSizeRule(SizeRule):
+class _PercentSizeRule(_SizeRule):
     def __init__(self, value: int | float) -> None:
         self.value = value
 
 
-class SizeUnit:
-    __slots__ = ("_supported_types", "_size_rule")
+class _SizeUnit:
+    __slots__ = ("_size_rule", "_supported_types")
 
     def __init__(self, size_rule, supported_types=None) -> None:
         self._supported_types = supported_types or (int | float)
