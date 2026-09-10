@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nevu-ui"
-version = "0.8.5.post1"
+version = "0.8.5.post2"
 authors = [
   { name="GolemNikidastrov", email="bebrovgolem@gmail.com" },
 ]
@@ -78,6 +78,9 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "nevu_ui" = ["*.pyx"]
+
+[tool.setuptools.exclude-package-data]
+"*" = ["*.cpp", "*.c", "*.h", "*.hpp"]
 
 [tool.basedpyright]
 typeCheckingMode = "standard"
