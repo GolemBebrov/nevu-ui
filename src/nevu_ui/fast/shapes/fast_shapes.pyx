@@ -10,7 +10,6 @@
 
 cimport cython
 from libc.stdint cimport uint8_t
-from cython.parallel cimport prange
 
 cdef extern from "math.h":
     float sqrtf(float) nogil
@@ -91,7 +90,7 @@ cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input,
 
     if has_bg:
         with nogil:
-            for y in prange(h, schedule='static'):
+            for y in range(h):
                 py = y - center_y
                 qy_base = fabsf(py) - box_half_h
 
@@ -149,7 +148,7 @@ cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input,
                         pixels_alpha[x, y] = 0
     else:
         with nogil:
-            for y in prange(h, schedule='static'):
+            for y in range(h):
                 py = y - center_y
                 qy_base = fabsf(py) - box_half_h
 
@@ -160,7 +159,7 @@ cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input,
                     r_right = r_tr
                     r_left = r_tl
 
-                for x in prange(w, schedule='static'):
+                for x in range(w):
                     px = x - center_x
 
                     if px > 0.0:
@@ -294,7 +293,7 @@ cpdef void transform_into_rounded_rect(object surf, object radii_input, object c
     with nogil:
         if r_tl > 0.0:
             current_r = r_tl
-            for y in prange(<int>r_tl, schedule="static"):
+            for y in range(<int>r_tl):
                 py = y - center_y
                 qy_base = fabsf(py) - box_half_h
                 for x in range(<int>r_tl):
@@ -315,10 +314,10 @@ cpdef void transform_into_rounded_rect(object surf, object radii_input, object c
 
         if r_tr > 0.0:
             current_r = r_tr
-            for y in prange(<int>r_tr, schedule="static"):
+            for y in range(<int>r_tr):
                 py = y - center_y
                 qy_base = fabsf(py) - box_half_h
-                for x in prange(width - <int>r_tr, width, schedule="static"):
+                for x in range(width - <int>r_tr, width):
                     px = x - center_x
                     qx = fabsf(px) - box_half_w + current_r
                     qy = qy_base + current_r
@@ -336,10 +335,10 @@ cpdef void transform_into_rounded_rect(object surf, object radii_input, object c
 
         if r_bl > 0.0:
             current_r = r_bl
-            for y in prange(height - <int>r_bl, height, schedule="static"):
+            for y in range(height - <int>r_bl, height):
                 py = y - center_y
                 qy_base = fabsf(py) - box_half_h
-                for x in prange(<int>r_bl, schedule="static"):
+                for x in range(<int>r_bl):
                     px = x - center_x
                     qx = fabsf(px) - box_half_w + current_r
                     qy = qy_base + current_r
@@ -357,10 +356,10 @@ cpdef void transform_into_rounded_rect(object surf, object radii_input, object c
 
         if r_br > 0.0:
             current_r = r_br
-            for y in prange(height - <int>r_br, height, schedule="static"):
+            for y in range(height - <int>r_br, height):
                 py = y - center_y
                 qy_base = fabsf(py) - box_half_h
-                for x in prange(width - <int>r_br, width, schedule="static"):
+                for x in range(width - <int>r_br, width):
                     px = x - center_x
                     qx = fabsf(px) - box_half_w + current_r
                     qy = qy_base + current_r
