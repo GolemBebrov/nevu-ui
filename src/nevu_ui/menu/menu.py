@@ -581,16 +581,21 @@ class Menu:
         if self._layout:
             self._layout.kill()
         self._normalize_item_size(layout)
-        layout._init_start()
+
         layout._connect_to_menu(self)
-        layout.first_parent_menu = self
+        layout._init_start()
         layout._boot_up()
+        layout._lazy_init_wrapper(**layout._template.__dict__)
+
+        layout.first_parent_menu = self
+
         layout._resize(self._resize_ratio)
-        relsize = self.size * self._resize_ratio
-        layout.coordinates = (relsize - layout.current_size) / 2
+        layout.set_coordinates((self._rel_size - layout.current_size) / 2)
         layout.absolute_coordinates = layout.coordinates + self.absolute_coordinates
-        self._layout = layout
+
         layout.update()
+        self._layout = layout
+
 
     def set_coordinates(self, x: int, y: int, relative=False):
         if self._window is None:

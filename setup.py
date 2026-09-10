@@ -51,7 +51,6 @@ else:
             "/O2",
             "/arch:AVX2",
             "/fp:fast",
-            "/openmp",
             "/GL",
         ]
         l_opts = [
@@ -65,11 +64,9 @@ else:
             "-mavx2",
             "-mfma",
             "-ffast-math",
-            "-fopenmp",
             "-flto",
         ]
         l_opts = [
-            "-fopenmp",
             "-flto",
         ]
 

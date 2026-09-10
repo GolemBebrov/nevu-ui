@@ -426,7 +426,6 @@ class LayoutType(NevuObject):
         self.surface = surface
         self.first_parent_menu = first_parent_menu
         self.cached_coordinates = None
-        self.add_next_frame_action(self._clear_cached_coordinates)
 
     def _connect_to_menu(self, menu: Menu):
         self._connect_to_parent(("menu", menu), menu._surface, menu)  # type: ignore
