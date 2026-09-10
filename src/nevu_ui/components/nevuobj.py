@@ -408,7 +408,6 @@ class NevuObject(NevuCobject):
         else:
             self.renderer = PygameRenderer(self)
         self.renderer.base_configure()
-        print(size)
         self.size = size if isinstance(size, NvVector2) else NvVector2(size)
         self.original_size = self.size.copy()
         self._system_callback_binds()

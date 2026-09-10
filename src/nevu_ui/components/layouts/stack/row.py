@@ -7,7 +7,6 @@ from nevu_ui.fast.logic.fast_logic import py_get_item_abs_coords
 class StackRow(StackBase):
     def _recalculate_size(self):
         if not hasattr(self, "size"):
-            print("StackColumn not booted")
             return
         if any(x.booted == False for x in self.items):
             return
