@@ -13,6 +13,7 @@ from typing import (
     override,
 )
 
+from nevu_ui.assets import BASE_FONT_PATH
 from nevu_ui.core.enums import Align, HoverState
 from nevu_ui.presentation.color.color_theme import ColorSubTheme
 
@@ -191,7 +192,7 @@ class Style:
         self.colortheme = copy.copy(ColorThemeLibrary.material3_blue)
         self.border_width = 1
         self.border_radius = 0
-        self.font_name = "Arial"
+        self.font_name = BASE_FONT_PATH
         self.font_size = 20
         self.align_x = Align.CENTER
         self.align_y = Align.CENTER
