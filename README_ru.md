@@ -33,6 +33,8 @@
 
 ![Пример2](assets/test_main.png)
 
+---
+
 ![Пример3](assets/showcase.gif)
 
 ---
