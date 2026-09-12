@@ -18,6 +18,120 @@
 
 ---
 
+
+<br>
+
+<p align="left">
+  <img src="assets/RU/separator_examples.png" alt="Style banner" width="600" />
+</p>
+
+---
+
+![Пример1](assets/test_grid.png)
+
+---
+
+![Пример2](assets/test_main.png)
+
+![Пример3](assets/showcase.gif)
+
+---
+
+### Пример: Кнопка в сетке 3x3
+<h3>Декларативный способ</h3>
+
+```python
+import pygame
+
+# Импортируем nevu-ui
+import nevu_ui as ui
+
+pygame.init()
+
+window = ui.Window(size = (400, 300), title = "Nevu-UI application")
+
+# Создаем стиль с какими либо визуальными параметрами
+style = ui.Style(border_radius = 20, colortheme = ui.ColorThemeLibrary.material3_dark)
+
+# Создаем главное меню
+menu = ui.Menu(window, size = ui.fill_all, style = style,
+    # Создаем сетку 3x3
+    layout = ui.Grid(
+        {
+            (2, 2): ui.Button( # Создаем кнопку в ячейке 2, 2 (считая с 1)
+                text = "Click me!",
+                function = lambda: print("You clicked!"),
+                size = (50 % ui.fill, 20 % ui.fill),
+                style = style
+            )
+        },
+        size = ui.fill_all,
+        row = 3,
+        column = 3
+    )
+)
+
+if __name__ == "__main__":
+    app = ui.Manager(window, [menu])
+    app.run() # Запускаем главный цикл
+```
+<h3>Императивный способ</h3>
+
+```python
+import pygame
+
+# Импортируем nevu-ui
+import nevu_ui as ui
+
+pygame.init()
+
+# Создаем главное окно приложения
+window = ui.Window(size = (400, 300), title = "Nevu-UI application")
+
+# Создаем стиль с какими либо визуальными параметрами
+style = ui.Style(
+    border_radius = 20,
+    colortheme = ui.ColorThemeLibrary.material3_dark
+)
+
+# Создаем начальный контейнер
+menu = ui.Menu(window, size = (100 % ui.vw, 100 % ui.vh), style = style)
+
+# Создаем сетку 3x3
+grid = ui.Grid(size = (100 % ui.vw, 100 % ui.vh), row = 3, column = 3)
+
+button = ui.Button(
+    text = "Click me!",
+    function = lambda: print("You clicked!"),
+    size = (50 % ui.fill, 20 % ui.fill),
+    style = style
+)
+
+# Добавляем виджет в ячейку с координатами 2, 2 (считая от 1)
+grid.add_item(button, x = 2, y = 2)
+
+# Передаем сетку в меню
+menu.layout = grid
+
+if __name__ == "__main__":
+    while True:
+        events = pygame.event.get()
+
+        # Обновляем окно
+        window.update(events)
+
+        # Обновляем и отрисовываем menu
+        menu.update()
+        menu.draw()
+
+        pygame.display.update()
+```
+
+
+### Результат примера:
+![Пример1](assets/result.png)
+
+
 <br>
 
 <p align="left">
@@ -25,6 +139,8 @@
 </p>
 
 ---
+
+
 
 ### Декларативность
 
@@ -92,141 +208,6 @@
  ```python
  pip install nevu-ui[all]
  ```
-
-<br>
-
-<p align="left">
-  <img src="assets/RU/separator_style.png" alt="Style banner" width="600" />
-</p>
-
----
-
-### `Style` - хранилище параметров для кастомизации внешнего вида
-
-* **`gradient`**
-  * Есть 2 вида градиента: линейный и радиальный.
-* **`colortheme`**
-  * Аналог MaterialDesign, отвечает за визуальную состовляющую виджета и меню.
-* **`font_name`/`font_path`**
-  * Позволяет указать путь к локальному шрифту.
-* **`font_size`**
-  * Дает возможность изменить размер шрифта.
-* **`border_width`/`bw`**
-  * Дает возможность изменить размер рамки.
-* **`border_radius`/`br`**
-  * Дает возможность изменить радиус угла рамки.
-
-и так далее...
-
-<br>
-
-<p align="left">
-  <img src="assets/RU/separator_examples.png" alt="Style banner" width="600" />
-</p>
-
----
-
-![Пример1](assets/test_grid.png)
-
----
-
-![Пример2](assets/test_main.png)
-
-![Пример3](assets/showcase.gif)
-
----
-
-### Базовая сетка
-#### Декларативный подход
-```python
-import pygame
-
-# Импортируем nevu-ui
-import nevu_ui as ui
-
-pygame.init()
-
-window = ui.Window(size = (400, 300), title = "Nevu-UI application")
-
-# Создаем стиль с какими либо визуальными параметрами
-style = ui.Style(border_radius = 20, colortheme = ui.ColorThemeLibrary.material3_dark)
-
-# Создаем главное меню
-menu = ui.Menu(window, size = ui.fill_all, style = style,
-    # Создаем сетку 3x3
-    layout = ui.Grid(
-        {
-            (2, 2): ui.Button( # Создаем кнопку в ячейке 2, 2 (считая с 1)
-                text = "Click me!",
-                function = lambda: print("You clicked!"),
-                size = (50 % ui.fill, 20 % ui.fill),
-                style = style
-            )
-        },
-        size = ui.fill_all,
-        row = 3,
-        column = 3
-    )
-)
-
-if __name__ == "__main__":
-    app = ui.Manager(window, [menu])
-    app.run() # Запускаем главный цикл
-```
-#### Императивный подход
-```python
-import pygame
-
-# Импортируем nevu-ui
-import nevu_ui as ui
-
-pygame.init()
-
-# Создаем главное окно приложения
-window = ui.Window(size = (400, 300), title = "Nevu-UI application")
-
-# Создаем стиль с какими либо визуальными параметрами
-style = ui.Style(
-    border_radius = 20,
-    colortheme = ui.ColorThemeLibrary.material3_dark
-)
-
-# Создаем начальный контейнер
-menu = ui.Menu(window, size = (100 % ui.vw, 100 % ui.vh), style = style)
-
-# Создаем сетку 3x3
-grid = ui.Grid(size = (100 % ui.vw, 100 % ui.vh), row = 3, column = 3)
-
-button = ui.Button(
-    text = "Click me!",
-    function = lambda: print("You clicked!"),
-    size = (50 % ui.fill, 20 % ui.fill),
-    style = style
-)
-
-# Добавляем виджет в ячейку с координатами 2, 2 (считая от 1)
-grid.add_item(button, x = 2, y = 2)
-
-# Передаем сетку в меню
-menu.layout = grid
-
-if __name__ == "__main__":
-    while True:
-        events = pygame.event.get()
-
-        # Обновляем окно
-        window.update(events)
-
-        # Обновляем и отрисовываем menu
-        menu.update()
-        menu.draw()
-
-        pygame.display.update()
-```
-
-
-### Результат примера:
-![Пример1](assets/result.png)
 
 <br>
 
