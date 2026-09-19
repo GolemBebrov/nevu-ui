@@ -5,7 +5,6 @@ from collections.abc import Callable
 from typing import (
     TYPE_CHECKING,
     Any,
-    NotRequired,
     TypedDict,
     TypeVar,
     Unpack,
@@ -13,16 +12,15 @@ from typing import (
     override,
 )
 
-from nevu_ui.assets import BASE_FONT_PATH
-from nevu_ui.core.enums import Align, HoverState
+from nevu_ui.assets import FontLibrary
+from nevu_ui.core.enums import Align, HoverState, Malign
 from nevu_ui.presentation.color.color_theme import ColorSubTheme
 
 if TYPE_CHECKING:
     from nevu_ui.rendering.pygame.gradient import GradientPygame
     from nevu_ui.rendering.raylib.gradient import GradientRaylib
-
+    from nevu_ui.rendering.uni_gradient import Gradient
 from nevu_ui.presentation.color import (
-    Color,
     ColorTheme,
     ColorThemeLibrary,
     PairColorRole,
@@ -64,27 +62,27 @@ T = TypeVar("T")
 type SVar[T] = T | StateVariable[T]
 
 
-class StyleKwargs(TypedDict):
-    border_radius: NotRequired[SVar[float | tuple[float, float, float, float]]]
-    br: NotRequired[SVar[float | tuple[float, float, float, float]]]
-    border_width: NotRequired[SVar[int]]
-    bw: NotRequired[SVar[int]]
-    font_size: NotRequired[SVar[int]]
-    font_name: NotRequired[SVar[str]]
-    font_path: NotRequired[SVar[str]]
-    align_x: NotRequired[SVar[Align]]
-    align_y: NotRequired[SVar[Align]]
-    transparency: NotRequired[SVar[int]]
-    bg_image: NotRequired[SVar[str]]
-    colortheme: NotRequired[SVar[ColorTheme]]
-    gradient: NotRequired[SVar[GradientPygame | GradientRaylib]]
-    font_role: NotRequired[SVar[PairColorRole]]
-    color_role: NotRequired[SVar[SubThemeRole]]
-    subtheme_role: NotRequired[SVar[SubThemeRole]]
+class _StyleKwargs(TypedDict, total=False):
+    border_radius: SVar[float | tuple[float, float, float, float]]
+    br: SVar[float | tuple[float, float, float, float]]
+    border_width: SVar[float]
+    bw: SVar[float]
+    font_size: SVar[float]
+    font_name: SVar[str]
+    font_path: SVar[str]
+    align_x: SVar[Align | Malign]
+    align_y: SVar[Align | Malign]
+    transparency: SVar[int]
+    bg_image: SVar[str]
+    colortheme: SVar[ColorTheme]
+    gradient: SVar[GradientPygame | GradientRaylib | Gradient]
+    font_role: SVar[PairColorRole]
+    color_role: SVar[SubThemeRole]
+    subtheme_role: SVar[SubThemeRole]
 
 @final
 class Style:
-    def __init__(self, **kwargs: Unpack[StyleKwargs]):
+    def __init__(self, **kwargs: Unpack[_StyleKwargs]):
         self.parameters_dict: dict[str, tuple[str, Callable[..., tuple[bool, Any]]]] = {
             "border_radius": ("border_radius", self._parse_br),
             "br": ("border_radius", self._parse_br),
@@ -192,7 +190,7 @@ class Style:
         self.colortheme = copy.copy(ColorThemeLibrary.material3_blue)
         self.border_width = 1
         self.border_radius = 0
-        self.font_name = BASE_FONT_PATH
+        self.font_name = FontLibrary.InterRegular
         self.font_size = 20
         self.align_x = Align.CENTER
         self.align_y = Align.CENTER
@@ -271,7 +269,7 @@ class Style:
         current_state_name = hstate_to_state[super().__getattribute__("_curr_state")]
         return item[current_state_name]
 
-    def __call__(self, **kwargs: Unpack[StyleKwargs]):
+    def __call__(self, **kwargs: Unpack[_StyleKwargs]):
         style = copy.copy(self)
         style._kwargs_for_copy = copy.deepcopy(self._kwargs_for_copy)
         style._kwargs_for_copy.update(kwargs)
@@ -293,3 +291,5 @@ hstate_to_state = {
 }
 
 default_style = Style()
+
+__all__ = ["StateVariable", "Style", "_StyleKwargs", "default_style"]
