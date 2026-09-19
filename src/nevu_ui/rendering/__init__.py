@@ -7,17 +7,15 @@ from .base_renderer import (
     _BaseCoreNamespace,
     _BaseSpecifiedDraw,
 )
-from .uni_gradient import Gradient, GradientPygame, GradientRaylib
-from .canvas import Canvas
+from .uni_gradient import Gradient
+
 __all__ = [
-    "GradientPygame",
-    "GradientRaylib",
-    "Gradient",
     "BaseRenderer",
+    "DrawBaseCall",
+    "DrawBordersCall",
+    "DrawEffectsCall",
+    "DrawTextCall",
+    "Gradient",
     "_BaseCoreNamespace",
     "_BaseSpecifiedDraw",
-    "DrawBaseCall",
-    "DrawTextCall",
-    "DrawEffectsCall",
-    "DrawBordersCall",
 ]

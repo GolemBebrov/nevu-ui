@@ -9,7 +9,6 @@ from .grid.row import Row
 from .misc.checkbox_group import CheckBoxGroup
 from .misc.color_picker import ColorPicker
 from .misc.flexlayout import FlexLayout
-from .misc.panel import Panel
 
 # === Scrollable ===
 from .scrollable.column import ScrollableColumn
@@ -26,7 +25,6 @@ __all__ = [
     'FlexLayout',
     'Grid',
     'LayoutType',
-    'Panel',
     'Row',
     'ScrollableColumn',
     'ScrollableRow',

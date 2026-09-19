@@ -19,7 +19,6 @@ from .components.layouts import (
     Column,
     Grid,
     LayoutType,
-    Panel,
     Row,
     ScrollableColumn,
     ScrollableRow,
@@ -31,7 +30,7 @@ from . import components, core, presentation, utils
 from .components._typehints import widget_globals
 from .core import size
 from .core.annotations import VERSION, Annotations
-from .core.classes import BorderConfig, TooltipType, nevu_globals
+from .core.classes import TooltipType, nevu_globals
 from .core.callbacks import Callbacks
 from .core.enums import (
     Align,
@@ -84,7 +83,7 @@ from .fast.nevucache.nevucache import Cache
 from .fast.nvrect import NvRect
 from .fast.nvrendertex import NvRenderTexture
 from .manager import Manager
-from .menu import Menu
+from .components.layouts.menu import Menu
 from .overlay import Tooltip, overlay
 from .parser import (
     apply_config,
@@ -95,6 +94,7 @@ from .parser import (
     get_colortheme,
     get_style,
 )
+
 from .presentation import animations
 from .presentation.color import (
     Color,
@@ -108,6 +108,7 @@ from .presentation.color import (
 )
 from .presentation.style import StateVariable, Style, default_style
 from .rendering import Gradient
+from .assets import FontLibrary
 from .utils import InputType, Keys, Time, keyboard, load_font, mouse, time
 from .window import (
     ConfiguredWindow,
@@ -120,17 +121,19 @@ __all__ = [  # noqa: RUF022
     # ===Most Used===
     "Menu",
     "Callbacks",
-    "BorderConfig",
     "Canvas",
     "Window",
     "CacheType",
     "BindType",
+    "FontLibrary",
     "HoverState",
     "ConfiguredWindow",
     "InitializedWindow",
     "get_all_colorthemes",
     "get_colortheme",
     "NevuObject",
+    "nevu_object_globals",
+    "widget_globals",
     "Manager",
     "NvVector2",
     "nevu_state",

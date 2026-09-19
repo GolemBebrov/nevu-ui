@@ -1,5 +1,5 @@
-from .base_font import BASE_FONT_PATH
+from .base_font import FontLibrary
 
 __all__ = [
-    'BASE_FONT_PATH',
+    FontLibrary,
 ]

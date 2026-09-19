@@ -6,7 +6,6 @@ from nevu_ui.core.callbacks import (
     Callbacks,
 )
 from nevu_ui.core.classes import (
-    BorderConfig,
     ConfigType,
     Counter,
     DictAccessMixin,
@@ -57,7 +56,6 @@ __all__ = [
     'Annotations',
     'Backend',
     'BindType',
-    'BorderConfig',
     'CacheType',
     'CallbackList',
     'CallbackType',
