@@ -76,6 +76,8 @@ from .core.size.units import (
     px,
     vh,
     vw,
+    auto,
+    Auto
 )
 from .core.state import nevu_state
 from .fast import NvVector2
@@ -169,7 +171,6 @@ __all__ = [  # noqa: RUF022
     "StackRow",
     "StackColumn",
     "CheckBoxGroup",
-    "Panel",
     # ===Utils===
     "time",
     "Time",
@@ -203,6 +204,8 @@ __all__ = [  # noqa: RUF022
     "gch",
     "px",
     "Px",
+    "auto",
+    "Auto",
     "cfill",
     "cfillw",
     "cfillh",
@@ -235,7 +238,6 @@ __all__ = [  # noqa: RUF022
     "RadialPosition",
     "GradientType",
     "EventType",
-    "ResizeType",
     "Backend",
     "AnimationType",
     "FlexDirection",
