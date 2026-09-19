@@ -3,10 +3,11 @@ from collections.abc import Callable
 from typing import Unpack
 
 import nevu_ui.core.modules as md
-from nevu_ui.components._typehints import LabelKwargs, LabelTemplate
+from nevu_ui.components._typehints import _LabelKwargs, _LabelTemplate
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations, nevu_state
 from nevu_ui.core.enums import CacheType, RenderReturnType
+from nevu_ui.core.size.rules import Auto
 from nevu_ui.fast.nvrendertex import NvRenderTexture
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.fast.raylib.nevu_raylib import begin_blend_mode, end_blend_mode
@@ -24,10 +25,12 @@ class Label(Widget):
         text: str,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[LabelKwargs],
+        **constant_kwargs: Unpack[_LabelKwargs],
     ):
+        if isinstance(size, Auto):
+            size = (size, size)
         super().__init__(size, style, **constant_kwargs)
-        self._template = LabelTemplate(self._template.size, text)
+        self._template = _LabelTemplate(self._template.size, text)
 
     def _add_params(self):
         super()._add_params()
@@ -38,6 +41,13 @@ class Label(Widget):
         super()._lazy_init(size)
         assert isinstance(text, str)
         self.text = text
+        print(self._auto_sized, self._auto_sized_padding)
+        if self._auto_sized:
+            self._fast_bake_text()
+            self.size = NvVector2.from_xy(self._text_surface.width, self._text_surface.height)
+            self._changed = True
+            self.clear_surfaces()
+            self.clear_texture()
 
     @property
     def text(self):
@@ -60,7 +70,7 @@ class Label(Widget):
                     text=self.text or "",
                     words_indent=self.words_indent,
                     return_type=RenderReturnType.CreateNew,
-                    continuous=False,
+                    continuous=self._auto_sized,
                 )
             ),
         )
@@ -75,7 +85,17 @@ class Label(Widget):
             )
             md.rl.set_texture_wrap(texture, rl.TextureWrap.TEXTURE_WRAP_CLAMP)
 
-    def secondary_draw_content(self):
+    def _resize_content(self, resize_ratio: NvVector2):
+        super()._resize_content(resize_ratio)
+        if self._auto_sized:
+            self._fast_bake_text()
+            self.cache.clear_selected(whitelist=[CacheType.RelSize])
+            anti_rel = NvVector2(1, 1) / self._resize_ratio
+            self.size = NvVector2.from_xy(
+                self._text_surface.width * anti_rel.x + self._auto_sized_padding[0] * 2,
+                self._text_surface.height * anti_rel.y + self._auto_sized_padding[1] * 2)
+
+    def _draw_main(self):
         self._fast_bake_text()
 
         if self.inline:
@@ -84,6 +104,8 @@ class Label(Widget):
             coordinates = coordinates.get_int_tuple()
         else:
             coordinates = (self._text_rect[0], self._text_rect[1])
+        if self._auto_sized:
+            coordinates = (self.relx(self._auto_sized_padding[0]), self.rely(self._auto_sized_padding[1]))
 
         text_surface = self._text_surface
         if not text_surface:
