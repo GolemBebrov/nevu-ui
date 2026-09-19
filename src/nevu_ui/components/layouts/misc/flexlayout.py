@@ -152,7 +152,7 @@ class FlexLayout(LayoutType):
                     return val - 20.0
 
         if self.first_parent_menu is not None:
-            val = self.first_parent_menu._rel_size.x if is_row else self.first_parent_menu._rel_size.y
+            val = self.first_parent_menu.current_size.x if is_row else self.first_parent_menu.current_size.y
             if val > 0: return val
 
         if self.first_parent_menu and self.first_parent_menu._window:
