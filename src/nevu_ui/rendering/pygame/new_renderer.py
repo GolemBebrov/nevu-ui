@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing_extensions import TYPE_CHECKING, Any, override
+from typing import TYPE_CHECKING, Any, override
 
 from nevu_ui.fast.shapes.fast_shapes import draw_sdf_line
 
 if TYPE_CHECKING:
     from nevu_ui.presentation.style import Style
-    from nevu_ui.rendering.uni_gradient import GradientPygame
+    from nevu_ui.rendering.pygame.gradient import GradientPygame
 
 import nevu_ui.core.modules as md
 from nevu_ui.core.annotations import Annotations
@@ -16,7 +16,7 @@ from nevu_ui.fast.shapes import (
     transform_into_outlined_rounded_rect,
     transform_into_rounded_rect,
 )
-from nevu_ui.presentation.color.color import Color, is_rgba
+from nevu_ui.presentation.color.color import Color
 from nevu_ui.rendering.base_renderer import (
     BaseRenderer,
     DrawBaseCall,
@@ -42,24 +42,20 @@ class _PygameCoreNamespace(_BaseCoreNamespace):
     def create_clear(self, size: Annotations.dest_like | NvVector2, **kwargs):
         flags = kwargs.get("flags", 0)
         surf = md.pygame.Surface(
-            size, flags=flags | md.pygame.SRCALPHA, depth=32
+            size, flags = flags | md.pygame.SRCALPHA, depth = 32
         ).convert_alpha()
         surf.fill((0, 0, 0, 0))
         return surf
 
     @override
-    def get_font_size(self, override_size=None) -> int | float:
+    def get_font_size(self, override_size = None) -> float:
         return round(self.root.relm(override_size or self.style.font_size))
 
     @override
-    def get_font(self, name: str | None = None, size=None):
+    def get_font(self, name: str | None = None, size = None):
         font_size = round(self.get_font_size(size))
         font_name = name or self.style.font_name
-        return (
-            md.pygame.font.SysFont(font_name, font_size)
-            if font_name == "Arial" or font_name is None
-            else md.pygame.font.Font(font_name, font_size)
-        )
+        return md.pygame.font.Font(font_name, font_size)
 
     @override
     def draw_rect(

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, override
 
 if TYPE_CHECKING:
     from nevu_ui.presentation.style import Style
-    from nevu_ui.rendering.uni_gradient import GradientRaylib
+    from nevu_ui.rendering.raylib.gradient import GradientRaylib
 
 import nevu_ui.core.modules as md
 from nevu_ui.core.annotations import Annotations
@@ -86,10 +86,7 @@ class _RaylibCoreNamespace(_BaseCoreNamespace):
             ffi = rl.ffi
             c_array = ffi.new("int[]", codepoints)
             c_ptr = ffi.cast("int *", c_array)
-            if self.style.font_name == "Arial":
-                font = rl.get_font_default()
-            else:
-                font = rl.load_font_ex(font_name, round(font_size), c_ptr, glyph_count)
+            font = rl.load_font_ex(font_name, round(font_size), c_ptr, glyph_count)
             if font.glyphCount == 0:
                 raise ValueError(f"Font {font_name} not found")
             return font
@@ -102,7 +99,7 @@ class _RaylibCoreNamespace(_BaseCoreNamespace):
         surface_like,
         pos: Annotations.dest_like | NvVector2,
         size: Annotations.dest_like | NvVector2,
-        color: Annotations.rgba_color = Color.White,
+        color: Annotations.rgb_like_color = Color.White,
         radii: Annotations.rect_like | int = 0,
         glassy: bool = False,
     ):
@@ -159,7 +156,7 @@ class _RaylibSpecifiedDraw(_BaseSpecifiedDraw):
         if not root.inline:
             new_color_pretendent = self._renderer.core.get_color_on_hover(
                 root.subtheme_border
-                if root.get_param_strict("inverted").value
+                if root.inverted
                 else root.subtheme_content
             )
             old_color = root._bg_color_before

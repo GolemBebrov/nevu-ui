@@ -4,7 +4,7 @@ import copy
 from collections.abc import Callable
 from typing import Unpack
 
-from nevu_ui.components._typehints import ButtonKwargs
+from nevu_ui.components._typehints import _ButtonKwargs
 from nevu_ui.components.widgets.label import Label
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import BindType
@@ -14,15 +14,15 @@ class Button(Label):
     # === Params ===
     is_active: bool
     throw_errors: bool
-
     # ==============
+
     def __init__(
         self,
         function: Callable,
         text: str,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[ButtonKwargs],
+        **constant_kwargs: Unpack[_ButtonKwargs],
     ):
         super().__init__(text, size, style, **constant_kwargs)
         self.function = function

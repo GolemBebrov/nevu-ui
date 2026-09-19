@@ -8,11 +8,14 @@ if TYPE_CHECKING:
 from nevu_ui.core.classes import SurfaceLike
 from nevu_ui.core.size.base import _SizeRule
 from nevu_ui.core.state import nevu_state
+import inspect
+from typing import get_type_hints
+import functools
 
 __all__ = ["Annotations"]
 
 
-VERSION = "0.8.5"
+VERSION = "0.8.6"
 
 # Deprecated
 nv_error_message_template = """Error occurred in {class_name} with {id}.\n
@@ -29,26 +32,25 @@ nv_error_format_template_ext1 = """Info: {info}.\n"""
 nv_error_format_template_ext2 = """Possible solution: {solution}.\n"""
 nv_error_format_template_end = """If you believe this is a bug, please report it on 'https://github.com/GolemBebrov/nevu-ui/issues'."""
 
-
 class Annotations:
     # === size annotations ===
-    any_number = float | int
-    dest_like = tuple[any_number, any_number] | list[any_number]
-    rect_like = tuple[any_number, any_number, any_number, any_number] | list[any_number]
+    type any_number = float | int
+    type dest_like = tuple[any_number, any_number] | list[any_number]
+    type rect_like = tuple[any_number, any_number, any_number, any_number] | list[any_number]
 
     # === color annotations ===
-    rgb_color = tuple[int, int, int]
-    rgba_color = tuple[int, int, int, int]
-    rgb_like_color = rgb_color | rgba_color
-    hsl_color = tuple[float, float, float]
-    hsla_color = tuple[float, float, float, int]
-    hex_color = str
-    any_color = rgb_like_color | hsl_color | hex_color
+    type rgb_color = tuple[int, int, int]
+    type rgba_color = tuple[int, int, int, int]
+    type rgb_like_color = rgb_color | rgba_color
+    type hsl_color = tuple[float, float, float]
+    type hsla_color = tuple[float, float, float, int]
+    type hex_color = str
+    type any_color = rgb_like_color | hsl_color | hex_color
 
     # === NevuObject annotation ===
-    size_item = int | _SizeRule | float
-    nevuobj_size = tuple[size_item, size_item] | list[size_item] | Any | None
-    nevuobj_style = Any | str | None
+    type size_item = int | _SizeRule | float
+    type nevuobj_size = tuple[size_item, size_item] | list[size_item] | Any | None
+    type nevuobj_style = Any | str | None
 
     @staticmethod
     def is_surface_like(item: Any) -> TypeGuard[SurfaceLike]:
@@ -57,7 +59,7 @@ class Annotations:
         return result
 
     @staticmethod
-    def get_error_text(base_class: "NevuObject", item, expected_class):
+    def get_error_text(base_class: NevuObject, item, expected_class):
         return nv_error_message_template.format(
             class_name=base_class.__class__.__name__,
             id=id(base_class),
@@ -138,7 +140,7 @@ class Annotations:
         needed_type: str,
         arg_name: str,
         arg: Any,
-        object: "NevuObject",
+        object: NevuObject,
         method_name: str = "not specified",
     ) -> str:
         arg_name = arg_name.strip()
@@ -153,7 +155,7 @@ class Annotations:
     @staticmethod
     def format_nvtype_renderer_error(
         cause_message: str,
-        object: "NevuObject",
+        object: NevuObject,
         method_name: str = "not specified",
         solution: str | None = None,
     ) -> str:
@@ -171,7 +173,7 @@ class Annotations:
     @staticmethod
     def format_param_engine_error(
         cause_message: str,
-        object: "NevuObject",
+        object: NevuObject,
         solution: str | None = None,
         add_info: str | None = None,
     ) -> str:

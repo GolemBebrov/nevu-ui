@@ -22,10 +22,10 @@ from nevu_ui.core.size.rules import (
 )
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.nvvector2.nvvector2 import NvVector2
-from nevu_ui.presentation.style.style import Style, default_style
+from nevu_ui.presentation.style import Style, default_style
 
 if TYPE_CHECKING:
-    from nevu_ui.components.nevuobj.nevuobj import NevuObject
+    from nevu_ui.components.nevuobj import NevuObject
 
 @dataclass(kw_only=True)
 class CanvasBaseData:

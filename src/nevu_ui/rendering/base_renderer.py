@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import weakref
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from nevu_ui.core.classes import SurfaceLike
 
 if TYPE_CHECKING:
-    from nevu_ui.components.nevuobj.nevuobj import NevuObject
+    from nevu_ui.components.nevuobj import NevuObject
     from nevu_ui.components.widgets import Widget
     from nevu_ui.presentation.style import Style
     from nevu_ui.rendering.raylib.gradient import ClickGradient
@@ -312,8 +313,7 @@ class BaseRenderer(ABC):
         self.configure(RenderConfig.Special, RenderArgs.DrawBg)
 
     def run(self, key: RenderConfig, call: _BaseCall) -> Any:
-        if key not in self._pipeline:
-            return
+        if key not in self._pipeline: return
         pipeline_item = self._pipeline[key]
         if not self.release:
             try:
@@ -321,7 +321,7 @@ class BaseRenderer(ABC):
                     return self._key_to_func[pipeline_item](call)
                 elif pipeline_item is RenderArgs.DrawCustom:
                     return pipeline_item.custom_func(call)
-            except Exception as e:
+            except RuntimeError as e:
                 raise self._get_unexpected_error(e, (self._key_to_func[pipeline_item].__name__).strip("_").replace("draw", "run"))
         if pipeline_item in self._key_to_func:
             return self._key_to_func[pipeline_item](call)
@@ -337,10 +337,10 @@ class BaseRenderer(ABC):
     def run_text(self, call: DrawTextCall, key: RenderConfig = RenderConfig.Auto):
         try:
             self.core.get_font()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             raise ValueError(
                 Annotations.format_nvtype_renderer_error(
-                    e,
+                    str(e),
                     self._root,
                     "run_text",
                     solution="make sure you are running the application with a specified font or change the font_name in the current Widget style",

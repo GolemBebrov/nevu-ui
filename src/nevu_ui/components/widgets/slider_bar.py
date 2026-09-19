@@ -2,9 +2,9 @@ from typing import Unpack, overload
 
 import nevu_ui.core.modules as md
 from nevu_ui.components._typehints import (
-    SliderKwargs,
-    SliderKwargsLong,
-    SliderKwargsShort,
+    _SliderKwargs,
+    _SliderKwargsLongFull,
+    _SliderKwargsShortFull,
 )
 from nevu_ui.components.widgets.progress_bar import ProgressBar
 from nevu_ui.components.widgets.widget import Widget
@@ -45,20 +45,20 @@ class Slider(Widget):
         self,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[SliderKwargsShort],
+        **constant_kwargs: Unpack[_SliderKwargsShortFull],
     ): ...
     @overload
     def __init__(
         self,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[SliderKwargsLong],
+        **constant_kwargs: Unpack[_SliderKwargsLongFull],
     ): ...
     def __init__(
         self,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[SliderKwargs],
+        **constant_kwargs: Unpack[_SliderKwargs],
     ):
         self.booted = False
         self._constant_current_val = None
@@ -67,8 +67,8 @@ class Slider(Widget):
     def _init_booleans(self):
         super()._init_booleans()
         self._add_custom_flags(
-            CustomFunctions.secondary_draw_content |
-            CustomFunctions.secondary_update
+            CustomFunctions.draw_main |
+            CustomFunctions.update_main
         )
 
     def _lazy_init(self, size: NvVector2 | list):
@@ -174,8 +174,8 @@ class Slider(Widget):
             self._constant_current_val = new_value
         return new_value
 
-    def _logic_update(self):
-        super()._logic_update()
+    def _update_start(self):
+        super()._update_start()
         if self._constant_current_val and hasattr(self, "progress_bar"):
             self.current_value = self._constant_current_val
             self.cache.clear_selected(whitelist=[CacheType.TextArgs])
@@ -184,8 +184,8 @@ class Slider(Widget):
             self._changed = True
             self._constant_current_val = None
 
-    def secondary_update(self):
-        super().secondary_update()
+    def _update_main(self):
+        super()._update_main()
         self.progress_bar.update()
         if self.dragging:
             self._on_drag()
@@ -210,7 +210,7 @@ class Slider(Widget):
             self.cache.clear_selected(whitelist=[CacheType.TextArgs])
             self._create_font()
 
-    def _primary_draw(self):
+    def _draw_start(self):
         pass
 
     def _create_surf(self):
@@ -261,8 +261,8 @@ class Slider(Widget):
         assert result
         self._text_rect, self._text_surface = result
 
-    def secondary_draw_content(self):
-        super().secondary_draw_content()
+    def _draw_main(self):
+        super()._draw_main()
         self.progress_bar.coordinates = NvVector2()
         self.progress_bar.draw()
         assert self.surface
@@ -310,8 +310,9 @@ class Slider(Widget):
 
     def _kill_base(self):
         super()._kill_base()
-        if self.progress_bar:
-            self.progress_bar.kill()
+        if hasattr(self, "progress_bar"):
+            if self.progress_bar:
+                self.progress_bar.kill()
             self.progress_bar = None
 
 # NOT CLASS FUNCTIONS

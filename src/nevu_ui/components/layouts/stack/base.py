@@ -6,15 +6,15 @@ from typing import TYPE_CHECKING, Unpack
 
 if TYPE_CHECKING:
     from nevu_ui.menu import Menu
-from nevu_ui.components._typehints import StackKwargs
+from nevu_ui.components._typehints import _StackKwargs
 from nevu_ui.components.layouts import LayoutType
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import Align, CustomFunctions
 from nevu_ui.core.size.rules import (
-    _SizeRule,
     _all_fillx,
+    _SizeRule,
 )
 from nevu_ui.fast.logic.fast_logic import base_light_update, draw_widgets_optimized
 from nevu_ui.fast.nvvector2 import NvVector2
@@ -32,7 +32,7 @@ class StackBase(LayoutType, ABC):
         self,
         content: content_type | None = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[StackKwargs],
+        **constant_kwargs: Unpack[_StackKwargs],
     ):
         super().__init__(content = content, size = NvVector2(), style = style, **constant_kwargs)
 
@@ -64,7 +64,7 @@ class StackBase(LayoutType, ABC):
     def _init_booleans(self):
         super()._init_booleans()
         self._add_custom_flags(
-            CustomFunctions.secondary_draw_content
+            CustomFunctions.draw_main
         )
 
     def add_item(self, item: NevuObject, alignment: Align = Align.CENTER):  # type: ignore
@@ -104,10 +104,10 @@ class StackBase(LayoutType, ABC):
         if self.layout:
             self.layout._on_item_add(item)
 
-    def secondary_update(self, *args):
+    def _update_main(self, *args):
         base_light_update(self)
 
-    def secondary_draw_content(self):
+    def _draw_main(self):
         draw_widgets_optimized(self, self.items, LayoutType, Widget)
 
     def _regenerate_coordinates(self):

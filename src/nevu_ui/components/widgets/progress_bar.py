@@ -3,8 +3,8 @@ from typing import Any, Unpack, overload
 
 import nevu_ui.core.modules as md
 from nevu_ui.components._typehints import (
-    ProgressBarKwargsLong,
-    ProgressBarKwargsShort,
+    _ProgressBarKwargsLongFull,
+    _ProgressBarKwargsShortFull,
 )
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
@@ -30,7 +30,7 @@ class ProgressBar(Widget):
         self,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[ProgressBarKwargsLong],
+        **constant_kwargs: Unpack[_ProgressBarKwargsLongFull],
     ): ...
 
     @overload
@@ -38,7 +38,7 @@ class ProgressBar(Widget):
         self,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[ProgressBarKwargsShort],
+        **constant_kwargs: Unpack[_ProgressBarKwargsShortFull],
     ): ...
 
     def __init__(
@@ -126,8 +126,8 @@ class ProgressBar(Widget):
     def set_progress_by_value(self, value: float):
         self.progress = (value - self.start_value) / (self.end_value - self.start_value)
 
-    def _primary_draw(self):
-        super()._primary_draw()
+    def _draw_start(self):
+        super()._draw_start()
         surface = self.surface
 
         dtype = nevu_state.window.renderer_type
@@ -195,8 +195,8 @@ class ProgressBar(Widget):
             if bar_surf:
                 surf_blit(bar_surf, coords)
 
-    def secondary_draw_content(self):
-        super().secondary_draw_content()
+    def _draw_main(self):
+        super()._draw_main()
         if self.progress < 0:
             return
 

@@ -4,7 +4,7 @@ from typing import TypeGuard
 
 from nevu_ui.core import Annotations
 
-_num = (int, float)
+_num = int | float
 
 
 def is_rgb(color) -> TypeGuard[Annotations.rgb_color]:

@@ -3,7 +3,7 @@ from collections.abc import Callable
 from typing import Any, Unpack
 
 import nevu_ui.core.modules as md
-from nevu_ui.components._typehints import InputKwargs
+from nevu_ui.components._typehints import _InputKwargs
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import BindType, CustomFunctions, RenderReturnType
@@ -38,7 +38,7 @@ class Input(Widget):
         self,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[InputKwargs],
+        **constant_kwargs: Unpack[_InputKwargs],
     ):
         super().__init__(size, style, **constant_kwargs)
         self.text = ""
@@ -77,7 +77,7 @@ class Input(Widget):
         self.selected = False
         self._changed_text = False
         self._changed_cursor = False
-        self._add_custom_flags(CustomFunctions.event_update)
+        self._add_custom_flags(CustomFunctions.update_start)
 
     def _init_text_cache(self):
         self._text_surface = None
@@ -785,17 +785,17 @@ class Input(Widget):
 
     def _system_callback_binds(self):
         super()._system_callback_binds()
-        self._system_callbacks.bind(BindType.Click, lambda *args: self.check_selected())
+        self._system_callbacks.bind(BindType.Click, _input_on_click)
         self._system_callbacks.bind(BindType.Scroll, _input_on_scroll)
         self._system_callbacks.bind(
             BindType.StyleChange, _input_on_style_change, add_to_end=False
         )
 
-    def _event_update(self, events: list | None = None):
+    def _update_start(self):
         events = nevu_state.current_events
         if events is None:
             events = []
-        super()._event_update(events)
+        super()._update_start()
 
         selected = self.selected
 
@@ -953,9 +953,7 @@ class Input(Widget):
         self._update_scroll_offset_x(lines)
         self._update_scroll_offset_y()
 
-    def secondary_draw_content(self):
-        if not self._changed:
-            return
+    def _draw_main(self):
         assert self.surface
 
         rel = self.rel
@@ -1257,3 +1255,6 @@ def _input_on_style_change(self):
         return
     self._draw_text()
     self._changed = True
+
+def _input_on_click(self):
+    self.check_selected()

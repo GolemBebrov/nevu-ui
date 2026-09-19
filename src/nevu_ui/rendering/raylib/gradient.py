@@ -1,4 +1,5 @@
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import GradientType
@@ -161,3 +162,6 @@ class AnimatedGradient(GradientRaylib):
             self.colors = new_colors
             changed = True
         return changed
+
+
+__all__ = ["AnimatedGradient", "ClickGradient", "GradientRaylib"]

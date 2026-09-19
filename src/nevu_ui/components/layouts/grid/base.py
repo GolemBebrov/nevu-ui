@@ -67,9 +67,6 @@ class Grid(LayoutType):
         self.cell_height = self.size[1] / self.row
         self.cell_width = self.size[0] / self.column
 
-    def _coordinates_setter(self, coordinates: NvVector2):
-        return super()._coordinates_setter(coordinates)
-
     def add_items(self, content: content_type | None):  # type: ignore
         if not content:
             return
@@ -100,7 +97,7 @@ class Grid(LayoutType):
             item.absolute_coordinates = py_get_item_abs_coords(self, item)
             cached_coords_append(coordinates.copy())
 
-    def secondary_update(self, *args):
+    def _update_main(self, *args):
         base_light_update(self)
 
     def _parse_gcx(self, grid_cell_rule: _SizeRule, grid_cell_type: type[_SizeRule], pos: int):  # type: ignore
@@ -139,7 +136,7 @@ class Grid(LayoutType):
         super().add_item(item)
         self.grid_coordinates.append(NvVector2.from_xy(x - 1, y - 1))
 
-    def secondary_draw_content(self):
+    def _draw_main(self):
         draw_widgets_optimized(self, self.items, LayoutType, Widget)
 
     def get_row(self, x: any_number) -> list[NevuObject]:

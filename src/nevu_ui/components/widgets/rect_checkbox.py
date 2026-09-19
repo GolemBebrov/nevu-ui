@@ -2,7 +2,7 @@ from collections.abc import Callable
 from typing import Any, Unpack
 
 import nevu_ui.core.modules as md
-from nevu_ui.components._typehints import RectCheckBoxKwargs, nevu_object_globals
+from nevu_ui.components._typehints import _RectCheckBoxKwargs, nevu_object_globals
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import BindType, RenderReturnType
@@ -25,7 +25,7 @@ class RectCheckBox(Widget):
         self,
         size: Annotations.nevuobj_size | Annotations.size_item = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[RectCheckBoxKwargs],
+        **constant_kwargs: Unpack[_RectCheckBoxKwargs],
     ):
         if size is None:
             size = nevu_object_globals.library.get("size")
@@ -84,7 +84,7 @@ class RectCheckBox(Widget):
             self.clear_texture()
         return value
 
-    def secondary_draw_content(self):
+    def _draw_main(self):
         if not (self._changed and self.toggled):
             return
 

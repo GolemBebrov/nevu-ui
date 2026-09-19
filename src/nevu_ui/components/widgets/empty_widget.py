@@ -1,6 +1,6 @@
 from typing import Unpack
 
-from nevu_ui.components._typehints import WidgetKwargs
+from nevu_ui.components._typehints import _WidgetKwargs
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.presentation.style import default_style
@@ -10,7 +10,7 @@ class EmptyWidget(Widget):
     def __init__(
         self,
         size: Annotations.nevuobj_size = None,
-        **constant_kwargs: Unpack[WidgetKwargs],
+        **constant_kwargs: Unpack[_WidgetKwargs],
     ):
         super().__init__(size, default_style, **constant_kwargs)
 

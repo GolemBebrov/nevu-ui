@@ -6,14 +6,22 @@ from enum import Enum, IntEnum, IntFlag, StrEnum, auto
 # faputa approved
 
 class CustomFunctions(IntFlag):
-    secondary_update = 1 << 0
-    animation_update = 1 << 1
-    logic_update = 1 << 2
-    event_update = 1 << 3
-    primary_draw = 1 << 4
-    secondary_draw = 1 << 5
-    secondary_draw_content = 1 << 6
-    secondary_draw_end = 1 << 7
+    update_start = 1 << 0
+    update_main = 1 << 1
+    update_end = 1 << 2
+
+    draw_start = 1 << 3
+    draw_main = 1 << 4
+    draw_end = 1 << 5
+
+
+
+    #UpdateStart = 1 << 0
+    #UpdateMain  = 1 << 1
+    #UpdateEnd   = 1 << 2
+    #DrawStart   = 1 << 3
+    #DrawMain    = 1 << 4
+    #DrawEnd     = 1 << 5
 
 class CanvasType(StrEnum):
     Rect = "rect"

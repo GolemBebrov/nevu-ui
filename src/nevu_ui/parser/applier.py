@@ -62,7 +62,7 @@ def _apply_config(config: dict):
             continue
 
         substruct_validators = structure_validators[key]
-        is_any = Any in substruct_validators.keys()
+        is_any = Any in substruct_validators
         result, adds = _validate_substruct(key, is_any, substruct, substruct_validators)
         if not result and adds:
             print(f"During {key} validation occured errors:")
@@ -72,7 +72,7 @@ def _apply_config(config: dict):
             attr = transform_to_basic_config[key]
             strategy, convert_func = strategies.get(key, (None, None))
             if strategy is None and convert_func is None:
-                raise ValueError(f"CRITICAL: Invalid strategy for: {key}")
+                raise ValueError(f"Invalid strategy for: {key}")
             match strategy:
                 case ApplierStrategy.CollectDict:
                     getattr(standart_config, attr, {}).update(substruct)
@@ -87,36 +87,35 @@ def _apply_config(config: dict):
 
 
 def lazy_cycle(buffer: ApplierBuffer):
-    first_start = True
-    oldlen = float("inf")
-    next_pop = []
-    while first_start or oldlen > len(buffer.lazy_init):
-        if first_start:
-            oldlen = float("inf")
-            first_start = False
-        else:
-            oldlen = len(buffer.lazy_init)
-        for popname in next_pop:
-            buffer.lazy_init.pop(popname)
-            next_pop = []
-        for name, value in buffer.lazy_init.items():
+    final_init = buffer.final_init
+    lazy_init = buffer.lazy_init
+
+    while lazy_init:
+        resolved = []
+
+        for name, value in lazy_init.items():
             if isinstance(value, dict):
                 extend_name = value.get("extends")
-                if buffer.final_init.get(extend_name):
-                    next_pop.append(name)
-                    value.pop("extends")
-                    extend_copy: dict = buffer.final_init[extend_name].copy()
-                    extend_copy |= value
-                    buffer.final_init[name] = extend_copy
+                if extend_name is not None and extend_name in final_init:
+                    resolved.append(name)
+                    value_clean = {k: v for k, v in value.items() if k != "extends"}
+                    extend_copy = final_init[extend_name].copy()
+                    extend_copy |= value_clean
+                    final_init[name] = extend_copy
+
             elif isinstance(value, str):
-                if buffer.final_init.get(value):
-                    next_pop.append(name)
-                    buffer.final_init[name] = buffer.final_init[value]
-    if buffer.lazy_init:
-        remaining = ", ".join(buffer.lazy_init.keys())
-        raise ValueError(
-            f"Could not resolve style dependencies. Check for circular dependencies or missing styles: {remaining}"
-        )
+                if value in final_init:
+                    resolved.append(name)
+                    final_init[name] = final_init[value]
+
+        if not resolved:
+            remaining = ", ".join(lazy_init.keys())
+            raise ValueError(
+                f"Could not resolve style dependencies. Check for circular dependencies or missing styles: {remaining}"
+            )
+
+        for name in resolved:
+            del lazy_init[name]
 
 
 def _get_styles_from_verified_dict(styles_dict):
@@ -137,7 +136,7 @@ def _get_styles_from_verified_dict(styles_dict):
     return styles
 
 
-#! Convertors !#
+# Convertors
 def _style_convert_func():
     assert styles_buffer
     lazy_cycle(styles_buffer)
@@ -250,7 +249,7 @@ def _validate_substruct(key, is_any, substruct, validators):
     return (False, error_batch) if error_batch else (True, "All items are valid")
 
 
-#! Checkers !#
+# Checkers
 def skip():
     return True, "skipped, no need to validate"
 
@@ -354,22 +353,21 @@ def check_colortheme(key, value):
         if (
             hasattr(ColorThemeLibrary, "_names")
             and extend_name in ColorThemeLibrary._names
-        ):
-            if extend_name not in colorthemes_buffer.final_init:
-                lib_theme = getattr(ColorThemeLibrary, extend_name)
-                colorthemes_buffer.final_init[extend_name] = {
-                    "name": lib_theme.name,
-                    "primary": lib_theme.primary,
-                    "secondary": lib_theme.secondary,
-                    "tertiary": lib_theme.tertiary,
-                    "error": lib_theme.error,
-                    "background": lib_theme.background,
-                    "surface": lib_theme.surface,
-                    "surface_variant": lib_theme.surface_variant,
-                    "inverse_surface": lib_theme.inverse_surface,
-                    "outline": lib_theme.outline,
-                    "inverse_primary": lib_theme.inverse_primary,
-                }
+        ) and extend_name not in colorthemes_buffer.final_init:
+            lib_theme = getattr(ColorThemeLibrary, extend_name)
+            colorthemes_buffer.final_init[extend_name] = {
+                "name": lib_theme.name,
+                "primary": lib_theme.primary,
+                "secondary": lib_theme.secondary,
+                "tertiary": lib_theme.tertiary,
+                "error": lib_theme.error,
+                "background": lib_theme.background,
+                "surface": lib_theme.surface,
+                "surface_variant": lib_theme.surface_variant,
+                "inverse_surface": lib_theme.inverse_surface,
+                "outline": lib_theme.outline,
+                "inverse_primary": lib_theme.inverse_primary,
+            }
         colorthemes_buffer.lazy_init[key] = value
     else:
         colorthemes_buffer.final_init[key] = value
@@ -405,7 +403,7 @@ def check_style(key, value):
         if not result:
             return False, f"{param} is not in Style parameters"
 
-        param_name, validator_name = result  # type: ignore
+        _, validator_name = result  # type: ignore
         validator = validator_name
         if not validator(_val)[0]:
             return False, f"{_val} is not valid for {param}"
@@ -439,7 +437,7 @@ def _is_color_convertable(value):
     return None
 
 
-#! Helpers !#
+# Helpers
 class ApplierStrategy(StrEnum):
     CollectDict = "collect_dict"
     CollectList = "collect_list"
@@ -480,7 +478,7 @@ transform_to_basic_config = {
 }
 
 
-#! Global functions
+# Global functions
 def apply_config(file_name: str, load_type: ConfigLoadType = ConfigLoadType.Json):
     with open(file_name, "r", encoding="utf-8") as file:
         if load_type == ConfigLoadType.Yaml:

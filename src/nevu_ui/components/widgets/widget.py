@@ -2,9 +2,9 @@ from typing import Unpack, overload
 
 import nevu_ui.core.modules as md
 from nevu_ui.components._typehints import (
-    WidgetKwargs,
-    WidgetKwargsLong,
-    WidgetKwargsShort,
+    _WidgetKwargs,
+    _WidgetKwargsLongFull,
+    _WidgetKwargsShortFull,
 )
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.core import Annotations
@@ -58,20 +58,20 @@ class Widget(NevuObject):
         self,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[WidgetKwargsShort],
+        **constant_kwargs: Unpack[_WidgetKwargsShortFull],
     ): ...
     @overload
     def __init__(
         self,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[WidgetKwargsLong],
+        **constant_kwargs: Unpack[_WidgetKwargsLongFull],
     ): ...
     def __init__(
         self,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[WidgetKwargs],
+        **constant_kwargs: Unpack[_WidgetKwargs],
     ):
         super().__init__(size, style, **constant_kwargs)
         # === Text Cache ===
@@ -174,10 +174,10 @@ class Widget(NevuObject):
     def _init_booleans(self):
         super()._init_booleans()
         self._add_custom_flags(
-            CustomFunctions.secondary_draw_content |
-            CustomFunctions.secondary_draw_end |
-            CustomFunctions.logic_update |
-            CustomFunctions.primary_draw
+            CustomFunctions.draw_main |
+            CustomFunctions.draw_end |
+            CustomFunctions.update_start |
+            CustomFunctions.draw_start
         )
         self._click_started = False
         self._supports_tuple_borderradius = True
@@ -314,21 +314,7 @@ class Widget(NevuObject):
         if self.cache.get(CacheType.Image):
             md.rl.unload_texture(self.cache.get(CacheType.Image))  # type: ignore
 
-    def _primary_draw(self):
-        super()._primary_draw()
-        if self._dead:
-            return
-        if not self._changed:
-            return
-        self._primary_draw_content()
-
-    def _on_visible_set(self):
-        super()._on_visible_set()
-        if not self._visible:
-            self.clear_surfaces()
-            self.clear_texture()
-
-    def _primary_draw_content(self):
+    def _draw_start(self):
         def build_background() -> SurfaceLike:
             bg: SurfaceLike = self.cache.get_or_exec(
                 CacheType.Background,
@@ -398,8 +384,14 @@ class Widget(NevuObject):
             assert isinstance(cached_bg, md.pygame.Surface)
             surface.blit(cached_bg, coords)
 
-    def _secondary_draw_end(self):
-        super()._secondary_draw_end()
+    def _on_visible_set(self):
+        super()._on_visible_set()
+        if not self._visible:
+            self.clear_surfaces()
+            self.clear_texture()
+
+    def _draw_end(self):
+        super()._draw_end()
         if self._changed and nevu_state.renderer:
             self._sdl2_cached_texture = self.cache.get_or_exec(
                 CacheType.SDLTexture, self._convert_to_sdl2_texture
@@ -423,7 +415,7 @@ class Widget(NevuObject):
     def clear_texture(self):
         self.cache.clear_selected(whitelist=[CacheType.SDLTexture])
 
-    def _logic_update(self):
+    def _update_start(self):
         if self._click_started:
             click_anim_manager = self._click_anim_manager
             assert click_anim_manager

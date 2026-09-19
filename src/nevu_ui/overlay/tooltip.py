@@ -5,10 +5,9 @@ import weakref
 from typing import TYPE_CHECKING, Any, final
 
 import nevu_ui.core.modules as md
-from nevu_ui.core.classes import SurfaceLike, TooltipType
+from nevu_ui.core.classes import Counter, SurfaceLike, TooltipType
 from nevu_ui.core.state import nevu_state
-from nevu_ui.fast import Cache, NvRect, NvRenderTexture, NvVector2
-from nevu_ui.fast.raylib import begin_blend_mode, end_blend_mode
+from nevu_ui.fast import Cache, NvRect, NvVector2
 from nevu_ui.presentation.animations.animation_base import Vector2Animation
 from nevu_ui.presentation.animations.animation_manager import AnimationManager
 from nevu_ui.presentation.animations.animations_library import smootherstep
@@ -20,10 +19,7 @@ from nevu_ui.core.enums import (
     AnimationManagerState,
     BindType,
     CacheType,
-    EventType,
     HoverState,
-    Malign,
-    RenderConfig,
     RenderReturnType,
 )
 from nevu_ui.overlay import overlay
@@ -36,22 +32,21 @@ from nevu_ui.utils import mouse, time
 # include <stability.h>
 # define GurrenLagann
 
-
 class _TooltipBase:
     __slots__ = (
-        "ratio",
+        "_cached_surf",
+        "cache",
+        "initial_ratio",
         "pos",
+        "ratio",
         "size",
         "style",
         "title",
-        "_cached_surf",
-        "initial_ratio",
-        "cache",
     )
 
     def __init__(self, title: str, style: Style = default_style):
-        self.initial_ratio = NvVector2(1, 1)
-        self.ratio = NvVector2(1, 1)
+        self.initial_ratio = NvVector2.from_xy(1, 1)
+        self.ratio = NvVector2.from_xy(1, 1)
         self.pos = NvVector2()
         self.size = NvVector2()
         self.style = copy.deepcopy(style)
@@ -261,13 +256,14 @@ class Tooltip:
 
     def __init__(self, type: tooltip_type, style: Style = default_style):
         self.style = style
-        self.type = type
+        self.tooltip_type = type
         self.master: NevuObject | None = None
         self._data = self.unpack_type()
         self.get_surf = self._data.get_surf
-        self._counter = 0
-        self._counter_max = 1.0
-        self._counter_max_opened = self._counter_max * 0.4
+
+        counter_max = 1.0
+        self._counter = Counter(0, counter_max)
+        self._counter_opened = Counter(0, counter_max * 0.1)
         self.old_coord: NvVector2 = NvVector2()
         self.anim_manager = None
 
@@ -287,17 +283,17 @@ class Tooltip:
         self._data.resize(resize_ratio)
 
     def unpack_type(self) -> _TooltipBase:
-        if isinstance(self.type, TooltipType.Small):
-            return _SmallTooltip(self.type.title, self.style)
-        elif isinstance(self.type, TooltipType.Medium):
-            return _MediumTooltip(self.type.title, self.type.content, self.style)
-        elif isinstance(self.type, TooltipType.Large):
-            return _LargeTooltip(self.type.title, self.type.content, self.style)
-        elif isinstance(self.type, TooltipType.Custom):
-            return _CustomTooltip(self.type.ratio, self.type.title, self.style)
+        if isinstance(self.tooltip_type, TooltipType.Small):
+            return _SmallTooltip(self.tooltip_type.title, self.style)
+        elif isinstance(self.tooltip_type, TooltipType.Medium):
+            return _MediumTooltip(self.tooltip_type.title, self.tooltip_type.content, self.style)
+        elif isinstance(self.tooltip_type, TooltipType.Large):
+            return _LargeTooltip(self.tooltip_type.title, self.tooltip_type.content, self.style)
+        elif isinstance(self.tooltip_type, TooltipType.Custom):
+            return _CustomTooltip(self.tooltip_type.ratio, self.tooltip_type.title, self.style)
         else:
             return _BigCustomTooltip(
-                self.type.ratio, self.type.title, self.type.content, self.style
+                self.tooltip_type.ratio, self.tooltip_type.title, self.tooltip_type.content, self.style
             )
 
     def _off(self, *args: Any):
@@ -322,43 +318,58 @@ class Tooltip:
 
     def _update(self, *args):
         assert self.master, "Tooltip is not connected to NevuObject!"
-        if self.master.hover_state == HoverState.NotHovered and overlay.has_element(
-            self
-        ):
-            self._off()
-            self._counter = 0
+        if self.master.hover_state == HoverState.NotHovered:
+            if overlay.has_element(self):
+                self._off()
+            self._counter.reset()
+            self._counter_opened.reset()
+            return
 
-        elif self.master.hover_state in [HoverState.Hovered, HoverState.Clicked]:
+        if self.master.hover_state in [HoverState.Hovered, HoverState.Clicked]:
             new_pos = mouse.pos
-            if new_pos != self.old_coord and self.anim_manager is None:
-                self._counter += 1 * time.dt
-                if (
-                    overlay.has_element(self)
-                    and self._counter >= self._counter_max_opened
-                ):
-                    self._move_to_mouse(new_pos)
-                elif self._counter >= self._counter_max:
-                    self._move_to_mouse(new_pos)
+            x = new_pos.x - self.old_coord.x
+            y = new_pos.y - self.old_coord.y
 
-            elif self.anim_manager:
+            if self.anim_manager is not None:
                 self.anim_manager.update()
+                anim_pos = self.anim_manager.get_animation_value("tooltip_animation")
+                if anim_pos is not None:
+                    if anim_pos.x != self.old_coord.x or anim_pos.y != self.old_coord.y:
+                        self.old_coord = anim_pos.copy()
+                        self._on()
+
                 if self.anim_manager.state != AnimationManagerState.Start:
                     self.anim_manager = None
-                    return
-                new_pos = self.anim_manager.get_animation_value("tooltip_animation")
-                if new_pos is None:
-                    return
-                if new_pos.x != self.old_coord.x or new_pos.y != self.old_coord.y:
-                    self.old_coord = new_pos
-                    self._on()
 
-    def _move_to_mouse(self, new_pos):
-        self._counter = 0
+            elif abs(x) > 10 or abs(y) > 10:
+                if overlay.has_element(self):
+                    self._counter_opened.inc(time.dt)
+                    if self._counter_opened.ended:
+                        self._move_to_mouse(new_pos)
+                else:
+                    self._counter.inc(time.dt)
+                    if self._counter.ended:
+                        self._move_to_mouse(new_pos)
+
+    def _move_to_mouse(self, new_pos: NvVector2):
+        self._counter.reset()
+        self._counter_opened.reset()
+
         if self.old_coord.x == 0 and self.old_coord.y == 0:
-            self.old_coord = mouse.pos
-            new_pos = new_pos + NvVector2(1, 1)
-        self.anim_manager = AnimationManager()
-        self.anim_manager.add_start_animation("tooltip_animation", Vector2Animation(NvVector2(self.old_coord), NvVector2(new_pos), 0.2, smootherstep))
+            self.old_coord = new_pos.copy()
+            self._on()
+            return
+
+        self.anim_manager = AnimationManager(warn=False)
+        self.anim_manager.add_start_animation(
+            "tooltip_animation",
+            Vector2Animation(
+                self.old_coord.copy(),
+                new_pos.copy(),
+                0.2,
+                smootherstep
+            ),
+        )
 
     def connect_to_master(self, master: NevuObject):
         self.master = weakref.proxy(master)

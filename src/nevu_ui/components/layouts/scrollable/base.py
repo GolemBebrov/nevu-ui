@@ -4,7 +4,7 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import Any, TypeGuard, Unpack
 
-from nevu_ui.components._typehints import AlignTemplate, ScrollableKwargs
+from nevu_ui.components._typehints import _AlignTemplate, _ScrollableKwargs
 from nevu_ui.components.layouts import LayoutType
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
@@ -28,7 +28,6 @@ from nevu_ui.fast.nvspecific.nvspec import (
     scrollable_update_collided,
 )
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.overlay import overlay
 from nevu_ui.presentation.color import SubThemeRole
 from nevu_ui.presentation.style import Style
 from nevu_ui.utils import keyboard, mouse
@@ -50,7 +49,7 @@ class ScrollableBase(LayoutType, ABC):
             style,
             orientation: ScrollBarType,
             master: ScrollableBase | None = None,
-            **constant_kwargs: Unpack[ScrollableKwargs],
+            **constant_kwargs: Unpack[_ScrollableKwargs],
         ):
             super().__init__(size, style, **constant_kwargs)
             self.master: ScrollableBase = master  # type: ignore
@@ -58,7 +57,7 @@ class ScrollableBase(LayoutType, ABC):
                 raise ValueError("Orientation must be 'vertical' or 'horizontal'")
             self.orientation = orientation
             self._add_custom_flags(
-                CustomFunctions.secondary_update
+                CustomFunctions.update_main
             )
 
         def _add_params(self):
@@ -118,8 +117,8 @@ class ScrollableBase(LayoutType, ABC):
             self.track_start_abs = start_abs
             self.track_length = length
 
-        def secondary_update(self):
-            super().secondary_update()
+        def _update_main(self):
+            super()._update_main()
             axis = self._orientation_to_int()
 
             if self.scrolling:
@@ -142,14 +141,14 @@ class ScrollableBase(LayoutType, ABC):
         content: content_type | None = None,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[ScrollableKwargs],
+        **constant_kwargs: Unpack[_ScrollableKwargs],
     ):
         super().__init__(content, size, style, **constant_kwargs)
 
     def _create_template(  # type: ignore
         self, size: Annotations.nevuobj_size, content: content_type | None,
     ):
-        return AlignTemplate(size, content)  # type: ignore
+        return _AlignTemplate(size, content)  # type: ignore
 
     def _init_booleans(self):
         super()._init_booleans()
@@ -167,7 +166,7 @@ class ScrollableBase(LayoutType, ABC):
         self._last_known_abs_coords = NvVector2(-9999, -9999)
         self._last_window_size = NvVector2(-9999, -9999)
 
-    def _coordinates_setter(self, coordinates: NvVector2):
+    def _coordinates_setter(self, coordinates: NvVector2) -> bool:
         if self.booted == False:
             return True
         self.cached_coordinates = None
@@ -227,10 +226,6 @@ class ScrollableBase(LayoutType, ABC):
         return rect1.collide_rect(rect2)
 
     def _rl_predraw_widgets(self):
-        if self.borders and self._need_update_overlay:
-            self._need_update_overlay = False
-            abs_coords = self.absolute_coordinates.to_round()
-            overlay.add_draw_call(self, self._rl_border_draw_call, abs_coords, -1)
         need_recollide = (
             self.absolute_coordinates.x != self._last_known_abs_coords.x
             or self.absolute_coordinates.y != self._last_known_abs_coords.y
@@ -251,13 +246,13 @@ class ScrollableBase(LayoutType, ABC):
     def _is_scrollable(layout: NevuObject) -> TypeGuard["ScrollableBase"]:
         return isinstance(layout, ScrollableBase)
 
-    def secondary_draw_content(self):
+    def _draw_main(self):
         draw_widgets_optimized(self, self.collided_items, LayoutType, Widget)
         if self.actual_max_main > 0:
             draw_widgets_optimized(self, [self.scroll_bar], LayoutType, Widget)
 
-    def secondary_update(self):
-        super().secondary_update()
+    def _update_main(self):
+        super()._update_main()
         assert self.scroll_bar
         scroll_bar = self.scroll_bar
 
@@ -350,8 +345,8 @@ class ScrollableBase(LayoutType, ABC):
         )
         self.collided_items = scrollable_recollide_items(self, self.items)
 
-    def _logic_update(self):
-        super()._logic_update()
+    def _update_start(self):
+        super()._update_start()
         if self.hover_state == HoverState.NotHovered:
             return
         if nevu_state.keyboard_focused:
@@ -428,7 +423,7 @@ class ScrollableBase(LayoutType, ABC):
         self._restart_coordinates()
 
     def apply_style_to_childs(self, style: Style):
-        super().apply_style_to_childs(style)
+        super().set_items_style(style)
         self.apply_scroll_bar_style(style)
 
     def apply_scroll_bar_style(self, style: Style):

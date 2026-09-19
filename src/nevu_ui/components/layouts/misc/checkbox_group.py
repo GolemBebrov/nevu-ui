@@ -6,18 +6,6 @@ if TYPE_CHECKING:
     from nevu_ui.components.widgets import RectCheckBox
 from nevu_ui.core.enums import BindType
 
-# CHECKBOX_GROUP STRUCTURE: ====================
-#    Properties >
-#        all property functions
-#    Wrappers >
-#        wrappers for different modes
-#    Hooks >
-#        on_checkbox_added
-#        on_single_toggled
-#        on_multiple_toggled
-#    Functions >
-#        all other functions
-
 
 class CheckBoxGroup:
     def __init__(
@@ -40,7 +28,6 @@ class CheckBoxGroup:
         return self._single_select
 
     # === Wrappers ===
-
     def _on_toggle_multiple_wrapper(self, checkbox: RectCheckBox, *args):
         self.on_multiple_toggled([c for c in self._content if c.toggled])
 
@@ -53,14 +40,9 @@ class CheckBoxGroup:
         self.on_single_toggled(checkbox)
 
     # === Hooks ===
-    def on_checkbox_added(self, checkbox: RectCheckBox):
-        pass  # === hook ===
-
-    def on_multiple_toggled(self, included_checkboxes: list[RectCheckBox]):
-        pass  # === hook ===
-
-    def on_single_toggled(self, checkbox: RectCheckBox | None):
-        pass  # === hook ===
+    def on_checkbox_added(self, checkbox: RectCheckBox): ...
+    def on_multiple_toggled(self, included_checkboxes: list[RectCheckBox]): ...
+    def on_single_toggled(self, checkbox: RectCheckBox | None): ...
 
     # === Functions ===
 
