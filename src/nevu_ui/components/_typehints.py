@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, NotRequired, TypedDict, Unpack
+from typing import TYPE_CHECKING, Any, TypedDict, Unpack
 
 from nevu_ui.core import Annotations
 from nevu_ui.core.callbacks import Callbacks
-from nevu_ui.core.classes import BorderConfig, DictAccessMixin, GlobalsBase
+from nevu_ui.core.classes import DictAccessMixin, GlobalsBase
 from nevu_ui.core.enums import Align, FlexDirection, FlexJustify, SwitchAxis
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.overlay.tooltip import Tooltip
@@ -16,9 +16,10 @@ from nevu_ui.presentation.style import Style
 from nevu_ui.rendering.canvas import Canvas
 
 if TYPE_CHECKING:
+    from nevu_ui.components.layouts import LayoutType
     from nevu_ui.components.layouts.misc.checkbox_group import CheckBoxGroup
     from nevu_ui.components.nevuobj import NevuObject
-    from nevu_ui.components.widgets import Input, Label, ProgressBar, Switch
+    from nevu_ui.components.widgets import Input, Label, ProgressBar, Switch, Widget
     from nevu_ui.presentation.color import PairColorRole, SubThemeRole, TupleColorRole
     from nevu_ui.presentation.style import Style
 
@@ -30,49 +31,37 @@ class _NevuObjectKwargsBase(TypedDict, total=False):
     callbacks: Callbacks | dict
     canvas: Canvas
     bg_variant: bool
-
+    start_pos: list | tuple | NvVector2
 
 class _NevuObjectKwargsShort(TypedDict, total=False):
     z: int
     anim_manager: AnimationManager
 
-
 class _NevuObjectKwargsLong(TypedDict, total=False):
     depth: int
     animation_manager: AnimationManager
 
-
-class NevuObjectKwargsShort(_NevuObjectKwargsBase, _NevuObjectKwargsShort):
-    pass
-
-
-class NevuObjectKwargsLong(_NevuObjectKwargsBase, _NevuObjectKwargsLong):
-    pass
-
-
-class NevuObjectKwargs(NevuObjectKwargsShort, NevuObjectKwargsLong):
-    pass
+class _NevuObjectKwargsShortFull(_NevuObjectKwargsBase, _NevuObjectKwargsShort): ...
+class _NevuObjectKwargsLongFull(_NevuObjectKwargsBase, _NevuObjectKwargsLong): ...
+class _NevuObjectKwargs(_NevuObjectKwargsShortFull, _NevuObjectKwargsLongFull): ...
 
 
 @dataclass
-class NevuObjectTemplate(DictAccessMixin):
+class _NevuObjectTemplate(DictAccessMixin):
     size: Annotations.nevuobj_size
 
 
-class _NevuObjecGlobalsKwargs(TypedDict):
-    size: NotRequired[Annotations.nevuobj_size]
-    style: NotRequired[Style | str]
+class _NevuObjectGlobalsKwargs(TypedDict, total=False):
+    size: Annotations.nevuobj_size
+    style: Style | str
 
 
-class NevuObjectGlobalsKwargs(_NevuObjecGlobalsKwargs, NevuObjectKwargs):
-    pass
-
-
-class NevuObjectGlobals(GlobalsBase):
-    def modify(self, **kwargs: Unpack[NevuObjectGlobalsKwargs]):
+class _NevuObjectGlobalsKwargsFull(_NevuObjectGlobalsKwargs, _NevuObjectKwargs): ...
+class _NevuObjectGlobals(GlobalsBase):
+    def modify(self, **kwargs: Unpack[_NevuObjectGlobalsKwargsFull]):
         return super().modify(**kwargs)
 
-    def modify_temp(self, **kwargs: Unpack[NevuObjectGlobalsKwargs]):
+    def modify_temp(self, **kwargs: Unpack[_NevuObjectGlobalsKwargsFull]):
         return super().modify_temp(**kwargs)
 
 class _WidgetKwargsBase(TypedDict, total=False):
@@ -89,43 +78,33 @@ class _WidgetKwargsBase(TypedDict, total=False):
     subtheme_role: SubThemeRole
     glassy: bool
 
-
-class _WidgetKwargsShort(NevuObjectKwargsShort, total=False):
+class _WidgetKwargsShort(_NevuObjectKwargsShortFull, total=False):
     alt: bool
 
-
-class _WidgetKwargsLong(NevuObjectKwargsLong, total=False):
+class _WidgetKwargsLong(_NevuObjectKwargsLongFull, total=False):
     inverted: bool
 
-
-class WidgetKwargsShort(_WidgetKwargsBase, _WidgetKwargsShort, total=False):
-    pass
-
-
-class WidgetKwargsLong(_WidgetKwargsBase, _WidgetKwargsLong, total=False):
-    pass
+class _WidgetKwargsShortFull(_WidgetKwargsBase, _WidgetKwargsShort, total=False): ...
+class _WidgetKwargsLongFull(_WidgetKwargsBase, _WidgetKwargsLong, total=False): ...
+class _WidgetKwargs(_WidgetKwargsShortFull, _WidgetKwargsLongFull, total=False): ...
 
 
-class WidgetKwargs(WidgetKwargsShort, WidgetKwargsLong, total=False):
-    pass
-
-
-class SwitchKwargs(WidgetKwargs, total=False):
+class _SwitchKwargs(_WidgetKwargs, total=False):
     axis: SwitchAxis
     on_switch_change: Callable[[Switch, bool], None]
 
 
-class LabelKwargs(WidgetKwargs, total=False):
+class _LabelKwargs(_WidgetKwargs, total=False):
     words_indent: bool
     on_text_change: Callable[[Label, str], None]
 
 
-class ButtonKwargs(LabelKwargs, total=False):
+class _ButtonKwargs(_LabelKwargs, total=False):
     is_active: bool
     throw_errors: bool
 
 
-class ElementSwitcherKwargs(WidgetKwargs, total=False):
+class _ElementSwitcherKwargs(_WidgetKwargs, total=False):
     on_content_change: Callable
     current_index: int
     button_padding: int
@@ -137,7 +116,7 @@ class ElementSwitcherKwargs(WidgetKwargs, total=False):
     right_key: Any
 
 
-class InputKwargs(WidgetKwargs, total=False):
+class _InputKwargs(_WidgetKwargs, total=False):
     is_active: bool
     multi_line: bool
     allow_paste: bool
@@ -152,139 +131,105 @@ class InputKwargs(WidgetKwargs, total=False):
     on_change_function: Callable[[Input, str], None] | None
 
 
-class _SpecProgressBarKwargsLong(TypedDict, total=False):
-    start_value: int | float
-    end_value: int | float
-    current_value: int | float
+class _ProgressBarKwargsLong(TypedDict, total=False):
+    start_value: float
+    end_value: float
+    current_value: float
     filled_rect_role: PairColorRole
-    on_current_value_change: Callable[[ProgressBar, int | float], None]
+    on_current_value_change: Callable[[ProgressBar, float], None]
 
 
-class _SpecProgressBarKwargsShort(TypedDict, total=False):
-    start: int | float
-    end: int | float
-    current: int | float
+class _ProgressBarKwargsShort(TypedDict, total=False):
+    start: float
+    end: float
+    current: float
     role: PairColorRole
-    on_value_change: Callable[[ProgressBar, int | float], None]
+    on_value_change: Callable[[ProgressBar, float], None]
 
 
-class ProgressBarKwargsLong(_SpecProgressBarKwargsLong, WidgetKwargs):
-    pass
+class _ProgressBarKwargsLongFull(_ProgressBarKwargsLong, _WidgetKwargs): ...
+class _ProgressBarKwargsShortFull(_ProgressBarKwargsShort, _WidgetKwargs): ...
+class _ProgressBarKwargs(_ProgressBarKwargsLongFull, _ProgressBarKwargsShortFull, _WidgetKwargs): ...
 
 
-class ProgressBarKwargsShort(_SpecProgressBarKwargsShort, WidgetKwargs):
-    pass
-
-
-class ProgressBarKwargs(ProgressBarKwargsLong, ProgressBarKwargsShort, WidgetKwargs):
-    pass
-
-
-class _SliderKwargsDefault(TypedDict, total=False):
+class _SliderKwargsBase(TypedDict, total=False):
     bar_style: Style
-    step: int | float
+    step: float
     bar_font_role: TupleColorRole
 
-
-class _SliderKwargsShort(
-    _SpecProgressBarKwargsShort, _SliderKwargsDefault, total=False
-):
+class _SliderKwargsShort(_ProgressBarKwargsShort, _SliderKwargsBase, total=False):
     pad_x: int
     pad_y: int
 
-
-class _SliderKwargsLong(_SpecProgressBarKwargsLong, _SliderKwargsDefault, total=False):
+class _SliderKwargsLong(_ProgressBarKwargsLong, _SliderKwargsBase, total=False):
     padding_x: int
     padding_y: int
 
-
-class SliderKwargsShort(_SliderKwargsShort, WidgetKwargs):
-    pass
-
-
-class SliderKwargsLong(_SliderKwargsLong, WidgetKwargs):
-    pass
+class _SliderKwargsShortFull(_SliderKwargsShort, _WidgetKwargs): ...
+class _SliderKwargsLongFull(_SliderKwargsLong, _WidgetKwargs): ...
+class _SliderKwargs(_SliderKwargsShortFull, _SliderKwargsLongFull, _WidgetKwargs): ...
 
 
-class SliderKwargs(SliderKwargsShort, SliderKwargsLong, WidgetKwargs):
-    pass
-
-
-class _RectCheckBoxKwargsDefault(TypedDict, total=False):
+class _RectCheckBoxKwargsBase(TypedDict, total=False):
     toggled: bool
     toggled_rect_opacity: int
 
-
-class _RectCheckBoxKwargsShort(_RectCheckBoxKwargsDefault, total=False):
+class _RectCheckBoxKwargsShort(_RectCheckBoxKwargsBase, total=False):
     on_toggle: Callable | None
     group: CheckBoxGroup
-    toggled_scale: int | float
+    toggled_scale: float
 
-
-class _RectCheckBoxKwargsLong(_RectCheckBoxKwargsDefault, total=False):
+class _RectCheckBoxKwargsLong(_RectCheckBoxKwargsBase, total=False):
     on_toggle_function: Callable | None
     checkbox_group: CheckBoxGroup
-    toggled_rect_scale: int | float
+    toggled_rect_scale: float
 
-
-class RectCheckBoxKwargsShort(_RectCheckBoxKwargsShort, WidgetKwargs):
-    pass
-
-
-class RectCheckBoxKwargsLong(_RectCheckBoxKwargsLong, WidgetKwargs):
-    pass
-
-
-class RectCheckBoxKwargs(RectCheckBoxKwargsShort, RectCheckBoxKwargsLong, WidgetKwargs):
-    pass
-
-@dataclass
-class WidgetTemplate(NevuObjectTemplate):
-    pass
+class _RectCheckBoxKwargsShortFull(_RectCheckBoxKwargsShort, _WidgetKwargs): ...
+class _RectCheckBoxKwargsLongFull(_RectCheckBoxKwargsLong, _WidgetKwargs): ...
+class _RectCheckBoxKwargs(_RectCheckBoxKwargsShortFull, _RectCheckBoxKwargsLongFull, _WidgetKwargs): ...
 
 
 @dataclass
-class LabelTemplate(WidgetTemplate):
+class _WidgetTemplate(_NevuObjectTemplate): ...
+
+@dataclass
+class _LabelTemplate(_WidgetTemplate):
     text: str
 
-
 @dataclass
-class ElementSwitcherTemplate(WidgetTemplate):
+class _ElementSwitcherTemplate(_WidgetTemplate):
     elements: Any | list | None = None
 
-
 @dataclass
-class InputTemplate(WidgetTemplate):
+class _InputTemplate(_WidgetTemplate):
     text: str
 
-
 @dataclass
-class SwitchTemplate(WidgetTemplate):
+class _SwitchTemplate(_WidgetTemplate):
     state: bool
 
 
-class WidgetGlobalsKwargs(NevuObjectGlobalsKwargs, WidgetKwargs):
-    pass
-
-
-class WidgetGlobals(GlobalsBase):
-    def modify(self, **kwargs: Unpack[WidgetGlobalsKwargs]):
+class _WidgetGlobalsKwargs(_NevuObjectGlobalsKwargsFull, _WidgetKwargs): ...
+class _WidgetGlobals(GlobalsBase):
+    def modify(self, **kwargs: Unpack[_WidgetGlobalsKwargs]):
         return super().modify(**kwargs)
 
-    def modify_temp(self, **kwargs: Unpack[WidgetGlobalsKwargs]):
+    def modify_temp(self, **kwargs: Unpack[_WidgetGlobalsKwargs]):
         return super().modify_temp(**kwargs)
 
-class LayoutTypeKwargs(NevuObjectKwargs, total = False):
-    borders: BorderConfig
 
-class _StackKwargs(TypedDict, total = False):
+class _LayoutTypeKwargs(_NevuObjectKwargs, total=False):
+    bg_widget: Widget
+
+
+class _StackKwargsBase(TypedDict, total=False):
     spacing: float
     basic_alignment: Align
 
-class StackKwargs(_StackKwargs, LayoutTypeKwargs):
-    pass
+class _StackKwargs(_StackKwargsBase, _LayoutTypeKwargs): ...
 
-class _ScrollableKwargs(LayoutTypeKwargs, total = False):
+
+class _ScrollableKwargsBase(_LayoutTypeKwargs, total=False):
     arrow_scroll_power: int
     wheel_scroll_power: int
     inverted_scrolling: bool
@@ -294,40 +239,34 @@ class _ScrollableKwargs(LayoutTypeKwargs, total = False):
     descend_key: Any
     spacing: float
 
-
-class ScrollableKwargs(_ScrollableKwargs, LayoutTypeKwargs):
-    pass
-
-class _Grid_Specifics_rc(TypedDict):
-    row: NotRequired[int | float]
-    column: NotRequired[int | float]
+class _ScrollableKwargs(_ScrollableKwargsBase, _LayoutTypeKwargs): ...
 
 
-class _Grid_Specifics_xy(TypedDict):
-    x: NotRequired[int | float]
-    y: NotRequired[int | float]
+class _Grid_Specifics_rc(TypedDict, total=False):
+    row: float
+    column: float
+
+class _Grid_Specifics_xy(TypedDict, total=False):
+    x: float
+    y: float
+
+class _GridKwargs_rc(_Grid_Specifics_rc, _LayoutTypeKwargs): ...
+class _GridKwargs_xy(_Grid_Specifics_xy, _LayoutTypeKwargs): ...
+class _GridKwargs_uni(_GridKwargs_rc, _GridKwargs_xy, _LayoutTypeKwargs): ...
+
+class _MenuKwargs(_LayoutTypeKwargs, total=False):
+    main_layout: LayoutType
+
+class _ColorPickerKwargs(_GridKwargs_uni, total=False):
+    on_change_function: Any
+    raise_errors: bool
+    item_size: NvVector2
+    margin: int
+    input_style: Style
+    label_style: Style
 
 
-class _GridKwargs_rc(_Grid_Specifics_rc, LayoutTypeKwargs):
-    pass
-
-
-class _GridKwargs_xy(_Grid_Specifics_xy, LayoutTypeKwargs):
-    pass
-
-
-class _GridKwargs_uni(_GridKwargs_rc, _GridKwargs_xy, LayoutTypeKwargs):
-    pass
-
-class ColorPickerKwargs(_GridKwargs_uni):
-    on_change_function: NotRequired[Any]
-    raise_errors: NotRequired[bool]
-    item_size: NotRequired[NvVector2]
-    margin: NotRequired[int]
-    input_style: NotRequired[Style]
-    label_style: NotRequired[Style]
-
-class _FlexLayoutKwargs(LayoutTypeKwargs, total=False):
+class _FlexLayoutKwargs(_LayoutTypeKwargs, total=False):
     direction: FlexDirection
     wrap: bool
     justify_content: FlexJustify
@@ -335,24 +274,87 @@ class _FlexLayoutKwargs(LayoutTypeKwargs, total=False):
     gap: int | float | NvVector2
     max_wrap_size: int | float
 
+
 @dataclass
-class LayoutTemplate(NevuObjectTemplate):
+class _LayoutTemplate(_NevuObjectTemplate):
     content: list | None = None
 
 
 @dataclass
-class GridTemplate(NevuObjectTemplate):
+class _GridTemplate(_NevuObjectTemplate):
     content: dict[tuple[int | float, int | float], NevuObject] | None = None
 
 
 @dataclass
-class Grid1xTemplate(NevuObjectTemplate):
+class _GridTemplateShort(_NevuObjectTemplate):
     content: dict[int | float, NevuObject] | None = None
 
 
 @dataclass
-class AlignTemplate(NevuObjectTemplate):
+class _AlignTemplate(_NevuObjectTemplate):
     content: list[tuple[Align, NevuObject]] | None = None
 
-nevu_object_globals = NevuObjectGlobals()
-widget_globals = WidgetGlobals()
+class KwargsLibrary:
+
+    # NevuObject
+    type NevuObjectAll = _NevuObjectKwargs
+    type NevuObjectShort = _NevuObjectKwargsShort
+    type NevuObjectLong = _NevuObjectKwargsLong
+
+    # Widget
+    type WidgetAll = _WidgetKwargs
+    type WidgetShort = _WidgetKwargsShortFull
+    type WidgetLong = _WidgetKwargsLongFull
+
+    # Progressbar
+    type ProgressbarAll = _ProgressBarKwargs
+    type ProgressbarShort = _ProgressBarKwargsShortFull
+    type ProgressbarLong = _ProgressBarKwargsLongFull
+
+    # Slider
+    type SliderAll = _SliderKwargs
+    type SliderShort = _SliderKwargsShortFull
+    type SliderLong = _SliderKwargsLongFull
+
+    # Checkbox
+    type CheckboxAll = _RectCheckBoxKwargs
+    type CheckboxShort = _RectCheckBoxKwargsShortFull
+    type CheckboxLong = _RectCheckBoxKwargsLongFull
+
+    # Switch
+    type SwitchAll = _SwitchKwargs
+
+    # Label
+    type LabelAll = _LabelKwargs
+
+    # Button
+    type ButtonAll = _ButtonKwargs
+
+    # ElementSwitcher
+    type ElementSwitcherAll = _ElementSwitcherKwargs
+
+    # Input
+    type InputAll = _InputKwargs
+
+    # Layout
+    type LayoutAll = _LayoutTypeKwargs
+
+    # Stack
+    type StackAll = _StackKwargs
+
+    # Scrollable
+    type ScrollableAll = _ScrollableKwargs
+
+    # Grid
+    type GridAll = _GridKwargs_uni
+    type GridShort = _GridKwargs_xy
+    type GridLong = _GridKwargs_rc
+
+    # ColorPicker
+    type ColorPickerAll = _ColorPickerKwargs
+
+    # Flex
+    type FlexLayoutAll = _FlexLayoutKwargs
+
+nevu_object_globals = _NevuObjectGlobals()
+widget_globals = _WidgetGlobals()
