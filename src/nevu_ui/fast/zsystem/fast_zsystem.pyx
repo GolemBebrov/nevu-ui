@@ -97,7 +97,7 @@ cdef class ZSystem:
                     r_view[valid_count, 1] = <int>current_rect.y
                     r_view[valid_count, 2] = <int>current_rect.w
                     r_view[valid_count, 3] = <int>current_rect.h
-                    z_view[valid_count] = current_link.get_param_strict("z").value
+                    z_view[valid_count] = max(-9999, min(9999, current_link.z))
 
                     valid_count += 1
 
