@@ -3,6 +3,11 @@ dist/
 *.egg-info/
 
 .python-version
+.zed/
+tach.toml
+tests/*.jpg
+tests/*.png
+tests/pytest
 .vscode/
 .pytest_cache/
 __pycache__/
@@ -22,7 +27,6 @@ venv313/
 venv312/
 env/
 *.xml
-*.md
 tests/offtopic
 
 test/
