@@ -6,15 +6,14 @@ from itertools import chain
 from typing import TYPE_CHECKING, Any, TypeGuard, Unpack
 
 if TYPE_CHECKING:
-    from nevu_ui.menu import Menu
-import nevu_ui.core.modules as md
-from nevu_ui.components._typehints import LayoutTemplate, LayoutTypeKwargs
+    from nevu_ui.components.layouts.menu import Menu
+from nevu_ui.components._typehints import _LayoutTemplate, _LayoutTypeKwargs
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
-from nevu_ui.core.classes import BorderConfig
 from nevu_ui.core.enums import CustomFunctions, ParamLayer
 from nevu_ui.core.size.rules import (
+    Auto,
     CFill,
     CFillH,
     CFillW,
@@ -23,30 +22,26 @@ from nevu_ui.core.size.rules import (
     Fill,
     FillH,
     FillW,
-    _SizeRule,
     Vh,
     Vw,
-    _all_fillx,
     _all_gcx,
-    _all_vx,
+    _SizeRule,
 )
-from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.logic.fast_logic import (
     draw_floating_items_optimized,
     rl_predraw_widgets,
 )
 from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.overlay import overlay
-from nevu_ui.presentation.style import Style, StyleKwargs
+from nevu_ui.presentation.style import Style, _StyleKwargs
 
 
 class LayoutType(NevuObject):
     items: list[NevuObject]
     floating_items: list[NevuObject]
     content_type = list
-    borders: BorderConfig | None
     layout: LayoutType | None
     menu: Menu | None
+    bg_widget: Widget | None
 
     def _all_items(self) -> Iterator[NevuObject]:
         return chain(self.items, self.floating_items)
@@ -57,38 +52,7 @@ class LayoutType(NevuObject):
     def _uninitialized_layout_error(self, item):
         return ValueError(f"Cant use {item} in uninitialized layout {self}")
 
-    def _rl_border_draw_call(self):
-        if not self.get_nvrect().collide_rect(nevu_state.window.get_nvrect()):
-            return
-        norm_size = self.current_size.to_round().get_int_tuple()
-        abs_coords = self.absolute_coordinates.to_round()
-        borders = self.borders
-        assert borders
-        if len(borders.color) == 3:
-            borders.color = (*borders.color, 255)
-        md.rl.draw_rectangle_lines_ex(
-            [*abs_coords, *norm_size], self.relm(borders.width), borders.color
-        )
-        if borders.name:
-            if borders.font:
-                md.rl.draw_text_ex(
-                    borders.font,
-                    borders.name or "",
-                    abs_coords.get_int_tuple(),
-                    borders.font.baseSize,
-                    0,
-                    borders.color,
-                )
-            else:
-                md.rl.draw_text(
-                    borders.name or "", *abs_coords.get_int_tuple(), 20, borders.color
-                )
-
     def _rl_predraw_widgets(self):
-        if self.borders and self._need_update_overlay:
-            self._need_update_overlay = False
-            abs_coords = self.absolute_coordinates.to_round()
-            overlay.add_draw_call(self, self._rl_border_draw_call, abs_coords, -1)
         rl_predraw_widgets(list(self._all_items()), LayoutType, Widget)
 
     def _boot_up(self):
@@ -96,6 +60,7 @@ class LayoutType(NevuObject):
         for item in self._all_items():
             assert isinstance(item, (Widget, LayoutType))
             self._normalize_item_size(item)
+
             self._start_item(item)
             item.booted = True
             item._boot_up()
@@ -108,7 +73,7 @@ class LayoutType(NevuObject):
         content: Any = None,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[LayoutTypeKwargs],
+        **constant_kwargs: Unpack[_LayoutTypeKwargs],
     ):
         super().__init__(size, style, **constant_kwargs)
         self._set_node_type(1)
@@ -116,25 +81,24 @@ class LayoutType(NevuObject):
         self._template = self._create_template(content = content, size = self._template.size)
 
     def _create_template(self, content: Any, size: Any):  # type: ignore
-        return LayoutTemplate(content = content, size = size)
+        return _LayoutTemplate(content = content, size = size)
 
     def _init_lists(self):
         super()._init_lists()
         self.floating_items = []
         self.items = []
-        self._size_rule_parsers = {self._parse_vx, self._parse_fillx, self._parse_gcx}
+        self._size_rule_parsers = {self._parse_vx, self._parse_fillx, self._parse_gcx, self._parse_auto}
         self.cached_coordinates = None
 
     def _init_booleans(self):
         super()._init_booleans()
         self._can_be_main_layout = True
-        self._need_update_overlay = True
         self._add_custom_flags(
-            CustomFunctions.logic_update |
-            CustomFunctions.primary_draw |
-            CustomFunctions.secondary_draw_content |
-            CustomFunctions.secondary_update |
-            CustomFunctions.secondary_draw_end
+            CustomFunctions.update_start |
+            CustomFunctions.draw_start |
+            CustomFunctions.draw_main |
+            CustomFunctions.update_main |
+            CustomFunctions.draw_end
         )
 
     def _init_objects(self):
@@ -145,28 +109,31 @@ class LayoutType(NevuObject):
         self.layout = None
         self._last_border_name = None
 
+    def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None):
+        super()._lazy_init(size)
 
     def _add_params(self):
         super()._add_params()
-        self._add_param(
-            "borders",
-            BorderConfig | type(None),
-            None,
-            layer=ParamLayer.Lazy,
-            setter=self._borders_setter,
-        )
+        self._add_param("bg_widget", Widget | type(None), None, layer = ParamLayer.Lazy, setter = self._bg_widget_setter)
 
-    def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None):
-        super()._lazy_init(size)
-        if content and type(self) == LayoutType:
-            for i in content:
-                self.add_item(i)
+    def _bg_widget_setter(self, value):
+        if self.bg_widget:
+            self.bg_widget.kill()
+        if value is None: return
+        assert isinstance(value, Widget), "bg_widget must be widget"
+        value._template.size = self.size.xy
+        value.set_coordinates(NvVector2.from_xy(0, 0))
+        value = self.add_floating_item(value)
+        value.size = self.size.xy
+        value.z = -999
+        assert self.floating_items[-1] is value, f"{self.floating_items[-1], value}"
+        return value
 
     def add_items(self, content: Any):
         if content is None: return
-        raise NotImplementedError("base LayoutType add_items do NOT support declarative content addition")
+        raise NotImplementedError(f"{self.__class__.__name__} do NOT support declarative content addition")
 
-    def _coordinates_setter(self, coordinates: NvVector2):
+    def _coordinates_setter(self, coordinates: NvVector2) -> bool:
         if self.coordinates.x != coordinates.x or self.coordinates.y != coordinates.y:
             delta = coordinates - self.coordinates
             if self.cached_coordinates is not None:
@@ -175,21 +142,12 @@ class LayoutType(NevuObject):
                         self.cached_coordinates[i] += delta
                     if isinstance(item, LayoutType):
                         item.set_coordinates(item.coordinates + delta)
-                        item.absolute_coordinates += delta
                     else:
                         item.coordinates += delta
-                        item.absolute_coordinates += delta
+                    item.absolute_coordinates += delta
             else:
                 self.cached_coordinates = None
         return True
-
-    def _borders_setter(self, value: BorderConfig):
-        assert isinstance(value, BorderConfig), "value must be BorderConfig"
-
-        value = copy.deepcopy(value)
-        font = self.renderer.core.get_font(name=value.font, size=self.style.font_size)
-        value.font = font
-        return value
 
     @staticmethod
     def _percent_helper(size, value):
@@ -233,6 +191,11 @@ class LayoutType(NevuObject):
                 f"Handling for SizeRule '{grid_cell_type.__name__}' is only Grid feature"
             )
 
+    def _parse_auto(self, auto_rule: _SizeRule, auto_type: type[_SizeRule], pos: int):
+        if auto_type is Auto:
+            return auto_rule
+
+
     def _size_rule_to_number(self, size_rule, pos: int = 0) -> float:
         if not isinstance(size_rule, _SizeRule):
             return size_rule
@@ -245,38 +208,36 @@ class LayoutType(NevuObject):
 
         raise ValueError(f"Handling for SizeRule '{rule_type.__name__}' is not implemented")
 
+    def _normalize(self, size):
+        x, y = copy.deepcopy(size)
+        if any(type(it) is Auto for it in (x, y)):
+            return size
+        x = self._size_rule_to_number(x, 0)
+        y = self._size_rule_to_number(y, 1)
+        return NvVector2.from_xy(x, y)
+
     def _normalize_item_size(self, item: NevuObject):
         if self.booted == False: return
         item_size = item._template.size
         assert item_size is not None, f"in {self} with {self.id}: {item} with {item.id} has no size"
-
-        x, y = item_size
-        x = self._size_rule_to_number(x, 0)
-        y = self._size_rule_to_number(y, 1)
-
-        item._template["size"] = [x, y]
+        item._template["size"] = self._normalize(item_size)
 
     def _start_item(self, item: NevuObject):
         if isinstance(item, LayoutType):
             item._connect_to_layout(self)
         if self.booted == False: return
+
         item._wait_mode = False
+        item.start_pos = self._normalize(item.start_pos)
         item._init_start()
 
     def _resize_content(self, resize_ratio: NvVector2):
         super()._resize_content(resize_ratio)
         self.cached_coordinates = None
         self._border_font_surface = None
-        self._need_update_overlay = True
         for item in self._all_items():
             assert isinstance(item, (Widget, LayoutType))
             item._resize(self._resize_ratio)
-
-    def _clear_cached_coordinates_noregen(self):
-        self.cached_coordinates = None
-
-    def _clear_cached_coordinates(self):
-        pass
 
     @staticmethod
     def is_layout(item: Any) -> TypeGuard[LayoutType]:
@@ -286,8 +247,7 @@ class LayoutType(NevuObject):
     def is_widget(item: Any) -> TypeGuard[Widget]:
         return isinstance(item, Widget)
 
-    def _on_item_add(self, item: NevuObject):
-        pass
+    def _on_item_add(self, item: NevuObject): ...
 
     def _item_add(self, item: NevuObject):
         if not isinstance(item, NevuObject):
@@ -300,7 +260,7 @@ class LayoutType(NevuObject):
                     "LayoutType.add_item/add_floating_item",
                 )
             )
-        if not item.get_param_strict("single_instance").value:
+        if not item.single_instance:
             item = item.clone()
         if self.is_layout(item):
             item._connect_to_layout(self)
@@ -332,71 +292,34 @@ class LayoutType(NevuObject):
         self._on_item_add(item)
         return item
 
-    @property
-    def _global_coordinates(self):
-        assert self.first_parent_menu
-        if not self.layout:
-            return (
-                self.absolute_coordinates + self.first_parent_menu.absolute_coordinates
-            )
-        return self.absolute_coordinates
-
-    def apply_style_to_childs(self, style: Style):
+    def set_items_style(self, style: Style):
         for item in self._all_items():
             assert isinstance(item, (Widget, LayoutType))
             if self.is_widget(item):
                 item.style = style
                 item.cache.clear()
             elif self.is_layout(item):
-                item.apply_style_to_childs(style)
+                item.set_items_style(style)
 
-    def apply_style_patch_to_childs(self, **patch: Unpack[StyleKwargs]):
+        if self.bg_widget:
+            self.bg_widget.style = style
+            self.bg_widget.cache.clear()
+
+    def set_items_style_patch(self, **patch: Unpack[_StyleKwargs]):
         for item in self._all_items():
             assert isinstance(item, (Widget, LayoutType))
             if self.is_widget(item):
                 item.style = item.style(**patch)
                 item.cache.clear()
             elif self.is_layout(item):
-                item.apply_style_patch_to_childs(**patch)
+                item.set_items_style_patch(**patch)
 
-    def _primary_draw(self):
-        if (
-            self._need_update_overlay
-            and not nevu_state.window.renderer_type.raylib
-            and self.borders
-            and self.surface
-        ):
-            assert nevu_state.window
-            if not self.borders.font:
-                self.border_font = md.pygame.sysfont.SysFont(
-                    "Arial", int(self.relx(self.first_parent_menu._style.font_size))
-                )  # type: ignore
-            else:
-                self.border_font = self.borders.font
-            self._border_font_surface = self.border_font.render(
-                self.borders.name, True, self.borders.color
-            )
-            surf = md.pygame.Surface(
-                self.current_size.to_tuple(), flags=md.pygame.SRCALPHA
-            ).convert_alpha()
-            surf.fill((0, 0, 0, 0))
-            if hasattr(self, "border_font_surface"):
-                surf.blit(self._border_font_surface, [0, 0])
-                md.pygame.draw.rect(
-                    surf, self.borders.color, [0, 0, self.current_size.x, self.current_size.y], 1
-                )
-            overlay.add_element(self, surf, self.absolute_coordinates.to_round(), -1)
-
+    def _draw_start(self):
         draw_floating_items_optimized(self, self.floating_items, LayoutType, Widget)
 
-    def _logic_update(self):
-        if overlay.has_element(self):
-            abs_coordinates = self.absolute_coordinates
-            if overlay.get_element_strict(self)[1] != abs_coordinates.to_round():
-                overlay.change_coordinates(self, abs_coordinates)
-
+    def _update_start(self):
         if self.menu:
-            self.surface = self.menu._surface  # type: ignore
+            self.surface = self.menu.surface  # type: ignore
 
         elif self.layout:
             self.surface = self.layout.surface
@@ -405,7 +328,7 @@ class LayoutType(NevuObject):
         for item in self.floating_items:
             assert self.first_parent_menu, self._unconnected_layout_error(item)
             item.absolute_coordinates = (
-                item.coordinates + self.first_parent_menu.absolute_coordinates
+                self.absolute_coordinates + self.rel(item.coordinates)
             )
             item.update()
 
@@ -428,7 +351,7 @@ class LayoutType(NevuObject):
         self.cached_coordinates = None
 
     def _connect_to_menu(self, menu: Menu):
-        self._connect_to_parent(("menu", menu), menu._surface, menu)  # type: ignore
+        self._connect_to_parent(("menu", menu), menu.surface, menu)  # type: ignore
 
     def _connect_to_layout(self, layout: LayoutType):
         self._connect_to_parent(("layout", layout), layout.surface, layout.first_parent_menu)
@@ -485,6 +408,7 @@ class LayoutType(NevuObject):
 
     def _kill_base(self):
         super()._kill_base()
+        self._size_rule_parsers.clear()
         for item in self._all_items():
             item.kill()
         if self._template.content:
@@ -496,9 +420,11 @@ class LayoutType(NevuObject):
                 for item in content:
                     if isinstance(item, tuple):
                         item[-1].kill()
-        if self.borders and overlay.get_element(self):
-            overlay.remove_element(self)
         self.items.clear()
-
+        self.constant_kwargs = None
+        self.first_parent_menu = None
+        self.menu = None
         if self.menu:
             self.menu._layout = None
+        if self.layout:
+            self.layout = None
