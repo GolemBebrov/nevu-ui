@@ -4,8 +4,8 @@ from typing import Any, Unpack
 
 import nevu_ui.core.modules as md
 from nevu_ui.components._typehints import (
-    ElementSwitcherKwargs,
-    ElementSwitcherTemplate,
+    _ElementSwitcherKwargs,
+    _ElementSwitcherTemplate,
 )
 from nevu_ui.components.widgets.button import Button
 from nevu_ui.components.widgets.widget import Widget
@@ -78,10 +78,10 @@ class ElementSwitcher(Widget):
         size: Annotations.nevuobj_size = None,
         elements: list[Element | Any | list] | None = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[ElementSwitcherKwargs],
+        **constant_kwargs: Unpack[_ElementSwitcherKwargs],
     ):
         super().__init__(size, style, **constant_kwargs)
-        self._template = ElementSwitcherTemplate(self._template.size, elements)
+        self._template = _ElementSwitcherTemplate(self._template.size, elements)
 
     def _add_params(self):
         super()._add_params()
@@ -106,7 +106,7 @@ class ElementSwitcher(Widget):
         self._delayed_button_update = False
         self.hoverable = False
         self._add_custom_flags(
-            CustomFunctions.secondary_update
+            CustomFunctions.update_main
         )
 
     def _lazy_init(self, size: NvVector2 | list, elements: list[Element] | None = None):  # type: ignore
@@ -145,8 +145,8 @@ class ElementSwitcher(Widget):
             HoverState.Clicked,
         ] or self.button_right.hover_state in [HoverState.Hovered, HoverState.Clicked]
 
-    def _logic_update(self):
-        super()._logic_update()
+    def _update_start(self):
+        super()._update_start()
         if self._dead:
             return
         if not self._global_hovered:
@@ -248,6 +248,7 @@ class ElementSwitcher(Widget):
             self.right_text,
             button_size,
             self.style,
+            throw_errors=True,
             z=self.z + 1,
             inline=True,
             invert_on_click=False,
@@ -366,8 +367,8 @@ class ElementSwitcher(Widget):
     def previous(self):
         self.step(-1)
 
-    def secondary_update(self):
-        super().secondary_update()
+    def _update_main(self):
+        super()._update_main()
 
         update_button = self._update_button
 
@@ -387,16 +388,16 @@ class ElementSwitcher(Widget):
         button.absolute_coordinates.sadd(self.absolute_coordinates, button.coordinates)
         button.update()
 
-    def _primary_draw(self):
+    def _draw_start(self):
         assert self.button_left and self.button_right, "Buttons not initialized"
-        super()._primary_draw()
+        super()._draw_start()
         if self._changed:
             self.button_left.surface = self.surface
             self.button_right.surface = self.surface
 
-    def secondary_draw_content(self):
+    def _draw_main(self):
         assert self.button_left and self.button_right, "Buttons not initialized"
-        super().secondary_draw_content()
+        super()._draw_main()
         if not self._changed:
             return
         assert self.surface
