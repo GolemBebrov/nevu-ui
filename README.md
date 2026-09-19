@@ -4,43 +4,135 @@
 
 ![alt text](https://img.shields.io/badge/License:-MIT-orange.svg)
 
-# Wiki link (BETA!)
- * <a href="https://golembebrov.github.io/nevu-docs/">NevuDocs</a>
+<a href="https://golembebrov.github.io/nevu-docs/">Nevu-UI Documentation</a>
 
-### Nevu UI means: `Nevu is Eleven times better Versus other UI's User Interface`
-
-# Brief Description
-**Nevu UI** is a library for simply creating GUIs in Python. Nevu UI aims to provide a set of ready-made, easily customizable components for creating interfaces in games and applications.
+**Nevu UI** is a GUI library for easily creating interfaces in `Python`, which provides a set of ready-made, customizable components and convenient tools for creating interfaces in games and applications.
 
 ### Key features:
-*   **Layouts:** Various container options that automatically position elements inside themselves, for example `Grid`, `ScrollableColumn`, etc.
-*   **Widgets:** Ready-to-use elements such as buttons, input fields, and labels.
-*   **Customization:** Support for appearance customization via `Style`, lots of customization options inside `Style`.
-*   **Animations:** Built-in support for animations via `AnimationManager`.
-*   **Declarativeness:** Support for declarative interface creation.
+*   **Layouts:** Containers that automatically position elements inside themselves, for example `Grid`, `ScrollableColumn`.
+*   **Widgets:** Ready-made graphical elements, for example `Button`, `Label`, `Input`.
+*   **Styling:** Customization of the widgets' appearance via `Style` to suit your needs.
+*   **Animations:** Support for animations via `AnimationManager`.
+*   **Different UI creation modes** Support for declarative and imperative creation, with the ability to combine them.
+*   **Multiple backends**: Support for `Raylib` and `Pygame`
+*   **Easy integration:** Ability to embed `nevu-ui` into an existing game or application using `InitializedWindow`.
+---
+
 
 <br>
 
 <p align="left">
-  <img src="assets/EN/separator_style.png" alt="Style banner" width="600" />
+  <img src="assets/EN/separator_examples.png" alt="Style banner" width="600" />
 </p>
 
 ---
 
-### `Style` - storage of parameters for appearance customization
+![Example1](assets/test_grid.png)
 
-* **`gradient`**
-  * Gradient is supported in all backends, and there are 2 types of gradient: linear and radial.
-* **`color_theme`**
-  * Analogous to MaterialDesign, responsible for the visual component of the widget and menu. You can choose from 10+ ready-made themes or create your own theme.
-* **`font_name`/`font_size`**
-  * Controls the font size on widgets that contain it.
-* **`border_width`/`bw`**
-  * Allows changing the border size.
-* **`border_radius`/`br`**
-  * Allows changing the border corner radius.
+---
 
-and so on...
+![Example2](assets/test_main.png)
+
+--- 
+
+![Example3](assets/showcase.webp)
+
+---
+
+### Example: Button in a 3x3 Grid
+<h3>Declarative approach</h3>
+
+```python
+import pygame
+
+# Import nevu-ui
+import nevu_ui as ui
+
+pygame.init()
+
+window = ui.Window(size = (400, 300), title = "Nevu-UI application")
+
+# Create a style with some visual parameters
+style = ui.Style(border_radius = 20, colortheme = ui.ColorThemeLibrary.material3_dark)
+
+# Create the main menu
+menu = ui.Menu(window, size = ui.fill_all, style = style,
+    # Create a 3x3 grid
+    main_layout = ui.Grid(
+        {
+            (2, 2): ui.Button( # Create a button in cell 2, 2 (counting from 1)
+                text = "Click me!",
+                function = lambda: print("You clicked!"),
+                size = (50 % ui.fill, 20 % ui.fill),
+                style = style
+            )
+        },
+        size = ui.fill_all,
+        row = 3,
+        column = 3
+    )
+)
+
+if __name__ == "__main__":
+    app = ui.Manager(window, [menu])
+    app.run() # Run the main loop
+```
+<h3>Imperative approach</h3>
+
+```python
+import pygame
+
+# Import nevu-ui
+import nevu_ui as ui
+
+pygame.init()
+
+# Create the main application window
+window = ui.Window(size = (400, 300), title = "Nevu-UI application")
+
+# Create a style with some visual parameters
+style = ui.Style(
+    border_radius = 20,
+    colortheme = ui.ColorThemeLibrary.material3_dark
+)
+
+# Create the initial container
+menu = ui.Menu(window, size = (100 % ui.vw, 100 % ui.vh), style = style)
+
+# Create a 3x3 grid
+grid = ui.Grid(size = ui.fill_all, row = 3, column = 3)
+
+button = ui.Button(
+    text = "Click me!",
+    function = lambda: print("You clicked!"),
+    size = (50 % ui.fill, 20 % ui.fill),
+    style = style
+)
+
+# Add the widget to the cell at coordinates 2, 2 (counting from 1)
+grid.add_item(button, x = 2, y = 2)
+
+# Pass the grid to the menu
+menu.main_layout = grid
+
+if __name__ == "__main__":
+    while True:
+        events = pygame.event.get()
+
+        # Update the window
+        window.update(events)
+
+        # Update and draw the menu
+        menu.update()
+        menu.draw()
+
+        pygame.display.update()
+```
+
+
+### Example Result:
+![Example1](assets/result.png)
+
 
 <br>
 
@@ -50,71 +142,51 @@ and so on...
 
 ---
 
-### Declarativeness and its examples in Nevu UI
 
-*   **Declarative approach:** Describe your interface declaratively.
+
+### Declarativeness
+
+  *   **Interface creation:**
+      ```python
+      # The layout's content can be specified directly when creating it
+      my_grid = Grid({(1, 1): Button(...)}, ...)
+      ```
+      ```python
+      # The layout can be specified right when creating the menu
+      menu_1 = Menu(..., main_layout = my_grid)
+      ```
+      ```python
+      # You can set up the draw loop in 2 lines
+      app = Manager(window, [menu_1])
+      app.run()
+      ```
+*   **Size system:** Allows using relative values to specify an object's initial height/width instead of pixels.
+    Usage example:
     ```python
-    # Specify content directly when creating the layout
-    my_grid = Grid(..., content={(1,1): Button(...)})
-    ```
-*   **Adaptive size system - `SizeRules`:** Allows using relative values to specify the initial height/width of an object instead of pixels.
-    Example of using `SizeRule`:
-    ```python
+    from nevu_ui import vw, fill
     Widget(size = (30*vw, 50*fill))
     ```
-    or you can use `%`
+    you can also use `%`
     ```python
+    from nevu_ui import vw, fill
     Widget(size = (30%vw, 50%fill))
     ```
+    Types of sizes:
     *   `vh` / `vw`: Percentage of the window's height/width.
     *   `fillx` / `filly` / `fill`: Percentage of the parent layout's height/width/size.
-    *   `gc` / `gcw` / `gch`: Percentage of the grid cell size.
-    *   Prefix `c`: can be placed in any SizeRule, it means that the current value will be taken; without the prefix, the original value will be taken.
-### Built-in animations:
-  * **25+ built-in animations**
-  * Nevu UI has **Two** types of animations:
-      *   **Start**.
-      *   **Continuous**.
-  * Usage example:
-     * **Start:**
-       ```widget.animation_manager.add_start_animation(...)```
-     * **Continuous:**
-       ```widget.animation_manager.add_continuous_animation(...)```
-
-### Parameter system - ParamEngine:
-
-*   `ParamEngine` is a tool built into all layouts and widgets, it allows you to:
-    * Add variables to the object's `__init__`.
-    * Check parameter type during initialization and after.
-    * Integrate a parameter into different stages of initialization.
-    * Set custom setter and getter.
-*   **Examples:**
-    ```python
-    import nevu_ui as ui
-    from typing import Unpack, NotRequired
-
-    # Create a TypedDict with variables (optional, but looks nice)
-    class MyWidgetKwargs(ui.WidgetKwargs):
-        my_var: NotRequired[int | float]
-
-    class MyWidget(ui.Widget):
-        def __init__(self, size: NvVector2 | list, style: Style = default_style, **param_kwargs: Unpack[MyWidgetKwargs]):
-            super().__init__(size, style, **param_kwargs)
-
-        # Override the function to add parameters (mandatory)
-        def _add_params(self):
-            super()._add_params()
-
-            # Add a parameter (mandatory)
-            self._add_param('my_var', int | float)
-
-            # You can also add a link to a parameter
-            # self._add_param_link('my_var', 'my_var_new_name')
-
-            # You can also block a parameter if necessary
-            # self._block_param('my_var')
-    ```
-
+    *   `gc` / `gcw` / `gch`: Percentage of the grid cell's size.
+    *   Prefix `c`: can be placed at the start of any value except `auto` (for example, `cvh`); it means the current size of the window/layout will be used, while without the prefix the original size is used.
+    *   `auto`: automatic sizing based on content.
+### Animations:
+  **25+ different animations**
+  * 2 animation modes:
+      *   **Start:** runs once after the animation has loaded. <br>```widget.animation_manager.add_start_animation(...)```
+      *   **Continuous:** runs infinitely and in a loop. <br>```widget.animation_manager.add_continuous_animation(...)```
+  * 4 kinds of animations:
+      1. `Vector2Animation`: a vector animation<br>Example: from (0, 0) to (10, 10)
+      2. `FloatAnimation`: a numeric animation<br>Example: from 10 to 5.5
+      3. `ColorAnimation`: a color animation<br>Example: from (255, 255, 200) to (0, 0, 0)
+      4. `QueueAnimation`: a compound animation<br>Example: from animation1 to animation2, and from animation2 to animation3
 <br>
 
 <p align="left">
@@ -122,92 +194,23 @@ and so on...
 </p>
 
 ---
-  ## Dependencies:
-  **```Python >= 3.12.*```**
+
+## Dependencies:
+  **`Python >= 3.12`**
   * For Building:
-    * ```setuptools >= 61.0```
-    * ```Cython```
-    * ```numpy```
+    * `setuptools`
+    * `Cython`
+    * `numpy`
   * For Running:
-    * ```numpy```
+    * `numpy`
   * Additional libraries:
-    * ```pygame-ce>=2.3.0``` 
-    * ```raylib```
-    * ```pyyaml```
+    * `pygame-ce` 
+    * `raylib`
+    * `pyyaml`
  ## Installation via pip
  ```python
  pip install nevu-ui[all]
  ```
-
-<br>
-
-<p align="left">
-  <img src="assets/EN/separator_examples.png" alt="Style banner" width="600" />
-</p>
-
----
-![Example1](assets/test_grid.png)
----
-![Example2](assets/test_main.png)
-
-![Example3](assets/showcase.gif)
-
----
-### Basic Grid
-#### Declarative Approach
-```python
-import nevu_ui as ui # Import Nevu UI
-import pygame
-
-pygame.init()
-
-class MyGame(ui.Manager): # Create the base of our application
-    def __init__(self):
-        super().__init__(ui.Window((400, 300), title = "My Game")) # Initialize the manager
-        style = ui.Style(borderradius=20, colortheme=ui.ColorThemeLibrary.material3_dark) # Create Style (optional)
-        self.menu = ui.Menu(self.window, [100%ui.vw, 100%ui.vh], style = style, # Create a menu
-                            layout= ui.Grid([100%ui.vw, 100%ui.vh], row=3, column=3, # Create a grid layout
-                                            content = {
-                                                (2, 2): ui.Button(lambda: print("You clicked!"), "BUTTON!", [50%ui.fill, 50%ui.gc], style=style) # Create a button
-                                            }
-                                            )
-                            )
-    def on_draw(self):
-        self.menu.draw() # Draw the menu
-    def on_update(self, events):
-        self.menu.update() # Update the menu
-
-game = MyGame()
-game.run() # Run the finished application
-```
-#### Imperative Approach
-```python
-import nevu_ui as ui # Import Nevu UI
-import pygame
-
-pygame.init()
-
-window = ui.Window((400, 300), title = "My Game") # Create a window
-
-style = ui.Style(borderradius=20, colortheme=ui.ColorThemeLibrary.material3_dark) # Create Style
-menu = ui.Menu(window, [100%ui.vw, 100%ui.vh], style=style) # Create a menu
-layout = ui.Grid([100%ui.vw, 100%ui.vh], row=3, column=3) # Create a grid layout
-layout.add_item(ui.Button(lambda: print("You clicked!"), "BUTTON!", [50%ui.fill, 50%ui.gc], style=style), x = 2, y = 2) # Create a button
-
-menu.layout = layout # Set the menu layout
-
-while True: # Main loop
-    events = pygame.event.get() # Get events
-    window.update(events) # Update the window
-    menu.update() # Update the menu
-    menu.draw() # Draw the menu
-    pygame.display.update() # Update the screen
-
-```
-
-
-### Example Result
-![Example1](assets/result.png)
 
 <br>
 
@@ -217,53 +220,43 @@ while True: # Main loop
 
 ---
 
-### Current status of Nevu UI.
+### List of available elements
 
-### **Layouts (Inheritors of Layout_Type)**
+### **Layouts**
 
-(✅ — done, ❌ — not done, 💾 — deprecated/not working)
+*   `Grid`
+*   `Row`
+*   `Column`
+*   `ScrollableRow`
+*   `ScrollableColumn`
+*   `ColorPicker`
+*   `StackColumn`
+*   `StackRow`
+*   `CheckBoxGroup`
 
-*   ✅ `Grid`
-*   ✅ `Row`
-*   ✅ `Column`
-*   ✅ `ScrollableRow`
-*   ✅ `ScrollableColumn`
-*   ✅ `ColorPicker`
-*   💾 `Pages`
-*   💾 `Gallery_Pages`
-*   ✅ `StackColumn`
-*   ✅ `StackRow`
-*   ✅ `CheckBoxGroup`
-*   ✅ `Panel`
+### **Widgets**
 
-### **Widgets (Inheritors of Widget)**
-
-*   ✅ `Widget`
-*   ✅ `Button`
-*   ✅ `Label`
-*   ✅ `Input`
-*   ✅ `EmptyWidget`
-*   ✅ `Tooltip`
-*   💾 `Gif`
-*   ❌ `MusicPlayer` (Will be reworked, hopefully)
-*   ✅ `ProgressBar`
-*   ✅ `SliderBar`
-*   ✅ `ElementSwitcher`
-*   💾 `FileDialog`
-*   ✅ `RectCheckBox`
-*   ✅ `Switch`
+*   `Widget`
+*   `Button`
+*   `Label`
+*   `Input`
+*   `EmptyWidget`
+*   `Tooltip`
+*   `ProgressBar`
+*   `SliderBar`
+*   `ElementSwitcher`
+*   `RectCheckBox`
+*   `Switch`
 
 ### **Available Backends**
 
-*   ✅ `Pygame-ce`
-*   ✅ `Sdl(Pygame-ce._sdl2)`
-*   ✅ `RayLib`
+*   `Pygame-ce`
+*   `Sdl(Pygame-ce._sdl2)`
+*   `RayLib`
 
 ## Backend Exclusives
 
-* `Ripple effect` — **Raylib exclusive**
-* `Customizable center and angle of the gradient` — **Raylib exclusive**
-* `Tooltip` — **Pygame exclusive**
+* `Ripple effect on click` — **Raylib exclusive**
 
 <br>
 
@@ -272,7 +265,8 @@ while True: # Main loop
 </p>
 
 ---
-### Nevu UI is protected by the MIT license
+
+### Nevu UI is distributed under the MIT license
 
 <br>
 
@@ -281,8 +275,9 @@ while True: # Main loop
 </p>
 
 ---
-### `Nevu UI` is **NOT** a stable framework, you may encounter many bugs in it.
-### If you find a bug, please report it in the [Issues](https://github.com/GolemBebrov/nevu-ui/issues) section
+
+### `Nevu UI` may contain bugs, as it is still in beta version.
+### If you find a bug, please report it in [Issues](https://github.com/GolemBebrov/nevu-ui/issues)
 <br>
 
 <p align="left">
@@ -293,4 +288,4 @@ while True: # Main loop
 
 
 ### **Gmail:** bebrovgolem@gmail.com
-### **Creator:** Nikita A.
+### **Creator:** GolemBebrov / ГолемБебров
