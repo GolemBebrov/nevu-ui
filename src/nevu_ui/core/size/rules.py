@@ -1,82 +1,32 @@
-from nevu_ui.core.size.base import _PercentSizeRule, _SizeRule
+from nevu_ui.core.size.base import _PercentSizeRule, _SizeRule, _AutoSizeRule
 
 
-class Px(_SizeRule):
-    pass
+class Px(_SizeRule): ...
 
-
-class Fill(_PercentSizeRule):
-    pass
-
-
-class FillW(_PercentSizeRule):
-    pass
-
-
-class FillH(_PercentSizeRule):
-    pass
-
-
-class CFill(_PercentSizeRule):
-    pass
-
-
-class CFillW(_PercentSizeRule):
-    pass
-
-
-class CFillH(_PercentSizeRule):
-    pass
-
-
+class Fill(_PercentSizeRule): ...
+class FillW(_PercentSizeRule): ...
+class FillH(_PercentSizeRule): ...
+class CFill(_PercentSizeRule): ...
+class CFillW(_PercentSizeRule): ...
+class CFillH(_PercentSizeRule): ...
 _all_fillx = {Fill, FillW, FillH, CFill, CFillW, CFillH}
 
-
-class Vh(_PercentSizeRule):
-    pass
-
-
-class Vw(_PercentSizeRule):
-    pass
-
-
-class Cvh(_PercentSizeRule):
-    pass
-
-
-class Cvw(_PercentSizeRule):
-    pass
-
-
+class Vh(_PercentSizeRule): ...
+class Vw(_PercentSizeRule): ...
+class Cvh(_PercentSizeRule): ...
+class Cvw(_PercentSizeRule): ...
 _all_vx = {Vh, Vw, Cvh, Cvw}
 
 
-class Gc(_PercentSizeRule):
-    pass
-
-
-class Gcw(_PercentSizeRule):
-    pass
-
-
-class Gch(_PercentSizeRule):
-    pass
-
-
-class Cgc(_PercentSizeRule):
-    pass
-
-
-class Cgcw(_PercentSizeRule):
-    pass
-
-
-class Cgch(_PercentSizeRule):
-    pass
-
-
+class Gc(_PercentSizeRule): ...
+class Gcw(_PercentSizeRule): ...
+class Gch(_PercentSizeRule): ...
+class Cgc(_PercentSizeRule): ...
+class Cgcw(_PercentSizeRule): ...
+class Cgch(_PercentSizeRule): ...
 _all_gcx = {Gc, Gcw, Gch, Cgc, Cgcw, Cgch}
 
+class Auto(_AutoSizeRule): ...
 
 class RuleMode:
     def __init__(self) -> None:
