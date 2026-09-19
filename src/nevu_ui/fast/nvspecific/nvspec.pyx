@@ -1,5 +1,5 @@
 from cpython.list cimport PyList_GET_SIZE, PyList_GET_ITEM
-from nevu_ui.fast.logic.fast_logic cimport get_item_abs_coords
+from nevu_ui.fast.logic.fast_logic cimport get_item_abs_coords, _fast_cycle_in_list
 from cpython.list cimport PyList_GET_SIZE
 from cpython.object cimport PyObject
 from nevu_ui.core.enums import (
@@ -12,6 +12,7 @@ from nevu_ui.fast.nvrect.nvrect cimport NvRect
 from nevu_ui.fast.nvrendertex.nv_render_tex cimport NvRenderTexture
 from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2
 from nevu_ui.core.state import nevu_state
+from nevu_ui.core.enums import BindType
 from nevu_ui.fast.raylib.nevu_raylib cimport begin_blend_mode, end_blend_mode, begin_texture_mode, end_texture_mode, c_clear_background_blank
 from nevu_ui.fast.logic.fast_logic cimport get_item_abs_coords
 cdef extern from "Python.h":
@@ -59,123 +60,132 @@ cdef bint _widget_drawable_rect(NvRect item_rect, NvRect layout_rect) noexcept:
             item_rect.y < layout_rect.y + layout_rect.h and
             item_rect.y + item_rect.h > layout_rect.y) #type: ignore
 
-def menu_draw_raylib(object self not None, NvRenderTexture bg not None):
-    _menu_draw_raylib(self, bg)
-
 cdef NvRect white_color = NvRect.new(255, 255, 255, 255)
 
-cdef inline void _menu_draw_raylib(object self, NvRenderTexture bg):
-    cdef NevuCobject layout
-    cdef NvRenderTexture main_nvtex
-    cdef NvVector2 abs_coords
-    cdef bint has_layout
+cpdef void _manager_main_loop_opt(self):
+    c_manager_main_loop_opt(self)
 
-    main_nvtex = self._surface #type: ignore
+cdef inline void c_manager_main_loop_opt(self):
+    begin_frame = self.window.renderer.begin_frame
+    end_frame = self.window.renderer.end_frame
+    w_update = self.window.update
+    w_clear = self.window.clear
+    w_draw_overlay = self.window.draw_overlay
+    cdef bint callbacks_available = self.callbacks is not None
+    cdef str bind_update, bind_before_update, bind_draw, bind_before_draw
+    if self.callbacks:
+        bind_update = BindType.Update.value
+        bind_before_update = BindType.BeforeUpdate.value
+        bind_draw = BindType.Draw.value
+        bind_before_draw = BindType.BeforeDraw.value
+        callbacks_run = self.callbacks.run
 
-    abs_coords = self.absolute_coordinates #type: ignore
-    has_layout = <bint>(self._layout is not None) #type: ignore
-    if has_layout:
-        layout = self._layout #type: ignore
-        PyObject_CallNoArgs(layout._rl_predraw_widgets) #type: ignore
+    on_update = self.on_update
+    on_draw = self.on_draw
+    before_update = self.before_update
+    before_draw = self.before_draw
 
-    begin_texture_mode(main_nvtex)
-    c_clear_background_blank()
-    begin_blend_mode(5)
-    main_nvtex.c_fast_nvblit(bg, NvVector2.new(0, 0), -1, True, white_color)
-    if has_layout:
-        layout.draw() #type: ignore
-    end_blend_mode()
-    end_texture_mode()
+    self._first_frame(begin_frame, end_frame)
 
-    main_nvtex.c_fast_nvblit(main_nvtex, abs_coords, 5, True, white_color)
+    bg = self.background
+    fps = self.fps
+    draw_overlay = self.draw_overlay
 
-def menu_draw_sdl(object self not None, bg not None):
-    _menu_draw_sdl(self, bg)
+    cdef str update_text = "update"
+    cdef str draw_text = "draw"
+    cdef list menus
 
-cdef inline void _menu_draw_sdl(self, bg):
-    cdef object sdl_texture = self._sdl_texture
-    cdef object renderer = nevu_state.renderer
-    cdef NevuCobject layout = self._layout
-    if layout is not None:
-        renderer.target = self._sdl_texture
-        renderer.blit(bg, PyObject_CallNoArgs(self.get_rect))
-        layout.draw()
-        renderer.target = None
-    self._window._renderer.blit(sdl_texture, self._tuple_absolute_coordinates)
+    while self.running:
+        menus = self.menus
+        begin_frame()
 
-def menu_draw_pygame(object self not None, bg not None):
-    _menu_draw_pygame(self, bg)
+        w_clear(bg)
 
-cdef inline void _menu_draw_pygame(self, bg):
-    cdef object surface = self._surface
-    cdef NevuCobject layout
-    surface.fill(Color.Blank)
-    surface.blit(bg, (0, 0))
-    layout = self._layout
-    if layout is not None:
-        layout.draw()
-    self._window._renderer.blit(surface, self._tuple_absolute_coordinates)
+        if callbacks_available:
+            callbacks_run(bind_before_update)
+        before_update()
+        w_update(None, fps)
+        if menus is not None:
+            _fast_cycle_in_list(update_text, menus)
+        if callbacks_available:
+            callbacks_run(bind_update)
+        on_update()
 
-def menu_update(object self not None):
-    _menu_update(self)
+        if callbacks_available:
+            callbacks_run(bind_before_draw)
+        before_draw()
+        if menus is not None:
+            _fast_cycle_in_list(draw_text, menus)
+        if callbacks_available:
+            callbacks_run(bind_draw)
+        on_draw()
 
-cdef inline void _menu_update(self):
-    cdef Py_ssize_t i, length
+        if draw_overlay:
+            w_draw_overlay()
 
-    cdef list first_update_functions = self._first_update_functions
-    cdef list next_frame_functions = self._next_frame_functions
+        end_frame()
 
-    if first_update_functions is not None:
-        i = 0
-        length = len(first_update_functions)
-        while i < length:
-            PyObject_CallNoArgs(first_update_functions[i])
-            i += 1
-        first_update_functions.clear()
+    self._on_exit()
 
-    if next_frame_functions is not None:
-        i = 0
-        length = len(next_frame_functions)
-        while i < length:
-            PyObject_CallNoArgs(next_frame_functions[i])
-            i += 1
-        next_frame_functions.clear()
+cpdef void _manager_main_loop_main(self):
+    c_manager_main_loop_main(self)
 
-    if grad := self.style.gradient:
-        if hasattr(grad, "update"):
-            self._changed = grad.update()
-            if self._changed:
-                self._clear_surfaces()
+cdef inline void c_manager_main_loop_main(self):
+    begin_frame = self.window.renderer.begin_frame
+    end_frame = self.window.renderer.end_frame
+    w_update = self.window.update
+    w_clear = self.window.clear
+    w_draw_overlay = self.window.draw_overlay
+    cdef bint callbacks_available = self.callbacks is not None
+    cdef str bind_update, bind_before_update, bind_draw, bind_before_draw
+    bind_update = BindType.Update.value
+    bind_before_update = BindType.BeforeUpdate.value
+    bind_draw = BindType.Draw.value
+    bind_before_draw = BindType.BeforeDraw.value
 
-    if submenu := self._opened_sub_menu:
-        submenu.update()
-        return
+    on_update = self.on_update
+    on_draw = self.on_draw
+    before_update = self.before_update
+    before_draw = self.before_draw
 
-    cdef NevuCobject layout = self._layout
-    if layout is not None:
-        layout.absolute_coordinates = layout.coordinates + self.absolute_coordinates
-        layout.update()
+    self._first_frame(begin_frame, end_frame)
+    draw_overlay = self.draw_overlay
 
-def menu_draw(object self not None):
-    _menu_draw(self)
+    cdef str update_text = "update"
+    cdef str draw_text = "draw"
+    cdef list menus
 
-cdef inline void _menu_draw(self):
-    scaled_bg = self.cache.get_or_exec(CacheType.Background, self._generate_background)
-    cdef int main_draw = self._main_draw
-    if main_draw == 0:
-        _menu_draw_pygame(self, scaled_bg)
-    elif main_draw == 1:
-        _menu_draw_sdl(self, scaled_bg)
-    elif main_draw == 2:
-        _menu_draw_raylib(self, scaled_bg)
-    else:
-        raise ValueError(
-            f"Backend {nevu_state.window._backend} is not supported! UWU"
-        )
+    while self.running:
+        callbacks = self.callbacks
+        callbacks_available = callbacks is not None
 
-    cdef list args_menus_to_draw
-    if submenu := self._opened_sub_menu:
-        args_menus_to_draw = self._args_menus_to_draw
-        for item in args_menus_to_draw:
-            item.draw()
-        submenu.draw()
+        menus = self.menus
+        begin_frame()
+
+        w_clear(self.background)
+
+        if callbacks_available:
+            callbacks.run(bind_before_update)
+        before_update()
+        w_update(None, self.fps)
+        if menus is not None:
+            _fast_cycle_in_list(update_text, menus)
+        if callbacks_available:
+            callbacks.run(bind_update)
+        on_update()
+
+        if callbacks_available:
+            callbacks.run(bind_before_draw)
+        before_draw()
+        if menus is not None:
+            _fast_cycle_in_list(draw_text, menus)
+        if callbacks_available:
+            callbacks.run(bind_draw)
+        on_draw()
+
+        if draw_overlay:
+            w_draw_overlay()
+
+        end_frame()
+
+    self._on_exit()

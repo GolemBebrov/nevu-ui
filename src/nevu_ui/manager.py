@@ -1,8 +1,14 @@
 import sys
 
 import nevu_ui.core.modules as md
+from nevu_ui.components.layouts.menu import Menu
+from nevu_ui.core.annotations import Annotations
+from nevu_ui.core.callbacks import Callbacks
 from nevu_ui.fast.logic.fast_logic import fast_cycle_in_list
-from nevu_ui.menu import Menu
+from nevu_ui.fast.nvspecific.nvspec import (
+    _manager_main_loop_main,
+    _manager_main_loop_opt,
+)
 from nevu_ui.window import Window
 
 manager_created = False
@@ -15,6 +21,8 @@ class Manager:
         "_started",
         "_static_run",
         "_window",
+        "callbacks",
+        "draw_overlay",
         "force_quit",
         "init",
         "menus",
@@ -28,33 +36,41 @@ class Manager:
         manager_created = True
         return super(Manager, cls).__new__(cls)
 
-    def __init__(self, window: Window, menu: Menu | list[Menu] | None = None):
+    def __init__(
+        self,
+        window: Window,
+        menu: Menu | list[Menu] | None = None,
+        *,
+        callbacks: Callbacks | dict | None = None,
+        force_quit: bool = True,
+        draw_overlay: bool = True,
+        background_color: Annotations.rgb_like_color | None = None,
+        fps: int = 60,
+        static_run: bool = True
+    ):
         self.window = window
         self.running = True
         self.force_quit = True
+        self.draw_overlay = True
         self._static_run = True
-        self._background = (0, 0, 0, 255)
+        self._background = background_color or (0, 0, 0, 255)
         self._fps = 60
         self.menus = [menu] if isinstance(menu, Menu) else menu
         self._started = False
+        if isinstance(callbacks, dict):
+            self.callbacks = Callbacks(callbacks)
+        else:
+            self.callbacks = callbacks
 
-    def on_draw(self):
-        pass
 
-    def on_update(self):
-        pass
-
-    def on_start(self):
-        pass
-
-    def on_exit(self):
-        pass
-
-    def first_update(self):
-        pass
-
-    def first_draw(self):
-        pass
+    def before_draw(self): ...
+    def on_draw(self): ...
+    def before_update(self): ...
+    def on_update(self): ...
+    def on_start(self): ...
+    def on_exit(self): ...
+    def first_update(self): ...
+    def first_draw(self): ...
 
     def add_menu(self, menu: Menu):
         if self.menus is not None:
@@ -106,8 +122,6 @@ class Manager:
 
     @window.setter
     def window(self, window: Window):
-        if not isinstance(window, Window):
-            raise ValueError("Unexpected window type!")
         self._window = window
 
     def exit(self):
@@ -136,64 +150,8 @@ class Manager:
             self.first_draw()
         end_frame()
 
-    def __main_loop_opt(self):
-        begin_frame = self.window.renderer.begin_frame
-        end_frame = self.window.renderer.end_frame
-        w_update = self.window.update
-        w_clear = self.window.clear
-
-        on_update = self.on_update
-        on_draw = self.on_draw
-
-        self._first_frame(begin_frame, end_frame)
-
-        bg = self.background
-        fps = self.fps
-
-        while self.running:
-            menus = self.menus
-            begin_frame()
-            w_clear(bg)
-            w_update(None, fps)
-            if menus is not None:
-                fast_cycle_in_list("update", menus)
-            if on_update is not None:
-                on_update()
-            if menus is not None:
-                fast_cycle_in_list("draw", menus)
-            if on_draw is not None:
-                on_draw()
-            end_frame()
-
-        self._on_exit()
-
-    def __main_loop_base(self):
-        begin_frame = self.window.renderer.begin_frame
-        end_frame = self.window.renderer.end_frame
-        w_update = self.window.update
-        w_clear = self.window.clear
-
-        self._first_frame(begin_frame, end_frame)
-
-        while self.running:
-            menus = self.menus
-            begin_frame()
-            w_clear(self.background)
-            w_update(None, self.fps)
-            if menus is not None:
-                fast_cycle_in_list("update", menus)
-            if (on_update := self.on_update) is not None:
-                on_update()
-            if menus is not None:
-                fast_cycle_in_list("draw", menus)
-            if (on_draw := self.on_draw) is not None:
-                on_draw()
-            end_frame()
-
-        self._on_exit()
-
     def run(self):
         if self.static_run:
-            self.__main_loop_opt()
+            _manager_main_loop_opt(self)
         else:
-            self.__main_loop_base()
+            _manager_main_loop_main(self)
