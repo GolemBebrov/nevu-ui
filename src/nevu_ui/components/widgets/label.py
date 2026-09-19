@@ -41,7 +41,7 @@ class Label(Widget):
         super()._lazy_init(size)
         assert isinstance(text, str)
         self.text = text
-        print(self._auto_sized, self._auto_sized_padding)
+        #print(self._auto_sized, self._auto_sized_padding)
         if self._auto_sized:
             self._fast_bake_text()
             self.size = NvVector2.from_xy(self._text_surface.width, self._text_surface.height)
