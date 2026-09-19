@@ -268,7 +268,7 @@ cdef inline void draw_widget_optimized_pygame_rel(DrawFuncPtr draw_item, NevuCob
         item.draw()
 
     if item.node_type == 0:
-        draw_item(layout, item, item.rel(item.coordinates))
+        draw_item(layout, item, layout.coordinates + item.rel(item.coordinates))
 
 cdef inline void draw_widget_optimized_raylib(DrawFuncPtr draw_item, NevuCobject layout, NevuCobject item, type layout_type, type widget_type):
     if item.node_type == 1:
@@ -284,7 +284,7 @@ cdef inline void draw_widget_optimized_raylib_rel(DrawFuncPtr draw_item, NevuCob
         return
 
     if item.node_type == 0:
-        draw_item(layout, item, item.rel(item.coordinates))
+        draw_item(layout, item, layout.coordinates + item.rel(item.coordinates))
 
 
 cdef DrawFuncPtr _cached_draw_item = NULL
