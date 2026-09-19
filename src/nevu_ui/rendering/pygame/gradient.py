@@ -10,9 +10,34 @@ from nevu_ui.core import (
     LinearSide,
     RadialPosition,
 )
-from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.presentation.color import Color
 
+_gradient_invert_dict = {
+    LinearSide.Right: LinearSide.Left,
+    LinearSide.Left: LinearSide.Right,
+    LinearSide.Top: LinearSide.Bottom,
+    LinearSide.Bottom: LinearSide.Top,
+    LinearSide.TopRight: LinearSide.BottomLeft,
+    LinearSide.BottomLeft: LinearSide.TopRight,
+    LinearSide.TopLeft: LinearSide.BottomRight,
+    LinearSide.BottomRight: LinearSide.TopLeft,
+    RadialPosition.Center: RadialPosition.Center,
+    RadialPosition.TopCenter: RadialPosition.BottomCenter,
+    RadialPosition.BottomCenter: RadialPosition.TopCenter,
+    RadialPosition.TopLeft: RadialPosition.BottomRight,
+    RadialPosition.BottomRight: RadialPosition.TopLeft,
+    RadialPosition.TopRight: RadialPosition.BottomLeft,
+    RadialPosition.BottomLeft: RadialPosition.TopRight,
+}
+_gradient_radial_value_dict = {
+    RadialPosition.Center: (0.5, 0.5),
+    RadialPosition.TopCenter: (0.5, 0),
+    RadialPosition.BottomCenter: (0.5, 1),
+    RadialPosition.TopLeft: (0, 0),
+    RadialPosition.BottomRight: (1, 1),
+    RadialPosition.TopRight: (1, 0),
+    RadialPosition.BottomLeft: (0, 1),
+}
 
 class GradientPygame:
     def __init__(
@@ -23,40 +48,16 @@ class GradientPygame:
         transparency=None,
     ):
         self.colors = self._validate_colors(colors)
-        if len(self.colors) < 2:
-            raise ValueError("Gradient must contain at least two colors.")
         self.type = type
         self.direction = direction
-        self._validate_type_direction()
+        if self.type not in GradientType:
+            raise ValueError(f"Gradient type '{self.type}' is not supported. Choose linear or radial.")
+        if self.type == GradientType.Linear and self.direction not in LinearSide:
+            raise ValueError(f"Linear gradient direction '{self.direction}' is not supported.")
+        elif self.type == GradientType.Radial and self.direction not in RadialPosition and not isinstance(self.direction, tuple | list):
+            raise ValueError(f"Radial gradient direction '{self.direction}' is not supported.")
         self.transparency = transparency
         self._precompute_colors_and_stops()
-
-    def _validate_type_direction(self):
-        self._validate_gradient_type()
-        if self.type == GradientType.Linear:
-            self._validate_linear_direction()
-        elif self.type == GradientType.Radial:
-            self._validate_radial_direction()
-        else:
-            raise ValueError(f"Unrecognized gradient type: {self.type}")
-
-    def _validate_gradient_type(self):
-        if self.type not in GradientType:
-            raise ValueError(
-                f"Gradient type '{self.type}' is not supported. Choose linear or radial."
-            )
-
-    def _validate_linear_direction(self):
-        if self.direction not in LinearSide:
-            raise ValueError(
-                f"Linear gradient direction '{self.direction}' is not supported."
-            )
-
-    def _validate_radial_direction(self):
-        if self.direction not in RadialPosition:
-            raise ValueError(
-                f"Radial gradient direction '{self.direction}' is not supported."
-            )
 
     def _precompute_colors_and_stops(self):
         colors_only = [c[0] for c in self.colors]
@@ -218,91 +219,50 @@ class GradientPygame:
 
     def _get_radial_center(self, width: int, height: int) -> tuple[float, float]:
         w_m, h_m = width - 1, height - 1
-        match self.direction:
-            case RadialPosition.Center:
-                return (w_m * 0.5, h_m * 0.5)
-            case RadialPosition.TopCenter:
-                return (w_m * 0.5, 0.0)
-            case RadialPosition.TopLeft:
-                return (0.0, 0.0)
-            case RadialPosition.TopRight:
-                return (float(w_m), 0.0)
-            case RadialPosition.BottomCenter:
-                return (w_m * 0.5, float(h_m))
-            case RadialPosition.BottomLeft:
-                return (0.0, float(h_m))
-            case RadialPosition.BottomRight:
-                return (float(w_m), float(h_m))
-            case _:
-                return (w_m * 0.5, h_m * 0.5)
+        if isinstance(self.direction, RadialPosition):
+            values = _gradient_radial_value_dict.get(self.direction, (0, 0))
+        else:
+            values = self.direction
+        return w_m * values[0], h_m * values[1]
 
     def _validate_colors(self, colors):
-        if not isinstance(colors, (list, tuple)):
-            raise ValueError("Gradient colors must be a list or tuple.")
-
-        validated_colors = []
+        if not isinstance(colors, list | tuple):
+            raise TypeError("Gradient colors type must be a list or tuple.")
+        if len(colors) < 2:
+            raise ValueError("Gradient colors must contain at least two colors.")
+        correct_colors = []
         for item in colors:
-            if (
-                isinstance(item, (tuple, list))
-                and len(item) == 2
-                and isinstance(item[1], (int, float))
-                and (
-                    isinstance(item[0], str)
-                    or (isinstance(item[0], (tuple, list)) and len(item[0]) in (3, 4))
-                )
-            ):
-                color_val, weight = item[0], float(item[1])
+            if not isinstance(item, list | tuple):
+                raise TypeError(f"Color {item} in gradient colors has invalid type.")
+            if len(item) == 2 and 3 <= len(item[0]) <= 4:
+                color, weight = item[0], item[1]
+            elif 3 <= len(item) <= 4:
+                color, weight = item, 1.0
             else:
-                color_val, weight = item, 1.0
+                raise ValueError(f"Gradient color has invalid structure: {item}.")
 
-            if isinstance(color_val, str):
+            if isinstance(color, str):
                 try:
-                    color_tuple = getattr(Color, color_val.upper())
-                    if isinstance(color_tuple, tuple) and len(color_tuple) in (3, 4):
-                        validated_colors.append((color_tuple, weight))
-                    else:
-                        raise ValueError(
-                            f"Invalid color {color_tuple} with name {color_val}."
-                        )
-                except (AttributeError, ValueError) as e:
-                    raise ValueError(f"Unsupported color name: '{color_val}'.") from e
+                    color_tuple = getattr(Color, color.capitalize())
+                except AttributeError:
+                    raise ValueError(f"Unsupported color name: '{color}'.")
+                correct_colors.append((color_tuple, weight))
+
             elif (
-                isinstance(color_val, (tuple, list))
-                and len(color_val) in (3, 4)
-                and all(isinstance(c, int) and 0 <= c <= 255 for c in color_val)
+                isinstance(color, (tuple, list))
+                and 3 <= len(color) <= 4
+                and all(isinstance(c, int | float) and 0 <= c <= 255 for c in color)
             ):
-                validated_colors.append((tuple(color_val), weight))
+                correct_colors.append((tuple(color), weight))
             else:
                 raise ValueError(
                     "Each color must be a tuple of 3 or 4 integers (RGB/RGBA), a valid color name, or a tuple of (color, weight)."
                 )
-        return validated_colors
+        return correct_colors
 
-    def invert(self, new_direction=None):
+    def invert(self, new_direction = None):
         if new_direction is None:
-            if self.type == GradientType.Linear:
-                mapping = {
-                    LinearSide.Right: LinearSide.Left,
-                    LinearSide.Left: LinearSide.Right,
-                    LinearSide.Top: LinearSide.Bottom,
-                    LinearSide.Bottom: LinearSide.Top,
-                    LinearSide.TopRight: LinearSide.BottomLeft,
-                    LinearSide.BottomLeft: LinearSide.TopRight,
-                    LinearSide.TopLeft: LinearSide.BottomRight,
-                    LinearSide.BottomRight: LinearSide.TopLeft,
-                }
-                new_direction = mapping.get(self.direction)  # type: ignore
-            elif self.type == GradientType.Radial:
-                mapping = {
-                    RadialPosition.Center: RadialPosition.Center,
-                    RadialPosition.TopCenter: RadialPosition.BottomCenter,
-                    RadialPosition.BottomCenter: RadialPosition.TopCenter,
-                    RadialPosition.TopLeft: RadialPosition.BottomRight,
-                    RadialPosition.BottomRight: RadialPosition.TopLeft,
-                    RadialPosition.TopRight: RadialPosition.BottomLeft,
-                    RadialPosition.BottomLeft: RadialPosition.TopRight,
-                }
-                new_direction = mapping.get(self.direction)  # type: ignore
+            new_direction = _gradient_invert_dict.get(self.direction)
         if new_direction is None:
             raise ValueError(
                 f"Inversion for direction '{self.direction}' is not supported."
