@@ -33,9 +33,9 @@
 
 ![Пример2](assets/test_main.png)
 
----
+--- 
 
-![Пример3](assets/showcase.gif)
+![Пример3](assets/showcase.webp)
 
 ---
 
