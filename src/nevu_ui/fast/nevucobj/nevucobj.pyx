@@ -25,32 +25,21 @@ from nevu_ui.core.enums import (
 from libc.stdint cimport uint8_t
 cimport cython
 cdef extern from "Python.h":
-    object PyObject_CallNoArgs(object func)
     object PyObject_CallMethodNoArgs(object self, object name)
 
-call_noarg = PyObject_CallNoArgs
+cdef str nevucobject_setattr_underscore = "_"
+cdef str nevucobject_setattr_set = "__set__"
 
 from nevu_ui.fast.logic.fast_logic cimport relm_helper, rel_helper, mass_rel_helper, vec_rel_helper, get_nvrect_helper
 from nevu_ui.fast.nvrect.nvrect cimport NvRect
 
 cdef enum C_CustomFunctions:
-    SecondaryUpdate = 1 << 0
-    AnimationUpdate = 1 << 1
-    LogicUpdate = 1 << 2
-    EventUpdate = 1 << 3
-    PrimaryDraw = 1 << 4
-    SecondaryDraw = 1 << 5
-    SecondaryDrawContent = 1 << 6
-    SecondaryDrawEnd = 1 << 7
-
-cdef str STR_SECONDARY_UPDATE = "secondary_update"
-cdef str STR_LOGIC_UPDATE = "_logic_update"
-cdef str STR_ANIMATION_UPDATE = "_animation_update"
-cdef str STR_PRIMARY_DRAW = "_primary_draw"
-cdef str STR_SECONDARY_DRAW = "secondary_draw"
-cdef str STR_SECONDARY_DRAW_CONTENT = "secondary_draw_content"
-cdef str STR_SECONDARY_DRAW_END = "_secondary_draw_end"
-cdef str STR_EVENT_UPDATE = "_event_update"
+    UpdateStart = 1 << 0
+    UpdateMain = 1 << 1
+    UpdateEnd = 1 << 2
+    DrawStart = 1 << 3
+    DrawMain = 1 << 4
+    DrawEnd = 1 << 5
 
 @cython.freelist(32)
 cdef class NevuCobject:
@@ -77,6 +66,7 @@ cdef class NevuCobject:
         self.booted = False
         self._wait_mode = False
         self._dead = False
+        self._auto_sized = False
         self._has_position_anim = False
         self.node_type = 0
         self._system_callbacks = Callbacks()
@@ -173,7 +163,7 @@ cdef class NevuCobject:
 
     cpdef void clear_surfaces(self):
         if nevu_state.window.renderer_type.raylib:
-            call_noarg(self._clear_rl_specific)
+            self._clear_rl_specific()
         self.cache.c_clear_selected(whitelist = self.specific_cache_whitelist, blacklist = [])
 
     cdef inline NvVector2 c_get_actual_size(self):
@@ -184,56 +174,45 @@ cdef class NevuCobject:
     def get_actual_size(self):
         return self.c_get_actual_size()
 
-#=== Update functions ===
-    #========= UPDATE STRUCTURE: ==========
-    #    update >
-    #
-    #        primary_update >
-    #            logic_update >
-    #                all math and logic code
-    #            animation_update >
-    #                system animation code
-    #            event_update >
-    #                all pygame.event dependent code
-    #
-    #        secondary_update >
-    #            widget/layout update code
-    #
-    #        Update event cycle
-    #======================================
-
-    cpdef update(self):
+    cpdef void _update_start(self): ...
+    cpdef void _update_main(self): ...
+    cpdef void _update_end(self): ...
+    cpdef void update(self):
         if not self._active or self._dead: return
-        self._run_callbacks(BindType.BeforeUpdate)
-        self._primary_update()
-        if self._custom_flags & SecondaryUpdate:
-            PyObject_CallMethodNoArgs(self, STR_SECONDARY_UPDATE)
-        self._run_callbacks(BindType.Update)
+        self._c_run_callbacks(BindType.BeforeUpdate)
+        self._update_core()
 
-    cdef inline void _primary_update(self):
-        self._base_logic_update()
-        if self._custom_flags & LogicUpdate:
-            PyObject_CallMethodNoArgs(self, STR_LOGIC_UPDATE)
-        self._base_animation_update()
-        if self._custom_flags & AnimationUpdate:
-            PyObject_CallMethodNoArgs(self, STR_ANIMATION_UPDATE)
-        if self._custom_flags & EventUpdate:
-            PyObject_CallMethodNoArgs(self, STR_EVENT_UPDATE)
+        if self._custom_flags & UpdateStart:
+            self._update_start()
+        if self._custom_flags & UpdateMain:
+            self._update_main()
+        if self._custom_flags & UpdateEnd:
+            self._update_end()
 
-    cdef inline void _base_animation_update(self):
-        if not self.animation_manager: return
-        self.animation_manager.update()
+        self._update_core_end()
+        self._c_run_callbacks(BindType.Update)
 
-    @staticmethod
-    def _ensure_func_safety(function):
-        if function is None: return None
+    cpdef void _draw_start(self): ...
+    cpdef void _draw_main(self): ...
+    cpdef void _draw_end(self): ...
+    cpdef void draw(self):
+        if not self._visible or self._wait_mode or self._dead: return
+        self._changed = False
+        self._c_run_callbacks(BindType.BeforeDraw)
+        if self._custom_flags & DrawStart:
+            self._draw_start()
+        if self._custom_flags & DrawMain:
+            self._draw_main()
+        if self._custom_flags & DrawEnd:
+            self._draw_end()
+        self._c_run_callbacks(BindType.Draw)
+        self._c_run_callbacks(BindType.Change)
 
-        if hasattr(function, '__self__') and function.__self__ is not None:
-            return weakref.WeakMethod(function)
+    cdef inline void _update_core(self):
+        if self.animation_manager:
+            self.animation_manager.update()
 
-        return weakref.ref(function)
-
-    cdef inline void _base_logic_update(self):
+    cdef inline void _update_core_end(self):
         if not self._sended_z_link and nevu_state.window != None:
             self._sended_z_link = True
             self._z_request = ZRequest.new(
@@ -255,55 +234,39 @@ cdef class NevuCobject:
             if isinstance(func, (weakref.ref, weakref.WeakMethod)):
                 func = func()
             if func:
-                call_noarg(func)
+                func()
             i+=1
         next_frame_functions.clear()
 
+    @staticmethod
+    def _ensure_func_safety(function):
+        if function is None: return None
 
-#=== Draw functions ===
-    #========== DRAW STRUCTURE: ===========
-    #    draw >
-    #        primary_draw >
-    #            basic draw code
-    #
-    #        Draw event cycle
-    #
-    #        secondary_draw >
-    #            secondary_draw_content >
-    #                all additional draw | on change code
-    #            secondary_draw_end >
-    #                all after change code
-    #
-    #        Render event cycle
-    #======================================
+        if hasattr(function, '__self__') and function.__self__ is not None:
+            return weakref.WeakMethod(function)
 
-    cpdef draw(self):
-        if not self._visible or self._wait_mode or self._dead: return
-        self._run_callbacks(BindType.BeforeDraw)
-        if self._changed:
-            self._run_callbacks(BindType.Change)
-        if self._custom_flags & PrimaryDraw:
-            PyObject_CallMethodNoArgs(self, STR_PRIMARY_DRAW)
-        self._base_secondary_draw()
-        if self._custom_flags & SecondaryDraw:
-            PyObject_CallMethodNoArgs(self, STR_SECONDARY_DRAW)
-        self._run_callbacks(BindType.Draw)
-
-    cdef inline void _base_secondary_draw(self):
-        if self._custom_flags & SecondaryDrawContent:
-            PyObject_CallMethodNoArgs(self, STR_SECONDARY_DRAW_CONTENT)
-        if self._custom_flags & SecondaryDrawEnd:
-            PyObject_CallMethodNoArgs(self, STR_SECONDARY_DRAW_END)
-        self._base_secondary_draw_end()
-
-    cdef inline void _base_secondary_draw_end(self):
-        if self._changed: self._changed = False
+        return weakref.ref(function)
 
     def _run_callbacks(self, bind_type, *args):
         if not self._system_callbacks: return
         if not self.callbacks: return
         self._system_callbacks.run(bind_type, self, *args)
         self.callbacks.run(bind_type, self, *args)
+
+    cdef inline void _c_run_callbacks(self, bind_type, args = None):
+        callbacks = self.callbacks
+        sys_callbacks = self._system_callbacks
+        cdef bint has_args = args is not None
+        if sys_callbacks is not None:
+            if has_args:
+                sys_callbacks.run(bind_type, self, *args)
+            else:
+                sys_callbacks.run_noargs(bind_type, self)
+        if callbacks is not None:
+            if has_args:
+                callbacks.run(bind_type, self, *args)
+            else:
+                callbacks.run_noargs(bind_type, self)
 
     #=== Selection functions ===
     cpdef _click(self):
@@ -365,13 +328,13 @@ cdef class NevuCobject:
         cdef PyObject* param
         cdef NvParam c_param
 
-        if len(name) >= 1 and name[0] == '_':
+        if len(name) >= 1 and name[0] == nevucobject_setattr_underscore:
             if PyObject_GenericSetAttr(self, name, value) < 0:
                 raise
             return
 
         prop = getattr(self.__class__, name, None)
-        if prop is not None and hasattr(prop, "__set__"):
+        if prop is not None and hasattr(prop, nevucobject_setattr_set):
             prop.__set__(self, value)
             return
 
