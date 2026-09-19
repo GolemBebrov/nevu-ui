@@ -46,9 +46,10 @@ class FlexLayout(LayoutType):
 
     def _init_booleans(self):
         super()._init_booleans()
+        self._is_recalculating = False
         self._add_custom_flags(
-            CustomFunctions.secondary_draw_content |
-            CustomFunctions.secondary_update
+            CustomFunctions.draw_main |
+            CustomFunctions.update_main
         )
 
     def _add_params(self):
@@ -121,7 +122,7 @@ class FlexLayout(LayoutType):
         self._sync_layout()
 
     def _resize_content(self, resize_ratio: NvVector2):
-        self._resize_ratio = resize_ratio
+        self._resize_ratio = NvVector2.from_xy(1.0, 1.0)
         self.cached_coordinates = None
         self._border_font_surface = None
         self._need_update_overlay = True
@@ -144,9 +145,11 @@ class FlexLayout(LayoutType):
         if max_wrap > 0:
             return float(max_wrap)
 
-        if self.layout is not None and hasattr(self.layout, "current_size"):
-            val = self.layout.current_size.x if is_row else self.layout.current_size.y
-            if val > 0: return val - 20.0
+        if self.layout is not None and hasattr(self.layout, "current_size"):  # noqa: SIM102
+            if getattr(self.layout, "_supports_global_size", True):
+                val = self.layout.current_size.x if is_row else self.layout.current_size.y
+                if val > 0:
+                    return val - 20.0
 
         if self.first_parent_menu is not None:
             val = self.first_parent_menu._rel_size.x if is_row else self.first_parent_menu._rel_size.y
@@ -206,6 +209,8 @@ class FlexLayout(LayoutType):
         return lines
 
     def _recalculate_layout(self):
+        if self._is_recalculating: return
+        self._is_recalculating = True
         for item in self.items:
             if isinstance(item, LayoutType) and hasattr(item, "_recalculate_size"):
                 item._recalculate_size()
@@ -232,13 +237,8 @@ class FlexLayout(LayoutType):
                 max((line[MAIN_LEN_STR] for line in lines), default=0.0)
             )
 
-        ratio_vec = NvVector2.from_xy(
-            self._resize_ratio.x if self._resize_ratio.x != 0 else 1.0,
-            self._resize_ratio.y if self._resize_ratio.y != 0 else 1.0
-        )
-
         old_size = self.size.xy
-        self.size = total_size_vec / ratio_vec
+        self.size = total_size_vec.copy()
 
         self.cache.clear_selected(whitelist=[CacheType.RelSize])
 
@@ -250,33 +250,39 @@ class FlexLayout(LayoutType):
         total_main_len = total_size_vec.x if is_row else total_size_vec.y
 
         for line in lines:
-            start_main_pos = 0.0
             spacing = gap_size.x
             main_len = line[MAIN_LEN_STR]
             items = line[ITEMS_STR]
             sec_len = line[SEC_LEN_STR]
             n_items = len(items)
 
-            if justify is FlexJustify.Center:
-                start_main_pos = (total_main_len - main_len) / 2.0
-            elif justify is FlexJustify.End:
-                start_main_pos = total_main_len - main_len
-            elif justify is FlexJustify.SpaceBetween and len(items) > 1:
-                items_sum = sum((it.size.x if is_row else it.size.y) for it in items)
-                spacing = (total_main_len - items_sum) / (len(items) - 1)
-            elif justify is FlexJustify.SpaceAround:
-                if n_items > 0:
+            match justify:
+                case FlexJustify.Start: start_main_pos = 0.0
+                case FlexJustify.Center:
+                    start_main_pos = (total_main_len - main_len) / 2.0
+                case FlexJustify.End:
+                    start_main_pos = total_main_len - main_len
+                case FlexJustify.SpaceBetween:
+                    if not n_items > 1: ...
+                    items_sum = sum((it.size.x if is_row else it.size.y) for it in items)
+                    spacing = (total_main_len - items_sum) / (n_items - 1)
+                case FlexJustify.SpaceAround:
+                    if not n_items: ...
                     items_sum = sum((it.size.x if is_row else it.size.y) for it in items)
                     free_space = total_main_len - items_sum
                     unit = free_space / n_items
                     spacing = unit
                     start_main_pos = unit / 2.0
-            elif justify is FlexJustify.SpaceEvenly and n_items > 0:
-                items_sum = sum((it.size.x if is_row else it.size.y) for it in items)
-                free_space = total_main_len - items_sum
-                unit = free_space / (n_items + 1)
-                spacing = unit
-                start_main_pos = unit
+                case FlexJustify.SpaceEvenly:
+                    if not n_items: ...
+                    items_sum = sum((it.size.x if is_row else it.size.y) for it in items)
+                    free_space = total_main_len - items_sum
+                    unit = free_space / (n_items + 1)
+                    spacing = unit
+                    start_main_pos = unit
+                case _:
+                    raise ValueError("Unknown flex justify content")
+
             current_main_pos = start_main_pos
 
             for item in items:
@@ -313,18 +319,32 @@ class FlexLayout(LayoutType):
 
         parent = self.layout
 
-        if (old_size.x != self.size.x or old_size.y != self.size.y) and parent:
-            if hasattr(parent, "_recalculate_size"):
-                parent._recalculate_size()
-            if hasattr(parent, "_regenerate_coordinates") and parent.booted:
-                parent.cached_coordinates = None
-                parent._regenerate_coordinates()
-            else:
-                parent.cached_coordinates = None
+        size_changed = (abs(old_size.x - self.size.x) > 0.5 or abs(old_size.y - self.size.y) > 0.5)
 
-    def secondary_update(self, *args): base_light_update(self)
+        if size_changed:
+            if self.bg_widget:
+                self.bg_widget.size = self.size.xy
+                self.bg_widget._changed = True
+                self.bg_widget.clear_all()
 
-    def secondary_draw_content(self):
+            if parent:
+                if hasattr(parent, "_recalculate_size"):
+                    parent._recalculate_size()
+                if hasattr(parent, "_regenerate_coordinates") and parent.booted:
+                    parent.cached_coordinates = None
+                    parent._regenerate_coordinates()
+                else:
+                    parent.cached_coordinates = None
+
+            elif self.menu and hasattr(self.menu, "_rel_size"):
+                new_coords = (self.menu._rel_size - self.current_size) / 2
+                self.set_coordinates(new_coords)
+                self.absolute_coordinates = self.coordinates + self.menu.absolute_coordinates
+        self._is_recalculating = False
+
+    def _update_main(self, *args): base_light_update(self)
+
+    def _draw_main(self):
         draw_widgets_optimized(self, self.items, LayoutType, Widget)
 
     def _create_clone(self):
