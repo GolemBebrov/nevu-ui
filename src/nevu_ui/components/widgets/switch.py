@@ -3,7 +3,7 @@ from collections.abc import Callable
 from typing import Unpack
 
 import nevu_ui.core.modules as md
-from nevu_ui.components._typehints import SwitchKwargs, SwitchTemplate
+from nevu_ui.components._typehints import _SwitchKwargs, _SwitchTemplate
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations, nevu_state
 from nevu_ui.core.enums import (
@@ -34,6 +34,7 @@ class Switch(Widget):
     on_switch_change: None | Callable
     easing_func: Callable
     animation_time: float
+    circle_size: float
 
     # ==============
     def __init__(
@@ -41,10 +42,10 @@ class Switch(Widget):
         base_state: bool = False,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[SwitchKwargs],
+        **constant_kwargs: Unpack[_SwitchKwargs],
     ):
         super().__init__(size, style, **constant_kwargs)
-        self._template = SwitchTemplate(self._template.size, base_state)
+        self._template = _SwitchTemplate(self._template.size, base_state)
 
     def _init_lists(self):
         super()._init_lists()
@@ -58,7 +59,7 @@ class Switch(Widget):
         super()._init_flags()
         self._changed_bg_circle = True
         self._add_custom_flags(
-            CustomFunctions.secondary_draw
+            CustomFunctions.draw_main
         )
 
     def _init_objects(self):
@@ -88,6 +89,7 @@ class Switch(Widget):
         self._add_param("easing_func", Callable, animations_library.smootherstep)
         self._add_param("animation_time", float, 0.15)
         self._add_param_link("anim_time", "animation_time")
+        self._add_param("circle_size", float | int, 0.85)
 
     def _lazy_init(self, size: NvVector2 | list, state: bool = False):
         super()._lazy_init(size)
@@ -108,7 +110,7 @@ class Switch(Widget):
         self._set_bg_circle_coords(value)
 
     def _set_bg_circle_coords(self, value, anim_time=None):
-        anim_time = anim_time or self.get_param_value("animation_time")
+        anim_time = anim_time or self.animation_time
         self._bg_circle_anim_manager = AnimationManager(warn=False)
         self._goal_circle_coords = NvVector2(value)
         self._bg_circle_anim_manager.add_start_animation(
@@ -117,7 +119,7 @@ class Switch(Widget):
                 self._bg_circle_coords,
                 self._goal_circle_coords,
                 anim_time,
-                self.get_param_value("easing_func"),
+                self.easing_func,
             ),
         )
 
@@ -150,8 +152,12 @@ class Switch(Widget):
         return min(self._no_borders_current_size.x, self._no_borders_current_size.y)
 
     def _create_bg_circle(self):
-        minimal_size = self.minimal_side
-        size = NvVector2.from_xy(minimal_size, minimal_size)
+        circle_size = max(0.0, min(1.0, float(self.circle_size)))
+        minimal_size = self.minimal_side * circle_size
+        if minimal_size <= 0:
+            size = NvVector2.from_xy(1, 1)
+        else:
+            size = NvVector2.from_xy(minimal_size, minimal_size)
         dtype = nevu_state.window.renderer_type
         if dtype.pygame_like:
             bg_texture = md.pygame.Surface(size, md.pygame.SRCALPHA)
@@ -160,6 +166,8 @@ class Switch(Widget):
         else:
             raise ValueError("Unsupported backend")
         bg_texture.fill((0, 0, 0, 0))
+        if minimal_size <= 0:
+            return bg_texture
         self.renderer.run_base(
             DrawBaseCall(
                 return_type=RenderReturnType.Modify,
@@ -171,7 +179,7 @@ class Switch(Widget):
                 color=self.subtheme_font,
                 standstill=True,
                 modify_object=bg_texture,
-                glassy=self.glassy
+                glassy=self.glassy,
             )
         )
         return bg_texture
@@ -181,16 +189,22 @@ class Switch(Widget):
             return
         dtype = nevu_state.window.renderer_type
         surface = self.surface
+        circle_size = max(0.0, min(1.0, float(self.circle_size)))
+        circle_offset = (self.minimal_side * (1 - circle_size)) / 2
+        circle_pos = (
+            self._bg_circle_coords
+            + self._borders_of_current_size
+            + NvVector2.from_xy(circle_offset, circle_offset)
+        ).get_round().get_int_tuple()
         if dtype.pygame_like:
             assert isinstance(surface, md.pygame.Surface)
             surface.fill((0, 0, 0, 0))
             surface.blit(self._bg_surf, (0, 0))
-            surface.blit(
-                self._bg_circle, #type: ignore
-                (self._bg_circle_coords + self._borders_of_current_size)
-                .get_round()
-                .get_int_tuple(),
-            )
+            if circle_size > 0:
+                surface.blit(
+                    self._bg_circle,  # type: ignore
+                    circle_pos,
+                )
         elif dtype.raylib:
             assert isinstance(surface, NvRenderTexture)
             surface_fblit = surface.fast_blit
@@ -198,16 +212,15 @@ class Switch(Widget):
                 surface.fast_clear(Color.Blank)
                 begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
                 surface_fblit(self._bg_surf, (0, 0))
-                surface_fblit(
-                    self._bg_circle, #type: ignore
-                    (self._bg_circle_coords + self._borders_of_current_size)
-                    .get_round()
-                    .get_int_tuple(),
-                )
+                if circle_size > 0:
+                    surface_fblit(
+                        self._bg_circle,  # type: ignore
+                        circle_pos,
+                    )
                 end_blend_mode()
 
-    def _logic_update(self):
-        super()._logic_update()
+    def _update_start(self):
+        super()._update_start()
         if self._after_key_down_time is not None:
             self._after_key_down_time += time.dt
 
@@ -274,16 +287,16 @@ class Switch(Widget):
             self._rebuild_bg()
             self._changed_bg_circle = False
 
-    def secondary_draw_content(self):
-        super().secondary_draw_content()
+    def _draw_main(self):
+        super()._draw_main()
         self._bg_surf = (
             self.cache.get(CacheType.Surface)
             or self.cache.get(CacheType.Borders)
             or self.cache.get(CacheType.Background)
         )
 
-    def _secondary_draw_end(self):
-        super()._secondary_draw_end()
+    def _draw_end(self):
+        super()._draw_end()
         self._bg_circle = self._create_bg_circle()
         self._rebuild_bg()
 
@@ -325,11 +338,13 @@ class Switch(Widget):
             **self.constant_kwargs,
         )
 
+
 # === NOT CLASS FUNCTIONS ===
 
 def switch_on_click(self):
     self._after_key_down_time = 0
     self._click_pos = mouse.pos
+
 
 def switch_on_keyup(self):
     down_time = self._after_key_down_time
@@ -338,6 +353,7 @@ def switch_on_keyup(self):
     elif down_time is not None and down_time < 0.5:
         self.state = not self.state
     self._after_key_down_time = None
+
 
 def switch_on_keyup_abandon(self):
     if self._dragging:
