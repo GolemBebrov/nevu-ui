@@ -12,10 +12,10 @@ if TYPE_CHECKING:
 
 #Киширика киширису наносит ответный удар.
 from nevu_ui.components._typehints import (
-    NevuObjectKwargs,
-    NevuObjectKwargsLong,
-    NevuObjectKwargsShort,
-    NevuObjectTemplate,
+    _NevuObjectKwargs,
+    _NevuObjectKwargsLongFull,
+    _NevuObjectKwargsShortFull,
+    _NevuObjectTemplate,
     nevu_object_globals,
 )
 from nevu_ui.core import Annotations
@@ -29,7 +29,7 @@ from nevu_ui.core.enums import (
     ParamLayer,
     RenderReturnType,
 )
-from nevu_ui.core.size.rules import Px, _SizeRule
+from nevu_ui.core.size.rules import Auto, Px, _SizeRule
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast import Cache, NevuCobject, NvVector2, ZRequest
 from nevu_ui.fast.logic import get_rect_helper
@@ -47,13 +47,13 @@ global_counter = 0
 def add_obj(self):
     global global_counter
     global_counter += 1
-    # print(self.__class__.__name__, "added, counter:", global_counter)
+#    print(self.__class__.__name__, "added, counter:", global_counter)
 
 
 def del_obj(self):
     global global_counter
     global_counter -= 1
-    # rint(self, "deleted, counter:", global_counter)
+#    print(self, "deleted, counter:", global_counter)
 
 class NevuObject(NevuCobject):
     _supports_tuple_borderradius = True
@@ -69,6 +69,7 @@ class NevuObject(NevuCobject):
     canvas: Canvas | None
     bg_variant: bool
     _system_callbacks: Callbacks
+    start_pos: NvVector2
     # ==============
 
     renderer: BaseRenderer
@@ -99,20 +100,20 @@ class NevuObject(NevuCobject):
         self,
         size: Annotations.nevuobj_size,
         style: Annotations.nevuobj_style,
-        **constant_kwargs: Unpack[NevuObjectKwargsShort],
+        **constant_kwargs: Unpack[_NevuObjectKwargsShortFull],
     ): ...
     @overload
     def __init__(
         self,
         size: Annotations.nevuobj_size,
         style: Annotations.nevuobj_style,
-        **constant_kwargs: Unpack[NevuObjectKwargsLong],
+        **constant_kwargs: Unpack[_NevuObjectKwargsLongFull],
     ): ...
     def __init__(
         self,
         size: Annotations.nevuobj_size,
         style: Annotations.nevuobj_style,
-        **constant_kwargs: Unpack[NevuObjectKwargs],
+        **constant_kwargs: Unpack[_NevuObjectKwargs],
     ):
         self.constant_kwargs = constant_kwargs.copy()
         if self._supports_global_size:
@@ -121,7 +122,7 @@ class NevuObject(NevuCobject):
             _size = size
         if _size is None:
             raise ValueError(Annotations.format_param_engine_error("size is None and no global size set", self))
-        self._template = NevuObjectTemplate(_size)
+        self._template = _NevuObjectTemplate(_size)
         style = style or nevu_object_globals.library.get("style") or default_style
         self._first_update_functions = []
 
@@ -226,6 +227,7 @@ class NevuObject(NevuCobject):
             layer=ParamLayer.Lazy,
             setter=self._tooltip_setter,
         )
+        self._add_param("start_pos", NvVector2 | tuple | list | type(None), NvVector2(0, 0))
         self._add_param(
             "subtheme_role",
             SubThemeRole,
@@ -329,7 +331,7 @@ class NevuObject(NevuCobject):
         return value
 
     def _create_template(self, size: NvVector2 | list):
-        return NevuObjectTemplate(size)
+        return _NevuObjectTemplate(size)
 
     def _init_flags(self):
         pass
@@ -366,6 +368,7 @@ class NevuObject(NevuCobject):
             self.style = style
 
     def _init_objects(self):
+        self._auto_sized_padding = None
         self._hover_state: HoverState = HoverState.NotHovered
         if self.animation_manager is not None:
             self.animation_manager = copy.deepcopy(self.animation_manager)
@@ -379,7 +382,8 @@ class NevuObject(NevuCobject):
         self._has_position_anim = value
 
     def _init_booleans(self):
-        pass
+        self._start_pos_relative_placed = isinstance(self.start_pos, list | tuple) and len(self.start_pos) == 2 \
+                                          and any(isinstance(item, _SizeRule) for item in self.start_pos)
 
     def _init_lists(self):
         self._resize_ratio = NvVector2(1, 1)
@@ -411,18 +415,29 @@ class NevuObject(NevuCobject):
         self.size = size if isinstance(size, NvVector2) else NvVector2(size)
         self.original_size = self.size.copy()
         self._system_callback_binds()
+        #print(self.start_pos)
+        self.set_coordinates(self.start_pos)
 
     def _handle_size_rules(
         self, number: _SizeRule | float
     ) -> _SizeRule | int | float:
         if isinstance(number, _SizeRule):
-            if type(number) == Px:
+            if type(number) is Px:
                 return number.value
+            elif type(number) is Auto:
+                self._auto_sized = True
+                self._auto_sized_padding = number.value
+                if isinstance(self._auto_sized_padding, int | float):
+                    self._auto_sized_padding = (number.value, number.value)
+                return 1
             else:
                 self._wait_mode = True
         return number
 
     # === Utils ===
+
+    def _start_pos_setter(self, value: NvVector2 | list | tuple | None):
+        return value
 
     def _coordinates_setter(self, coordinates: NvVector2) -> bool:
         return True
@@ -572,33 +587,7 @@ class NevuObject(NevuCobject):
         self._style = copy.copy(style)
         self._run_callbacks(BindType.StyleChange)
 
-    # === Update stubs ===
-
-    def secondary_update(self):
-        pass
-
-    def _logic_update(self):
-        pass
-
-    def _animation_update(self):
-        pass
-
-    def _event_update(self, events):
-        pass
-
-    # === Draw stubs ===
-
-    def _primary_draw(self):
-        pass
-
-    def secondary_draw_content(self):
-        pass
-
-    def _secondary_draw_end(self):
-        self._draw_canvas()
-
-    def secondary_draw(self):
-        pass
+    def _draw_end(self): self._draw_canvas()
 
     def _draw_canvas(self):
         if not self.canvas: return
