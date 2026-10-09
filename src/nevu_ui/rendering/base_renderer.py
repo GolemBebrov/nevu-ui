@@ -1,272 +1,327 @@
 from __future__ import annotations
 
-import weakref
+import math
 from abc import ABC, abstractmethod
-from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from nevu_ui.core.classes import SurfaceLike
+from nevu_ui.core.state import nevu_state
+from nevu_ui.fast.nevucache.nevucache import Cache
+from nevu_ui.presentation.style import default_style
 
 if TYPE_CHECKING:
-    from nevu_ui.components.nevuobj import NevuObject
-    from nevu_ui.components.widgets import Widget
     from nevu_ui.presentation.style import Style
     from nevu_ui.rendering.raylib.gradient import ClickGradient
 from nevu_ui.core.annotations import Annotations
 from nevu_ui.core.enums import (
     Align,
-    HoverState,
-    RenderArgs,
-    RenderConfig,
     RenderReturnType,
-    _RenderArg,
 )
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.presentation.color import Color
 
 
 class _BaseCoreNamespace(ABC):
-    __slots__: list[str] = ["_renderer"]
-
-    def __init__(self, renderer: BaseRenderer):
-        self._renderer: BaseRenderer = weakref.proxy(renderer)
-
-    @property
-    def root(self) -> Widget:
-        return self._renderer.root
-
-    @property
-    def style(self) -> Style:
-        return self.root.style
+    def __init__(self): ...
 
     @abstractmethod
-    def get_gradient(self, style: Style | None = None) -> Any:  # pyright: ignore[reportAny]
+    def get_gradient(self, style: Style) -> Any:  # pyright: ignore[reportAny]
         raise NotImplementedError
 
     @abstractmethod
-    def get_font(self, name: str | None = None, size: float | None = None) -> Any:  # pyright: ignore[reportAny]
+    def get_font(
+        self,
+        *,
+        style: Style = default_style,
+        cache: Cache | None = None,
+        relative = False,
+        relm: float | None = None,
+        size: int | None = None,
+        path: str | None = None,
+    ) -> tuple[Any, int]:  # pyright: ignore[reportAny]
         raise NotImplementedError
 
     @abstractmethod
-    def create_clear(self, size: Annotations.dest_like | NvVector2) -> SurfaceLike:
+    def create_clear(self, size: Annotations.dest_like_v) -> SurfaceLike:
         raise NotImplementedError
 
     @abstractmethod
     def draw_rect(
         self,
         surface_like: Any,
-        pos: Annotations.dest_like | NvVector2,
-        size: Annotations.dest_like | NvVector2,
-        color: Annotations.rgba_color = Color.White,
-        radii: Annotations.rect_like | int = 0,
-    ) -> None:
-        raise NotImplementedError
+        pos: Annotations.dest_like_v,
+        size: Annotations.dest_like_v,
+        *,
+        color: Annotations.rgb_like_color = Color.White,
+        style: Style = default_style,
+    ) -> None: raise NotImplementedError
 
     @abstractmethod
     def draw_line(
         self,
         surface_like: Any,
-        pos_from: Annotations.dest_like | NvVector2,
-        pos_to: Annotations.dest_like | NvVector2,
-        width: int,
-        radius: int,
-        color: Annotations.rgba_color = Color.White,
-    ) -> None:
-        raise NotImplementedError
+        pos_from: Annotations.dest_like_v,
+        pos_to: Annotations.dest_like_v,
+        *,
+        width: float | None = None,
+        radius: Annotations.rad_like | None = None,
+        relative: bool = False,
+        relm: float | None  = None,
+        color: Annotations.rgb_like_color = Color.White,
+        style: Style = default_style,
+    ) -> None: raise NotImplementedError
 
     @abstractmethod
-    def load_image(
-        self, path: str, size: Annotations.dest_like | NvVector2 | None = None
+    def get_image(
+        self,
+        style: Style,
+        *,
+        size: Annotations.dest_like_v | None = None
+    ): raise NotImplementedError
+
+    @abstractmethod
+    def measure_text(
+        self,
+        text: str,
+        *,
+        style: Style = default_style,
+        cache: Cache | None = None,
+        relative = False,
+        relm: float | None = None,
+        font: Any = None,
+        font_size: int | None = None,
+    ) -> NvVector2: raise NotImplementedError
+
+    def get_font_size(
+        self,
+        style: Style,
+        *,
+        relative = False,
+        relm: float | None = None
+    ) -> float:
+        font_size = style.font_size
+        if relative:
+            relm = relm or self.get_relm()
+            return font_size * relm
+        return font_size
+
+    def get_relm(self) -> float:
+        """Can be used only after Window initialized"""
+        Annotations.window_check()
+        rel = nevu_state.window.rel
+        return (rel.x + rel.y) / 2
+
+    def align_text_line(
+        self,
+        block_width: float,
+        line_width: float,
+        line_number: int,
+        *,
+        line_height_px: int,
+        half_leading: float,
+        style = default_style,
     ):
-        raise NotImplementedError
+        match style.text_align_x:
+            case Align.CENTER: dx = (block_width - line_width) / 2
+            case Align.RIGHT:  dx = block_width - line_width
+            case _:            dx = 0
+        match style.text_align_y:
+            case Align.CENTER: dy = line_number * line_height_px + half_leading
+            case Align.BOTTOM: dy = line_number * line_height_px + half_leading * 2
+            case _:            dy = line_number * line_height_px
+        return dx, dy
 
-    @abstractmethod
-    def measure_text(self, font: Any, text: str, font_size: float) -> NvVector2:
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_font_size(self, override_size: float | None = None) -> float:
-        raise NotImplementedError
-
-    def get_color_on_hover(self, color: Annotations.rgb_color) -> Annotations.rgb_color:
-        root = self.root
-        hover_state = root.hover_state
-        if (
-            hover_state == HoverState.Clicked
-            and not root.invert_on_click
-            and root.clickable
-        ):
-            color = Color.lighten(color, 0.2)
-        elif hover_state == HoverState.Hovered and root.hoverable:
-            color = Color.darken(color, 0.2)
-        return color
-
-    def split_words(
-        self, words: list[str], font: Any, font_size: float, max_width: float, marg: str = " "
+    def wrap_text(
+        self,
+        text_parts: list[str],
+        *,
+        max_width: float = float("inf"),
+        separator: str = " ",
+        style: Style = default_style,
+        literal_newline_support: bool = True,
+        cache: Cache | None = None,
+        relative: bool = False,
+        relm: float | None = None,
+        font: Any | None = None,
+        font_size: int | None = None,
     ) -> list[str]:
-        current_line = ""
+        if max_width <= 0:
+            raise ValueError("Max_width must be greater than zero.")
+        if math.isnan(max_width):
+            raise ValueError("Max_width cannot be NaN!")
+
+        if not text_parts:
+            return []
+
         lines: list[str] = []
+        unlimited_width = max_width == float("inf")
 
-        for word in words:
-            force_next_line = False
-            if word == "\n" or len(word) >= 2 and word[0] == "\\" and word[1] == "n":
-                force_next_line = True
+        current_part = ""
+        measure = self.measure_text
+        ended_with_newline = False
 
-            if force_next_line:
-                lines.append(current_line)
-                current_line = ""
+        for new_part in text_parts:
+            if new_part == "\n" or (new_part == "\\n" and literal_newline_support):
+                lines.append(current_part)
+                current_part = ""
+                ended_with_newline = True
                 continue
 
-            test_line = current_line + word + marg
-            text_size_vec = self.measure_text(font, test_line, font_size)
+            ended_with_newline = False
+            has_content = current_part != ""
 
-            if text_size_vec.x > max_width:
-                lines.append(current_line)
-                current_line = word + marg
+            if has_content:
+                test_line = current_part + separator + new_part
             else:
-                current_line = test_line
+                test_line = new_part
 
-        lines.append(current_line)
+            if unlimited_width:
+                current_part = test_line
+                continue
+
+            if measure(test_line, style=style, cache=cache, relative=relative, relm=relm, font=font, font_size=font_size).x > max_width:
+                if has_content:
+                    lines.append(current_part)
+                    current_part = new_part
+                else:
+                    current_part = test_line
+            else:
+                current_part = test_line
+
+        if current_part != "" or ended_with_newline:
+            lines.append(current_part)
+
         return lines
 
-    def normalize_radius(self, radius: float | tuple[float, float, float, float]) -> tuple[float, float, float, float]:
+    def normalize_radius(
+        self,
+        radius: Annotations.rad_like,
+        *,
+        relative = False,
+        relm: float | None = None
+    ) -> Annotations.normalized_radius:
         if isinstance(radius, int | float):
             radius = (radius, radius, radius, radius)
-        return radius
 
-    def normalize_radius_relative(
-        self, radius: float | tuple[float, float, float, float], mid_ratio: float | None = None
-    ) -> Annotations.rect_like:
-        ratio = mid_ratio or self.root.relm(1)
-        if not isinstance(radius, int | float):
-            return tuple(x * ratio for x in radius)  # type: ignore
-        radius *= ratio
-        radius = (radius, radius, radius, radius)
-        return radius
+        if not relative:
+            return radius
 
-    def align_rect(
+        if relm:
+            ratio = relm
+        else:
+            ratio = self.get_relm()
+        return (radius[0] * ratio, radius[1] * ratio, radius[2] * ratio, radius[3] * ratio)
+
+    def normalize_color(
         self,
-        align_x: Align,
-        align_y: Align,
-        rect: Annotations.rect_like,
-        text_width: float,
-        text_height: float,
-    ):
-        result_x = rect[0]
-        result_y = rect[1]
+        color: Annotations.rgb_like_color
+    ) -> Annotations.rgba_color:
+        if len(color) == 3:
+            return color[0], color[1], color[2], 255
+        return color
 
-        if align_x == Align.LEFT:
-            result_x = rect[0]
-        elif align_x == Align.CENTER:
-            result_x = rect[0] + (rect[2] - text_width) / 2
-        elif align_x == Align.RIGHT:
-            result_x = rect[0] + rect[2] - text_width
+    def align_inner_rect(
+        self,
+        container_rect: Annotations.rect_like,
+        inner_size: Annotations.dest_like_v,
+        *,
+        style: Style = default_style,
+        strict_size = True,
+    ) -> NvVector2:
+        result_x = container_rect[0]
+        result_y = container_rect[1]
 
-        if align_y == Align.TOP:
-            result_y = rect[1]
-        elif align_y == Align.CENTER:
-            result_y = rect[1] + (rect[3] - text_height) / 2
-        elif align_y == Align.BOTTOM:
-            result_y = rect[1] + rect[3] - text_height
+        container_width = container_rect[2]
+        container_height = container_rect[3]
 
-        return round(result_x), round(result_y)
+        inner_width =  inner_size[0]
+        inner_height = inner_size[1]
 
+        if strict_size:
+            if inner_width > container_width or inner_height > container_height:
+                raise ValueError("Inner size is larger than the container size.")
+        else:
+            inner_width = min(container_width, inner_width)
+            inner_height = min(container_height, inner_height)
 
-class _BaseSpecifiedDraw(ABC):
-    """namespace for backend specific draw functions"""
-    __slots__ = ["_renderer"]
+        match style.align_x:
+            case Align.LEFT: result_x = container_rect[0]
+            case Align.CENTER: result_x = container_rect[0] + (container_width - inner_width) / 2
+            case Align.RIGHT: result_x = container_rect[0] + container_width - inner_width
 
-    def __init__(self, renderer: BaseRenderer):
-        self._renderer: BaseRenderer = weakref.proxy(renderer)
+        match style.align_y:
+            case Align.TOP: result_y = container_rect[1]
+            case Align.CENTER: result_y = container_rect[1] + (container_height - inner_height) / 2
+            case Align.BOTTOM: result_y = container_rect[1] + container_height - inner_height
 
-    @property
-    def root(self) -> Widget:
-        return self._renderer.root
+        return NvVector2(round(result_x), round(result_y))
 
-    @property
-    def style(self) -> Style:
-        return self.root.style
-
-
+@dataclass(kw_only=True, slots=True)
 class _BaseCall:
-    pass
+    size: NvVector2
+    relative: bool = True
+    relm: float | None = None
+    return_type: RenderReturnType = RenderReturnType.CreateNew
+    modify_object: Any = None
+    pos: Annotations.dest_like_v | None = None
 
 @dataclass(kw_only=True, slots=True)
 class DrawBgCall(_BaseCall):
-    size: NvVector2 | None = None
-    style: Style | None = None
-    radius: tuple[int, int, int, int] | int | float | None = None
-    color: Annotations.rgba_color | None = None
+    bg_color: Annotations.rgba_color
     border_color: Annotations.rgba_color | None = None
-    border_width: int | float | None = None
-    no_borders: bool = False
-    pos: tuple[int, int] | None = None
-    cached: bool = False
-    standstill: bool = False
+    style: Style = default_style
+    cache: Cache | None = None
+
     gradient_support: bool = False
     image_support: bool = False
-    easy_background: bool = False
+    radius_support: bool = True
     inline: bool = False
-    cache: Any = None
-    return_type: RenderReturnType = RenderReturnType.Null
-    modify_object: Any = None
     glassy: bool = False
 
-@dataclass(kw_only=True, slots=True)
+
+@dataclass(kw_only=True, slots=True, unsafe_hash=True)
 class DrawBaseCall(_BaseCall):
-    size: NvVector2 | None = None
-    style: Style | None = None
-    radius: tuple[int, int, int, int] | int | float | None = None
-    color: Annotations.rgba_color | None = None
-    cached: bool = False
-    standstill: bool = False
+    color: Annotations.rgba_color
+    style: Style = default_style
+    cache: Cache | None = None
+
     gradient_support: bool = False
     image_support: bool = False
-    easy_background: bool = False
+    radius_support: bool = True
     inline: bool = False
-    cache: Any = None
-    return_type: RenderReturnType = RenderReturnType.Null
-    modify_object: Any = None
     glassy: bool = False
 
 
 @dataclass(kw_only=True, slots=True)
 class DrawTextCall(_BaseCall):
     text: str
-    style: Style | None = None
-    font_size: float | None = None
+
+    cache: Cache | None = None
+    style: Style = default_style
+    font_size: int | None = None
     color: Annotations.rgba_color | None = None
-    continuous: bool = False
-    size: NvVector2 | None = None
+    max_size: NvVector2 | None = None
+    line_height: float = 1.25
+
+    unlimited_x: bool = False
     unlimited_y: bool = False
     words_indent: bool = False
-    inline: bool = False
-    max_size: NvVector2 | None = None
-    return_type: RenderReturnType = RenderReturnType.Null
-    modify_object: Any = None
 
 
 @dataclass(kw_only=True, slots=True)
 class DrawEffectsCall(_BaseCall):
+    """Currently supported only for Raylib backend"""
     click_gradient: ClickGradient
-    click_subject: Any = None
-    radius: tuple[int, int, int, int] | int | float | None = None
-    return_type: RenderReturnType = RenderReturnType.Null
-    modify_object: Any = None
+    effect_texture: Any = None
+    radius: Annotations.rad_like | None = None
 
 
 @dataclass(kw_only=True, slots=True)
 class DrawBordersCall(_BaseCall):
-    subject: Any
+    original_surface: Any
+    style: Style = default_style
     color: Annotations.rgba_color | None = None
-    border_width: int | float | None = None
-    radius: tuple[int, int, int, int] | int | float | None = None
-    no_borders: bool = False
-    pos: tuple[int, int] | None = None
-    return_type: RenderReturnType = RenderReturnType.Null
-    bg_color: Annotations.rgb_like_color | None = None
-    modify_object: Any = None
     glassy: bool = False
 
 
@@ -283,141 +338,180 @@ class BaseRenderer(ABC):
     def _get_unexpected_error(self, error: Exception, func_name: str):
         raise ValueError(
             Annotations.format_nvtype_renderer_error(
-                f"unexpected error - '{error}'", self._root, func_name
+                f"unexpected error - '{error}'", self, func_name
             )
         )
 
-    def __init__(self, root: NevuObject):
-        self._root: Widget = weakref.proxy(root)
+    def __init__(self):
         self.core: _BaseCoreNamespace = self._get_core_namespace()
-        self.unsafe: _BaseSpecifiedDraw = self._get_unsafe_namespace()
-        self.release: bool = False
-        self._pipeline: dict[RenderConfig, type[_RenderArg]] = {}
-        self._key_to_func: dict[type[_RenderArg], Callable[..., Any]] = {
-            RenderArgs.DrawBase: self._draw_base,
-            RenderArgs.DrawBorders: self._draw_borders,
-            RenderArgs.DrawText: self._draw_text,
-            RenderArgs.DrawEffects: self._draw_effects,
-            RenderArgs.DrawBg: self._draw_bg
-        }
 
-    def configure(self, render_key: RenderConfig, render_arg: type[_RenderArg]):
-        self._pipeline[render_key] = render_arg
+    def run_base(self, call: DrawBaseCall):
+        return_type = call.return_type
 
-    def base_configure(self):
-        self.configure(RenderConfig.DrawL1, RenderArgs.DrawBase)
-        self.configure(RenderConfig.DrawL2, RenderArgs.DrawBorders)
-        self.configure(RenderConfig.DrawL3, RenderArgs.DrawText)
-        self.configure(RenderConfig.DrawL4, RenderArgs.DrawCustom)
-        self.configure(RenderConfig.DrawL5, RenderArgs.DrawEffects)
-        self.configure(RenderConfig.Special, RenderArgs.DrawBg)
-
-    def run(self, key: RenderConfig, call: _BaseCall) -> Any:
-        if key not in self._pipeline: return
-        pipeline_item = self._pipeline[key]
-        if not self.release:
-            try:
-                if pipeline_item in self._key_to_func:
-                    return self._key_to_func[pipeline_item](call)
-                elif pipeline_item is RenderArgs.DrawCustom:
-                    return pipeline_item.custom_func(call)
-            except RuntimeError as e:
-                raise self._get_unexpected_error(e, (self._key_to_func[pipeline_item].__name__).strip("_").replace("draw", "run"))
-        if pipeline_item in self._key_to_func:
-            return self._key_to_func[pipeline_item](call)
-        elif pipeline_item is RenderArgs.DrawCustom:
-            return pipeline_item.custom_func(call)
-
-    def run_base(self, call: DrawBaseCall, key: RenderConfig = RenderConfig.Auto):
-        return self._run_spec(call, RenderArgs.DrawBase, key)
-
-    def run_borders(self, call: DrawBordersCall, key: RenderConfig = RenderConfig.Auto):
-        return self._run_spec(call, RenderArgs.DrawBorders, key)
-
-    def run_text(self, call: DrawTextCall, key: RenderConfig = RenderConfig.Auto):
         try:
-            self.core.get_font()
-        except Exception as e:  # noqa: BLE001
-            raise ValueError(
-                Annotations.format_nvtype_renderer_error(
-                    str(e),
-                    self._root,
-                    "run_text",
-                    solution="make sure you are running the application with a specified font or change the font_name in the current Widget style",
-                )
-            )
-        return self._run_spec(call, RenderArgs.DrawText, key)
+            match return_type:
+                case RenderReturnType.Modify:
+                    texture = call.modify_object
+                    if texture is None:
+                        raise ValueError("Modify return type selected but no modify_object provided.")
+                    self._base_draw(texture, call)
+                case RenderReturnType.CreateNew:
+                    texture = self.core.create_clear(call.size)
+                    self._base_draw(texture, call)
+                    return texture
+                case _:
+                    raise ValueError(f"Invalid return type: {return_type}")
+        except Exception as e:
+            raise self._get_unexpected_error(e, "run_base")
 
-    def run_effects(self, call: DrawEffectsCall, key: RenderConfig = RenderConfig.Auto):
-        return self._run_spec(call, RenderArgs.DrawEffects, key)
+    def run_borders(self, call: DrawBordersCall):
+        return_type = call.return_type
+        try:
+            match return_type:
+                case RenderReturnType.Modify:
+                    texture = call.modify_object
+                    assert texture, "Modify return type selected but no object provided"
+                    self._borders_draw(texture, call)
+                case RenderReturnType.CreateNew:
+                    texture = self.core.create_clear(call.size)
+                    self._borders_draw(texture, call)
+                    return texture
 
-    def run_bg(self, call: DrawBgCall, key: RenderConfig = RenderConfig.Auto):
-        return self._run_spec(call, RenderArgs.DrawBg, key)
+                case _:
+                    raise ValueError(f"Invalid return type: {return_type}")
+        except Exception as e:
+            raise self._get_unexpected_error(e, "run_text")
 
-    def _run_spec(
-        self,
-        call: _BaseCall,
-        needed_arg: type[_RenderArg] = RenderArgs.DrawBase,
-        key: RenderConfig = RenderConfig.Auto,
-    ) -> Any:
-        if key == RenderConfig.Auto:
-            key = next((k for k, v in self._pipeline.items() if v == needed_arg), None)  # type: ignore
+    def run_text(self, call: DrawTextCall):
+        return_type = call.return_type
+        try:
+            match return_type:
+                case RenderReturnType.Modify:
+                    texture = call.modify_object
+                    if texture is None:
+                        raise ValueError("Modify return type requires a non-None modify_object.")
+                    text_lines, text_pos, _ = self._arrange_text(call)
+                    self._text_draw(text_lines, texture, call, text_pos)
+                    return text_pos, texture
+                case RenderReturnType.CreateNew:
+                    text_lines, text_pos, text_size = self._arrange_text(call, pos = NvVector2(0, 0))
+                    texture = self.core.create_clear(text_size)
+                    self._text_draw(text_lines, texture, call, NvVector2())
+                    return text_pos, texture
 
-        if not key:
-            raise ValueError(
-                f"The required render argument '{needed_arg}' is not configured in the pipeline."
-            )
+                case _:
+                    raise ValueError(f"Unknown return type: {return_type}")
+        except Exception as e:
+            raise self._get_unexpected_error(e, "run_text")
 
-        assert isinstance(key, RenderConfig)
+    def run_effects(self, call: DrawEffectsCall):
+        core = self.core
+        click_gradient = call.click_gradient
+        effect_texture = call.effect_texture
+        effect_texture = effect_texture or self.core.create_clear(call.size)
+        return_type = call.return_type
 
-        if key not in self._pipeline:
-            return
+        try:
+            match return_type:
+                case RenderReturnType.Modify:
+                    texture = call.modify_object
+                    assert texture, "Modify return type selected but no object provided"
+                    self._add_effects(call, effect_texture, click_gradient, texture)
+                case RenderReturnType.CreateNew:
+                    texture = core.create_clear(call.size)
+                    self._add_effects(call, effect_texture, click_gradient, texture)
+                    return texture
 
-        if self._pipeline[key] != needed_arg:
-            expected_name = getattr(
-                needed_arg, "__name__", getattr(needed_arg, "name", str(needed_arg))
-            )
-            got_name = getattr(
-                self._pipeline[key],
-                "__name__",
-                getattr(self._pipeline[key], "name", str(self._pipeline[key])),
-            )
-            raise ValueError(f"in {key}, expected {expected_name}, got {got_name}")
+                case _:
+                    raise ValueError(f"Invalid return type: {return_type}")
+        except Exception as e:
+            raise self._get_unexpected_error(e, "run_effects")
 
-        return self.run(key, call)
+    def run_bg(self, call: DrawBgCall):
+        return_type = call.return_type
+        base_call = DrawBaseCall(
+            pos=call.pos,
+            size=call.size,
+            color=call.bg_color,
+            style=call.style,
+            cache=call.cache,
+            gradient_support=call.gradient_support,
+            image_support=call.image_support,
+            radius_support=call.radius_support,
+            inline=call.inline,
+            glassy=call.glassy,
+        )
+        borders_call = DrawBordersCall(
+            original_surface=None,
+            pos=call.pos,
+            size=call.size,
+            color=call.border_color,
+            style=call.style,
+        )
+        try:
+            match return_type:
+                case RenderReturnType.Modify:
+                    texture = call.modify_object
+                    if texture is None:
+                        raise ValueError("Modify return type selected but no modify_object provided.")
+                    self._base_draw(texture, base_call)
+                    result_texture = texture.copy()
+                    borders_call.original_surface = texture
+                    self._borders_draw(texture, borders_call)
 
-    @property
-    def root(self):
-        return self._root
+                case RenderReturnType.CreateNew:
+                    texture = self.core.create_clear(call.size)
+                    self._base_draw(texture, base_call)
+                    result_texture = self.core.create_clear(call.size)
+                    borders_call.original_surface = texture
+                    self._borders_draw(result_texture, borders_call)
+                    return result_texture
 
-    @property
-    def style(self):
-        return self.root.style
+                case _:
+                    raise ValueError(f"Invalid return type: {return_type}")
+        except Exception as e:
+            raise self._get_unexpected_error(e, "run_base")
 
     @abstractmethod
     def _get_core_namespace(self) -> _BaseCoreNamespace:
         raise NotImplementedError
 
     @abstractmethod
-    def _get_unsafe_namespace(self) -> _BaseSpecifiedDraw:
+    def _base_draw(
+        self,
+        texture: SurfaceLike,
+        call: DrawBaseCall,
+    ): raise NotImplementedError
+
+    @abstractmethod
+    def _text_draw(
+        self,
+        text_lines: list[str],
+        texture: SurfaceLike,
+        call: DrawTextCall,
+        pos: NvVector2 | None = None,
+    ): raise NotImplementedError
+
+    @abstractmethod
+    def _arrange_text(
+        self,
+        call: DrawTextCall,
+        pos: Annotations.dest_like_v | None = None,
+    ) -> tuple[list[str], NvVector2, NvVector2]:
         raise NotImplementedError
 
     @abstractmethod
-    def _draw_base(self, call: DrawBaseCall) -> Any:
-        raise NotImplementedError
+    def _borders_draw(
+        self,
+        texture: SurfaceLike,
+        call: DrawBordersCall,
+    ): raise NotImplementedError
 
     @abstractmethod
-    def _draw_text(self, call: DrawTextCall) -> Any:
-        raise NotImplementedError
-
-    @abstractmethod
-    def _draw_effects(self, call: DrawEffectsCall) -> Any:
-        raise NotImplementedError
-
-    @abstractmethod
-    def _draw_borders(self, call: DrawBordersCall) -> Any:
-        raise NotImplementedError
-
-    @abstractmethod
-    def _draw_bg(self, call: DrawBgCall) -> Any:
-        raise NotImplementedError
+    def _add_effects(
+        self,
+        call: DrawEffectsCall,
+        effect_texture: Any,
+        gradient: ClickGradient,
+        texture: Any,
+    ): raise NotImplementedError
