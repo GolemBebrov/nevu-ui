@@ -32,9 +32,9 @@ class StackBase(LayoutType, ABC):
         self,
         content: content_type | None = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[_StackKwargs],
+        **params: Unpack[_StackKwargs],
     ):
-        super().__init__(content = content, size = NvVector2(), style = style, **constant_kwargs)
+        super().__init__(content = content, size = NvVector2(), style = style, **params)
 
     def add_items(self, content: content_type | None):
         if not content: return
@@ -67,10 +67,11 @@ class StackBase(LayoutType, ABC):
             CustomFunctions.draw_main
         )
 
-    def add_item(self, item: NevuObject, alignment: Align = Align.CENTER):  # type: ignore
-        super().add_item(item)
+    def add_item(self, item: NevuObject, alignment: Align = Align.CENTER):
+        item = super().add_item(item)
         self.widgets_alignment.append(alignment)
         self.cached_coordinates = None
+        return item
 
     def _parse_fillx(self, fill_rule: _SizeRule, fill_type: type[_SizeRule], pos: int) -> float | None:
         if fill_rule in _all_fillx:
@@ -83,8 +84,8 @@ class StackBase(LayoutType, ABC):
             self.items.insert(id, item)
             self.widgets_alignment.insert(id, Align.CENTER)
             self._recalculate_size()
-            if self.layout:
-                self.layout._on_item_add(item)
+            if self._parent_layout:
+                self._parent_layout._on_item_add(item)
         except Exception as e:
             raise e
 
@@ -98,11 +99,11 @@ class StackBase(LayoutType, ABC):
 
     def _on_item_add(self, item: NevuObject):
         self.cached_coordinates = None
-        if self.layout:
-            self.layout.cached_coordinates = None
+        if self._parent_layout:
+            self._parent_layout.cached_coordinates = None
         self._recalculate_size()
-        if self.layout:
-            self.layout._on_item_add(item)
+        if self._parent_layout:
+            self._parent_layout._on_item_add(item)
 
     def _update_main(self, *args):
         base_light_update(self)
@@ -114,26 +115,21 @@ class StackBase(LayoutType, ABC):
         super()._regenerate_coordinates()
         old_size = self.size.copy() if hasattr(self, "size") else None
         self._recalculate_size()
-        if old_size is not None and (old_size.x != self.size.x or old_size.y != self.size.y) and self.layout:
-            self.layout.cached_coordinates = None
+        if old_size is not None and (old_size.x != self.size.x or old_size.y != self.size.y) and self._parent_layout:
+            self._parent_layout.cached_coordinates = None
         self._recalculate_widget_coordinates()
 
     def _create_clone(self):
         return self.__class__(
             copy.deepcopy(self._template["content"]),
             copy.deepcopy(self.style),
-            **self.constant_kwargs,
+            **self.kwargs,
         )
 
     # === Placeholders ===
     @abstractmethod
-    def _set_align_coords(self, item: NevuObject, alignment: Align):
-        pass
-
+    def _set_align_coords(self, item: NevuObject, alignment: Align): ...
     @abstractmethod
-    def _recalculate_size(self):
-        pass
-
+    def _recalculate_size(self): ...
     @abstractmethod
-    def _recalculate_widget_coordinates(self):
-        pass
+    def _recalculate_widget_coordinates(self): ...
