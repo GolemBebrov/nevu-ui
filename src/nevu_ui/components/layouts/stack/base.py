@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import copy
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Unpack
+from typing import Unpack
 
-if TYPE_CHECKING:
-    from nevu_ui.menu import Menu
 from nevu_ui.components._typehints import _StackKwargs
 from nevu_ui.components.layouts import LayoutType
+from nevu_ui.components.layouts.menu import Menu
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
@@ -40,14 +39,13 @@ class StackBase(LayoutType, ABC):
         if not content: return
 
         for content_item in content:
-
             if isinstance(content_item, tuple):
                 align, item = content_item
             elif isinstance(content_item, NevuObject):
                 align, item = self.basic_alignment, content_item
             else:
                 raise TypeError(Annotations.format_nvtype_nvobject_error("list[tuple[Align, NevuObject] or NevuObject]", "content", f"{content}.\nWrong part: {content_item}", self))
-            assert type(align) == Align and isinstance(item, NevuObject), (
+            assert type(align) is Align and isinstance(item, NevuObject), (
                 f"Incorrect align or item ({align}, {item})"
             )
             self.add_item(item, align)
@@ -79,15 +77,17 @@ class StackBase(LayoutType, ABC):
                 f"Handling for SizeRule '{fill_type.__name__}' is not supported in {type(self).__name__}"
             )
 
-    def insert_item(self, item: Widget | LayoutType, id: int = -1):
+    def insert_item(self, item: NevuObject, id: int = -1):
         try:
+            self.kill_item(self.items[id])
+            item = self._item_add(item)
             self.items.insert(id, item)
             self.widgets_alignment.insert(id, Align.CENTER)
             self._recalculate_size()
             if self._parent_layout:
                 self._parent_layout._on_item_add(item)
         except Exception as e:
-            raise e
+            raise RuntimeError(f"Cannot insert item in {self.__class__.__name__} with {self.get_param("id")}") from e
 
     def _connect_to_layout(self, layout: LayoutType):
         super()._connect_to_layout(layout)
@@ -105,7 +105,9 @@ class StackBase(LayoutType, ABC):
         if self._parent_layout:
             self._parent_layout._on_item_add(item)
 
-    def _update_main(self, *args):
+    def _update_main(self):
+        if not self.items or not self.cached_coordinates or not self.first_parent_menu:
+            return
         base_light_update(self)
 
     def _draw_main(self):
