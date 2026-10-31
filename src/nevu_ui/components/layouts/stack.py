@@ -10,22 +10,23 @@ from nevu_ui.components.layouts.menu import Menu
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
-from nevu_ui.core.enums import Align, CustomFunctions
+from nevu_ui.core.enums import Align, CustomFunctions, Orientation
 from nevu_ui.core.size.rules import (
     _all_fillx,
     _SizeRule,
 )
-from nevu_ui.fast.logic.fast_logic import base_light_update, draw_widgets_optimized
+from nevu_ui.fast.logic.fast_logic import base_light_update, draw_widgets_optimized, py_get_item_abs_coords
 from nevu_ui.fast.nvvector2 import NvVector2
 
 
 # Nnna nanachi approved!
-class StackBase(LayoutType, ABC):
+class Stack(LayoutType):
     _supports_global_size = False
-    content_type = list[tuple[Align, NevuObject] | NevuObject]
+    type content_type = list[tuple[Align, NevuObject] | NevuObject]
 
     spacing: float
     basic_alignment: Align
+    orientation: Orientation
 
     def __init__(
         self,
@@ -58,6 +59,7 @@ class StackBase(LayoutType, ABC):
         super()._add_params()
         self._add_param("spacing", (int, float), 10)
         self._add_param("basic_alignment", Align, Align.CENTER)
+        self._add_param("orientation", Orientation, Orientation.Row)
 
     def _init_booleans(self):
         super()._init_booleans()
@@ -128,10 +130,61 @@ class StackBase(LayoutType, ABC):
             **self.kwargs,
         )
 
-    # === Placeholders ===
-    @abstractmethod
-    def _set_align_coords(self, item: NevuObject, alignment: Align): ...
-    @abstractmethod
-    def _recalculate_size(self): ...
-    @abstractmethod
-    def _recalculate_widget_coordinates(self): ...
+    def _recalculate_size(self):
+        if not hasattr(self, "size"): return
+        items = self.items
+        size = self.size
+        if not items:
+            size[0] = 0
+            size[1] = 0
+            return
+        if any(not item.booted for item in items): return
+        orientation = self.orientation
+        main_axis = orientation.axis
+        cross_axis = orientation.cross_axis
+
+        size[main_axis] = sum(item.size[main_axis] for item in items) + len(items) * self.spacing
+        size[cross_axis] = max(item.size[cross_axis] for item in items)
+
+    def _get_align_offset(self, item: NevuObject, alignment: Align) -> float:
+        cross_axis = self.orientation.cross_axis
+        size_diff = self.size[cross_axis] - item.size[cross_axis]
+
+        match alignment:
+            case Align.CENTER:
+                offset = size_diff * 0.5
+            case Align.RIGHT | Align.BOTTOM:
+                offset = size_diff
+            case _:
+                offset = 0.0
+
+        rel = self._resize_ratio[cross_axis]
+        return offset * rel
+
+    def _recalculate_widget_coordinates(self):
+        if not self.booted: return
+        cached_coordinates = []
+        main_axis = self.orientation.axis
+        cross_axis = self.orientation.cross_axis
+        main_ratio = self._resize_ratio[main_axis]
+
+        spacing = self.spacing * main_ratio
+        current_main = 0
+
+        items = self.items
+        alignments = self.widgets_alignment
+        self_coordinates = self.coordinates
+
+        for i in range(len(items)):
+            item, alignment = items[i], alignments[i]
+
+            new_coords = NvVector2()
+            new_coords[main_axis] = self_coordinates[main_axis] + current_main + (spacing * 0.5)
+            new_coords[cross_axis] = self_coordinates[cross_axis] + self._get_align_offset(item, alignment)
+            item.set_coordinates(new_coords)
+            item.absolute_coordinates = py_get_item_abs_coords(self, item)
+
+            current_main += item.get_actual_size()[main_axis] + spacing
+            cached_coordinates.append(new_coords.copy())
+
+        self.cached_coordinates = cached_coordinates
