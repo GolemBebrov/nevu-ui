@@ -1,4 +1,4 @@
-from typing import Unpack, overload
+from typing import Any, Unpack, overload
 
 import nevu_ui.core.modules as md
 from nevu_ui.components._typehints import (
@@ -7,186 +7,96 @@ from nevu_ui.components._typehints import (
     _SliderKwargsShortFull,
 )
 from nevu_ui.components.widgets.progress_bar import ProgressBar
-from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import (
     Align,
     BindType,
     CacheType,
     CustomFunctions,
-    ParamLayer,
     RenderReturnType,
 )
 from nevu_ui.core.state import nevu_state
-from nevu_ui.fast import NvRect, NvRenderTexture, NvVector2
+from nevu_ui.fast import NvRect, NvVector2
 from nevu_ui.fast.raylib import begin_blend_mode, end_blend_mode
-from nevu_ui.presentation.color import Color, PairColorRole, TupleColorRole
+from nevu_ui.presentation.color import TupleColorRole
 from nevu_ui.presentation.style import Style
 from nevu_ui.rendering import DrawTextCall
 from nevu_ui.utils import mouse
 
 
-class Slider(Widget):
-    # === Params ===
-    bar_style: Style
+class Slider(ProgressBar):
+    bar_style: Style | None
     padding_x: int
     padding_y: int
-    filled_rect_role: PairColorRole
-    start_value: int | float
-    end_value: int | float
     step: int | float
     bar_font_role: TupleColorRole
-    current_value: int | float
 
-    # ==============
-    progress_bar: ProgressBar
     @overload
     def __init__(
         self,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[_SliderKwargsShortFull],
+        **params: Unpack[_SliderKwargsShortFull],
     ): ...
+
     @overload
     def __init__(
         self,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[_SliderKwargsLongFull],
+        **params: Unpack[_SliderKwargsLongFull],
     ): ...
+
     def __init__(
         self,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[_SliderKwargs],
+        **params: Unpack[_SliderKwargs] | Any,
     ):
-        self.booted = False
-        self._constant_current_val = None
-        super().__init__(size, style, **constant_kwargs)
+        super().__init__(size, style, **params)
 
     def _init_booleans(self):
         super()._init_booleans()
+        self.hoverable = True
         self._add_custom_flags(
-            CustomFunctions.draw_main |
-            CustomFunctions.update_main
+            CustomFunctions.draw_main | CustomFunctions.update_main
         )
-
-    def _lazy_init(self, size: NvVector2 | list):
-        super()._lazy_init(size)
-        self.create_progress_bar()
-        self.add_first_update_action(self._first_progressbar_update)
-
-    def _first_progressbar_update(self):
-        self._on_progress_bar_change()
-        self._create_font()
-
-    def _on_progress_bar_change(self, *args, **kwargs):
-        rtype = nevu_state.window.renderer_type
-        progress_bar_surf = self.progress_bar.surface
-        if rtype.raylib:
-            assert isinstance(progress_bar_surf, NvRenderTexture)
-            with progress_bar_surf:
-                progress_bar_surf.clear(Color.Blank)
-        elif rtype.pygame_like:
-            progress_bar_surf.fill(Color.Blank)
-            self._create_surf()
-
-    def create_progress_bar(self):
-        assert self.surface
-
-        progress_style = self.bar_style or self.style
-        self.progress_bar = ProgressBar(
-            self.size,
-            progress_style,
-            on_value_change=self._on_progress_bar_change,
-            start=self.start_value,
-            end=self.end_value,
-            current=self.current_value,
-            alt=self.inverted,
-            role=self.filled_rect_role,
-            z=-999,
-        )
-
-        self.progress_bar._system_callbacks.bind(BindType.Change, self._on_progress_bar_change, weak=True)
-        self.progress_bar._init_start()
-        self.progress_bar.booted = True
-        self.progress_bar._boot_up()
 
     def _init_flags(self):
         super()._init_flags()
         self.dragging = False
-        self._font_changed = False
 
     def _init_objects(self):
         super()._init_objects()
-        self.progress_bar_surf = None
+        self._text_rect = None
+        self._text_surface = None
 
     def _add_params(self):
         super()._add_params()
-        self._add_param("start_value", int | float, 0)
-        self._add_param_link("start", "start_value")
-        self._add_param("end_value", int | float, 100)
-        self._add_param_link("end", "end_value")
-        self._add_param(
-            "current_value",
-            int | float,
-            0,
-            layer=ParamLayer.Complicated,
-            getter=self._current_value_getter,
-            setter=self._current_value_setter,
-        )
-        self._add_param_link("current", "current_value")
-
         self._add_param("step", int | float, 1)
         self._add_param("bar_style", Style | type(None), None)
-
         self._add_param("padding_x", int, 10)
         self._add_param_link("pad_x", "padding_x")
         self._add_param("padding_y", int, 10)
         self._add_param_link("pad_y", "padding_y")
         self._add_param("bar_font_role", TupleColorRole, TupleColorRole.INVERSE_PRIMARY)
 
-        self._add_param("filled_rect_role", PairColorRole, PairColorRole.BACKGROUND)
-        self._add_param_link("role", "filled_rect_role")
-
     def _system_callback_binds(self):
         super()._system_callback_binds()
-        self._system_callbacks.bind(BindType.Hover, slider_on_hover)
-        self._system_callbacks.bind(BindType.Unhover, slider_on_unhover)
         self._system_callbacks.bind(BindType.Click, slider_on_click)
         self._system_callbacks.bind(BindType.KeyUp, slider_on_keyup)
         self._system_callbacks.bind(BindType.KeyUpAbandon, slider_on_keyup_abandon)
         self._system_callbacks.bind(BindType.AfterStateChange, _slider_after_state_change)
         self._system_callbacks.bind(BindType.StyleChange, _slider_on_style_change)
 
-    def _current_value_getter(self, value):
-        return (
-            self.progress_bar.current_value
-            if hasattr(self, "progress_bar") and self.progress_bar
-            else 0
-        )
-
-    def _current_value_setter(self, new_value: float | int):
-        if hasattr(self, "progress_bar") and self.progress_bar:
-            self.progress_bar.set_progress_by_value(new_value)
-            self._changed = True
-        else:
-            self._constant_current_val = new_value
-        return new_value
-
-    def _update_start(self):
-        super()._update_start()
-        if self._constant_current_val and hasattr(self, "progress_bar"):
-            self.current_value = self._constant_current_val
+    def _current_value_setter(self, value):
+        val = super()._current_value_setter(value)
+        if hasattr(self, "cache"):
             self.cache.clear_selected(whitelist=[CacheType.TextArgs])
-            self.clear_texture()
-            self._create_font()
-            self._changed = True
-            self._constant_current_val = None
+        return val
 
     def _update_main(self):
         super()._update_main()
-        self.progress_bar.update()
         if self.dragging:
             self._on_drag()
 
@@ -194,85 +104,41 @@ class Slider(Widget):
         relative_x = mouse.pos.x - self.absolute_coordinates.x
 
         slider_pos = max(
-            self._borders_of_current_size.x, min(self._no_borders_current_size.x + self._borders_of_current_size.x, relative_x)
-        )
-        slider_perc = (slider_pos - self._borders_of_current_size.x) / (
-            self._no_borders_current_size.x
+            self._borders_of_current_size.x,
+            min(
+                self._no_borders_current_size.x + self._borders_of_current_size.x,
+                relative_x,
+            ),
         )
 
+        if self._no_borders_current_size.x == 0:
+            slider_perc = 0.0
+        else:
+            slider_perc = (slider_pos - self._borders_of_current_size.x) / (
+                self._no_borders_current_size.x
+            )
+
         value = slider_perc * (self.end_value - self.start_value) + self.start_value
-        if value % self.step != 0:
+        if self.step != 0 and value % self.step != 0:
             value = round(value / self.step) * self.step
         value = max(self.start_value, min(self.end_value, value))
 
         if abs(value - self.current_value) > 1e-9:
             self.current_value = value
-            self.cache.clear_selected(whitelist=[CacheType.TextArgs])
-            self._create_font()
 
-    def _draw_start(self):
-        pass
-
-    def _create_surf(self):
-        assert self.surface and self.progress_bar.surface
-        self.clear_texture()
-        self._create_font()
-        self.adjust_text_rect()
-
-        rtype = nevu_state.window.renderer_type
-        surf = self.surface
-        progressbar_surf = self.progress_bar.surface
-        text_surf = self._text_surface
-
-        if rtype.raylib:
-            assert isinstance(surf, NvRenderTexture)
-            assert isinstance(progressbar_surf, NvRenderTexture)
-            assert isinstance(text_surf, NvRenderTexture)
-            with surf:
-                surf.fast_clear(Color.Blank)
-                fast_blit = surf.fast_blit
-                begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-                fast_blit(progressbar_surf, (0, 0))
-                fast_blit(text_surf, self._text_rect)  # type: ignore
-                end_blend_mode()
-
-        elif rtype.pygame_like:
-            assert isinstance(surf, md.pygame.Surface)
-            assert isinstance(progressbar_surf, md.pygame.Surface)
-            if not text_surf:
-                return
-            surf_blit = surf.blit
-            surf.fill(Color.Blank)
-            surf_blit(progressbar_surf, (0, 0))
-            if self._text_surface:
-                surf_blit(text_surf, self._text_rect)  # type: ignore
-
-    def _create_font(self):
-        result = self.cache.get_or_exec(
-            CacheType.TextArgs,
-            lambda: self.renderer.run_text(
-                DrawTextCall(
-                    text=str(round(self.current_value)),
-                    color=self.style.colortheme.get_tuple(self.bar_font_role),
-                    return_type=RenderReturnType.CreateNew,
-                )
-            ),
+    def _create_text(self):
+        result = self.renderer.run_text(
+            DrawTextCall(
+                size=self.current_size,
+                text=str(round(self.current_value)),
+                color=self.style.colortheme.get_tuple(self.bar_font_role),
+                return_type=RenderReturnType.CreateNew,
+            )
         )
-        assert result
-        self._text_rect, self._text_surface = result
+        return result
 
-    def _draw_main(self):
-        super()._draw_main()
-        self.progress_bar.coordinates = NvVector2()
-        self.progress_bar.draw()
-        assert self.surface
-        self._create_font()
-        self.adjust_text_rect()
-        self._create_surf()
-
-    def adjust_text_rect(self, rect=None):
-        result_rect = rect or self._text_rect
-        result_rect = NvRect(result_rect or NvRect(0, 0, 0, 0))
+    def adjust_text_rect(self, rect):
+        result_rect = NvRect(rect)
         if self.style.align_x == Align.CENTER and self.style.align_y == Align.CENTER:
             return rect
 
@@ -297,54 +163,52 @@ class Slider(Widget):
             result_rect = NvRect(*result_rect)
         result_rect.move_ip(padx, pady)
         result_rect = result_rect.get_int_tuple()
-        if rect is None:
-            self._text_rect = result_rect
-        else:
-            return result_rect
+        return result_rect
+
+    def _draw_text(self):
+        surface = self.surface
+        text_rect, text_surface = self.cache.get_or_exec(CacheType.TextArgs, self._create_text)
+        coords = (text_rect[0], text_rect[1])
+
+        is_raylib = nevu_state.window.renderer_type.raylib
+        with surface:
+            if is_raylib:
+                begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+            surface.blit(text_surface, coords)
+            if is_raylib:
+                end_blend_mode()
+
+    def _draw_main(self):
+        super()._draw_main()
+        if not self.surface:
+            return
+        text_rect, text_surface = self.cache.get_or_exec(CacheType.TextArgs, self._create_text)
+        self.cache.set(CacheType.TextArgs, (self.adjust_text_rect(text_rect), text_surface))
+        self._draw_text()
 
     def _resize_content(self, resize_ratio: NvVector2):
         super()._resize_content(resize_ratio)
-        assert self.surface
-        self._create_font()
-        self.progress_bar._resize(resize_ratio)
+        self.cache.clear_selected(whitelist=[CacheType.TextArgs])
 
-    def _kill_base(self):
-        super()._kill_base()
-        if hasattr(self, "progress_bar"):
-            if self.progress_bar:
-                self.progress_bar.kill()
-            self.progress_bar = None
 
-# NOT CLASS FUNCTIONS
-
-def slider_on_hover(self):
-    self.progress_bar._run_callbacks(BindType.Hover)
-    self.add_next_frame_action(self._create_surf)
-
-def slider_on_unhover(self):
-    self.progress_bar._run_callbacks(BindType.Unhover)
-    self.add_next_frame_action(self._create_surf)
-
-def slider_on_click(self):
+def slider_on_click(self, *args, **kwargs):
     self.dragging = True
-    self.progress_bar._run_callbacks(BindType.Click)
-    self.add_next_frame_action(self._create_surf)
+    self._on_drag()
 
-def slider_on_keyup(self):
+
+def slider_on_keyup(self, *args, **kwargs):
     self.dragging = False
-    self.progress_bar._run_callbacks(BindType.KeyUp)
-    self.add_next_frame_action(self._create_surf)
 
-def slider_on_keyup_abandon(self):
+
+def slider_on_keyup_abandon(self, *args, **kwargs):
     self.dragging = False
-    self.progress_bar._run_callbacks(BindType.KeyUpAbandon)
 
-def _slider_after_state_change(self, state):
+
+def _slider_after_state_change(self, *args, **kwargs):
     self.cache.clear_selected(whitelist=[CacheType.TextArgs])
-    self._create_font()
-    self.adjust_text_rect()
-    self._create_surf()
+    self._changed = True
 
-def _slider_on_style_change(self):
-    if hasattr(self, "progress_bar") and self.progress_bar:
-        self.progress_bar._changed = True
+
+def _slider_on_style_change(self, *args, **kwargs):
+    self.cache.clear_selected(whitelist=[CacheType.TextArgs])
+    self._changed = True
