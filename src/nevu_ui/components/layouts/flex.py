@@ -1,7 +1,7 @@
 import copy
 from typing import Unpack
 
-from nevu_ui.components._typehints import _FlexLayoutKwargs
+from nevu_ui.components._typehints import _FlexKwargs
 from nevu_ui.components.layouts.layout_base import LayoutType
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
@@ -23,7 +23,7 @@ MAIN_LEN_STR = "main_len"
 SEC_LEN_STR = "sec_len"
 ITEMS_STR = "items"
 
-class FlexLayout(LayoutType):
+class Flex(LayoutType):
     _supports_global_size = False
     content_type = list[NevuObject]
 
@@ -40,9 +40,9 @@ class FlexLayout(LayoutType):
         self,
         *content,
         style=None,
-        **constant_kwargs: Unpack[_FlexLayoutKwargs],
+        **params: Unpack[_FlexKwargs],
     ):
-        super().__init__(content, size = NvVector2(0, 0), style = style, **constant_kwargs)
+        super().__init__(content, size = NvVector2(0, 0), style = style, **params)
 
     def _init_booleans(self):
         super()._init_booleans()
@@ -68,7 +68,7 @@ class FlexLayout(LayoutType):
     def add_items(self, content):
         for item in content:
             if not isinstance(item, NevuObject):
-                raise TypeError(f"FlexLayout content must be NevuObject, got {type(item)}")
+                raise TypeError(f"Flex content must be NevuObject, got {type(item)}")
             self.add_item(item)
 
     def _coordinates_setter(self, coordinates: NvVector2) -> bool:
@@ -106,8 +106,8 @@ class FlexLayout(LayoutType):
         self._sync_layout()
         if isinstance(item, LayoutType):
             item._regenerate_coordinates()
-        if self.layout:
-            self.layout._on_item_add(item)
+        if self._parent_layout:
+            self._parent_layout._on_item_add(item)
 
     def add_item(self, item: NevuObject):
         item = super().add_item(item)
@@ -145,9 +145,9 @@ class FlexLayout(LayoutType):
         if max_wrap > 0:
             return float(max_wrap)
 
-        if self.layout is not None and hasattr(self.layout, "current_size"):  # noqa: SIM102
-            if getattr(self.layout, "_supports_global_size", True):
-                val = self.layout.current_size.x if is_row else self.layout.current_size.y
+        if self._parent_layout is not None and hasattr(self._parent_layout, "current_size"):  # noqa: SIM102
+            if getattr(self._parent_layout, "_supports_global_size", True):
+                val = self._parent_layout.current_size.x if is_row else self._parent_layout.current_size.y
                 if val > 0:
                     return val - 20.0
 
@@ -317,7 +317,7 @@ class FlexLayout(LayoutType):
 
         self.cached_coordinates = cached_coordinates
 
-        parent = self.layout
+        parent = self._parent_layout
 
         size_changed = (abs(old_size.x - self.size.x) > 0.5 or abs(old_size.y - self.size.y) > 0.5)
 
@@ -336,13 +336,16 @@ class FlexLayout(LayoutType):
                 else:
                     parent.cached_coordinates = None
 
-            elif self.menu and hasattr(self.menu, "_rel_size"):
-                new_coords = (self.menu._rel_size - self.current_size) / 2
+            elif self._parent_menu and hasattr(self._parent_menu, "_rel_size"):
+                new_coords = (self._parent_menu._rel_size - self.current_size) / 2
                 self.set_coordinates(new_coords)
-                self.absolute_coordinates = self.coordinates + self.menu.absolute_coordinates
+                self.absolute_coordinates = self.coordinates + self._parent_menu.absolute_coordinates
         self._is_recalculating = False
 
-    def _update_main(self, *args): base_light_update(self)
+    def _update_main(self):
+        if not self.items or not self.cached_coordinates or not self.first_parent_menu:
+            return
+        base_light_update(self)
 
     def _draw_main(self):
         draw_widgets_optimized(self, self.items, LayoutType, Widget)
@@ -351,7 +354,7 @@ class FlexLayout(LayoutType):
         return self.__class__(
             *copy.deepcopy(self._template["content"]),
             style = copy.deepcopy(self.style),
-            **self.constant_kwargs,
+            **self.kwargs,
         )
 
-__all__ = ["FlexLayout"]
+__all__ = ["Flex"]
