@@ -10,6 +10,8 @@ import numpy as np
 cimport numpy as np
 cimport cython
 import weakref
+
+import nevu_ui.core.modules as md
 from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2
 from nevu_ui.fast.nvrect.nvrect cimport NvRect
 from nevu_ui.fast.nevucobj.nevucobj cimport NevuCobject
@@ -65,6 +67,74 @@ cdef class ZSystem:
         self._registered_requests.append(weakref.ref(z_request))
         self.is_dirty = True
 
+    cpdef void drop_request(self, ZRequest z_request):
+        if self.last_hovered_request is z_request:
+            self.last_hovered_request = None
+        if self.clicked_request is z_request:
+            self.clicked_request = None
+        self.is_dirty = True
+
+    cpdef void _debug_draw_raylib(self):
+        cdef Py_ssize_t num_rects = self.rects_view.shape[0]
+        if num_rects == 0:
+            return
+
+        cdef Py_ssize_t i
+        cdef int x, y, w, h, z
+        cdef bint is_hovered, is_clicked
+        cdef ZRequest req
+        cdef NevuCobject link
+        cdef object rl = md.rl
+        cdef str widget_name, info_text
+
+        if rl is None:
+            return
+
+        for i in range(num_rects):
+            x = self.rects_view[i, 0]
+            y = self.rects_view[i, 1]
+            w = self.rects_view[i, 2]
+            h = self.rects_view[i, 3]
+            z = self.z_view[i]
+
+            req = <ZRequest>self.live_requests[i]
+            link = <NevuCobject>req.get_link()
+
+            is_hovered = (req is self.last_hovered_request)
+            is_clicked = (req is self.clicked_request)
+
+            if is_clicked:
+                fill_color = (255, 50, 50, 90)
+                outline_color = (255, 60, 60, 255)
+            elif is_hovered:
+                fill_color = (50, 255, 50, 80)
+                outline_color = (60, 255, 60, 255)
+            else:
+                fill_color = (0, 150, 255, 25)
+                outline_color = (0, 180, 255, 180)
+
+            if link is not None:
+                widget_id = link.get_param_value("id")
+                cls_name = type(link).__name__
+                widget_name = f"{cls_name}#{widget_id}" if widget_id else cls_name
+            else:
+                widget_name = "Dead"
+
+            info_text = f"z:{z} {widget_name} ({w}x{h})"
+            if is_clicked:
+                info_text += " [CLICK]"
+            elif is_hovered:
+                info_text += " [HOVER]"
+
+            rl.draw_rectangle(x, y, w, h, fill_color)
+
+            rl.draw_rectangle_lines(x, y, w, h, outline_color)
+
+            text_bytes = info_text.encode('utf-8')
+            text_w = rl.measure_text(text_bytes, 10)
+            rl.draw_rectangle(x, y, text_w + 6, 14, (0, 0, 0, 200))
+            rl.draw_text(text_bytes, x + 3, y + 2, 10, (255, 255, 255, 255))
+
     cdef void _rebuild_arrays(self):
         cdef list live_requests_refs = []
         cdef list temp_live_requests = []
@@ -73,6 +143,8 @@ cdef class ZSystem:
         cdef ZRequest req
         cdef NvRect current_rect
         cdef NevuCobject current_link
+
+        self.live_requests = []
 
         cdef Py_ssize_t max_len = len(self._registered_requests)
         cdef np.ndarray[np.int32_t, ndim=2] new_rects = np.empty((max_len, 4), dtype=np.int32)
@@ -88,7 +160,7 @@ cdef class ZSystem:
 
             if req is not None:
                 current_link = req.get_link()
-                if current_link is not None and not current_link._dead:
+                if current_link is not None and not current_link._dead and current_link._visible and current_link._active and current_link._inner_active:
                     live_requests_refs.append(req_ref)
                     temp_live_requests.append(req)
 
@@ -166,9 +238,10 @@ cdef class ZSystem:
                             if func is not None:
                                 func()
                     else:
-                        func = clicked_req.on_keyup_abandon_func()
-                        if func is not None:
-                            func()
+                        if clicked_req.on_keyup_abandon_func is not None:
+                            func = clicked_req.on_keyup_abandon_func()
+                            if func is not None:
+                                func()
                 self.clicked_request = None
 
     cdef ZRequest request_cycle(self, NvVector2 mouse_pos, bint any_wheel, bint wheel_down):
@@ -198,7 +271,7 @@ cdef class ZSystem:
 
                 current_z = self.z_view[i]
 
-                if current_z > best_z:
+                if current_z >= best_z:
                     candidate_req = <ZRequest>self.live_requests[i]
                     candidate_link = candidate_req.get_link()
 
