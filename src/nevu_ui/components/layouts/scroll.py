@@ -39,11 +39,11 @@ class ScrollBar(Widget):
         size,
         style,
         orientation: Orientation,
-        master: ScrollableBase | None = None,
+        master: Scroll | None = None,
         **params: Unpack[_ScrollableKwargs],
     ):
         super().__init__(size, style, **params)
-        self.master: ScrollableBase = master  # type: ignore
+        self.master: Scroll = master  # type: ignore
         self.orientation = orientation
         self._add_custom_flags(CustomFunctions.update_main)
 
@@ -120,7 +120,7 @@ class ScrollBar(Widget):
         self.scrolling = False
 
 
-class ScrollableBase(LayoutType, ABC):
+class Scroll(LayoutType, ABC):
     key_power: float | int
     scroll_power: float | int
     append_key: Any
@@ -242,8 +242,8 @@ class ScrollableBase(LayoutType, ABC):
             self.scroll_bar.draw()
 
     @staticmethod
-    def _is_scrollable(layout: NevuObject) -> TypeGuard["ScrollableBase"]:
-        return isinstance(layout, ScrollableBase)
+    def _is_scrollable(layout: NevuObject) -> TypeGuard["Scroll"]:
+        return isinstance(layout, Scroll)
 
     def _draw_main(self):
         draw_widgets_optimized(self, self.collided_items, LayoutType, Widget)
@@ -485,7 +485,7 @@ class ScrollableBase(LayoutType, ABC):
             0, (total_height - visible_height) / main_ratio
         )
 
-class VScroll(ScrollableBase):
+class VScroll(Scroll):
     def _add_params(self):
         super()._add_params()
         self._change_param_default("append_key", Keys.Up)
@@ -494,7 +494,7 @@ class VScroll(ScrollableBase):
         self._change_param_default("orientation", Orientation.Column)
         self._block_param("orientation")
 
-class HScroll(ScrollableBase):
+class HScroll(Scroll):
     def _add_params(self):
         super()._add_params()
         self._change_param_default("append_key", Keys.Left)
@@ -516,7 +516,7 @@ def _scrollbar_on_keyup(self: ScrollBar):
 def _scrollbar_on_keyup_abandon(self: ScrollBar):
     self.scrolling = False
 
-def _scrollable_on_scroll(self: ScrollableBase, side: bool):
+def _scrollable_on_scroll(self: Scroll, side: bool):
     direction = 1 if side else -1
     if self.inverted_scrolling:
         direction *= -1
@@ -528,7 +528,7 @@ def _scrollable_on_scroll(self: ScrollableBase, side: bool):
     self.scroll_bar._percentage = max(0, min(100, self.scroll_bar._percentage))
 
     if self.scroll_bar._percentage == old_percentage:
-        if self._parent_layout is not None and isinstance(self._parent_layout, ScrollableBase):
+        if self._parent_layout is not None and isinstance(self._parent_layout, Scroll):
             self._parent_layout._run_callbacks(BindType.Scroll, side)
         return
 

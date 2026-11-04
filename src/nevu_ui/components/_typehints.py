@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, TypedDict, Unpack
 from nevu_ui.core import Annotations
 from nevu_ui.core.callbacks import Callbacks
 from nevu_ui.core.classes import DictAccessMixin, GlobalsBase
-from nevu_ui.core.enums import Align, FlexDirection, FlexJustify, Orientation, SwitchAxis
+from nevu_ui.core.enums import Align, FlexJustify, Orientation, SwitchAxis
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.overlay.tooltip import Tooltip
 from nevu_ui.presentation.animations import AnimationManager
@@ -269,7 +269,7 @@ class _ColorPickerKwargs(_GridKwargs_uni, total=False):
 
 
 class _FlexKwargs(_LayoutTypeKwargs, total=False):
-    direction: FlexDirection
+    orientation: Orientation
     wrap: bool
     justify_content: FlexJustify
     align_items: Align

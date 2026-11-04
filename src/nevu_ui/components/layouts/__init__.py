@@ -5,8 +5,8 @@ from .grid.column import Column
 from .grid.row import Row
 
 
-from .flex import Flex
-from .scroll import VScroll, HScroll
+from .flex import Flex, VFlex, HFlex
+from .scroll import Scroll, VScroll, HScroll
 from .stack import Stack, HStack, VStack
 
 __all__ = [
@@ -18,6 +18,9 @@ __all__ = [
     'Row',
     'VStack',
     'HStack',
+    'VFlex',
+    'HFlex',
+    'Scroll',
     'VScroll',
     'HScroll'
 ]

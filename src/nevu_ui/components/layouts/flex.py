@@ -357,4 +357,16 @@ class Flex(LayoutType):
             **self.kwargs,
         )
 
-__all__ = ["Flex"]
+class VFlex(Flex):
+    def _add_params(self):
+        super()._add_params()
+        self._change_param_default("orientation", Orientation.Vertical)
+        self._block_param("orientation")
+
+class HFlex(Flex):
+    def _add_params(self):
+        super()._add_params()
+        self._change_param_default("orientation", Orientation.Horizontal)
+        self._block_param("orientation")
+
+__all__ = ["Flex", "VFlex", "HFlex"]

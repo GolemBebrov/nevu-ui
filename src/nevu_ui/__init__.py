@@ -21,12 +21,15 @@ from .components.layouts import (
     Grid,
     LayoutType,
     Row,
+    Scroll,
     VScroll,
     HScroll,
     Stack,
     VStack,
     HStack,
-    Flex
+    Flex,
+    VFlex,
+    HFlex,
 )
 from .components import CheckBoxGroup
 from . import components, core, presentation, utils
@@ -171,6 +174,9 @@ __all__ = [  # noqa: RUF022
     "CheckBoxGroup",
     "VStack",
     "HStack",
+    "VFlex",
+    "HFlex",
+    "Scroll",
     # ===Utils===
     "time",
     "Time",
