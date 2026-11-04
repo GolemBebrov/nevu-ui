@@ -15,12 +15,11 @@ from nevu_ui.core.enums import (
     CacheType,
     CustomFunctions,
     ParamLayer,
-    RenderConfig,
     RenderReturnType,
 )
 from nevu_ui.core.state import _analize_bg, nevu_state
 from nevu_ui.fast.logic import logic_update_helper
-from nevu_ui.fast.nvrendertex import NvRenderTexture
+from nevu_ui.fast.nvsurface.nvsurface import NvSurface
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.fast.raylib.nevu_raylib import begin_blend_mode, end_blend_mode
 from nevu_ui.presentation.animations import (
@@ -41,7 +40,6 @@ class Widget(NevuObject):
     inverted: bool
     clickable: bool
     hoverable: bool
-    inline: bool
     invert_on_click: bool
     ripple_effect: bool
     animate_color_change: bool
@@ -51,46 +49,29 @@ class Widget(NevuObject):
     draw_borders: bool
     draw_content: bool
     glassy: bool
-
     # ==============
-    @overload
-    def __init__(
-        self,
-        size: Annotations.nevuobj_size = None,
-        style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[_WidgetKwargsShortFull],
-    ): ...
-    @overload
-    def __init__(
-        self,
-        size: Annotations.nevuobj_size = None,
-        style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[_WidgetKwargsLongFull],
-    ): ...
-    def __init__(
-        self,
-        size: Annotations.nevuobj_size = None,
-        style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[_WidgetKwargs],
-    ):
-        super().__init__(size, style, **constant_kwargs)
-        # === Text Cache ===
-        self._init_text_cache()
 
-    def _convert_to_sdl2_texture(self):
-        if nevu_state.renderer is None:
-            raise ValueError("Window not initialized!")
-        assert nevu_state.window, "Window not initialized!"
-        assert self.surface, "Surface not initialized!"
-        assert nevu_state.window.renderer_type.sdl, (
-            "convert_to_sdl2_texture is supported only in SDL backend! UWO"
-        )
-        assert isinstance(self.surface, md.pygame.Surface)
-        texture = md.pygame._sdl2.Texture.from_surface(  # type: ignore
-            nevu_state.renderer, self.surface
-        )  # type: ignore
-        texture = md.pygame._sdl2.Image(texture)  # type: ignore
-        return texture  # type: ignore
+    @overload
+    def __init__(
+        self,
+        size: Annotations.nevuobj_size = None,
+        style: Annotations.nevuobj_style = None,
+        **params: Unpack[_WidgetKwargsShortFull],
+    ): ...
+    @overload
+    def __init__(
+        self,
+        size: Annotations.nevuobj_size = None,
+        style: Annotations.nevuobj_style = None,
+        **params: Unpack[_WidgetKwargsLongFull],
+    ): ...
+    def __init__(
+        self,
+        size: Annotations.nevuobj_size = None,
+        style: Annotations.nevuobj_style = None,
+        **params: Unpack[_WidgetKwargs],
+    ):
+        super().__init__(size, style, **params)
 
     def _add_params(self):
         super()._add_params()
@@ -106,7 +87,6 @@ class Widget(NevuObject):
         self._add_param("hoverable", bool, False)
         self._add_param("invert_on_click", bool, False)
         self._change_param_default("z", 1)
-        self._add_param("inline", bool, False)
         self._add_param("font_role", PairColorRole, PairColorRole.INVERSE_SURFACE)
         self._add_param("draw_borders", bool, True)
         self._add_param("draw_content", bool, True)
@@ -115,10 +95,6 @@ class Widget(NevuObject):
         self._add_param("override_color", tuple | None, None)
         self._add_param("glassy", bool, False)
         self._change_param_default("subtheme_role", SubThemeRole.SECONDARY)
-
-    def _init_text_cache(self):
-        self._text_surface = None
-        self._text_rect = None
 
     def _set_next_bg_color_anim(self, color):
         if self._bg_color_anim_manager:
@@ -149,7 +125,6 @@ class Widget(NevuObject):
         self._bg_color_anim_manager = None
         self.__inner_bg_transparent = False
         self._anim_bg_color_old = None
-        self._sdl2_cached_texture = None
 
     def _system_callback_binds(self):
         super()._system_callback_binds()
@@ -162,9 +137,6 @@ class Widget(NevuObject):
         self._system_callbacks.bind(BindType.Click, _widget_on_click)
         self._system_callbacks.bind(
             BindType.StyleChange, _widget_on_style_change, add_to_end=False
-        )
-        self._system_callbacks.bind(
-            BindType.StyleChange, _widget_on_style_change_2, add_to_end=False
         )
 
     def _init_lists(self):
@@ -212,7 +184,6 @@ class Widget(NevuObject):
             self._changed = True
         self.style.border_radius = br  # type: ignore
         self.clear_surfaces()
-        self.clear_texture()
 
     def _normalize_br_tuple(self):
         assert isinstance(self.style.border_radius, tuple)
@@ -226,7 +197,6 @@ class Widget(NevuObject):
             self.style.border_radius = new_br  # type: ignore
             self._changed = True
             self.clear_surfaces()
-            self.clear_texture()
 
     @property
     def subtheme_border(self):
@@ -254,29 +224,12 @@ class Widget(NevuObject):
 
     def _regen_surface(self):
         assert nevu_state.window
-        if self.inline:
-            return
-        if nevu_state.window.renderer_type.raylib:
-            self.surface = NvRenderTexture(self.current_size)
-            md.rl.set_texture_filter(
-                self.surface.texture, md.rl.TextureFilter.TEXTURE_FILTER_ANISOTROPIC_16X
-            )
-            md.rl.set_texture_wrap(
-                self.surface.texture, md.rl.TextureWrap.TEXTURE_WRAP_CLAMP
-            )
-        else:
-            self.surface = md.pygame.Surface(
-                self.current_size, flags=md.pygame.SRCALPHA
-            ).convert_alpha()
+        self.surface = NvSurface(self.current_size)
 
     def _lazy_init(self, size: NvVector2 | list):
         super()._lazy_init(size)
         self.__inner_bg_transparent = _analize_bg(self)
         self._original_inverted = self.inverted
-        if self.inline:
-            self.get_param_strict("ripple_effect").value = False
-            self.get_param_strict("animate_color_change").value = False
-            return
         self._normalize_borderradius()
         self._regen_surface()
         if (
@@ -307,113 +260,127 @@ class Widget(NevuObject):
         else:
             self._run_callbacks(BindType.StyleChange)
 
+    def _get_correct_bg_color(self):
+        new_color_pretendent = self._get_correct_color(self.subtheme_content, self.hover_state)
+        new_color_tuple = tuple(new_color_pretendent)
+        old_color_tuple = (
+            tuple(self._bg_color_before)
+            if self._bg_color_before is not None
+            else None
+        )
+        if old_color_tuple is None:
+            self._bg_color_before = new_color_pretendent
+        elif old_color_tuple != new_color_tuple:
+            self._set_next_bg_color_anim(new_color_pretendent)
+
+        if color_manager := self._bg_color_anim_manager:
+            value = color_manager.get_animation_value("main")
+            if not value: return None
+            r, g, b = value
+            anim_color = (int(r), int(g), int(b), 255)
+        else:
+            anim_color = None
+
+        return anim_color
+
     def _clear_rl_specific(self):
         assert nevu_state.window
-        if self.cache.get(CacheType.RlFont):
-            md.rl.unload_font(self.cache.get(CacheType.RlFont))  # type: ignore
         if self.cache.get(CacheType.Image):
             md.rl.unload_texture(self.cache.get(CacheType.Image))  # type: ignore
 
-    def _draw_start(self):
-        def build_background() -> SurfaceLike:
-            bg: SurfaceLike = self.cache.get_or_exec(
-                CacheType.Background,
-                lambda: self.renderer.core.create_clear(self.current_size),
+    def _build_background(self):
+        bg = self.cache.get_or_exec(
+            CacheType.Background,
+            lambda: self.renderer.core.create_surface(self.current_size),
+        )
+        bg.fill(Color.Blank)
+
+        draw_borders = self.draw_borders
+
+        if self.draw_content:
+            color = self.override_color or self.subtheme_content
+            bg_color = self._get_correct_bg_color() or color
+            self.renderer.run_base(
+                DrawBaseCall(
+                    size=self.current_size,
+                    color=bg_color,
+                    glassy=self.glassy,
+                    style=self.style,
+                    radius_support=draw_borders and self.style.border_radius != 0,
+                    gradient_support=True,
+                    image_support=True,
+                    return_type=RenderReturnType.Modify,
+                    modify_object=bg,
+                    cache=self.cache,
+                ),
             )
-            bg.fill(Color.Blank)
 
-            override_color = self.override_color or None
-            draw_borders = self.draw_borders and self.style.border_width > 0
-            easy_background = draw_borders
-            if self.draw_content:
-                self.renderer.run_base(
-                    DrawBaseCall(
-                        color=override_color,
-                        glassy=self.glassy,
-                        radius=self.style.border_radius,
-                        easy_background=easy_background,
-                        gradient_support=True,
-                        image_support=True,
-                        return_type=RenderReturnType.Modify,
-                        modify_object=bg,
-                    ),
-                    key=RenderConfig.DrawL1,
-                )
+        if not draw_borders:
+            return bg
 
-            if draw_borders:
-                final = self.cache.get_or_exec(
-                    CacheType.Borders,
-                    lambda: self.renderer.core.create_clear(self.current_size),
-                )
-                final.fill(Color.Blank)
-                self.renderer.run_borders(
-                    DrawBordersCall(
-                        subject=bg,
-                        glassy=self.glassy,
-                        return_type=RenderReturnType.Modify,
-                        modify_object=final,
-                        pos=(0, 0),
-                    ),
-                    key=RenderConfig.DrawL2,
-                )
-            else:
-                return bg
+        borders_surf = self.cache.get_or_exec(
+            CacheType.Borders,
+            lambda: self.renderer.core.create_surface(self.current_size),
+        )
+        borders_surf.fill(Color.Blank)
 
-            return final
+        self.renderer.run_borders(
+            DrawBordersCall(
+                size=self.current_size,
+                original_surface=bg,
+                modify_object=borders_surf,
+                glassy=self.glassy,
+                style=self.style,
+                return_type=RenderReturnType.Modify,
+                color=self.subtheme_border,
+            )
+        )
 
+        return borders_surf
+
+    def _draw_start(self):
         cached_bg: SurfaceLike = self.cache.get_or_exec(
-            CacheType.Surface, build_background
+            CacheType.Surface, self._build_background
         )
 
         surface = self.surface
+        coords = (0, 0)
+        is_raylib = nevu_state.window.renderer_type.raylib
 
-        if not self.inline:
+        with surface:
             surface.fill(Color.Blank)
-            coords = (0, 0)
-        else:
-            coords = self.coordinates.to_round().to_tuple()
-        if nevu_state.window.renderer_type.raylib:
-            assert isinstance(surface, NvRenderTexture)
-            assert isinstance(cached_bg, NvRenderTexture)
-            with surface:
+            if is_raylib:
                 begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-                surface.fast_blit(cached_bg, coords)
-                end_blend_mode()
-        else:
-            assert isinstance(surface, md.pygame.Surface)
-            assert isinstance(cached_bg, md.pygame.Surface)
             surface.blit(cached_bg, coords)
+            if is_raylib:
+                end_blend_mode()
 
     def _on_visible_set(self):
         super()._on_visible_set()
         if not self._visible:
             self.clear_surfaces()
-            self.clear_texture()
 
     def _draw_end(self):
         super()._draw_end()
-        if self._changed and nevu_state.renderer:
-            self._sdl2_cached_texture = self.cache.get_or_exec(
-                CacheType.SDLTexture, self._convert_to_sdl2_texture
-            )
         if self._changed_size:
             self._changed_size = False
         assert nevu_state.window
         if self._click_started and nevu_state.window.renderer_type.raylib:
             self._click_texture = self.cache.get_or_exec(
                 CacheType.ClickTexture,
-                lambda: self.renderer.core.create_clear(self.current_size),
+                lambda: self.renderer.core.create_surface(self.current_size),
             )
             self.renderer.run_effects(
+
                 DrawEffectsCall(
-                    return_type=RenderReturnType.Null,
+                    size=self.current_size,
+                    modify_object=self.surface,
+                    radius=self.style.border_radius,
+                    return_type=RenderReturnType.Modify,
                     click_gradient=self._click_gradient,
-                    click_subject=self._click_texture,
+                    effect_texture=self._click_texture,
                 )
             )
-
-    def clear_texture(self):
-        self.cache.clear_selected(whitelist=[CacheType.SDLTexture])
 
     def _update_start(self):
         if self._click_started:
@@ -452,14 +419,8 @@ class Widget(NevuObject):
                     self._bg_color_anim_manager = None
 
         logic_update_helper(
-            self.absolute_coordinates, self._dr_coordinates_old, nevu_state.z_system #type: ignore
+            self #type: ignore
         )
-
-        sdl2_texture = self._sdl2_cached_texture
-        if sdl2_texture:
-            alpha = self.animation_manager.get_animation_value("ripple_opacity")
-            if alpha is not None:
-                sdl2_texture.alpha = alpha
 
         if self._first_update:
             self._first_update = False
@@ -485,26 +446,25 @@ class Widget(NevuObject):
     def _kill_base(self):
         super()._kill_base()
         self.clear_surfaces()
-        self.clear_texture()
         self.clear_all()
 
 
 # === NOT CLASS FUNCTIONS ===
 
 
-def _widget_on_keyup(self):
+def _widget_on_keyup(self: Widget):
     if self.inverted != self._original_inverted:
         self.inverted = self._original_inverted
     if self.clickable:
         self._run_callbacks(BindType.StyleChange)
 
 
-def _widget_on_hover_change(self):
+def _widget_on_hover_change(self: Widget):
     if self.hoverable:
         self._run_callbacks(BindType.StyleChange)
 
 
-def _widget_on_click(self):
+def _widget_on_click(self: Widget):
     if not self.clickable:
         return
     if (
@@ -530,17 +490,8 @@ def _widget_on_click(self):
     self._toggle_click_style()
 
 
-def _widget_on_style_change(self):
-    if self.inline:
-        self._changed_size = True
-    self.clear_surfaces()
-    self.clear_texture()
+def _widget_on_style_change(self: Widget):
+    self.cache.clear_selected(whitelist = [CacheType.Surface, CacheType.Background, CacheType.Borders])
     self._normalize_borderradius()
     self._changed = True
     self.__inner_bg_transparent = _analize_bg(self)
-
-
-def _widget_on_style_change_2(self):
-    assert nevu_state.window
-    self._text_surface = None
-    self._text_rect = None
