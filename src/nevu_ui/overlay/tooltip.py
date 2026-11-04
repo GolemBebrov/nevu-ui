@@ -77,7 +77,6 @@ class _TooltipBase:
                 CacheType.Surface,
                 CacheType.Borders,
                 CacheType.Background,
-                CacheType.SDLTexture,
                 CacheType.RlFont,
                 CacheType.TextArgs,
                 CacheType.ClickTexture,

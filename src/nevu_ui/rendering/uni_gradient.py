@@ -12,9 +12,10 @@ class Gradient:
         direction: GradientConfig | tuple[float, float] = LinearSide.Right,
         transparency = None,
     ) -> GradientRaylib | GradientPygame:
-        if nevu_state.window.renderer_type.raylib:
+        rtype = nevu_state.window.renderer_type
+        if rtype.raylib:
             return GradientRaylib(colors, type, direction, transparency=transparency)
-        elif nevu_state.window.renderer_type.pygame_like:
+        elif rtype.pygame_like:
             return GradientPygame(colors, type, direction, transparency)
         else:
             raise NotImplementedError("Gradient is not implemented for this backend.")

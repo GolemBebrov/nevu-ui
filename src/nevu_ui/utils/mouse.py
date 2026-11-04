@@ -3,6 +3,7 @@ from typing import final
 import nevu_ui.core.modules as md
 from nevu_ui.core.enums import Backend, PressType
 from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.fast.raylib.nevu_raylib import get_mouse_position, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_up
 
 
 class _BaseMouse:
@@ -188,15 +189,14 @@ class RaylibMouse(_BaseMouse):
 
     def update(self, *args, **kwargs) -> None:  # type: ignore
         self.update_wheel()
-        rl = md.rl
-        if rl.is_mouse_button_pressed(md.rl.MouseButton.MOUSE_BUTTON_LEFT):
+        if is_mouse_button_pressed(0):
             self.dragging = True
-        elif rl.is_mouse_button_up(md.rl.MouseButton.MOUSE_BUTTON_LEFT):
+        elif is_mouse_button_up(0):
             self.dragging = False
 
         states = self._states
         up_states = self._up_states
-        m_btn_down = rl.is_mouse_button_down
+        m_btn_down = is_mouse_button_down
 
         for i, button in self._mouse_keys:
             state = states[i]
@@ -206,8 +206,10 @@ class RaylibMouse(_BaseMouse):
             else:
                 states[i] = PressType.Up if is_up else PressType.Still
 
-        screen_pos = rl.get_mouse_position()
-        self.pos = NvVector2.from_xy(screen_pos.x, screen_pos.y)
+        screen_pos = get_mouse_position()
+        pos = self.pos
+        pos.x = screen_pos.x
+        pos.y = screen_pos.y
 
 
 def set_mouse(backend: Backend):
@@ -222,7 +224,7 @@ class UnselectedMouse(_BaseMouse):
 
     def select(self, backend: Backend):
         match backend:
-            case Backend.Pygame | Backend.Sdl:
+            case Backend.Pygame:
                 self.__class__ = PygameMouse
             case Backend.RayLib:
                 self.__class__ = RaylibMouse

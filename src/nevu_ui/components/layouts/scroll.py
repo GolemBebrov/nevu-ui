@@ -177,7 +177,7 @@ class ScrollableBase(LayoutType, ABC):
         self._add_param("basic_alignment", Align | type(None), None)
         self._add_param("append_key", Any, Keys.A)
         self._add_param("descend_key", Any, Keys.D)
-        self._add_param("spacing", float, 30, layer=1)
+        self._add_param("spacing", int | float, 30, layer=1)
         self._add_param("orientation", Orientation, Orientation.Column)
 
     def _system_callback_binds(self):
@@ -290,17 +290,9 @@ class ScrollableBase(LayoutType, ABC):
             self._scroll_needs_update = False
         scrollable_update_collided(self.collided_items)
 
-    def _recollide_items(self):
-        drawable = self._widget_drawable
-        true_rect = self.get_nvrect()
-        self.absolute_coordinates = NvVector2.from_xy(true_rect.x, true_rect.y)
-        for item in self.items:
-            item.absolute_coordinates = py_get_item_abs_coords(self, item)
-        self.collided_items = [item for item in self.items if drawable(item)]
-
     def _get_align_offset(self, item: NevuObject, alignment: Align) -> float:
         cross_axis = self.orientation.cross_axis
-        size_diff = self.size[cross_axis] - item.size[cross_axis]
+        size_diff = self.current_size[cross_axis] - item.current_size[cross_axis]
 
         match alignment:
             case Align.CENTER:
@@ -310,8 +302,7 @@ class ScrollableBase(LayoutType, ABC):
             case _:
                 offset = 0.0
 
-        rel = self._resize_ratio[cross_axis]
-        return offset * rel
+        return offset
 
     def _regenerate_coordinates(self):
         super()._regenerate_coordinates()
@@ -429,7 +420,7 @@ class ScrollableBase(LayoutType, ABC):
         self.widgets_alignment.clear()
         self._restart_coordinates()
 
-    def apply_style_to_childs(self, style: Style):
+    def set_items_style(self, style: Style):
         super().set_items_style(style)
         self.apply_scroll_bar_style(style)
 

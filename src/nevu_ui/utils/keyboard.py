@@ -2,6 +2,7 @@ import functools
 
 import nevu_ui.core.modules as md
 from nevu_ui.core.enums import Backend
+from nevu_ui.fast.raylib.nevu_raylib import is_key_down, is_key_pressed, is_key_up
 
 
 class _BaseKeyboard:
@@ -64,15 +65,15 @@ class RaylibKeyboard:
 
     def is_fdown(self, key_code: int):
         """USE RAYLIB OR NEVU UI KEYS"""
-        return md.rl.is_key_pressed(key_code)
+        return is_key_pressed(key_code)
 
     def is_down(self, key_code: int):
         """USE RAYLIB OR NEVU UI KEYS"""
-        return md.rl.is_key_down(key_code)
+        return is_key_down(key_code)
 
     def is_up(self, key_code: int):
         """USE RAYLIB OR NEVU UI KEYS"""
-        return md.rl.is_key_up(key_code)
+        return is_key_up(key_code)
 
 
 def set_keyboard(backend: Backend):
@@ -88,7 +89,7 @@ class UnselectedKeyboard(_BaseKeyboard):
 
     def select(self, backend: Backend):
         match backend:
-            case Backend.Pygame | Backend.Sdl:
+            case Backend.Pygame:
                 self.__class__ = PygameKeyboard  # type: ignore
             case Backend.RayLib:
                 self.__class__ = RaylibKeyboard  # type: ignore

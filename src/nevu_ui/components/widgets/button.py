@@ -22,9 +22,9 @@ class Button(Label):
         text: str,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[_ButtonKwargs],
+        **params: Unpack[_ButtonKwargs],
     ):
-        super().__init__(text, size, style, **constant_kwargs)
+        super().__init__(text, size, style, **params)
         self.function = function
 
     def _system_callback_binds(self):
@@ -39,12 +39,12 @@ class Button(Label):
         self._change_param_default("clickable", True)
 
     def _create_clone(self):
-        return Button(
+        return self.__class__(
             self.function,
             self._template["text"],
             self._template["size"],
             copy.deepcopy(self.style),
-            **self.constant_kwargs,
+            **self.kwargs,
         )
 
 # === NOT CLASS FUNCTIONS ===

@@ -282,9 +282,9 @@ cdef class NvVector2:
         return 2
 
     def __eq__(self, other: NvVector2):
-        if isinstance(other, NvVector2):
+        if type(other) is NvVector2:
             return self.data.x == (<NvVector2>other).data.x and self.data.y == (<NvVector2>other).data.y
-        return NotImplemented
+        return False
 
     @property
     def length(self) -> float:

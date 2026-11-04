@@ -19,7 +19,7 @@ class Column(Grid):
         content: content_type | None = None,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[_GridKwargs_rc],
+        **params: Unpack[_GridKwargs_rc],
     ):
         """
         Initializes a Column object.
@@ -33,7 +33,7 @@ class Column(Grid):
         content: content_type | None = None,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[_GridKwargs_xy],
+        **params: Unpack[_GridKwargs_xy],
     ):
         """
         Initializes a Column object.
@@ -46,9 +46,9 @@ class Column(Grid):
         content: content_type | None = None,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[_GridKwargs_uni],
+        **params: Unpack[_GridKwargs_uni],
     ):
-        super().__init__(content, size, style, **constant_kwargs)  # type: ignore
+        super().__init__(content, size, style, **params)  # type: ignore
 
     def _add_params(self):
         super()._add_params()
@@ -68,5 +68,3 @@ class Column(Grid):
 
     def get_item(self, y: Grid.any_number) -> NevuObject | None:  # type: ignore
         return super().get_item(1, y)
-
-__all__ = []

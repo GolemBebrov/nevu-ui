@@ -4,7 +4,7 @@ from itertools import chain
 from typing import TYPE_CHECKING, Unpack
 
 from nevu_ui.core.state import nevu_state
-from nevu_ui.fast.logic.fast_logic import draw_widgets_optimized
+from nevu_ui.fast.logic.fast_logic import draw_widgets_optimized, rl_predraw_widgets
 from nevu_ui.fast.raylib.nevu_raylib import begin_blend_mode, end_blend_mode
 from nevu_ui.presentation.color.color import Color
 
@@ -40,10 +40,14 @@ class Menu(LayoutType):
         self._boot_up()
         backends_to_draw = {
             Backend.Pygame: 0,
-            Backend.Sdl: 1,
             Backend.RayLib: 2,
         }
         self._main_draw = backends_to_draw.get(nevu_state.window.backend)
+
+
+    def _init_lists(self):
+        super()._init_lists()
+        self._main_layout_list = []
 
     def _all_items(self):
         items_iter = super()._all_items()
@@ -74,7 +78,7 @@ class Menu(LayoutType):
         self._cached_start_pos = self.start_pos
         self.start_pos = self._normalize(self.start_pos)
         super()._lazy_init(size, content)
-        self.surface = self.renderer.core.create_clear(self.current_size)
+        self.surface = self.renderer.core.create_surface(self.current_size)
         if self.bg_widget is None:
             self._create_bg_widget()
 
@@ -87,19 +91,23 @@ class Menu(LayoutType):
 
     def _coordinates_setter(self, coordinates: NvVector2) -> bool:
         result = super()._coordinates_setter(coordinates)
-        self.absolute_coordinates = self.coordinates + self._window.offset
+        self.absolute_coordinates = coordinates + self._window.offset
+        if self.main_layout:
+            self.main_layout.absolute_coordinates = self.main_layout.coordinates + self.absolute_coordinates
         return result
 
     def _resize_content(self, resize_ratio: NvVector2):
-        self.surface = self.renderer.core.create_clear(self.size*resize_ratio)
+        self.surface = self.renderer.core.create_surface(self.size*resize_ratio)
         if self._start_pos_relative_placed:
             self.set_coordinates(self._normalize(self._cached_start_pos))
         self.absolute_coordinates = self.coordinates + self._window.offset
         super()._resize_content(resize_ratio)
+        self.cached_coordinates = 10
         if layout := self.main_layout:
             layout._resize(resize_ratio)
             layout.set_coordinates((self.current_size - layout.current_size) / 2)
             layout.absolute_coordinates = layout.coordinates + self.absolute_coordinates
+            layout.surface = self.surface
 
     def _add_params(self):
         super()._add_params()
@@ -128,33 +136,35 @@ class Menu(LayoutType):
         value.absolute_coordinates = value.coordinates + self.absolute_coordinates
 
         value.update()
+        self._main_layout_list = [value]
         return value
 
     def draw(self):
         if not self._visible or self._wait_mode or self._dead or not self.surface:
             return
 
-        dtype = nevu_state.window.renderer_type
+        rtype = nevu_state.window.renderer_type
 
         surf = self.surface
-        if dtype.raylib:
+        if rtype.raylib:
             self._rl_predraw_widgets()
+            rl_predraw_widgets(self._main_layout_list or [], None, None)
 
             with surf:
-                surf.fast_clear(Color.Blank)
+                surf.clear(Color.Blank)
                 begin_blend_mode(5)
                 super().draw()
                 if self.main_layout:
                     self.main_layout.draw()
                 end_blend_mode()
-            self._window.renderer.blit(surf.texture, self.absolute_coordinates.get_int_tuple())
+            self._window.renderer.blit(surf.native.texture, self.absolute_coordinates.get_int_tuple())
 
-        elif dtype.pygame:
-            surf.fill((0, 0, 0, 0))
+        elif rtype.pygame:
+            surf.fill(Color.Blank)
             super().draw()
             if self.main_layout:
                 self.main_layout.draw()
-            self._window.renderer.blit(surf, self.absolute_coordinates.get_int_tuple())
+            self._window.renderer.blit(surf.native, self.absolute_coordinates.get_int_tuple())
 
     def update(self):
         super().update()
@@ -165,17 +175,22 @@ class Menu(LayoutType):
     def _init_booleans(self):
         super()._init_booleans()
         self._can_be_main_layout = False
+        self._sended_z_link = True
+
 
     def _init_objects(self):
         super()._init_objects()
         self.first_parent_menu = self
-        self.menu = self
+        self._parent_menu = self
 
     def _kill_base(self):
         super()._kill_base()
-        self._window = None
+        if self._window:
+            self._window.callbacks.unbind(BindType.Resize, self._on_window_resize)
+            self._window = None
         if self.main_layout:
             self.main_layout.kill()
+            self._main_layout_list = None
         self.main_layout = None
 
     def _connect_to_layout(self, layout: LayoutType):

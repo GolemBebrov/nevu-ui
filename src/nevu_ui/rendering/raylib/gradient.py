@@ -13,13 +13,6 @@ from nevu_ui.presentation.animations.animation_base import (
 from nevu_ui.presentation.animations.animation_manager import AnimationManager
 from nevu_ui.presentation.animations.animations_library import ease_in_out_quad
 
-# Siuuuu void file, basically a real nothing
-
-# Reg approved
-
-__WOW_THIS_IS_REAL_NOTHING = float("NaN")
-
-
 def animated_slot(
     start: Any = None,
     end: Any = None,

@@ -32,7 +32,7 @@ class Grid(LayoutType):
         content: content_type | None = None,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[_GridKwargs_rc],
+        **params: Unpack[_GridKwargs_rc],
     ): ...
     @overload
     def __init__(
@@ -40,16 +40,16 @@ class Grid(LayoutType):
         content: content_type | None = None,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[_GridKwargs_xy],
+        **params: Unpack[_GridKwargs_xy],
     ): ...
     def __init__(
         self,
         content: content_type | None = None,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[_GridKwargs_uni],
+        **params: Unpack[_GridKwargs_uni],
     ):
-        super().__init__(content, size, style, **constant_kwargs)  # type: ignore
+        super().__init__(content, size, style, **params)  # type: ignore
 
     def _add_params(self):
         super()._add_params()
@@ -82,7 +82,7 @@ class Grid(LayoutType):
                 self._no_borders_current_size.x / self.column,
                 self._no_borders_current_size.y / self.row,
             )
-            if self.menu
+            if self._parent_menu
             else NvVector2.from_xy(
                 self.relx(self.cell_width), self.rely(self.cell_height)
             )
@@ -97,7 +97,9 @@ class Grid(LayoutType):
             item.absolute_coordinates = py_get_item_abs_coords(self, item)
             cached_coords_append(coordinates.copy())
 
-    def _update_main(self, *args):
+    def _update_main(self):
+        if not self.items or not self.cached_coordinates or not self.first_parent_menu:
+            return
         base_light_update(self)
 
     def _parse_gcx(self, grid_cell_rule: _SizeRule, grid_cell_type: type[_SizeRule], pos: int):  # type: ignore
@@ -139,14 +141,14 @@ class Grid(LayoutType):
     def _draw_main(self):
         draw_widgets_optimized(self, self.items, LayoutType, Widget)
 
-    def get_row(self, x: any_number) -> list[NevuObject]:
+    def get_column(self, x: any_number) -> list[NevuObject]:
         return [
             item
             for item, coords in zip(self.items, self.grid_coordinates)
             if coords[0] == x - 1
         ]
 
-    def get_column(self, y: any_number) -> list[NevuObject]:
+    def get_row(self, y: any_number) -> list[NevuObject]:
         return [
             item
             for item, coords in zip(self.items, self.grid_coordinates)

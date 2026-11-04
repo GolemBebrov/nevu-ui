@@ -4,18 +4,16 @@ from typing import TYPE_CHECKING, Any, TypeGuard
 
 if TYPE_CHECKING:
     from nevu_ui.components.nevuobj import NevuObject
+    from nevu_ui.fast.nvvector2 import NvVector2
 
 from nevu_ui.core.classes import SurfaceLike
 from nevu_ui.core.size.base import _SizeRule
 from nevu_ui.core.state import nevu_state
-import inspect
-from typing import get_type_hints
-import functools
 
 __all__ = ["Annotations"]
 
 
-VERSION = "0.8.6"
+VERSION = "0.9.0"
 
 # Deprecated
 nv_error_message_template = """Error occurred in {class_name} with {id}.\n
@@ -32,11 +30,23 @@ nv_error_format_template_ext1 = """Info: {info}.\n"""
 nv_error_format_template_ext2 = """Possible solution: {solution}.\n"""
 nv_error_format_template_end = """If you believe this is a bug, please report it on 'https://github.com/GolemBebrov/nevu-ui/issues'."""
 
+class NevuNotInitializedError(RuntimeError): ...
+
 class Annotations:
     # === size annotations ===
     type any_number = float | int
-    type dest_like = tuple[any_number, any_number] | list[any_number]
+    type vec2_like = tuple[any_number, any_number] | list[any_number]
+    type vec2_like_v = vec2_like | NvVector2
+    type vec2_like_srule = tuple[_SizeRule, _SizeRule] | list[_SizeRule]
+    type vec2_all = vec2_like_v | vec2_like_srule
     type rect_like = tuple[any_number, any_number, any_number, any_number] | list[any_number]
+
+    # === destination annotations ===
+    type dest_like_v = vec2_like_v | rect_like
+
+    # === radius annotations ===
+    type normalized_radius = tuple[any_number, any_number, any_number, any_number]
+    type rad_like = normalized_radius | float
 
     # === color annotations ===
     type rgb_color = tuple[int, int, int]
@@ -48,9 +58,16 @@ class Annotations:
     type any_color = rgb_like_color | hsl_color | hex_color
 
     # === NevuObject annotation ===
-    type size_item = int | _SizeRule | float
+    type size_item = _SizeRule | float
     type nevuobj_size = tuple[size_item, size_item] | list[size_item] | Any | None
     type nevuobj_style = Any | str | None
+
+    @staticmethod
+    def window_check():
+        if nevu_state.window is None:
+            raise NevuNotInitializedError(
+                "Nevu UI window isnt initialized.\nPlease create Nevu UI window first "
+            )
 
     @staticmethod
     def is_surface_like(item: Any) -> TypeGuard[SurfaceLike]:
@@ -155,17 +172,16 @@ class Annotations:
     @staticmethod
     def format_nvtype_renderer_error(
         cause_message: str,
-        object: NevuObject,
         method_name: str = "not specified",
         solution: str | None = None,
     ) -> str:
         solution = (
             solution
-            or f"""Check the traceback to identify which high-level component (e.g., Grid, Panel, Button) received the invalid argument in its constructor"""
+            or """Check the traceback to identify which high-level component (e.g., Grid, Panel, Button) received the invalid argument in its constructor"""
         )
         return Annotations.format_nverror_renderer(
             cause_message,
-            f"object where error occurred: {object.__class__.__name__} with {object.get_param('id')}",
+            "Internal renderer error",
             solution,
             method_name,
         )

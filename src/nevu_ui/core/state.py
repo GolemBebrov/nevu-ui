@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING, final
 from nevu_ui.core.enums import Backend
 
 if TYPE_CHECKING:
-    from pygame._sdl2 import Renderer
-
     from nevu_ui.fast.zsystem import ZSystem
     from nevu_ui.manager import Manager
     from nevu_ui.overlay import OverlayManager
@@ -67,7 +65,7 @@ def _analize_bg(self):
             if len(color) == 4 and color[3] < 255:
                 transparent = True
 
-    if self.style.bg_image:
+    if self.style.background_image:
         transparent = True
 
     return transparent

@@ -68,7 +68,6 @@ class _WidgetKwargsBase(TypedDict, total=False):
     clickable: bool
     hoverable: bool
     invert_on_click: bool
-    inline: bool
     font_role: PairColorRole
     draw_borders: bool
     draw_content: bool
@@ -266,7 +265,7 @@ class _ColorPickerKwargs(_GridKwargs_uni, total=False):
     label_style: Style
 
 
-class _FlexLayoutKwargs(_LayoutTypeKwargs, total=False):
+class _FlexKwargs(_LayoutTypeKwargs, total=False):
     direction: FlexDirection
     wrap: bool
     justify_content: FlexJustify
@@ -354,7 +353,7 @@ class KwargsLibrary:
     type ColorPickerAll = _ColorPickerKwargs
 
     # Flex
-    type FlexLayoutAll = _FlexLayoutKwargs
+    type FlexAll = _FlexKwargs
 
 nevu_object_globals = _NevuObjectGlobals()
 widget_globals = _WidgetGlobals()
