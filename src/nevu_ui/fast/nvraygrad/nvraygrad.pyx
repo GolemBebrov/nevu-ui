@@ -1,12 +1,12 @@
 # distutils: language = c++
 
-from nevu_ui.fast.nvrendertex.nv_render_tex cimport NvRenderTexture
 from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2
 from nevu_ui.fast.nvshader.nvshader cimport NvShader
 import nevu_ui.core.modules as md
 from nevu_ui.fast.shaders import GradientShader
 from nevu_ui.rendering.pygame.gradient import GradientPygame
 from nevu_ui.core import GradientType
+from nevu_ui.fast.nvsurface.nvsurface cimport _NvSurfRaylib
 from libcpp.vector cimport vector
 from nevu_ui.fast.raylib.nevu_raylib cimport (
     begin_blend_mode, end_blend_mode, begin_texture_mode, end_texture_mode, begin_nvshader_mode, end_shader_mode, draw_texture_pro,
@@ -14,6 +14,7 @@ from nevu_ui.fast.raylib.nevu_raylib cimport (
     set_nvshader_value_vec2_nvvec, Vector4, set_nvshader_value_vec2_tuple
     )
 from libcpp.numeric cimport accumulate
+import copy
 
 cdef inline Vector4 tuple_to_vector4(tuple t):
     cdef Vector4 v
@@ -107,6 +108,7 @@ cdef class GradientRaylib:
             boundaries.push_back(current)
 
         self._stops = <vector[float]>[]
+
         n = weights.size()
         for i in range(n):
             if n == 1:
@@ -182,7 +184,6 @@ cdef class GradientRaylib:
 
     def generate_texture(self, int width, int height):
         gradient_type_int = 0 if self.type == GradientType.Linear else 1
-        alpha_val = (self._transparency / 255.0)
 
         cdef NvVector2 size = NvVector2.new(width, height)
         set_nvshader_value_int(_SHARED_SHADER, _LOC_TYPE, gradient_type_int)
@@ -194,21 +195,44 @@ cdef class GradientRaylib:
         set_nvshader_value_float_v(_SHARED_SHADER, _LOC_STOPS, self._stops)
         set_nvshader_value_vec2_nvvec(_SHARED_SHADER, _LOC_SIZE, size)
 
-        cdef NvRenderTexture target = NvRenderTexture.new(size)
+        cdef _NvSurfRaylib target = _NvSurfRaylib(size)
 
-        begin_texture_mode(target.render_texture)
-        begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-        begin_nvshader_mode(_SHARED_SHADER)
-        target.c_fast_clear((0, 0, 0, 0))
+        with target:
+            begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+            begin_nvshader_mode(_SHARED_SHADER)
+            target.clear((0, 0, 0, 0))
 
-        source_rec = (0, 0, 1, 1)
-        dest_rec = (0, 0, width, height)
-        draw_texture_pro(_SHARED_BLANK_TEXTURE, source_rec, dest_rec, (0, 0), 0.0, (255, 255, 255, 255))
+            source_rec = (0, 0, 1, 1)
+            dest_rec = (0, 0, width, height)
+            draw_texture_pro(_SHARED_BLANK_TEXTURE, source_rec, dest_rec, (0, 0), 0.0, (255, 255, 255, 255))
 
-        end_shader_mode()
-        end_blend_mode()
-        end_texture_mode()
+            end_shader_mode()
+            end_blend_mode()
         return target
+
+    def copy(self):
+        cdef GradientRaylib new_grad = self.__class__(
+            colors=[(c if not isinstance(c, tuple) or len(c) != 2 else (c[0], c[1])) for c in self.raw_colors],
+            type=self.type,
+            angle=self._angle,
+            center=(self._center.x, self._center.y) if self._center is not None else None,
+            transparency=self._transparency
+        )
+        return new_grad
+
+    def __copy__(self):
+        return self.copy()
+
+    def __deepcopy__(self, memo):
+        cdef GradientRaylib new_grad = self.__class__(
+            colors=copy.deepcopy(self.raw_colors, memo),
+            type=self.type,
+            angle=self._angle,
+            center=(self._center.x, self._center.y) if self._center is not None else None,
+            transparency=self._transparency
+        )
+        memo[id(self)] = new_grad
+        return new_grad
 
 cdef class ClickGradient(GradientRaylib):
     cdef public vector[float] weights
