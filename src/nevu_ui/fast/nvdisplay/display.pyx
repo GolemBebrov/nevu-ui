@@ -9,13 +9,10 @@ from nevu_ui.fast.nvrect.nvrect cimport NvRect
 from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2
 from nevu_ui.fast.raylib.nevu_raylib cimport (
     init_raylib_pointers, begin_blend_mode, end_blend_mode, begin_texture_mode, end_texture_mode,
-    c_draw_texture_pro, c_draw_texture_rec, c_draw_texture_vec, set_nvshader_value, begin_nvshader_mode, end_shader_mode, begin_drawing, end_drawing,
+    c_draw_texture_pro, c_draw_texture_rec, c_draw_texture_vec, begin_nvshader_mode, end_shader_mode, begin_drawing, end_drawing,
     get_nvshader_location, set_nvshader_value_float, set_nvshader_value_vec2_nvvec, set_nvshader_value_vec4_tuple, set_nvshader_value_vec2_tuple
 )
 from nevu_ui.fast.nvshader.nvshader cimport NvShader
-
-# SDL
-cdef type sdl_window_t, sdl_renderer_t, sdl_texture_t, sdl_image_t #type: ignore
 
 # Pygame
 cdef type pg_surface_t, pg_rect_t #type: ignore
@@ -45,97 +42,6 @@ cdef class WindowRendererBase:
     def get_size_nvvec(self) -> NvVector2: ...
     @property
     def screen(self): ...
-
-
-cdef class WindowRendererSdl:
-    cdef public object window, renderer, surface, root
-
-    @staticmethod
-    def create_initialized(window, sdl_window, renderer):
-        cdef WindowRendererSdl self = WindowRendererSdl.__new__(WindowRendererSdl)
-        check_singleton()
-        self._init_types()
-        self.window = sdl_window
-        self.renderer = renderer
-        self._init_base(window)
-        return self
-
-    def __init__(self, str title, tuple size, object root not None, **kwargs):
-        check_singleton()
-        self._init_types()
-        self._init_window(title, size, kwargs.get('resizable', False))
-        self._init_base(root)
-
-    cdef inline void _init_window(self, title, size, bint resizable):
-        self.window = sdl_window_t(title, (size[0], size[1]), resizable = resizable)
-        self.renderer = sdl_renderer_t(self.window, accelerated = True, target_texture = True)
-
-    cdef inline void _init_types(self):
-        global sdl_window_t, sdl_renderer_t, sdl_texture_t, sdl_image_t, pg_surface_t, pg_rect_t
-
-        from pygame._sdl2.video import (Window as SDL2Window, Renderer, Texture, Image)
-
-        sdl_window_t = SDL2Window
-        sdl_renderer_t = Renderer
-        sdl_texture_t = Texture
-        sdl_image_t = Image
-
-        pg_surface_t = md.pygame.Surface
-        pg_rect_t = md.pygame.Rect
-
-    cdef inline void _init_base(self, root):
-        self.root = root
-        self.surface = self.window.get_surface()
-
-    # === Sizes ===
-    cpdef tuple get_tuple_rect(self): return (0, 0, self.c_get_width(), self.c_get_height())
-    cpdef NvRect get_nvrect(self): return NvRect.new(0, 0, self.c_get_width(), self.c_get_height())
-
-    cdef inline tuple c_get_tuple_size(self) noexcept: return self.window.size
-    cdef inline NvVector2 c_get_nvvec_size(self): return NvVector2.cfrom_ints(self.window.size[0], self.window.size[1])
-    cdef inline int c_get_width(self) noexcept: return self.window.size[0]
-    cdef inline int c_get_height(self) noexcept: return self.window.size[1]
-
-    cpdef tuple get_size_tuple(self): return self.c_get_tuple_size()
-    cpdef NvVector2 get_size_nvvec(self): return self.c_get_nvvec_size()
-
-    cpdef int get_width(self): return self.c_get_width()
-    cpdef int get_height(self): return self.c_get_height()
-
-    # === Blit ===
-    cpdef void blit(self, source, dest): #type: ignore
-        renderer = self.renderer
-        cdef int len_dest
-        if isinstance(source, pg_surface_t):
-            source = sdl_image_t(sdl_texture_t.from_surface(renderer, source))
-        elif isinstance(source, sdl_texture_t):
-            source = sdl_image_t(source)
-        if not isinstance(dest, pg_rect_t):
-            len_dest = len(dest)
-            if len_dest == 4: dest = pg_rect_t(*dest)
-            elif len_dest == 2:
-                if isinstance(dest[0], tuple | list):
-                    dest = pg_rect_t(*dest)
-                else:
-                    dest = pg_rect_t(*dest, source.texture.width, source.texture.height)
-        renderer.blit(source, dest)
-
-    # === Misc ===
-    @property
-    def screen(self): return self.window
-    cpdef void set_target(self, texture): self.renderer.target = texture
-    cpdef void set_title(self, str title): self.window.title = title
-    cpdef void update(self): pass
-    cpdef void begin_frame(self): pass
-    cpdef void end_frame(self): self.renderer.present()
-    cpdef void clear(self, color = fill_color):
-        renderer = self.renderer
-        old_color = renderer.draw_color
-        renderer.draw_color = color
-        renderer.clear()
-        renderer.draw_color = old_color
-    cpdef create_target_texture(self, int width, int height): return sdl_texture_t(self.renderer, size = (width, height), target = True)
-    cpdef load_image(self, str path): return md.pygame.image.load(path)
 
 cdef class WindowRendererRaylib:
     cdef public NvShader _sdf_shader, _border_shader, _glassy_sdf_shader, _glassy_border_shader, _line_sdf_shader
@@ -229,7 +135,22 @@ cdef class WindowRendererRaylib:
             "GetShaderLocation",
             "BeginDrawing",
             "EndDrawing",
-            "SetShaderValueV"]
+            "SetShaderValueV",
+            "IsMouseButtonPressed",
+            "IsMouseButtonDown",
+            "IsMouseButtonUp",
+            "GetMousePosition",
+            "GetMouseWheelMoveV",
+            "IsKeyPressed",
+            "IsKeyDown",
+            "IsKeyUp",
+            "GetCharPressed",
+            "WindowShouldClose",
+            "IsWindowResized",
+            "GetScreenWidth",
+            "GetScreenHeight",
+            "SetTargetFPS"
+        ]
         pointer_dict = {}
         for func_name in functions_to_load:
             try:
@@ -239,8 +160,46 @@ cdef class WindowRendererRaylib:
                 pointer_dict[func_name] = addr
             except AttributeError:
                 print(f"Warning: Could not load function {func_name} from raylib backend")
-        init_raylib_pointers(pointer_dict) # type: ignore
+        init_raylib_pointers(pointer_dict)
         print(f"Successfully loaded {len(pointer_dict)} fast raylib functions.")
+
+    cpdef void draw_sdf_rect(self, tuple pos, tuple size, object radii, tuple color, bint glassy = False):
+        cdef float w = <float>size[0]
+        cdef float h = <float>size[1]
+        if w <= 0.0 or h <= 0.0:
+            return
+
+        cdef float x = <float>pos[0]
+        cdef float y = <float>pos[1]
+
+        cdef tuple rad_tuple
+        if isinstance(radii, (int, float)):
+            rad_tuple = (float(radii), float(radii), float(radii), float(radii))
+        elif isinstance(radii, (tuple, list)):
+            rad_tuple = (float(radii[0]), float(radii[1]), float(radii[2]), float(radii[3]))
+        else:
+            rad_tuple = (0.0, 0.0, 0.0, 0.0)
+
+        cdef tuple c = color
+        if len(c) == 3:
+            c = (c[0], c[1], c[2], 255)
+
+        if glassy:
+            self._begin_glassy_sdf(w, h, rad_tuple)
+        else:
+            self._begin_sdf(w, h, rad_tuple)
+
+        begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
+        c_draw_texture_pro(
+            self._blank_texture,
+            (0.0, 0.0, 1.0, -1.0),
+            (x, y, w, h),
+            (0.0, 0.0),
+            0.0,
+            c
+        )
+        end_blend_mode()
+        self._end_shader()
 
     cpdef void draw_sdf_line(self, object pos_from, object pos_to, float width, object radius, tuple color, tuple max_bounds):
         if width <= 0.0:
@@ -375,10 +334,8 @@ cdef class WindowRendererRaylib:
         cdef list list_radii
         list_radii = list(radii)
         minside = min(width, height) / 2
-        minrad = min(radii)
-        if minrad > minside:
-            for i in range(4):
-                list_radii[i] = min(radii[i], minside)
+        for i in range(4):
+            list_radii[i] = min(radii[i], minside)
         begin_nvshader_mode(self._sdf_shader)
         set_nvshader_value_vec2_tuple(self._sdf_shader, self._sdf_locs['rectSize'], (width, height))
         set_nvshader_value_vec4_tuple(self._sdf_shader, self._sdf_locs['radius'], tuple(list_radii))
@@ -386,11 +343,9 @@ cdef class WindowRendererRaylib:
     cpdef _begin_glassy_sdf(self, float width, float height, tuple radii):
         cdef list list_radii
         list_radii = list(radii)
-        minside = min(width, height) / 2
-        minrad = min(radii)
-        if minrad > minside:
-            for i in range(4):
-                list_radii[i] = min(radii[i], minside)
+        minside = min(width, height) / 2.0
+        for i in range(4):
+            list_radii[i] = min(radii[i], minside)
         begin_nvshader_mode(self._glassy_sdf_shader)
         set_nvshader_value_vec2_tuple(self._glassy_sdf_shader, self._glassy_sdf_locs['rectSize'], (width, height))
         set_nvshader_value_vec4_tuple(self._glassy_sdf_shader, self._glassy_sdf_locs['radius'], tuple(list_radii))
@@ -399,11 +354,9 @@ cdef class WindowRendererRaylib:
         begin_nvshader_mode(self._glassy_border_shader)
         cdef list list_radii
         list_radii = list(radii)
-        minside = min(width, height) / 2
-        minrad = min(radii)
-        if minrad > minside:
-            for i in range(4):
-                list_radii[i] = min(radii[i], minside)
+        minside = min(width, height) / 2.0
+        for i in range(4):
+            list_radii[i] = min(radii[i], minside)
         cdef NvVector2 rec_size
         rec_size = NvVector2.new(width, height)
         set_nvshader_value_vec2_nvvec(self._glassy_border_shader, self._glassy_border_locs['rectSize'], rec_size)
@@ -422,11 +375,9 @@ cdef class WindowRendererRaylib:
         begin_nvshader_mode(self._border_shader)
         cdef list list_radii
         list_radii = list(radii)
-        minside = min(width, height) / 2
-        minrad = min(radii)
-        if minrad > minside:
-            for i in range(4):
-                list_radii[i] = min(radii[i], minside)
+        minside = min(width, height) / 2.0
+        for i in range(4):
+            list_radii[i] = min(radii[i], minside)
         cdef NvVector2 rec_size
         rec_size = NvVector2.new(width, height)
         set_nvshader_value_vec2_nvvec(self._border_shader, self._border_locs['rectSize'], rec_size)
@@ -464,7 +415,6 @@ cdef class WindowRendererRaylib:
     cpdef void set_title(self, str title): md.rl.set_window_title(title)
     cpdef void clear(self, color = fill_color): md.rl.clear_background(color)
     cpdef void begin_frame(self): begin_drawing()
-    cpdef void update(self): pass
     cpdef void end_frame(self): end_drawing()
     cpdef load_image(self, str path): return md.rl.load_texture(path)
 
@@ -509,7 +459,6 @@ cdef class WindowRendererPygame:
     cpdef void end_frame(self): md.pygame.display.update()
     cpdef void begin_frame(self): pass
     cpdef void clear(self, color = fill_color): self.window.fill(color)
-    cpdef void update(self): pass
     cpdef void flip(self): md.pygame.display.flip()
     cpdef void blit(self, source, dest): self.window.blit(source, dest)
     cpdef load_image(self, path: str): return md.pygame.image.load(path)
