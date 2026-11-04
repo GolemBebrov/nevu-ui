@@ -1,14 +1,13 @@
 import sys
 from typing import TYPE_CHECKING, NotRequired, TypeGuard, Unpack, final
 
-from typing_extensions import TypedDict, deprecated
+from nevu_ui.fast.raylib.nevu_raylib import get_screen_height, get_screen_width, is_window_resized, set_target_fps, window_should_close
+from typing_extensions import TypedDict
 
 from nevu_ui.core.callbacks import Callbacks
 
 if TYPE_CHECKING:
     from pygame import Surface
-    from pygame._sdl2.video import Renderer
-    from pygame._sdl2.video import Window as SDL2Window
 
 import nevu_ui.core.modules as md
 from nevu_ui.core.classes import ConfigType, Counter
@@ -19,7 +18,6 @@ from nevu_ui.fast.nvdisplay.display import (
     WindowRendererBase,
     WindowRendererPygame,
     WindowRendererRaylib,
-    WindowRendererSdl,
 )
 from nevu_ui.fast.nvrect import NvRect
 from nevu_ui.fast.nvvector2 import NvVector2
@@ -32,13 +30,12 @@ from nevu_ui.utils.keys import init_keys
 
 @final
 class _IsNamespace:
-    __slots__ = ("_cached_result", "master", "pygame", "pygame_like", "raylib", "sdl")
+    __slots__ = ("_cached_result", "master", "pygame", "pygame_like", "raylib")
 
     def __init__(self, master: "Window"):
         self.master = master
         self._cached_result = None
         self.pygame: bool = False
-        self.sdl: bool = False
         self.raylib: bool = False
         self.pygame_like: bool = False
 
@@ -46,9 +43,8 @@ class _IsNamespace:
         if self._cached_result is None:
             self._cached_result = self.master.backend
         self.pygame = self._cached_result == Backend.Pygame
-        self.sdl = self._cached_result == Backend.Sdl
         self.raylib = self._cached_result == Backend.RayLib
-        self.pygame_like = self.pygame or self.sdl
+        self.pygame_like = self.pygame
 
 
 class WindowKwargs(TypedDict):
@@ -81,6 +77,9 @@ _kwargs_to_param = {
     "base_fps": ("_fps", int, 60),
     "debounce": ("debounce", bool, True),
 }
+
+# ONLY FOR RAYLIB !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+_I_AM_DEBUG = False
 
 class Window:
     _renderer: WindowRendererBase
@@ -215,15 +214,11 @@ class Window:
         kwargs = self._get_graphics_kwargs()
         back_to_class = {
             Backend.Pygame: WindowRendererPygame,
-            Backend.Sdl: WindowRendererSdl,
             Backend.RayLib: WindowRendererRaylib,
-            Backend.Opengl: None,
         }
         back_to_update = {
             Backend.RayLib: self._update_raylib,
             Backend.Pygame: self._update_pygame,
-            Backend.Sdl: self._update_pygame,
-            Backend.Opengl: None
         }
         window_specific_update = back_to_update[self.backend]
         if not window_specific_update:
@@ -237,11 +232,6 @@ class Window:
         nevu_state.z_system = self.z_system
         nevu_state.backend = self.backend
         nevu_state.overlay = overlay
-        match self.backend:
-            case Backend.Sdl:
-                nevu_state.renderer = self._renderer.renderer  # type: ignore
-            case _:
-                nevu_state.renderer = None
 
     def _get_graphics_kwargs(self):
         kwargs = {"title": self.title, "size": self.size.get_int_tuple(), "root": self}
@@ -250,7 +240,7 @@ class Window:
                 flags = 16 if self.resizable else 0
                 flags |= 1 | 1073741824
                 kwargs["flags"] = flags
-            case Backend.Sdl | Backend.RayLib:
+            case Backend.RayLib:
                 kwargs["resizable"] = self.resizable
         return kwargs
 
@@ -272,9 +262,6 @@ class Window:
 
     def is_raylib(self, renderer) -> TypeGuard[WindowRendererRaylib]:
         return isinstance(self._renderer, WindowRendererRaylib)
-
-    def is_sdl(self, renderer) -> TypeGuard[WindowRendererSdl]:
-        return isinstance(self._renderer, WindowRendererSdl)
 
     def is_legacy(self, renderer) -> TypeGuard[WindowRendererPygame]:
         return isinstance(self._renderer, WindowRendererPygame)
@@ -317,13 +304,13 @@ class Window:
         rl = md.rl
         assert rl
         if fps != self._old_fps:
-            rl.set_target_fps(fps)
+            set_target_fps(fps)
             self._old_fps = fps
-        if rl.window_should_close():
+        if window_should_close():
             rl.close_window()
             sys.exit()
-        if rl.is_window_resized():
-            self.size = NvVector2(rl.get_screen_width(), rl.get_screen_height())
+        if is_window_resized():
+            self.size = NvVector2(get_screen_width(), get_screen_height())
             self._debouncing.val = 0
 
     def _update_pygame(self, events, fps: int | None = None):
@@ -371,7 +358,6 @@ class Window:
         self.update_events(events)
         self.update_utils(events)
         self.update_zsystem()
-        self.renderer.update()
 
     def update(self, events=None, fps: int | None = None):
         """Events required only for pygame backend"""
@@ -401,7 +387,6 @@ class Window:
         self.callbacks.run(BindType.Update, self)
         if on_update := self.on_update:
             self._hook_cycle(on_update)
-        self.renderer.update()
 
     def _resize(self):
         if window_resize_type == ResizeType.CropToRatio:
@@ -416,17 +401,21 @@ class Window:
             self._hook_cycle(on_resize)
 
     def draw_overlay(self):
-        texture = overlay.get_result(self.size)
+        if _I_AM_DEBUG:
+            self.z_system._debug_draw_raylib()
+        if not overlay.pipeline:
+            return
+        surface = overlay.get_result(self.size)
         if self.renderer_type.raylib:
-            texture = texture.texture  # type: ignore
+            surface = surface.native.texture
             md.rl.begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
 
         renderer = self.renderer
         if self.renderer_type.raylib:
             assert self.is_raylib(renderer)
-            renderer.fast_blit(texture, (0, 0))
+            renderer.fast_blit(surface, (0, 0))
         else:
-            renderer.blit(texture, (0, 0))
+            renderer.blit(surface.native, (0, 0))
         if self.renderer_type.raylib:
             md.rl.end_blend_mode()
 
@@ -490,31 +479,17 @@ class InitializedWindow(Window):
         _initialized_window_kwargs_buffer = None
         return window
 
-    @staticmethod
-    def from_sdl(
-        sdl_window: "SDL2Window", renderer: "Renderer", **kwargs: Unpack[WindowKwargs]
-    ):
-        global _initialized_window_kwargs_buffer
-        _initialized_window_kwargs_buffer = {
-            "sdl_window": sdl_window,
-            "renderer": renderer,
-        }
-        window = InitializedWindow(backend=Backend.Sdl, **kwargs)
-        _initialized_window_kwargs_buffer = None
-        return window
 
     def _init_graphics(self):
         global window_specific_update
         kwargs = _initialized_window_kwargs_buffer
         back_to_class = {
             Backend.Pygame: WindowRendererPygame,
-            Backend.Sdl: WindowRendererSdl,
             Backend.RayLib: WindowRendererRaylib,
         }
         back_to_update = {
             Backend.RayLib: self._update_raylib,
             Backend.Pygame: self._update_pygame,
-            Backend.Sdl: self._update_pygame,
         }
         if kwargs is None:
             self._renderer = back_to_class[self.backend].create_initialized(self)
@@ -526,7 +501,7 @@ class InitializedWindow(Window):
         self.renderer_type._initial_check()
 
     def __init__(self, **kwargs):
-        """Do not use as constructor, use from_raylib, from_pygame or from_sdl"""
+        """Do not use as constructor, use from_raylib, from_pygame"""
         self._init_base()
         self._init_kwargs(**kwargs)
 
