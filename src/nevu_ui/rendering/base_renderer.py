@@ -5,22 +5,33 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from nevu_ui.core.classes import SurfaceLike
 from nevu_ui.core.state import nevu_state
 from nevu_ui.fast.nevucache.nevucache import Cache
+from nevu_ui.fast.nvfont.nvfont import NvFont
+from nevu_ui.fast.nvsurface.nvsurface import NvSurface
 from nevu_ui.presentation.style import default_style
-
+from nevu_ui.core.size.rules import (
+    CFill,
+    CFillH,
+    CFillW,
+    Fill,
+    FillH,
+    FillW,
+    _SizeRule,
+)
 if TYPE_CHECKING:
     from nevu_ui.presentation.style import Style
     from nevu_ui.rendering.raylib.gradient import ClickGradient
 from nevu_ui.core.annotations import Annotations
 from nevu_ui.core.enums import (
     Align,
+    CacheType,
     RenderReturnType,
 )
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.presentation.color import Color
 
+_bg_surface_pool: dict[tuple[int, int], tuple] = {}
 
 class _BaseCoreNamespace(ABC):
     def __init__(self): ...
@@ -29,29 +40,50 @@ class _BaseCoreNamespace(ABC):
     def get_gradient(self, style: Style) -> Any:  # pyright: ignore[reportAny]
         raise NotImplementedError
 
-    @abstractmethod
+    def _get_font(self, size: int, path: str):
+        font = NvFont(size, path)
+        return font, font.size
+
     def get_font(
         self,
         *,
         style: Style = default_style,
         cache: Cache | None = None,
-        relative = False,
-        relm: float | None = None,
+
         size: int | None = None,
         path: str | None = None,
-    ) -> tuple[Any, int]:  # pyright: ignore[reportAny]
-        raise NotImplementedError
 
-    @abstractmethod
-    def create_clear(self, size: Annotations.dest_like_v) -> SurfaceLike:
-        raise NotImplementedError
+        relative = False,
+        relm: float | None = None,
+        container_size: NvVector2 | None = None,
+    ) -> tuple[NvFont, int]:
+
+        font_name = path or style.font_name
+        font_size = size if size is not None else round(self.get_font_size(style, relative=relative, relm=relm, container_size=container_size))
+
+        if cache:
+            return cache.get_or_exec(CacheType.Font, lambda name=font_name, size=font_size: self._get_font(size, name))
+        return self._get_font(font_size, font_name)
+
+    def create_surface(
+        self,
+        size: Annotations.vec2_like_v,
+        *,
+        clear_color: Annotations.rgb_like_color | None = Color.Blank,
+        normalize_color: bool = True,
+    ) -> NvSurface:
+        surface = NvSurface(size)
+        if clear_color is not None:
+            clear_color = self.normalize_color(clear_color) if normalize_color else clear_color
+            surface.clear(clear_color)
+        return surface
 
     @abstractmethod
     def draw_rect(
         self,
-        surface_like: Any,
-        pos: Annotations.dest_like_v,
-        size: Annotations.dest_like_v,
+        surface: NvSurface,
+        pos: Annotations.vec2_like_v,
+        size: Annotations.vec2_like_v,
         *,
         color: Annotations.rgb_like_color = Color.White,
         style: Style = default_style,
@@ -60,9 +92,9 @@ class _BaseCoreNamespace(ABC):
     @abstractmethod
     def draw_line(
         self,
-        surface_like: Any,
-        pos_from: Annotations.dest_like_v,
-        pos_to: Annotations.dest_like_v,
+        surface: NvSurface,
+        pos_from: Annotations.vec2_like_v,
+        pos_to: Annotations.vec2_like_v,
         *,
         width: float | None = None,
         radius: Annotations.rad_like | None = None,
@@ -77,10 +109,9 @@ class _BaseCoreNamespace(ABC):
         self,
         style: Style,
         *,
-        size: Annotations.dest_like_v | None = None
+        size: Annotations.vec2_like_v | None = None
     ): raise NotImplementedError
 
-    @abstractmethod
     def measure_text(
         self,
         text: str,
@@ -89,22 +120,41 @@ class _BaseCoreNamespace(ABC):
         cache: Cache | None = None,
         relative = False,
         relm: float | None = None,
-        font: Any = None,
+        font: NvFont | None = None,
         font_size: int | None = None,
-    ) -> NvVector2: raise NotImplementedError
+    ) -> NvVector2:
+        if font is None:
+            font, _ = self.get_font(style = style, cache=cache, relative=relative, relm=relm, size=font_size)
+        result = font.measure(text)
+        return NvVector2.from_xy(result.x, result.y)
 
     def get_font_size(
         self,
         style: Style,
         *,
-        relative = False,
+        container_size: NvVector2 | None = None,
+        relative: bool = False,
         relm: float | None = None
     ) -> float:
-        font_size = style.font_size
+        raw_size = style.font_size
+        if isinstance(raw_size, _SizeRule):
+            if container_size is not None:
+                rule_type = type(raw_size)
+                if rule_type in (FillW, CFillW):
+                    base = container_size.x
+                elif rule_type in (FillH, CFillH, Fill, CFill):
+                    base = container_size.y
+                else:
+                    raise ValueError(f"Style.font_size must be int or SizeRule.\nGot {raw_size}({rule_type})")
+                size_px = base * (raw_size.value / 100)
+            else:
+                size_px = 16
+            return max(6, size_px)
+
         if relative:
             relm = relm or self.get_relm()
-            return font_size * relm
-        return font_size
+            return raw_size * relm
+        return float(raw_size)
 
     def get_relm(self) -> float:
         """Can be used only after Window initialized"""
@@ -147,50 +197,61 @@ class _BaseCoreNamespace(ABC):
         font_size: int | None = None,
     ) -> list[str]:
         if max_width <= 0:
-            raise ValueError("Max_width must be greater than zero.")
+            raise ValueError("max_width must be greater than zero.")
         if math.isnan(max_width):
-            raise ValueError("Max_width cannot be NaN!")
+            raise ValueError("max_width cannot be NaN!")
 
         if not text_parts:
             return []
 
+        size_cache: dict[str, float] = {}
         lines: list[str] = []
         unlimited_width = max_width == float("inf")
 
-        current_part = ""
+        current_parts = []
         measure = self.measure_text
         ended_with_newline = False
+        line_width = 0
+        separator_width = measure(separator, style=style, cache=cache, relative=relative, relm=relm, font=font, font_size=font_size).x
+        size_cache[separator] = separator_width
 
         for new_part in text_parts:
             if new_part == "\n" or (new_part == "\\n" and literal_newline_support):
-                lines.append(current_part)
-                current_part = ""
+                lines.append(separator.join(current_parts))
+                line_width = 0
+                current_parts.clear()
                 ended_with_newline = True
                 continue
 
             ended_with_newline = False
-            has_content = current_part != ""
-
-            if has_content:
-                test_line = current_part + separator + new_part
-            else:
-                test_line = new_part
 
             if unlimited_width:
-                current_part = test_line
+                current_parts.append(new_part)
                 continue
 
-            if measure(test_line, style=style, cache=cache, relative=relative, relm=relm, font=font, font_size=font_size).x > max_width:
-                if has_content:
-                    lines.append(current_part)
-                    current_part = new_part
-                else:
-                    current_part = test_line
+            if new_part in size_cache:
+                part_width = size_cache[new_part]
             else:
-                current_part = test_line
+                part_width = measure(new_part, style=style, cache=cache, relative=relative, relm=relm, font=font, font_size=font_size).x
+                size_cache[new_part] = part_width
 
-        if current_part != "" or ended_with_newline:
-            lines.append(current_part)
+            has_content = len(current_parts) != 0
+
+            if has_content:
+                width = line_width + separator_width + part_width
+            else:
+                width = part_width
+
+            if width > max_width and has_content:
+                lines.append(separator.join(current_parts))
+                current_parts = [new_part]
+                line_width = part_width
+            else:
+                current_parts.append(new_part)
+                line_width = width
+
+        if len(current_parts) != 0 or ended_with_newline:
+            lines.append(separator.join(current_parts))
 
         return lines
 
@@ -224,7 +285,7 @@ class _BaseCoreNamespace(ABC):
     def align_inner_rect(
         self,
         container_rect: Annotations.rect_like,
-        inner_size: Annotations.dest_like_v,
+        inner_size: Annotations.vec2_like_v,
         *,
         style: Style = default_style,
         strict_size = True,
@@ -263,8 +324,9 @@ class _BaseCall:
     relative: bool = True
     relm: float | None = None
     return_type: RenderReturnType = RenderReturnType.CreateNew
-    modify_object: Any = None
-    pos: Annotations.dest_like_v | None = None
+    modify_object: NvSurface | None = None
+    pos: Annotations.vec2_like_v | None = None
+
 
 @dataclass(kw_only=True, slots=True)
 class DrawBgCall(_BaseCall):
@@ -319,7 +381,7 @@ class DrawEffectsCall(_BaseCall):
 
 @dataclass(kw_only=True, slots=True)
 class DrawBordersCall(_BaseCall):
-    original_surface: Any
+    original_surface: NvSurface
     style: Style = default_style
     color: Annotations.rgba_color | None = None
     glassy: bool = False
@@ -338,7 +400,7 @@ class BaseRenderer(ABC):
     def _get_unexpected_error(self, error: Exception, func_name: str):
         raise ValueError(
             Annotations.format_nvtype_renderer_error(
-                f"unexpected error - '{error}'", self, func_name
+                f"unexpected error - '{error}'", func_name
             )
         )
 
@@ -351,14 +413,14 @@ class BaseRenderer(ABC):
         try:
             match return_type:
                 case RenderReturnType.Modify:
-                    texture = call.modify_object
-                    if texture is None:
+                    surface = call.modify_object
+                    if surface is None:
                         raise ValueError("Modify return type selected but no modify_object provided.")
-                    self._base_draw(texture, call)
+                    self._base_draw(surface, call)
                 case RenderReturnType.CreateNew:
-                    texture = self.core.create_clear(call.size)
-                    self._base_draw(texture, call)
-                    return texture
+                    surface = self.core.create_surface(call.size)
+                    self._base_draw(surface, call)
+                    return surface
                 case _:
                     raise ValueError(f"Invalid return type: {return_type}")
         except Exception as e:
@@ -369,13 +431,13 @@ class BaseRenderer(ABC):
         try:
             match return_type:
                 case RenderReturnType.Modify:
-                    texture = call.modify_object
-                    assert texture, "Modify return type selected but no object provided"
-                    self._borders_draw(texture, call)
+                    surface = call.modify_object
+                    assert surface, "Modify return type selected but no object provided"
+                    self._borders_draw(surface, call)
                 case RenderReturnType.CreateNew:
-                    texture = self.core.create_clear(call.size)
-                    self._borders_draw(texture, call)
-                    return texture
+                    surface = self.core.create_surface(call.size)
+                    self._borders_draw(surface, call)
+                    return surface
 
                 case _:
                     raise ValueError(f"Invalid return type: {return_type}")
@@ -387,17 +449,17 @@ class BaseRenderer(ABC):
         try:
             match return_type:
                 case RenderReturnType.Modify:
-                    texture = call.modify_object
-                    if texture is None:
+                    surface = call.modify_object
+                    if surface is None:
                         raise ValueError("Modify return type requires a non-None modify_object.")
                     text_lines, text_pos, _ = self._arrange_text(call)
-                    self._text_draw(text_lines, texture, call, text_pos)
-                    return text_pos, texture
+                    self._text_draw(text_lines, surface, call, text_pos)
+                    return text_pos, surface
                 case RenderReturnType.CreateNew:
                     text_lines, text_pos, text_size = self._arrange_text(call, pos = NvVector2(0, 0))
-                    texture = self.core.create_clear(text_size)
-                    self._text_draw(text_lines, texture, call, NvVector2())
-                    return text_pos, texture
+                    surface = self.core.create_surface(text_size)
+                    self._text_draw(text_lines, surface, call, NvVector2())
+                    return text_pos, surface
 
                 case _:
                     raise ValueError(f"Unknown return type: {return_type}")
@@ -408,19 +470,19 @@ class BaseRenderer(ABC):
         core = self.core
         click_gradient = call.click_gradient
         effect_texture = call.effect_texture
-        effect_texture = effect_texture or self.core.create_clear(call.size)
+        effect_texture = effect_texture or self.core.create_surface(call.size)
         return_type = call.return_type
 
         try:
             match return_type:
                 case RenderReturnType.Modify:
-                    texture = call.modify_object
-                    assert texture, "Modify return type selected but no object provided"
-                    self._add_effects(call, effect_texture, click_gradient, texture)
+                    surface = call.modify_object
+                    assert surface, "Modify return type selected but no object provided"
+                    self._add_effects(call, effect_texture, click_gradient, surface)
                 case RenderReturnType.CreateNew:
-                    texture = core.create_clear(call.size)
-                    self._add_effects(call, effect_texture, click_gradient, texture)
-                    return texture
+                    surface = core.create_surface(call.size)
+                    self._add_effects(call, effect_texture, click_gradient, surface)
+                    return surface
 
                 case _:
                     raise ValueError(f"Invalid return type: {return_type}")
@@ -451,21 +513,25 @@ class BaseRenderer(ABC):
         try:
             match return_type:
                 case RenderReturnType.Modify:
-                    texture = call.modify_object
-                    if texture is None:
+                    surface = call.modify_object
+                    if surface is None:
                         raise ValueError("Modify return type selected but no modify_object provided.")
-                    self._base_draw(texture, base_call)
-                    result_texture = texture.copy()
-                    borders_call.original_surface = texture
-                    self._borders_draw(texture, borders_call)
+                    self._base_draw(surface, base_call)
+                    result_surface = surface.copy()
+                    borders_call.original_surface = surface
+                    self._borders_draw(surface, borders_call)
 
                 case RenderReturnType.CreateNew:
-                    texture = self.core.create_clear(call.size)
-                    self._base_draw(texture, base_call)
-                    result_texture = self.core.create_clear(call.size)
-                    borders_call.original_surface = texture
-                    self._borders_draw(result_texture, borders_call)
-                    return result_texture
+                    key = (int(call.size[0]), int(call.size[1]))
+                    pair = _bg_surface_pool.get(key)
+                    if pair is None:
+                        pair = (self.core.create_surface(call.size), self.core.create_surface(call.size))
+                        _bg_surface_pool[key] = pair
+                    surface, result_surface = pair
+                    self._base_draw(surface, base_call)
+                    borders_call.original_surface = surface
+                    self._borders_draw(result_surface, borders_call)
+                    return result_surface
 
                 case _:
                     raise ValueError(f"Invalid return type: {return_type}")
@@ -479,7 +545,7 @@ class BaseRenderer(ABC):
     @abstractmethod
     def _base_draw(
         self,
-        texture: SurfaceLike,
+        surface: NvSurface,
         call: DrawBaseCall,
     ): raise NotImplementedError
 
@@ -487,7 +553,7 @@ class BaseRenderer(ABC):
     def _text_draw(
         self,
         text_lines: list[str],
-        texture: SurfaceLike,
+        surface: NvSurface,
         call: DrawTextCall,
         pos: NvVector2 | None = None,
     ): raise NotImplementedError
@@ -496,14 +562,14 @@ class BaseRenderer(ABC):
     def _arrange_text(
         self,
         call: DrawTextCall,
-        pos: Annotations.dest_like_v | None = None,
+        pos: Annotations.vec2_like_v | None = None,
     ) -> tuple[list[str], NvVector2, NvVector2]:
         raise NotImplementedError
 
     @abstractmethod
     def _borders_draw(
         self,
-        texture: SurfaceLike,
+        surface: NvSurface,
         call: DrawBordersCall,
     ): raise NotImplementedError
 
@@ -513,5 +579,5 @@ class BaseRenderer(ABC):
         call: DrawEffectsCall,
         effect_texture: Any,
         gradient: ClickGradient,
-        texture: Any,
+        surface: NvSurface,
     ): raise NotImplementedError

@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Any, override
 
+from nevu_ui.fast.nvsurface.nvsurface import NvSurface
+
 if TYPE_CHECKING:
     from nevu_ui.presentation.style import Style
     from nevu_ui.rendering.pygame.gradient import GradientPygame
@@ -10,9 +12,7 @@ if TYPE_CHECKING:
 
 import nevu_ui.core.modules as md
 from nevu_ui.core.annotations import Annotations
-from nevu_ui.core.classes import SurfaceLike
 from nevu_ui.core.enums import CacheType
-from nevu_ui.fast.nevucache import Cache
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.fast.shapes import (
     transform_into_outlined_rounded_rect,
@@ -30,6 +30,7 @@ from nevu_ui.rendering.base_renderer import (
     _BaseCoreNamespace,
 )
 
+_pygame_font_cache: dict[tuple[str, int], tuple[Any, int]] = {}
 
 class _PygameCoreNamespace(_BaseCoreNamespace):
     @override
@@ -40,85 +41,37 @@ class _PygameCoreNamespace(_BaseCoreNamespace):
         return gr
 
     @override
-    def get_font(
-        self,
-        *,
-        style: Style = default_style,
-        cache: Cache | None = None,
-        relative: bool = False,
-        relm: float | None = None,
-        size: int | None = None,
-        path: str | None = None,
-    ) -> tuple[Any, int]:
-        font_name = path or style.font_name
-        font_size = (
-            size
-            if size is not None
-            else round(self.get_font_size(style, relative=relative, relm=relm))
-        )
-        font_size = max(1, font_size)
-
-        def _load_font():
-            font = md.pygame.font.Font(font_name, font_size)
-            return font, font_size
-
-        if cache:
-            cache_type = getattr(
-                CacheType,
-                "PygameFont",
-                getattr(CacheType, "PgFont", getattr(CacheType, "Font", CacheType.RlFont)),
-            )
-            return cache.get_or_exec(cache_type, _load_font)
-        return _load_font()
-
-    @override
-    def create_clear(self, size: Annotations.dest_like_v) -> SurfaceLike:
-        w, h = int(size[0]), int(size[1])
-        surf = md.pygame.Surface((w, h), flags=md.pygame.SRCALPHA, depth=32)
-        try:
-            surf = surf.convert_alpha()
-        except Exception:
-            pass
-        surf.fill((0, 0, 0, 0))
-        assert SurfaceLike.as_type(surf)
-        return surf
-
-    @override
     def draw_rect(
         self,
-        surface_like: Any,
-        pos: Annotations.dest_like_v,
-        size: Annotations.dest_like_v,
+        surface: NvSurface,
+        pos: Annotations.vec2_like_v,
+        size: Annotations.vec2_like_v,
         *,
         color: Annotations.rgb_like_color = Color.White,
         style: Style = default_style,
     ) -> None:
-        assert isinstance(surface_like, md.pygame.Surface), (
-            "surface_like must be a pygame Surface"
-        )
         radius = self.normalize_radius(style.border_radius, relative=True)
         color = self.normalize_color(color)
         x, y = int(pos[0]), int(pos[1])
         w, h = int(size[0]), int(size[1])
 
         if all(r == 0 for r in radius):
-            md.pygame.draw.rect(surface_like, color, (x, y, w, h))
+            md.pygame.draw.rect(surface.native, color, (x, y, w, h))
             return
 
-        # Если прямоугольник занимает всю поверхность с позиции (0, 0)
-        if x == 0 and y == 0 and (surface_like.get_width(), surface_like.get_height()) == (w, h):
-            transform_into_rounded_rect(surface_like, radius, color)
+        if x == 0 and y == 0 and (surface.get_width(), surface.get_height()) == (w, h):
+            transform_into_rounded_rect(surface, radius, color)
         else:
-            temp = self.create_clear((w, h))
+            temp = self.create_surface((w, h))
             transform_into_rounded_rect(temp, radius, color)
-            surface_like.blit(temp, (x, y))
+            surface.blit(temp, (x, y))
 
     @override
     def draw_line(
         self,
-        surface_like: Any,
-        pos_from: Annotations.dest_like_v,
-        pos_to: Annotations.dest_like_v,
+        surface: NvSurface,
+        pos_from: Annotations.vec2_like_v,
+        pos_to: Annotations.vec2_like_v,
         *,
         width: float | None = None,
         radius: Annotations.rad_like | None = None,
@@ -127,9 +80,6 @@ class _PygameCoreNamespace(_BaseCoreNamespace):
         color: Annotations.rgb_like_color = Color.White,
         style: Style = default_style,
     ) -> None:
-        assert isinstance(surface_like, md.pygame.Surface), (
-            "surface_like must be a pygame Surface"
-        )
         relm = relm or self.get_relm()
 
         line_width = width if width is not None else style.border_width
@@ -145,14 +95,14 @@ class _PygameCoreNamespace(_BaseCoreNamespace):
         color = self.normalize_color(color)
         w = max(1, round(line_width)) if line_width > 0 else 0
         r = round(line_radius)
-        draw_sdf_line(surface_like, pos_from, pos_to, w, r, color)
+        draw_sdf_line(surface.native, pos_from, pos_to, w, r, color)
 
     @override
     def get_image(
         self,
         style: Style,
         *,
-        size: Annotations.dest_like_v | None = None,
+        size: Annotations.vec2_like_v | None = None,
     ):
         image_path = getattr(style, "background_image", None) or getattr(style, "bg_image", None)
         if image_path is None:
@@ -168,34 +118,6 @@ class _PygameCoreNamespace(_BaseCoreNamespace):
             img = md.pygame.transform.smoothscale(img, (int(size[0]), int(size[1])))
         return img
 
-    @override
-    def measure_text(
-        self,
-        text: str,
-        *,
-        style: Style = default_style,
-        cache: Cache | None = None,
-        relative: bool = False,
-        relm: float | None = None,
-        font: Any = None,
-        font_size: int | None = None,
-    ) -> NvVector2:
-        if font is None:
-            font, font_size = self.get_font(
-                style=style, cache=cache, relative=relative, relm=relm, size=font_size
-            )
-        assert isinstance(font, md.pygame.font.Font), "font must be a pygame font"
-
-        lines = text.split("\n")
-        if len(lines) > 1:
-            max_w = max((font.size(line)[0] for line in lines), default=0)
-            total_h = len(lines) * font.get_linesize()
-            return NvVector2.from_xy(max_w, total_h)
-
-        result = font.size(text)
-        return NvVector2.from_xy(result[0], result[1])
-
-
 class PygameRenderer(BaseRenderer):
     @override
     def _get_core_namespace(self) -> _BaseCoreNamespace:
@@ -204,11 +126,9 @@ class PygameRenderer(BaseRenderer):
     @override
     def _base_draw(
         self,
-        texture: SurfaceLike,
+        surface: NvSurface,
         call: DrawBaseCall,
     ):
-        assert isinstance(texture, md.pygame.Surface), "texture must be a pygame Surface"
-
         cache = call.cache
         style = call.style
         size = call.size
@@ -220,11 +140,11 @@ class PygameRenderer(BaseRenderer):
         pos_xy = (int(pos[0]), int(pos[1]))
         direct_draw = (
             pos_xy == (0, 0)
-            and texture.get_width() == w
-            and texture.get_height() == h
+            and surface.get_width() == w
+            and surface.get_height() == h
         )
 
-        target = texture if direct_draw else self.core.create_clear(size)
+        target = surface if direct_draw else self.core.create_surface(size)
 
         if call.gradient_support and style.gradient:
             def _create_grad():
@@ -244,7 +164,7 @@ class PygameRenderer(BaseRenderer):
             if call.radius_support:
                 radius = self.core.normalize_radius(style.border_radius, relative=True)
                 if any(r > 0 for r in radius):
-                    transform_into_rounded_rect(target, radius, None)
+                    transform_into_rounded_rect(target.native, radius, None)
 
         elif call.image_support and (getattr(style, "background_image", None) or getattr(style, "bg_image", None)):
             if cache_available:
@@ -259,26 +179,26 @@ class PygameRenderer(BaseRenderer):
             if call.radius_support:
                 radius = self.core.normalize_radius(style.border_radius, relative=True)
                 if any(r > 0 for r in radius):
-                    transform_into_rounded_rect(target, radius, None)
+                    transform_into_rounded_rect(target.native, radius, None)
 
         elif call.radius_support:
             radius = self.core.normalize_radius(style.border_radius, relative=True)
             if all(r == 0 for r in radius):
                 target.fill(color)
             else:
-                transform_into_rounded_rect(target, radius, color)
+                transform_into_rounded_rect(target.native, radius, color)
 
         else:
             target.fill(color)
 
         if not direct_draw:
-            texture.blit(target, pos_xy)
+            surface.blit(target, pos_xy)
 
     @override
     def _arrange_text(
         self,
         call: DrawTextCall,
-        pos: Annotations.dest_like_v | None = None,
+        pos: Annotations.vec2_like_v | None = None,
     ) -> tuple[list[str], NvVector2, NvVector2]:
         cache = call.cache
         style = call.style
@@ -291,7 +211,7 @@ class PygameRenderer(BaseRenderer):
         max_size.y = min(max_size.y, size.y)
 
         font, font_size = self.core.get_font(
-            style=style, cache=cache, relative=True, size=call.font_size
+            style=style, cache=cache, relative=True, size=call.font_size, container_size=call.size
         )
 
         if call.unlimited_x:
@@ -348,17 +268,16 @@ class PygameRenderer(BaseRenderer):
     def _text_draw(
         self,
         text_lines: list[str],
-        texture: SurfaceLike,
+        surface: NvSurface,
         call: DrawTextCall,
         pos: NvVector2 | None = None,
     ):
-        assert isinstance(texture, md.pygame.Surface), "texture must be a pygame Surface"
         cache = call.cache
         style = call.style
         pos = NvVector2(pos or call.pos or NvVector2(0, 0))
 
         font, font_size = self.core.get_font(
-            style=style, cache=cache, relative=True, size=call.font_size
+            style=style, cache=cache, relative=True, size=call.font_size, container_size=call.size
         )
         line_height_px = round(font_size * call.line_height)
         half_leading = (line_height_px - font_size) / 2
@@ -382,18 +301,15 @@ class PygameRenderer(BaseRenderer):
                 style=style,
             )
             dy -= half_leading
-            coordinates = (round(pos.x + dx), round(pos.y + dy))
-            rendered_texture = font.render(line, True, color)
-            texture.blit(rendered_texture, coordinates)
+            coordinates = NvVector2.from_xy(round(pos.x + dx), round(pos.y + dy))
+            font.render(line, surface_like=surface, pos=coordinates, color=color)
 
     @override
     def _borders_draw(
         self,
-        texture: SurfaceLike,
+        surface: NvSurface,
         call: DrawBordersCall,
     ):
-        assert isinstance(texture, md.pygame.Surface), "texture must be a pygame Surface"
-
         color = self.core.normalize_color(call.color or Color.White)
         style = call.style
         pos = call.pos or (0, 0)
@@ -403,16 +319,15 @@ class PygameRenderer(BaseRenderer):
         width = max(1, round(border_width)) if border_width > 0 else 0
         radius = self.core.normalize_radius(style.border_radius, relative=True, relm=relm)
 
-        subject = call.original_surface if call.original_surface is not None else texture
-        assert isinstance(subject, md.pygame.Surface), "subject must be a pygame Surface"
+        subject = call.original_surface if call.original_surface is not None else surface
 
-        if subject is texture:
+        if subject is surface:
             if width <= 0:
                 if any(r > 0 for r in radius):
-                    transform_into_rounded_rect(texture, radius, None)
+                    transform_into_rounded_rect(surface.native, radius, None)
             else:
                 transform_into_outlined_rounded_rect(
-                    texture,
+                    surface.native,
                     radius,
                     width,
                     color,
@@ -422,16 +337,16 @@ class PygameRenderer(BaseRenderer):
             subj = subject.copy()
             if width <= 0:
                 if any(r > 0 for r in radius):
-                    transform_into_rounded_rect(subj, radius, None)
+                    transform_into_rounded_rect(subj.native, radius, None)
             else:
                 transform_into_outlined_rounded_rect(
-                    subj,
+                    subj.native,
                     radius,
                     width,
                     color,
                     background_color=None,
                 )
-            texture.blit(subj, pos_xy)
+            surface.blit(subj, pos_xy)
 
     @override
     def _add_effects(
@@ -439,6 +354,6 @@ class PygameRenderer(BaseRenderer):
         call: DrawEffectsCall,
         effect_texture: Any,
         gradient: ClickGradient,
-        texture: Any,
+        surface: Any,
     ):
         raise NotImplementedError("pygame renderer does not support effects")
