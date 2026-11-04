@@ -14,15 +14,6 @@ class CustomFunctions(IntFlag):
     draw_main = 1 << 4
     draw_end = 1 << 5
 
-
-
-    #UpdateStart = 1 << 0
-    #UpdateMain  = 1 << 1
-    #UpdateEnd   = 1 << 2
-    #DrawStart   = 1 << 3
-    #DrawMain    = 1 << 4
-    #DrawEnd     = 1 << 5
-
 class CanvasType(StrEnum):
     Rect = "rect"
     Line = "line"
@@ -74,8 +65,8 @@ class BindType(StrEnum):
 
 class Backend(StrEnum):
     Pygame = "pygame"
-    Sdl = "sdl"
-    Opengl = "opengl" #Nah bro (scull emoji)
+    #Sdl = "sdl" # rip because of future pygame update
+    #Opengl = "opengl" #Nah bro (scull emoji)
     RayLib = "raylib"
 
 
@@ -155,6 +146,7 @@ class CacheType(Enum):
     Surface = auto()
     Gradient = auto()
     Image = auto()
+    Font = auto()
 
     #Render layers
     Borders = auto()
@@ -168,9 +160,6 @@ class CacheType(Enum):
     #Raylib specific
     RlFont = auto()
     ClickTexture = auto()
-
-    #SDL specific
-    SDLTexture = auto()
 
 class AnimationType(Enum):
     Color = auto()
@@ -224,20 +213,7 @@ class ConfigLoadType(StrEnum):
     Json = "json"
 
 
-class RenderConfig(StrEnum):
-    DrawL1 = "draw_l1"
-    DrawL2 = "draw_l2"
-    DrawL3 = "draw_l3"
-    DrawL4 = "draw_l4"
-    DrawL5 = "draw_l5"
-    Special = "special"
-    Auto = "auto"
-
-
 class RenderReturnType(StrEnum):
-    Raw = "raw"
-    Null = "null"
-    Outside = "outside"
     Modify = "modify"
     CreateNew = "create_new"
 
@@ -247,27 +223,16 @@ class SwitchAxis(StrEnum):
     Horizontal = "horizontal"
     Auto = "auto"
 
+class Orientation(StrEnum):
+    Vertical = "column"
+    Horizontal = "row"
+    Row = "row"
+    Column = "column"
 
-class _RenderArg:
-    pass
+    @property
+    def axis(self) -> int:
+        return 1 if self == Orientation.Vertical else 0
 
-
-class RenderArgs:
-    class DrawBase(_RenderArg):
-        pass
-
-    class DrawBorders(_RenderArg):
-        pass
-
-    class DrawText(_RenderArg):
-        pass
-
-    class DrawEffects(_RenderArg):
-        pass
-
-    class DrawBg(_RenderArg):
-        pass
-
-    @dataclass
-    class DrawCustom(_RenderArg):
-        custom_func: Callable
+    @property
+    def cross_axis(self) -> int:
+        return 0 if self == Orientation.Vertical else 1
