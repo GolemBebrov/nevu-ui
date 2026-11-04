@@ -79,7 +79,7 @@ class Counter:
             self.ended = True
 
     def reset(self, reset_value: int | float | None = None):
-        self.val = reset_value or self._initial_val
+        self.val = reset_value if reset_value is not None else self._initial_val
         self.ended = False
 
 class GlobalsBase:
@@ -121,17 +121,6 @@ nevu_globals = {}
 # Namespace
 
 
-class _strategy_type:
-    pass
-
-
-class Strategy:
-    class Static(_strategy_type):
-        pass
-
-    class Relative(_strategy_type):
-        pass
-
 
 class SurfaceLike:
     def blit(self, surface, dest): ...
@@ -143,3 +132,36 @@ class SurfaceLike:
     @staticmethod
     def as_type(type: Any) -> TypeGuard["SurfaceLike"]:
         return True
+
+class Element:
+    __slots__ = ["id", "text"]
+
+    def __init__(self, text, id: str | None = None):
+        self.text = text
+        self.id = id
+
+
+class Elements:
+    @staticmethod
+    def create(*items):
+        final_list = []
+        element_list = []
+        element_pair = []
+        try:
+            for item in items:
+                if isinstance(item, Element):
+                    element_list.append(item)
+                    continue
+                elif not isinstance(item, str):
+                    if isinstance(item, (list, tuple)) and len(item) == 2:
+                        element_pair = [str(item[0]), item[1] if item[1] else None]
+                    else:
+                        element_pair = [str(item), None]
+                else:
+                    element_pair = [item, None]
+                final_list.append(element_pair)
+        except Exception as e:
+            raise ValueError("Some objects cannot be converted into str", e) from e
+
+        element_list.extend(Element(pair[0], pair[1]) for pair in final_list)
+        return element_list
