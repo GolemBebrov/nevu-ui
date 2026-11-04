@@ -9,8 +9,8 @@
 from libc.stdint cimport uintptr_t
 from cpython.object cimport PyObject
 from cpython.tuple cimport PyTuple_GET_ITEM, PyTuple_GET_SIZE
-from nevu_ui.cython.nvvector2.nvvector2 cimport NvVector2, nv_vector2_t
-from nevu_ui.cython.nvrect.nvrect cimport NvRect
+from nevu_ui.cython.vector2.vector2 cimport Vector2 as NvVector2, nv_vector2_t
+from nevu_ui.cython.rect.rect cimport Rect
 from nevu_ui.cython.raylib_shader.raylib_shader cimport RaylibShader
 from libcpp.vector cimport vector
 from libcpp cimport bool
@@ -25,7 +25,7 @@ cdef struct Color:
     unsigned char b
     unsigned char a
 
-ctypedef struct Vector2:
+ctypedef struct _Vector2:
     float x
     float y
 
@@ -45,8 +45,8 @@ ctypedef struct Shader:
     unsigned int id
     int* locs
 
-ctypedef void (*DrawTextureRec_ptr)(Texture2D texture, Rectangle source, Vector2 position, Color tint) noexcept
-ctypedef void (*DrawTexturePro_ptr)(Texture2D texture, Rectangle source, Rectangle dest, Vector2 origin, float rotation, Color tint) noexcept
+ctypedef void (*DrawTextureRec_ptr)(Texture2D texture, Rectangle source, _Vector2 position, Color tint) noexcept
+ctypedef void (*DrawTexturePro_ptr)(Texture2D texture, Rectangle source, Rectangle dest, _Vector2 origin, float rotation, Color tint) noexcept
 ctypedef void (*BeginBlendMode_ptr)(int mode) noexcept
 ctypedef void (*EndBlendMode_ptr)() noexcept
 ctypedef void (*BeginTextureMode_ptr)(RenderTexture2D target) noexcept
@@ -63,8 +63,8 @@ ctypedef void (*EndDrawing_ptr)()
 ctypedef bool (*IsMouseButtonPressed_ptr)(int button) noexcept
 ctypedef bool (*IsMouseButtonDown_ptr)(int button) noexcept
 ctypedef bool (*IsMouseButtonUp_ptr)(int button) noexcept
-ctypedef Vector2 (*GetMousePosition_ptr)() noexcept
-ctypedef Vector2 (*GetMouseWheelMoveV_ptr)() noexcept
+ctypedef _Vector2 (*GetMousePosition_ptr)() noexcept
+ctypedef _Vector2 (*GetMouseWheelMoveV_ptr)() noexcept
 ctypedef bool (*IsKeyPressed_ptr)(int key) noexcept
 ctypedef bool (*IsKeyDown_ptr)(int key) noexcept
 ctypedef bool (*IsKeyUp_ptr)(int key) noexcept
@@ -236,7 +236,7 @@ cdef void set_rectangle_1tuple(Rectangle* rect, tuple rect_value):
     rect.width = rect_value[2]
     rect.height = rect_value[3]
 
-cdef void set_vector2_tuple(Vector2* vec, tuple pos):
+cdef void set_vector2_tuple(_Vector2* vec, tuple pos):
     vec.x = PyFloat_AsDouble(PyTuple_GET_ITEM(pos, 0))
     vec.y = PyFloat_AsDouble(PyTuple_GET_ITEM(pos, 1))
 
@@ -253,7 +253,7 @@ cdef void set_color(Color* col, tuple color):
 cdef void c_draw_texture_rec(object texture, tuple source_rec, tuple position, tuple color):
     cdef Texture2D c_tex = get_c_texture(texture)
     cdef Rectangle c_source
-    cdef Vector2 c_pos
+    cdef _Vector2 c_pos
     cdef Color c_col
 
     set_rectangle_1tuple(&c_source, source_rec)
@@ -265,7 +265,7 @@ cdef void c_draw_texture_rec(object texture, tuple source_rec, tuple position, t
 cdef void c_draw_texture_vec(object texture, tuple position, tuple color, bint flip):
     cdef Texture2D c_tex = get_c_texture(texture)
     cdef Rectangle c_source
-    cdef Vector2 c_pos
+    cdef _Vector2 c_pos
     cdef Color c_col
 
     h = c_tex.height
@@ -284,8 +284,8 @@ color_white.g = <unsigned char>255
 color_white.b = <unsigned char>255
 color_white.a = <unsigned char>255
 
-cdef inline Vector2 nv_vector2_t_to_vector2(nv_vector2_t pos) noexcept:
-    cdef Vector2 result
+cdef inline _Vector2 nv_vector2_t_to_vector2(nv_vector2_t pos) noexcept:
+    cdef _Vector2 result
     result.x = roundf(<float>pos.x)
     result.y = roundf(<float>pos.y)
     return result
@@ -306,7 +306,7 @@ cdef void c_draw_texture_pro(object texture, tuple source_rec, tuple dest_rec, t
     cdef Texture2D c_tex = get_c_texture(texture)
     cdef Rectangle c_source
     cdef Rectangle c_dest
-    cdef Vector2 c_origin
+    cdef _Vector2 c_origin
     cdef Color c_col
 
     set_rectangle_1tuple(&c_source, source_rec)
@@ -357,7 +357,7 @@ cpdef int get_nvshader_location(RaylibShader shader, str name):
     cdef bytes c_name = name.encode('utf-8')
     return _c_GetShaderLocation(c_shader, <const char*>c_name)
 
-cdef inline void set_fval_from_nvvector2(float* f_val, NvVector2 value):
+cdef inline void set_fval_from_vector2(float* f_val, NvVector2 value):
     f_val[0] = value.x
     f_val[1] = value.y
 
@@ -374,7 +374,7 @@ cdef inline void set_fval_from_tuple4(float* f_val, tuple value):
 cpdef void set_nvshader_value_vec2_nvvec(RaylibShader shader, int loc_index, NvVector2 value):
     cdef Shader c_shader = _get_c_shader_from_nvshader(shader)
     cdef float[2] f_val
-    set_fval_from_nvvector2(f_val, value)
+    set_fval_from_vector2(f_val, value)
     _c_SetShaderValue(c_shader, loc_index, <const void*>f_val, 1)
 
 cpdef void set_nvshader_value_vec2_tuple(RaylibShader shader, int loc_index, tuple value):
@@ -429,21 +429,21 @@ cpdef bint is_mouse_button_up(int button):
     return False
 
 cpdef NvVector2 get_mouse_position():
-    cdef Vector2 pos
+    cdef _Vector2 pos
     if _c_GetMousePosition != NULL:
         pos = _c_GetMousePosition()
         return NvVector2.new(pos.x, pos.y)
     return NvVector2.new(0, 0)
 
 cpdef NvVector2 get_mouse_wheel_move_v():
-    cdef Vector2 v
+    cdef _Vector2 v
     if _c_GetMouseWheelMoveV != NULL:
         v = _c_GetMouseWheelMoveV()
         return NvVector2.new(v.x, v.y)
     return NvVector2.new(0, 0)
 
 cpdef float get_mouse_wheel_move_y():
-    cdef Vector2 v
+    cdef _Vector2 v
     if _c_GetMouseWheelMoveV != NULL:
         v = _c_GetMouseWheelMoveV()
         return v.y

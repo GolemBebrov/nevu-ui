@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Any, override
 
-from nevu_ui.cython.nvsurface.nvsurface import NvSurface
+from nevu_ui.cython.surface.surface import Surface
 
 if TYPE_CHECKING:
     from nevu_ui.presentation.style import Style
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 import nevu_ui.core.modules as md
 from nevu_ui.core.annotations import Annotations
 from nevu_ui.core.enums import CacheType
-from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.cython.shapes import (
     transform_into_outlined_rounded_rect,
     transform_into_rounded_rect,
@@ -43,7 +43,7 @@ class _PygameCoreNamespace(_BaseCoreNamespace):
     @override
     def draw_rect(
         self,
-        surface: NvSurface,
+        surface: Surface,
         pos: Annotations.vec2_like_v,
         size: Annotations.vec2_like_v,
         *,
@@ -69,7 +69,7 @@ class _PygameCoreNamespace(_BaseCoreNamespace):
     @override
     def draw_line(
         self,
-        surface: NvSurface,
+        surface: Surface,
         pos_from: Annotations.vec2_like_v,
         pos_to: Annotations.vec2_like_v,
         *,
@@ -126,7 +126,7 @@ class PygameRenderer(BaseRenderer):
     @override
     def _base_draw(
         self,
-        surface: NvSurface,
+        surface: Surface,
         call: DrawBaseCall,
     ):
         cache = call.cache
@@ -199,7 +199,7 @@ class PygameRenderer(BaseRenderer):
         self,
         call: DrawTextCall,
         pos: Annotations.vec2_like_v | None = None,
-    ) -> tuple[list[str], NvVector2, NvVector2]:
+    ) -> tuple[list[str], Vector2, Vector2]:
         cache = call.cache
         style = call.style
         text = call.text
@@ -249,11 +249,11 @@ class PygameRenderer(BaseRenderer):
             ]
             text_size_y = len(text_lines) * line_height_px
             if text_sizes:
-                text_size = NvVector2.from_xy(
+                text_size = Vector2.from_xy(
                     max(text_sizes, key=lambda s: s.x).x, text_size_y
                 )
             else:
-                text_size = NvVector2()
+                text_size = Vector2()
 
         container_pos = pos or call.pos or (0, 0)
         result_pos = self.core.align_inner_rect(
@@ -268,13 +268,13 @@ class PygameRenderer(BaseRenderer):
     def _text_draw(
         self,
         text_lines: list[str],
-        surface: NvSurface,
+        surface: Surface,
         call: DrawTextCall,
-        pos: NvVector2 | None = None,
+        pos: Vector2 | None = None,
     ):
         cache = call.cache
         style = call.style
-        pos = NvVector2(pos or call.pos or NvVector2(0, 0))
+        pos = Vector2(pos or call.pos or Vector2(0, 0))
 
         font, font_size = self.core.get_font(
             style=style, cache=cache, relative=True, size=call.font_size, container_size=call.size
@@ -301,13 +301,13 @@ class PygameRenderer(BaseRenderer):
                 style=style,
             )
             dy -= half_leading
-            coordinates = NvVector2.from_xy(round(pos.x + dx), round(pos.y + dy))
+            coordinates = Vector2.from_xy(round(pos.x + dx), round(pos.y + dy))
             font.render(line, surface_like=surface, pos=coordinates, color=color)
 
     @override
     def _borders_draw(
         self,
-        surface: NvSurface,
+        surface: Surface,
         call: DrawBordersCall,
     ):
         color = self.core.normalize_color(call.color or Color.White)

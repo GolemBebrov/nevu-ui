@@ -2,13 +2,13 @@ from __future__ import annotations
 import math
 from typing import Any, override
 
-from nevu_ui.cython.nvsurface.nvsurface import NvSurface
+from nevu_ui.cython.surface.surface import Surface
 from nevu_ui.presentation.style import Style, default_style
 import nevu_ui.core.modules as md
 from nevu_ui.core.annotations import Annotations
 from nevu_ui.core.enums import CacheType
 from nevu_ui.core.state import nevu_state
-from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.cython.raylib.raylib import begin_blend_mode, end_blend_mode
 from nevu_ui.presentation.color import Color
 from nevu_ui.rendering.base_renderer import (
@@ -39,7 +39,7 @@ class _RaylibCoreNamespace(_BaseCoreNamespace):
     @override
     def draw_line(
         self,
-        surface: NvSurface,
+        surface: Surface,
         pos_from: Annotations.vec2_like_v,
         pos_to: Annotations.vec2_like_v,
         *,
@@ -85,7 +85,7 @@ class _RaylibCoreNamespace(_BaseCoreNamespace):
     #    clear_color: Annotations.rgb_like_color | None = Color.Blank,
     #    normalize_color: bool = True,
     #) -> SurfaceLike:
-    #    texture = NvRenderTexture(NvVector2(size))
+    #    texture = NvRenderTexture(Vector2(size))
     #    if clear_color is not None:
     #        clear_color = self.normalize_color(clear_color) if normalize_color else clear_color
     #        texture.clear(clear_color)
@@ -95,7 +95,7 @@ class _RaylibCoreNamespace(_BaseCoreNamespace):
     @override
     def draw_rect(
         self,
-        surface: NvSurface,
+        surface: Surface,
         pos: Annotations.vec2_like_v,
         size: Annotations.vec2_like_v,
         *,
@@ -153,7 +153,7 @@ class RaylibRenderer(BaseRenderer):
     @override
     def _base_draw( #type: ignore
         self,
-        surface: NvSurface,
+        surface: Surface,
         call: DrawBaseCall,
     ):
         blend_mode = md.rl.BlendMode
@@ -216,7 +216,7 @@ class RaylibRenderer(BaseRenderer):
             radius = self.core.normalize_radius(style.border_radius, relative=True)
 
             begin_blend_mode(blend_mode.BLEND_ALPHA_PREMULTIPLY)
-            self.core.draw_rect(surface, NvVector2(), size, color = color, style = style, glassy=call.glassy) # type: ignore
+            self.core.draw_rect(surface, Vector2(), size, color = color, style = style, glassy=call.glassy) # type: ignore
 
         else:
             begin_blend_mode(blend_mode.BLEND_ALPHA_PREMULTIPLY)
@@ -229,7 +229,7 @@ class RaylibRenderer(BaseRenderer):
         self,
         call: DrawTextCall,
         pos: Annotations.vec2_like_v | None = None,
-    ) -> tuple[list[str], NvVector2, NvVector2]:
+    ) -> tuple[list[str], Vector2, Vector2]:
         cache = call.cache
         style = call.style
         relative = call.relative
@@ -271,9 +271,9 @@ class RaylibRenderer(BaseRenderer):
             text_sizes = [self.core.measure_text(line, font=font, font_size=font_size) for line in text_lines]
             text_size_y = len(text_lines) * line_height_px
             if text_sizes:
-                text_size = NvVector2.from_xy(max(text_sizes, key=lambda s: s.x).x, text_size_y)
+                text_size = Vector2.from_xy(max(text_sizes, key=lambda s: s.x).x, text_size_y)
             else:
-                text_size = NvVector2()
+                text_size = Vector2()
 
         container_pos = pos or call.pos or (0, 0)
         result_pos = self.core.align_inner_rect(
@@ -288,15 +288,15 @@ class RaylibRenderer(BaseRenderer):
     def _text_draw(  # type: ignore
         self,
         text_lines: list[str],
-        surface: NvSurface,
+        surface: Surface,
         call: DrawTextCall,
-        pos: NvVector2 | None = None,
+        pos: Vector2 | None = None,
     ):
         cache = call.cache
         style = call.style
         relm = call.relm
         relative = call.relative
-        pos = NvVector2(pos or call.pos or NvVector2(0, 0))
+        pos = Vector2(pos or call.pos or Vector2(0, 0))
 
         font, font_size = self.core.get_font(style=style, cache=cache, relative=relative, relm=relm, size=call.font_size, container_size=call.size)
         line_height_px = round(font_size * call.line_height)
@@ -322,7 +322,7 @@ class RaylibRenderer(BaseRenderer):
 
     def _borders_draw(  # type: ignore
         self,
-        surface: NvSurface,
+        surface: Surface,
         call: DrawBordersCall,
     ):
         color = call.color or Color.White
@@ -360,9 +360,9 @@ class RaylibRenderer(BaseRenderer):
     def _add_effects(
         self,
         call: DrawEffectsCall,
-        effect_texture: NvSurface,
+        effect_texture: Surface,
         gradient: ClickGradient,
-        surface: NvSurface,
+        surface: Surface,
     ):
         display = nevu_state.window.renderer
         assert nevu_state.window.is_raylib(display)

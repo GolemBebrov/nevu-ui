@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, TypeGuard
 
 if TYPE_CHECKING:
     from nevu_ui.components.nevuobj import NevuObject
-    from nevu_ui.cython.nvvector2 import NvVector2
+    from nevu_ui.cython.vector2 import Vector2
 
 from nevu_ui.core.classes import SurfaceLike
 from nevu_ui.core.size.base import _SizeRule
@@ -36,7 +36,7 @@ class Annotations:
     # === size annotations ===
     type any_number = float | int
     type vec2_like = tuple[any_number, any_number] | list[any_number]
-    type vec2_like_v = vec2_like | NvVector2
+    type vec2_like_v = vec2_like | Vector2
     type vec2_like_srule = tuple[_SizeRule, _SizeRule] | list[_SizeRule]
     type vec2_all = vec2_like_v | vec2_like_srule
     type rect_like = tuple[any_number, any_number, any_number, any_number] | list[any_number]

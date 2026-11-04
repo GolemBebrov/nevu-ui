@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any
 
-from nevu_ui.cython.nvsurface.nvsurface import NvSurface
+from nevu_ui.cython.surface.surface import Surface
 
 if TYPE_CHECKING:
     from pygame import Surface
@@ -9,12 +9,12 @@ import nevu_ui.core.modules as md
 from nevu_ui.core.classes import SurfaceLike
 from nevu_ui.core.enums import Backend, OvItemType
 from nevu_ui.core.state import nevu_state
-from nevu_ui.cython import NvVector2
+from nevu_ui.cython import Vector2
 
 
 class OverlayManager:
     SurfaceType = Any
-    PipelineItem = tuple[SurfaceType, NvVector2, int | float, OvItemType]
+    PipelineItem = tuple[SurfaceType, Vector2, int | float, OvItemType]
     layer_type = float | int
 
     def __init__(self):
@@ -42,13 +42,13 @@ class OverlayManager:
         self.mark_unsorted()
         self.mark_undone()
 
-    def add_element(self, name, surface, coordinates: NvVector2, layer: layer_type = 0):
+    def add_element(self, name, surface, coordinates: Vector2, layer: layer_type = 0):
         if nevu_state.window.renderer_type.raylib:
             md.rl.set_texture_filter(surface.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
         self.pipeline[name] = (surface, coordinates, layer, OvItemType.Texture)
         self.mark_all()
 
-    def add_draw_call(self, name, func, coordinates: NvVector2, layer: layer_type = 0):
+    def add_draw_call(self, name, func, coordinates: Vector2, layer: layer_type = 0):
         self.pipeline[name] = (func, coordinates, layer, OvItemType.DrawCall)
         self.mark_all()
 
@@ -69,7 +69,7 @@ class OverlayManager:
         self,
         name: Any,
         surface: SurfaceLike,
-        coordinates: NvVector2,
+        coordinates: Vector2,
         layer: layer_type = 0,
         strict: bool = False,
         type: OvItemType | None = None,
@@ -94,7 +94,7 @@ class OverlayManager:
     def change_coordinates(
         self,
         name: Any,
-        coordinates: NvVector2,
+        coordinates: Vector2,
         strict: bool = False,
         type: OvItemType | None = None,
     ):
@@ -176,7 +176,7 @@ class OverlayManager:
             self._sorted_cache = sorted(self.pipeline.items(), key=lambda x: x[1][2])
         return self._sorted_cache
 
-    def draw_pipeline(self, surface: NvSurface):
+    def draw_pipeline(self, surface: Surface):
         assert nevu_state.window
         if self._get_surf_size(surface) != self._cached_size:
             self.mark_undone()
@@ -197,7 +197,7 @@ class OverlayManager:
         if not nevu_state.window.renderer_type.raylib:
             for element in self.sorted_pipeline:
                 surf = element[1][0]
-                coords: NvVector2 = element[1][1]
+                coords: Vector2 = element[1][1]
                 surface.blit(surf, coords.to_tuple())
         else:
             md.rl.begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
@@ -206,7 +206,7 @@ class OverlayManager:
             assert nevu_state.window.is_raylib(display)
             for element in self.sorted_pipeline:
                 surf = element[1][0]
-                coords: NvVector2 = element[1][1]
+                coords: Vector2 = element[1][1]
                 if element[1][3] == OvItemType.DrawCall:
                     func = element[1][0]
                     func()
@@ -233,7 +233,7 @@ class OverlayManager:
         self._rendered = True
         return result
 
-    def _get_surf_size(self, surface: NvSurface):
+    def _get_surf_size(self, surface: Surface):
         return surface.size
 
     def _finish_result(self, result):
@@ -242,7 +242,7 @@ class OverlayManager:
                 return result
 
     def _get_result_surface(self, size):
-        surface = NvSurface(size)
+        surface = Surface(size)
         if nevu_state.window.renderer_type.raylib:
             rl = md.rl
             rl.set_texture_filter(

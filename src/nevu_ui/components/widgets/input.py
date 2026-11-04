@@ -8,9 +8,9 @@ from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import BindType, CustomFunctions, RenderReturnType
 from nevu_ui.core.state import nevu_state
-from nevu_ui.cython.nvrect import NvRect
-from nevu_ui.cython.nvsurface.nvsurface import NvSurface
-from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.rect import Rect
+from nevu_ui.cython.surface.surface import Surface
+from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.cython.raylib.raylib import begin_blend_mode, end_blend_mode
 from nevu_ui.presentation.color import Color
 from nevu_ui.rendering import DrawTextCall
@@ -47,7 +47,7 @@ class Input(Widget):
 
     def _init_numerical(self):
         super()._init_numerical()
-        self._scroll_offset = NvVector2()
+        self._scroll_offset = Vector2()
         self.max_scroll_y = 0
         self.cursor_place = 0
         self._selection_anchor: int | None = None
@@ -57,8 +57,8 @@ class Input(Widget):
             raise ValueError(
                 "Input padding must have 4 values (left, top, right, bottom)"
             )
-        self.top_left_padding = NvVector2()
-        self.bottom_right_padding = NvVector2()
+        self.top_left_padding = Vector2()
+        self.bottom_right_padding = Vector2()
 
     @property
     def selected(self):
@@ -82,9 +82,9 @@ class Input(Widget):
 
     def _init_text_cache(self):
         self._text_surface = None
-        self._text_rect = NvRect(0, 0, 0, 0)
+        self._text_rect = Rect(0, 0, 0, 0)
 
-    def _lazy_init(self, size: NvVector2 | list):
+    def _lazy_init(self, size: Vector2 | list):
         super()._lazy_init(size)
         self._init_cursor()
         self._draw_text()
@@ -93,8 +93,8 @@ class Input(Widget):
     def _init_cursor(self):
         font_height = int(self._get_line_height())
         cursor_width = max(1, int(self.cursor_width * self._resize_ratio.x))
-        cursor_size = NvVector2.from_xy(cursor_width, font_height)
-        cursor = NvSurface(cursor_size)
+        cursor_size = Vector2.from_xy(cursor_width, font_height)
+        cursor = Surface(cursor_size)
 
         if not cursor:
             self.cursor = None
@@ -171,8 +171,8 @@ class Input(Widget):
         max_top = max_elem(base_padding[0], base_padding[1], "top")
         max_bottom = max_elem(base_padding[2], base_padding[3], "bottom")
 
-        self.top_left_padding = NvVector2.from_xy(max_left, max_top)
-        self.bottom_right_padding = NvVector2.from_xy(max_right, max_bottom)
+        self.top_left_padding = Vector2.from_xy(max_left, max_top)
+        self.bottom_right_padding = Vector2.from_xy(max_right, max_bottom)
 
     def _ensure_padding(self, value, name):
         if value < 0:
@@ -185,20 +185,20 @@ class Input(Widget):
         line_h = font.measure("A").y
         return max(1.0, line_h)
 
-    def _get_cursor_line_col(self, lines=None, abs_pos=None) -> NvVector2:
+    def _get_cursor_line_col(self, lines=None, abs_pos=None) -> Vector2:
         if not self.text:
-            return NvVector2.from_xy(0, 0)
+            return Vector2.from_xy(0, 0)
         lines = lines or self.text.split("\n")
         pos = self.cursor_place if abs_pos is None else abs_pos
         current_pos = 0
         for i, line in enumerate(lines):
             line_len = len(line)
             if pos <= current_pos + line_len:
-                return NvVector2.from_xy(i, pos - current_pos)
+                return Vector2.from_xy(i, pos - current_pos)
             current_pos += line_len + 1
         last_line_index = len(lines) - 1
         last_line_len = len(lines[last_line_index]) if last_line_index >= 0 else 0
-        return NvVector2.from_xy(last_line_index, last_line_len)
+        return Vector2.from_xy(last_line_index, last_line_len)
 
     def _get_line_abs_pos(self, target_line_index, target_col_index, lines=None):
         lines = lines or self.text.split("\n")
@@ -282,12 +282,12 @@ class Input(Widget):
         scroll_offset.y = max(0, min(scroll_offset.y, max_scroll_y))
         self.max_scroll_y = max_scroll_y
 
-    def _create_text_surface(self, size: NvVector2 | None):
+    def _create_text_surface(self, size: Vector2 | None):
         if size is None:
             self._text_surface = None
             return
 
-        surface = NvSurface((math.ceil(size.x), math.ceil(size.y)))
+        surface = Surface((math.ceil(size.x), math.ceil(size.y)))
 
         rtype = nevu_state.window.renderer_type
         if rtype.raylib:
@@ -336,7 +336,7 @@ class Input(Widget):
         rtype = nevu_state.window.renderer_type
 
         if not lines:
-            self._create_text_surface(NvVector2(1, line_height))
+            self._create_text_surface(Vector2(1, line_height))
             return
 
         max_width = 0
@@ -347,7 +347,7 @@ class Input(Widget):
         total_height = len(lines) * line_height
 
         self._create_text_surface(
-            NvVector2(max(1, max_width), max(line_height, total_height))
+            Vector2(max(1, max_width), max(line_height, total_height))
         )
 
         text_surf = self._text_surface
@@ -370,7 +370,7 @@ class Input(Widget):
             color = self.subtheme_font
             for line in lines:
                 if line:
-                    font.render(line, surface_like=text_surf, pos = NvVector2.from_xy(0, current_y), color = color)
+                    font.render(line, surface_like=text_surf, pos = Vector2.from_xy(0, current_y), color = color)
                 current_y += line_height
 
     def _draw_text(self, text_override: str | None = None):
@@ -384,7 +384,7 @@ class Input(Widget):
             self._draw_continuous_text(text_to_render)
         self._update_scroll_offset_x()
 
-    def _resize_content(self, resize_ratio: NvVector2):
+    def _resize_content(self, resize_ratio: Vector2):
         super()._resize_content(resize_ratio)
         self._process_padding()
         self._init_cursor()
@@ -780,7 +780,7 @@ class Input(Widget):
         upd_scrolly = self._update_scroll_offset_y
 
         if mouse.left_fdown:
-            mouse_collided = self.get_nvrect().collide_point(mouse.pos)
+            mouse_collided = self.get_rect().collide_point(mouse.pos)
             if selected:
                 if not mouse_collided:
                     selected = False
@@ -1006,7 +1006,7 @@ class Input(Widget):
                     dest_pos = top_left_scrolled.get_int_tuple()
                 else:
                     text_additional_y = ((curr_size.y - top_left_padding.y - bottom_right_padding.y) - text_surface.height) / 2
-                    text_vec = NvVector2.from_xy(
+                    text_vec = Vector2.from_xy(
                         top_left_scrolled.x,
                         top_left_padding.y + text_additional_y
                     )
@@ -1111,10 +1111,10 @@ class Input(Widget):
     def _draw_cursor(
         self,
         rtype,
-        surface: NvSurface,
-        current_size: NvVector2,
-        top_left_padding: NvVector2,
-        top_left_scrolled: NvVector2,
+        surface: Surface,
+        current_size: Vector2,
+        top_left_padding: Vector2,
+        top_left_scrolled: Vector2,
         clip,
         clip_rect=None,
         multi_line=False,
@@ -1122,7 +1122,7 @@ class Input(Widget):
         line_height = self._get_line_height()
         cursor = self.cursor
         assert cursor
-        cursor_size = NvVector2.from_xy(cursor.get_width(), cursor.get_height())
+        cursor_size = Vector2.from_xy(cursor.get_width(), cursor.get_height())
         measure = self._measure_text
 
         if multi_line:
@@ -1132,13 +1132,13 @@ class Input(Widget):
             current_text_line = lines[line_idx] if line_idx < len(lines) else ""
             text_before_cursor = current_text_line[:col_idx]
             cursor_x_offset = measure(text_before_cursor)[0]
-            cursor_actual_pos = top_left_scrolled + NvVector2.from_xy(
+            cursor_actual_pos = top_left_scrolled + Vector2.from_xy(
                 cursor_x_offset, line_idx * line_height
             )
         else:
             text_before_cursor = self.text[: self.cursor_place]
             cursor_x_offset = measure(text_before_cursor)[0]
-            cursor_actual_pos = NvVector2.from_xy(
+            cursor_actual_pos = Vector2.from_xy(
                 top_left_scrolled.x + cursor_x_offset,
                 top_left_padding.y
                 + (

@@ -6,7 +6,7 @@ from nevu_ui.components._typehints import (
     _GridKwargs_uni,
     _GridKwargs_xy,
 )
-from nevu_ui.components.layouts import LayoutType
+from nevu_ui.components.layouts import BaseLayout
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
@@ -17,10 +17,10 @@ from nevu_ui.cython.logic.logic import (
     draw_widgets_optimized,
     py_get_item_abs_coords,
 )
-from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.vector2 import Vector2
 
 
-class Grid(LayoutType):
+class Grid(BaseLayout):
     row: int | float
     column: int | float
     any_number = int | float
@@ -62,7 +62,7 @@ class Grid(LayoutType):
         super()._init_lists()
         self.grid_coordinates = []
 
-    def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None):  # type: ignore
+    def _lazy_init(self, size: Vector2 | list, content: content_type | None = None):  # type: ignore
         super()._lazy_init(size)
         self.cell_height = self.size[1] / self.row
         self.cell_width = self.size[0] / self.column
@@ -78,12 +78,12 @@ class Grid(LayoutType):
         if not self.booted: return
         self.cached_coordinates = []
         c_vec = (
-            NvVector2.from_xy(
+            Vector2.from_xy(
                 self._no_borders_current_size.x / self.column,
                 self._no_borders_current_size.y / self.row,
             )
             if self._parent_menu
-            else NvVector2.from_xy(
+            else Vector2.from_xy(
                 self.relx(self.cell_width), self.rely(self.cell_height)
             )
         )
@@ -118,7 +118,7 @@ class Grid(LayoutType):
             return self._percent_helper((self.cell_height), grid_cell_rule.value)
         elif coord_type is Cgc:
             return self._percent_helper(
-                self.rel(NvVector2(self.cell_width, self.cell_height))[pos], grid_cell_rule.value
+                self.rel(Vector2(self.cell_width, self.cell_height))[pos], grid_cell_rule.value
             )
         elif coord_type is Cgcw:
             return self._percent_helper(self.relx(self.cell_width), grid_cell_rule.value)
@@ -133,13 +133,13 @@ class Grid(LayoutType):
         if x > self.column or y > self.row or x < 1 or y < 1:
             raise range_error
         for coordinates in self.grid_coordinates:
-            if NvVector2(coordinates) == NvVector2(x - 1, y - 1):
+            if Vector2(coordinates) == Vector2(x - 1, y - 1):
                 raise ValueError("Grid item already exists")
         super().add_item(item)
-        self.grid_coordinates.append(NvVector2.from_xy(x - 1, y - 1))
+        self.grid_coordinates.append(Vector2.from_xy(x - 1, y - 1))
 
     def _draw_main(self):
-        draw_widgets_optimized(self, self.items, LayoutType, Widget)
+        draw_widgets_optimized(self, self.items, BaseLayout, Widget)
 
     def get_column(self, x: any_number) -> list[NevuObject]:
         return [
@@ -167,7 +167,7 @@ class Grid(LayoutType):
         if widget:
             self.kill_item(widget)
 
-    def get_item_grid(self, item: NevuObject) -> NvVector2 | None:
+    def get_item_grid(self, item: NevuObject) -> Vector2 | None:
         for i, coords in enumerate(self.grid_coordinates):
             if self.items[i] == item:
                 return coords

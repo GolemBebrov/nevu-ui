@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, final
 import nevu_ui.core.modules as md
 from nevu_ui.core.classes import Counter, SurfaceLike, TooltipType
 from nevu_ui.core.state import nevu_state
-from nevu_ui.cython import Cache, NvRect, NvVector2
+from nevu_ui.cython import Cache, Rect, Vector2
 from nevu_ui.presentation.animations.animation_base import Vector2Animation
 from nevu_ui.presentation.animations.animation_manager import AnimationManager
 from nevu_ui.presentation.animations.animations_library import smootherstep
@@ -45,10 +45,10 @@ class _TooltipBase:
     )
 
     def __init__(self, title: str, style: Style = default_style):
-        self.initial_ratio = NvVector2.from_xy(1, 1)
-        self.ratio = NvVector2.from_xy(1, 1)
-        self.pos = NvVector2()
-        self.size = NvVector2()
+        self.initial_ratio = Vector2.from_xy(1, 1)
+        self.ratio = Vector2.from_xy(1, 1)
+        self.pos = Vector2()
+        self.size = Vector2()
         self.style = copy.deepcopy(style)
         self.title = title
         self.cache = Cache()
@@ -84,7 +84,7 @@ class _TooltipBase:
             blacklist=[],
         )
 
-    def adapted_coords(self) -> NvVector2:
+    def adapted_coords(self) -> Vector2:
         return mouse.pos
 
     def get_surf(self, renderer: BaseRenderer):
@@ -92,14 +92,14 @@ class _TooltipBase:
             self._cached_surf = self._get_surf_content(renderer)
         return self._cached_surf
 
-    def resize(self, ratio: NvVector2):
+    def resize(self, ratio: Vector2):
         self.ratio = ratio
         self._cached_surf = None
         self.clear_all()
 
     def _get_surf_content(self, renderer: BaseRenderer) -> SurfaceLike:
         br = self.style.border_radius
-        title_rect = NvRect(0, 0, *self._csize)
+        title_rect = Rect(0, 0, *self._csize)
 
         surf = renderer.run_base(
             DrawBaseCall(
@@ -164,10 +164,10 @@ class _ExtendedTooltipBase(_TooltipBase):
             )
         )
 
-        title_size = self._csize - NvVector2.from_xy(0, self._csize.y / 1.3)
-        content_size = self._csize - NvVector2.from_xy(0, title_size.y)
-        title_rect = NvRect(0, 0, *title_size)
-        content_rect = NvRect(0, title_rect.h, *content_size)
+        title_size = self._csize - Vector2.from_xy(0, self._csize.y / 1.3)
+        content_size = self._csize - Vector2.from_xy(0, title_size.y)
+        title_rect = Rect(0, 0, *title_size)
+        content_rect = Rect(0, title_rect.h, *content_size)
 
         title_kwargs = renderer.run_text(
             DrawTextCall(
@@ -213,30 +213,30 @@ class _ExtendedTooltipBase(_TooltipBase):
 class _SmallTooltip(_TooltipBase):
     def __init__(self, title: str, style: Style = default_style):
         super().__init__(title, style)
-        self.initial_ratio = NvVector2(0.2, 0.2)
+        self.initial_ratio = Vector2(0.2, 0.2)
 
 
 class _MediumTooltip(_ExtendedTooltipBase):
     def __init__(self, title: str, content, style: Style = default_style):
         super().__init__(title, content, style)
-        self.initial_ratio = NvVector2(0.4, 0.3)
+        self.initial_ratio = Vector2(0.4, 0.3)
 
 
 class _LargeTooltip(_ExtendedTooltipBase):
     def __init__(self, title: str, content, style: Style = default_style):
         super().__init__(title, content, style)
-        self.initial_ratio = NvVector2(0.6, 0.4)
+        self.initial_ratio = Vector2(0.6, 0.4)
 
 
 class _CustomTooltip(_TooltipBase):
-    def __init__(self, ratio: NvVector2, title: str, style: Style = default_style):
+    def __init__(self, ratio: Vector2, title: str, style: Style = default_style):
         super().__init__(title, style)
         self.initial_ratio = ratio
 
 
 class _BigCustomTooltip(_ExtendedTooltipBase):
     def __init__(
-        self, ratio: NvVector2, title: str, content: str, style: Style = default_style
+        self, ratio: Vector2, title: str, content: str, style: Style = default_style
     ):
         super().__init__(title, content, style)
         self.initial_ratio = ratio
@@ -263,7 +263,7 @@ class Tooltip:
         counter_max = 1.0
         self._counter = Counter(0, counter_max)
         self._counter_opened = Counter(0, counter_max * 0.1)
-        self.old_coord: NvVector2 = NvVector2()
+        self.old_coord: Vector2 = Vector2()
         self.anim_manager = None
 
     def adapted_coords(self):
@@ -275,10 +275,10 @@ class Tooltip:
         return self._data.size
 
     @size.setter
-    def size(self, size: NvVector2):
+    def size(self, size: Vector2):
         self._data.size = size
 
-    def resize(self, resize_ratio: NvVector2):
+    def resize(self, resize_ratio: Vector2):
         self._data.resize(resize_ratio)
 
     def unpack_type(self) -> _TooltipBase:
@@ -299,7 +299,7 @@ class Tooltip:
         if overlay.has_element(self):
             overlay.remove_element(self)
         self.anim_manager = None
-        self.old_coord = NvVector2()
+        self.old_coord = Vector2()
 
     def _on(self, *args: Any):
         assert self.master and self.master.renderer, ("Tooltip is not connected to NevuObject!")
@@ -350,7 +350,7 @@ class Tooltip:
                     if self._counter.ended:
                         self._move_to_mouse(new_pos)
 
-    def _move_to_mouse(self, new_pos: NvVector2):
+    def _move_to_mouse(self, new_pos: Vector2):
         self._counter.reset()
         self._counter_opened.reset()
 

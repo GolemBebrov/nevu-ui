@@ -7,8 +7,8 @@ from nevu_ui.presentation.color import Color
 from nevu_ui.assets.shader import ShaderLibrary #SdfShader, BorderShader, GlassySdfShader, GlassyBorderShader, LineSdfShader
 
 
-from nevu_ui.cython.nvrect.nvrect cimport NvRect
-from nevu_ui.cython.nvvector2.nvvector2 cimport NvVector2
+from nevu_ui.cython.rect.rect cimport Rect
+from nevu_ui.cython.vector2.vector2 cimport Vector2
 from nevu_ui.cython.raylib.raylib cimport (
     init_raylib_pointers, begin_blend_mode, end_blend_mode, begin_texture_mode, end_texture_mode,
     c_draw_texture_pro, c_draw_texture_rec, c_draw_texture_vec, begin_nvshader_mode, end_shader_mode, begin_drawing, end_drawing,
@@ -32,7 +32,7 @@ cdef class WindowRendererBase:
         pass #Used for typehints :D
 
     def get_tuple_rect(self) -> tuple: ...
-    def get_nvrect(self) -> NvRect: ...
+    def get_rect(self) -> Rect: ...
     def get_width(self) -> int: ...
     def get_height(self) -> int: ...
     def blit(self, source, dest): ...
@@ -41,7 +41,7 @@ cdef class WindowRendererBase:
     def end_frame(self): ...
     def clear(self, color: Annotations.rgba_color): ...
     def get_size_tuple(self) -> tuple[int, int]: ...
-    def get_size_nvvec(self) -> NvVector2: ...
+    def get_size_nvvec(self) -> Vector2: ...
     @property
     def screen(self): ...
 
@@ -359,8 +359,8 @@ cdef class WindowRendererRaylib:
         minside = min(width, height) / 2.0
         for i in range(4):
             list_radii[i] = min(radii[i], minside)
-        cdef NvVector2 rec_size
-        rec_size = NvVector2.new(width, height)
+        cdef Vector2 rec_size
+        rec_size = Vector2.new(width, height)
         set_nvshader_value_vec2_nvvec(self._glassy_border_shader, self._glassy_border_locs['rectSize'], rec_size)
         set_nvshader_value_vec4_tuple(self._glassy_border_shader, self._glassy_border_locs['radius'], tuple(list_radii))
         r, g, b, a = 255, 255, 255, 255
@@ -380,8 +380,8 @@ cdef class WindowRendererRaylib:
         minside = min(width, height) / 2.0
         for i in range(4):
             list_radii[i] = min(radii[i], minside)
-        cdef NvVector2 rec_size
-        rec_size = NvVector2.new(width, height)
+        cdef Vector2 rec_size
+        rec_size = Vector2.new(width, height)
         set_nvshader_value_vec2_nvvec(self._border_shader, self._border_locs['rectSize'], rec_size)
         set_nvshader_value_vec4_tuple(self._border_shader, self._border_locs['radius'], tuple(list_radii))
         r, g, b, a = 255, 255, 255, 255
@@ -398,15 +398,15 @@ cdef class WindowRendererRaylib:
 
     # === Sizes ===
     cpdef tuple get_tuple_rect(self): return (0, 0, self.c_get_width(), self.c_get_height())
-    cpdef NvRect get_nvrect(self): return NvRect.new(0, 0, self.c_get_width(), self.c_get_height())
+    cpdef Rect get_rect(self): return Rect.new(0, 0, self.c_get_width(), self.c_get_height())
 
     cdef inline tuple c_get_tuple_size(self) noexcept: return (md.rl.get_screen_width(), md.rl.get_screen_height())
-    cdef inline NvVector2 c_get_nvvec_size(self): return NvVector2.cfrom_ints(md.rl.get_screen_width(), md.rl.get_screen_height())
+    cdef inline Vector2 c_get_nvvec_size(self): return Vector2.cfrom_ints(md.rl.get_screen_width(), md.rl.get_screen_height())
     cdef inline int c_get_width(self) noexcept: return md.rl.get_screen_width()
     cdef inline int c_get_height(self) noexcept: return md.rl.get_screen_height()
 
     cpdef tuple get_size_tuple(self): return self.c_get_tuple_size()
-    cpdef NvVector2 get_size_nvvec(self): return self.c_get_nvvec_size()
+    cpdef Vector2 get_size_nvvec(self): return self.c_get_nvvec_size()
 
     cpdef int get_width(self): return md.rl.get_screen_width()
     cpdef int get_height(self): return md.rl.get_screen_height()
@@ -443,16 +443,16 @@ cdef class WindowRendererPygame:
 
     # === Sizes ===
     cpdef tuple get_tuple_rect(self): return (0, 0, self.c_get_width(), self.c_get_height())
-    cpdef NvRect get_nvrect(self): return NvRect.new(0, 0, self.c_get_width(), self.c_get_height())
+    cpdef Rect get_rect(self): return Rect.new(0, 0, self.c_get_width(), self.c_get_height())
 
     cdef inline tuple c_get_tuple_size(self) noexcept: return self.window.size
-    cdef inline NvVector2 c_get_nvvec_size(self): return NvVector2.cfrom_ints(self.window.width, self.window.height)
+    cdef inline Vector2 c_get_nvvec_size(self): return Vector2.cfrom_ints(self.window.width, self.window.height)
     cdef inline int c_get_width(self) noexcept: return self.window.width
     cdef inline int c_get_height(self) noexcept: return self.window.height
 
     cpdef int get_width(self): return self.c_get_width()
     cpdef int get_height(self): return self.c_get_height()
-    cpdef NvVector2 get_size_nvvec(self): return self.c_get_nvvec_size()
+    cpdef Vector2 get_size_nvvec(self): return self.c_get_nvvec_size()
     cpdef tuple get_size_tuple(self): return self.c_get_tuple_size()
 
     # === Misc ===

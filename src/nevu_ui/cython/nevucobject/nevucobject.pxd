@@ -6,18 +6,18 @@
 # cython: nonecheck=False
 # cython: initializedcheck=False
 
-from nevu_ui.cython.nvvector2.nvvector2 cimport NvVector2
-from nevu_ui.cython.nvsurface.nvsurface cimport _NvSurfBase
+from nevu_ui.cython.vector2.vector2 cimport Vector2
+from nevu_ui.cython.surface.surface cimport _NvSurfBase
 from libcpp.vector cimport vector
 from nevu_ui.cython.nvparam.nvparam cimport NvParam
-from nevu_ui.cython.nvrect.nvrect cimport NvRect
+from nevu_ui.cython.rect.rect cimport Rect
 from nevu_ui.cython.cache.cache cimport Cache
 from nevu_ui.cython.z_system.z_system cimport ZRequest
 from libc.stdint cimport uint8_t
 
 cdef class NevuCobject:
     cdef public bint _sended_z_link, _dragging, _is_kup, _kup_abandoned, _force_state_set_continue, _visible, _active, _changed, _first_update, _wait_mode, _dead, booted, _inner_active
-    cdef public NvVector2 coordinates, absolute_coordinates, size, _resize_ratio,
+    cdef public Vector2 coordinates, absolute_coordinates, size, _resize_ratio,
     cdef public object _style, hover_state
     cdef public object _system_callbacks # type: Callbacks
     cdef public list params, _blacklisted_params, _next_frame_functions
@@ -51,13 +51,13 @@ cdef class NevuCobject:
     cpdef double rely(self, double num)
     cpdef void set_hover_state(self, value)
     cpdef double relm(self, double num)
-    cpdef NvVector2 rel(self, NvVector2 vec)
-    cpdef NvRect get_nvrect(self)
-    cpdef void set_coordinates(self, NvVector2 coordinates)
+    cpdef Vector2 rel(self, Vector2 vec)
+    cpdef Rect get_rect(self)
+    cpdef void set_coordinates(self, Vector2 coordinates)
     cpdef void clear_all(self)
     cdef inline void c_set_coords_xy(self, double x, double y) noexcept
     cpdef void clear_surfaces(self)
-    cdef inline NvVector2 c_get_actual_size(self)
+    cdef inline Vector2 c_get_actual_size(self)
     cpdef void update(self)
     cpdef void _click(self)
     cpdef void draw(self)

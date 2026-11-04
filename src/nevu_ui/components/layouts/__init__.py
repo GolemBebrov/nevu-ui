@@ -1,4 +1,4 @@
-from .layout_base import LayoutType
+from .base import BaseLayout
 
 from .grid.base import Grid
 from .grid.column import Column
@@ -14,7 +14,7 @@ __all__ = [
     'Flex',
     'Grid',
     'Stack',
-    'LayoutType',
+    'BaseLayout',
     'Row',
     'VStack',
     'HStack',

@@ -6,10 +6,10 @@ from _typeshed import Incomplete
 from typing_extensions import TypeAlias
 
 from nevu_ui.cython.raylib_shader.raylib_shader import RaylibShader
-from nevu_ui.cython.nvvector2.nvvector2 import NvVector2
+from nevu_ui.cython.vector2.vector2 import Vector2 as NvVector2
 
-DrawTextureRec_ptr: TypeAlias = Callable[[Texture2D, Rectangle, Vector2, Color], None]
-DrawTexturePro_ptr: TypeAlias = Callable[[Texture2D, Rectangle, Rectangle, Vector2, float, Color], None]
+DrawTextureRec_ptr: TypeAlias = Callable[[Texture2D, Rectangle, _Vector2, Color], None]
+DrawTexturePro_ptr: TypeAlias = Callable[[Texture2D, Rectangle, Rectangle, _Vector2, float, Color], None]
 BeginBlendMode_ptr: TypeAlias = Callable[[int], None]
 EndBlendMode_ptr: TypeAlias = Callable[[], None]
 BeginTextureMode_ptr: TypeAlias = Callable[[RenderTexture2D], None]
@@ -25,8 +25,8 @@ EndDrawing_ptr: TypeAlias = Callable[[], None]
 IsMouseButtonPressed_ptr: TypeAlias = Callable[[int], bool]
 IsMouseButtonDown_ptr: TypeAlias = Callable[[int], bool]
 IsMouseButtonUp_ptr: TypeAlias = Callable[[int], bool]
-GetMousePosition_ptr: TypeAlias = Callable[[], Vector2]
-GetMouseWheelMoveV_ptr: TypeAlias = Callable[[], Vector2]
+GetMousePosition_ptr: TypeAlias = Callable[[], _Vector2]
+GetMouseWheelMoveV_ptr: TypeAlias = Callable[[], _Vector2]
 IsKeyPressed_ptr: TypeAlias = Callable[[int], bool]
 IsKeyDown_ptr: TypeAlias = Callable[[int], bool]
 IsKeyUp_ptr: TypeAlias = Callable[[int], bool]
@@ -43,7 +43,7 @@ class Color(TypedDict):
     b: int
     a: int
 
-class Vector2(TypedDict):
+class _Vector2(TypedDict):
     x: float
     y: float
 

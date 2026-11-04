@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any, Callable
 
-from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.utils.time import time
 
 
@@ -81,14 +81,14 @@ class Vector2Animation(Animation):
 
     def __init__(
         self,
-        start: NvVector2 | tuple | list,
-        end: NvVector2 | tuple | list,
+        start: Vector2 | tuple | list,
+        end: Vector2 | tuple | list,
         time: float = 1,
         easing_func: Callable | None = None,
         check_errors: bool = False,
     ):
         super().__init__(
-            NvVector2(start), NvVector2(end), time, easing_func, check_errors
+            Vector2(start), Vector2(end), time, easing_func, check_errors
         )
 
     def _apply_easing(self, eased_value):
@@ -96,12 +96,12 @@ class Vector2Animation(Animation):
             progress, offset = eased_value
             start, end = self.start, self.end
             start_x, start_y = start[0], start[1]
-            self.current_value = NvVector2.from_xy(
+            self.current_value = Vector2.from_xy(
                 start_x + (end[0] - start_x) * progress + offset[0],
                 start_y + (end[1] - start_y) * progress + offset[1],
             )
         else:
-            self.current_value = NvVector2(
+            self.current_value = Vector2(
                 *(
                     self.start[i] + (self.end[i] - self.start[i]) * eased_value
                     for i in range(2)

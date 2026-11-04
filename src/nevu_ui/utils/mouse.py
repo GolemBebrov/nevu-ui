@@ -2,7 +2,7 @@ from typing import final
 
 import nevu_ui.core.modules as md
 from nevu_ui.core.enums import Backend, PressType
-from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.cython.raylib.raylib import get_mouse_position, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_up
 
 
@@ -18,7 +18,7 @@ class _BaseMouse:
     )
 
     def __init__(self):
-        self.pos: NvVector2 = NvVector2.from_xy(0, 0)
+        self.pos: Vector2 = Vector2.from_xy(0, 0)
         self._wheel_side: PressType = PressType.WheelStill
         self._states: list[PressType] = [PressType.Still, PressType.Still, PressType.Still]
         self._up_states: set[PressType] = {PressType.Still, PressType.Up}
@@ -144,7 +144,7 @@ class PygameMouse(_BaseMouse):
             self.dragging = False
         mouse = md.pygame.mouse
         pg_pos = mouse.get_pos()
-        self.pos = NvVector2.from_xy(pg_pos[0], pg_pos[1])
+        self.pos = Vector2.from_xy(pg_pos[0], pg_pos[1])
         pressed = mouse.get_pressed()
 
         if events and len(events) != 0:

@@ -2,7 +2,7 @@ import math
 import random
 from typing import Callable
 
-from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.vector2 import Vector2
 
 
 def linear(value: float) -> float:
@@ -208,7 +208,7 @@ def shake_easing(amplitude: float = 8.0, continuous: bool = False):
     def easing(progress: float):
         current_amp = amplitude if continuous else amplitude * (1 - progress)
 
-        offset = NvVector2.from_xy(
+        offset = Vector2.from_xy(
             random.uniform(-current_amp, current_amp),
             random.uniform(-current_amp, current_amp),
         )
@@ -269,7 +269,7 @@ def smooth_shake_easing(
         current_amp = amplitude * math.exp(-decay * progress)
         angle = progress * frequency * math.pi * 2
 
-        offset = NvVector2.from_xy(
+        offset = Vector2.from_xy(
             current_amp * math.cos(angle), current_amp * math.sin(angle * 1.3)
         )
         return progress, offset

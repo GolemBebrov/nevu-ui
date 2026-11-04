@@ -19,7 +19,7 @@ from .components.widgets import (
 from .components.layouts import (
     Column,
     Grid,
-    LayoutType,
+    BaseLayout,
     Row,
     Scroll,
     VScroll,
@@ -84,9 +84,9 @@ from .core.size.units import (
     Auto
 )
 from .core.state import nevu_state
-from .cython import NvVector2
+from .cython import Vector2
 from .cython.cache.cache import Cache
-from .cython.nvrect import NvRect
+from .cython.rect import Rect
 from .manager import Manager
 from .components.layouts.menu import Menu
 from .overlay import overlay
@@ -141,7 +141,7 @@ __all__ = [  # noqa: RUF022
     "nevu_object_globals",
     "widget_globals",
     "Manager",
-    "NvVector2",
+    "Vector2",
     "nevu_state",
     "apply_config",
     "get_style",
@@ -164,7 +164,7 @@ __all__ = [  # noqa: RUF022
     "Tooltip",
     "Switch",
     # ===Layouts===
-    "LayoutType",
+    "BaseLayout",
     "Grid",
     "Flex",
     "Row",
@@ -185,7 +185,7 @@ __all__ = [  # noqa: RUF022
     "keyboard",
     "Cache",
     "InputType",
-    "NvRect",
+    "Rect",
     "load_font",
     "Keys",
     # ===Size vars===

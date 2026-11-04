@@ -11,11 +11,11 @@ from nevu_ui.presentation.color import Color
 if TYPE_CHECKING:
     from nevu_ui import NevuObject, Window
 from nevu_ui.components._typehints import _MenuKwargs
-from nevu_ui.components.layouts.layout_base import LayoutType
+from nevu_ui.components.layouts.base import BaseLayout
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core.annotations import Annotations
 from nevu_ui.core.enums import Backend, BindType, ParamLayer
-from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.presentation.theme import PairColorRole
 
 
@@ -24,8 +24,8 @@ class _MenuBgWidget(Widget):
     def subtheme_content(self):
         return self.style.get_pair_color(PairColorRole.Background, inverted = self.inverted)
 
-class Menu(LayoutType):
-    main_layout: LayoutType | None
+class Menu(BaseLayout):
+    main_layout: BaseLayout | None
     def __init__(self, window: Window, size: Annotations.nevuobj_size = None, style: Annotations.nevuobj_style = None, **params: Unpack[_MenuKwargs]):
         if size is None:
             size = window.size.copy()
@@ -56,7 +56,7 @@ class Menu(LayoutType):
         return items_iter
 
     def _draw_start(self):
-        draw_widgets_optimized(self, self.floating_items, LayoutType, Widget)
+        draw_widgets_optimized(self, self.floating_items, BaseLayout, Widget)
 
     def _create_bg_widget(self):
         bg = _MenuBgWidget(
@@ -69,12 +69,12 @@ class Menu(LayoutType):
             z=-999,
             bg_variant=True,
         )
-        bg.set_coordinates(NvVector2.from_xy(0, 0))
+        bg.set_coordinates(Vector2.from_xy(0, 0))
         bg._sended_z_link = True
         self.bg_widget = bg
         return bg
 
-    def _lazy_init(self, size: NvVector2 | list, content: None = None):
+    def _lazy_init(self, size: Vector2 | list, content: None = None):
         self._cached_start_pos = self.start_pos
         self.start_pos = self._normalize(self.start_pos)
         super()._lazy_init(size, content)
@@ -82,21 +82,21 @@ class Menu(LayoutType):
         if self.bg_widget is None:
             self._create_bg_widget()
 
-    def _on_window_resize(self, size: NvVector2):
+    def _on_window_resize(self, size: Vector2):
         first_window_size = self._window.original_size
-        resize_ratio = NvVector2.from_xy(
+        resize_ratio = Vector2.from_xy(
             size[0] / first_window_size.x, size[1] / first_window_size.y
         )
         self._resize(resize_ratio)
 
-    def _coordinates_setter(self, coordinates: NvVector2) -> bool:
+    def _coordinates_setter(self, coordinates: Vector2) -> bool:
         result = super()._coordinates_setter(coordinates)
         self.absolute_coordinates = coordinates + self._window.offset
         if self.main_layout:
             self.main_layout.absolute_coordinates = self.main_layout.coordinates + self.absolute_coordinates
         return result
 
-    def _resize_content(self, resize_ratio: NvVector2):
+    def _resize_content(self, resize_ratio: Vector2):
         self.surface = self.renderer.core.create_surface(self.size*resize_ratio)
         if self._start_pos_relative_placed:
             self.set_coordinates(self._normalize(self._cached_start_pos))
@@ -111,7 +111,7 @@ class Menu(LayoutType):
 
     def _add_params(self):
         super()._add_params()
-        self._add_param("main_layout", LayoutType | type(None), None, setter = self._main_layout_setter, layer = ParamLayer.Lazy)
+        self._add_param("main_layout", BaseLayout | type(None), None, setter = self._main_layout_setter, layer = ParamLayer.Lazy)
         self._change_param_default("z", -999)
 
     def _main_layout_setter(self, value):
@@ -193,7 +193,7 @@ class Menu(LayoutType):
             self._main_layout_list = None
         self.main_layout = None
 
-    def _connect_to_layout(self, layout: LayoutType):
+    def _connect_to_layout(self, layout: BaseLayout):
         raise NotImplementedError("Menu can not be connected to another layout.")
     def _connect_to_menu(self, menu: Menu):
         raise NotImplementedError("Menu can not be connected to another menu.")

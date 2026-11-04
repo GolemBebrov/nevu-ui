@@ -12,8 +12,8 @@ cimport cython
 import weakref
 
 import nevu_ui.core.modules as md
-from nevu_ui.cython.nvvector2.nvvector2 cimport NvVector2
-from nevu_ui.cython.nvrect.nvrect cimport NvRect
+from nevu_ui.cython.vector2.vector2 cimport Vector2
+from nevu_ui.cython.rect.rect cimport Rect
 from nevu_ui.cython.nevucobject.nevucobject cimport NevuCobject
 from nevu_ui.core.enums import BindType
 
@@ -141,7 +141,7 @@ cdef class ZSystem:
 
         cdef object req_ref
         cdef ZRequest req
-        cdef NvRect current_rect
+        cdef Rect current_rect
         cdef NevuCobject current_link
 
         self.live_requests = []
@@ -164,7 +164,7 @@ cdef class ZSystem:
                     live_requests_refs.append(req_ref)
                     temp_live_requests.append(req)
 
-                    current_rect = current_link.get_nvrect()
+                    current_rect = current_link.get_rect()
                     r_view[valid_count, 0] = <int>current_rect.x
                     r_view[valid_count, 1] = <int>current_rect.y
                     r_view[valid_count, 2] = <int>current_rect.w
@@ -197,7 +197,7 @@ cdef class ZSystem:
             self.is_dirty = False
         return list(self.live_requests)
 
-    cpdef cycle(self, NvVector2 mouse_pos, bint mouse_down, bint mouse_up, bint any_wheel, bint wheel_down):
+    cpdef cycle(self, Vector2 mouse_pos, bint mouse_down, bint mouse_up, bint any_wheel, bint wheel_down):
         if self.is_dirty:
             self._rebuild_arrays()
             self.is_dirty = False
@@ -244,7 +244,7 @@ cdef class ZSystem:
                                 func()
                 self.clicked_request = None
 
-    cdef ZRequest request_cycle(self, NvVector2 mouse_pos, bint any_wheel, bint wheel_down):
+    cdef ZRequest request_cycle(self, Vector2 mouse_pos, bint any_wheel, bint wheel_down):
         if not self.live_requests:
             return None
 

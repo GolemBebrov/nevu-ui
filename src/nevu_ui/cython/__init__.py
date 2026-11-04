@@ -3,8 +3,8 @@ from . import (
     cache,
     nevucobject,
     nvparam,
-    nvrect,
-    nvvector2,
+    rect,
+    vector2,
     raylib,
     shapes,
     z_system,
@@ -12,8 +12,8 @@ from . import (
 from .cache import Cache
 from .nevucobject import NevuCobject
 from .nvparam import NvParam
-from .nvrect import NvRect
-from .nvvector2 import NvVector2
+from .rect import Rect
+from .vector2 import Vector2
 from .z_system import ZRequest, ZSystem
 
 __all__ = [
@@ -22,8 +22,8 @@ __all__ = [
     "Cache",
     "NevuCobject",
     "NvParam",
-    "NvRect",
-    "NvVector2",
+    "Rect",
+    "Vector2",
     "ZRequest",
     "ZSystem",
 
@@ -33,10 +33,9 @@ __all__ = [
     "cache",
     "nevucobject",
     "nvparam",
-    "nvrect",
-    "nvvector2",
+    "rect",
+    "vector2",
     "raylib",
-    "shaders",
     "shapes",
     "z_system",
 

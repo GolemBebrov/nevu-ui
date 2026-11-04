@@ -15,7 +15,7 @@ from nevu_ui.core.enums import BindType
 from nevu_ui.core.state import nevu_state
 from cpython.list cimport PyList_GET_SIZE, PyList_GET_ITEM, PyList_GetItemRef
 from cpython.tuple cimport PyTuple_GET_SIZE, PyTuple_GET_ITEM
-from nevu_ui.cython.nvsurface.nvsurface cimport _NvSurfRaylib
+from nevu_ui.cython.surface.surface cimport _NvSurfRaylib
 from cpython.object cimport PyObject, PyObject_CallFunctionObjArgs
 from nevu_ui.cython.raylib.raylib cimport c_draw_texture_maxopt, Texture2D
 from nevu_ui.presentation.color import Color
@@ -26,9 +26,9 @@ cdef extern from "Python.h":
     ctypedef struct PyListObject:
         PyObject **ob_item
 from nevu_ui.core.state import nevu_state
-from nevu_ui.cython.nvrect.nvrect cimport NvRect
+from nevu_ui.cython.rect.rect cimport Rect
 from nevu_ui.cython.nevucobject.nevucobject cimport NevuCobject
-from nevu_ui.cython.nvvector2.nvvector2 cimport NvVector2, nv_vector2_t, nv_vector2_mul_vector, nv_vector2_add, nv_vector2_sub, nv_vector2_add_triple,nv_vector2_new
+from nevu_ui.cython.vector2.vector2 cimport Vector2, nv_vector2_t, nv_vector2_mul_vector, nv_vector2_add, nv_vector2_sub, nv_vector2_add_triple,nv_vector2_new
 from nevu_ui.cython.z_system.z_system cimport ZSystem
 from nevu_ui.core.enums import AnimationManagerState, AnimationType
 
@@ -56,17 +56,17 @@ cpdef double relm_helper(double num, double resize_ratio_x, double resize_ratio_
     cdef double c_max = max_val if has_max else 0.0
     return _rel_corner_helper_c(result, c_min, c_max, has_min, has_max)
 
-cpdef NvVector2 mass_rel_helper(list mass, double resize_ratio_x, double resize_ratio_y, bint vector):
+cpdef Vector2 mass_rel_helper(list mass, double resize_ratio_x, double resize_ratio_y, bint vector):
     if len(mass) < 2:
         raise ValueError("mass must be a sequence with two elements")
     cdef double x = _rel_helper_c(PyFloat_AsDouble(PyList_GET_ITEM(mass, 0)), resize_ratio_x, 0, 0, 0, 0)
     cdef double y = _rel_helper_c(PyFloat_AsDouble(PyList_GET_ITEM(mass, 1)), resize_ratio_y, 0, 0, 0, 0)
-    return NvVector2.new(x, y)
+    return Vector2.new(x, y)
 
-cpdef NvVector2 vec_rel_helper(NvVector2 vec, double resize_ratio_x, double resize_ratio_y):
+cpdef Vector2 vec_rel_helper(Vector2 vec, double resize_ratio_x, double resize_ratio_y):
     cdef double x = _rel_helper_c(vec.x, resize_ratio_x, 0, 0, 0, 0)
     cdef double y = _rel_helper_c(vec.y, resize_ratio_y, 0, 0, 0, 0)
-    return NvVector2.new(x, y)
+    return Vector2.new(x, y)
 
 cdef inline nv_vector2_t rel_vec(nv_vector2_t vec, nv_vector2_t resize_ratio) noexcept nogil:
     return nv_vector2_mul_vector(vec, resize_ratio)
@@ -74,21 +74,17 @@ cdef inline nv_vector2_t rel_vec(nv_vector2_t vec, nv_vector2_t resize_ratio) no
 cdef inline tuple _get_rect_base(double mx, double my, double rx, double ry, double sx, double sy):
     return (mx, my, sx * rx, sy * ry)
 
-cdef NvRect get_nvrect_helper(NvVector2 master_coordinates, NvVector2 resize_ratio, NvVector2 size):
-    return NvRect.from_nv_vector_t(master_coordinates.data, nv_vector2_mul_vector(size.data, resize_ratio.data))
-
-cpdef tuple get_rect_helper(NvVector2 master_coordinates, NvVector2 resize_ratio, NvVector2 size):
-    return _get_rect_base(master_coordinates.x, master_coordinates.y, resize_ratio.x, resize_ratio.y, size.x, size.y)
-
-cpdef get_rect_helper_pygame(NvVector2 master_coordinates, NvVector2 resize_ratio, NvVector2 size):
+cdef Rect get_rect_helper(Vector2 master_coordinates, Vector2 resize_ratio, Vector2 size):
+    return Rect.from_nv_vector_t(master_coordinates.data, nv_vector2_mul_vector(size.data, resize_ratio.data))
+cpdef get_rect_helper_pygame(Vector2 master_coordinates, Vector2 resize_ratio, Vector2 size):
     return md.pygame.Rect(_get_rect_base(master_coordinates.x, master_coordinates.y, resize_ratio.x, resize_ratio.y, size.x, size.y))
 
 cdef inline tuple _get_rect_base_cached(double mx, double my, double csx, double csy): return (mx, my, csx, csy)
 
-cpdef tuple get_rect_helper_cached(NvVector2 master_coordinates, NvVector2 csize):
+cpdef tuple get_rect_helper_cached(Vector2 master_coordinates, Vector2 csize):
     return _get_rect_base_cached(master_coordinates.x, master_coordinates.y, csize.x, csize.y)
 
-cpdef get_rect_helper_cached_pygame(NvVector2 master_coordinates, NvVector2 csize):
+cpdef get_rect_helper_cached_pygame(Vector2 master_coordinates, Vector2 csize):
     return md.pygame.Rect(_get_rect_base_cached(master_coordinates.x, master_coordinates.y, csize.x, csize.y))
 
 cpdef void logic_update_helper (
@@ -137,7 +133,7 @@ cdef inline void _light_update_helper(
     for i in range(n_items):
         item = <NevuCobject><void*>items_ptr[i]
 
-        c_coords = (<NvVector2><void*>coords_ptr[i]).data
+        c_coords = (<Vector2><void*>coords_ptr[i]).data
         new_coords = nv_vector2_add(c_coords, add_vec)
 
         animation_manager = item.animation_manager
@@ -148,7 +144,7 @@ cdef inline void _light_update_helper(
             if raw_anim_val is not None:
                 new_coords = nv_vector2_add_triple(
                     c_coords,
-                    rel_vec((<NvVector2><void*>raw_anim_val).data, item._resize_ratio.data),
+                    rel_vec((<Vector2><void*>raw_anim_val).data, item._resize_ratio.data),
                     add_vec
                 )
 
@@ -166,19 +162,19 @@ cpdef void base_light_update(NevuCobject self, double add_x = 0, double add_y = 
         add_x, add_y
     )
 
-cpdef bint collide_horizontal(NvVector2 r1_tl, NvVector2 r1_br, NvVector2 r2_tl, NvVector2 r2_br):
+cpdef bint collide_horizontal(Vector2 r1_tl, Vector2 r1_br, Vector2 r2_tl, Vector2 r2_br):
     return r1_tl.x < r2_br.x and r1_br.x > r2_tl.x
 
 
-cpdef bint collide_vertical(NvVector2 r1_tl, NvVector2 r1_br, NvVector2 r2_tl, NvVector2 r2_br):
+cpdef bint collide_vertical(Vector2 r1_tl, Vector2 r1_br, Vector2 r2_tl, Vector2 r2_br):
     return r1_tl.y < r2_br.y and r1_br.y > r2_tl.y
 
 
-cpdef bint collide_vector(NvVector2 r1_tl, NvVector2 r1_br, NvVector2 r2_tl, NvVector2 r2_br):
+cpdef bint collide_vector(Vector2 r1_tl, Vector2 r1_br, Vector2 r2_tl, Vector2 r2_br):
     return (r1_tl.x < r2_br.x and r1_br.x > r2_tl.x) and (r1_tl.y < r2_br.y and r1_br.y > r2_tl.y)
 
 
-cdef inline NvVector2 get_item_abs_coords(NevuCobject layout, NevuCobject item):
+cdef inline Vector2 get_item_abs_coords(NevuCobject layout, NevuCobject item):
     return item.coordinates._add(
         (<NevuCobject><void*>layout.first_parent_menu).absolute_coordinates
     )
@@ -190,8 +186,8 @@ def py_get_item_abs_coords(NevuCobject layout not None, NevuCobject item not Non
 cpdef _very_light_update_helper(
     list items,
     list cached_coordinates,
-    NvVector2 menu_vec,
-    NvVector2 add_vector,
+    Vector2 menu_vec,
+    Vector2 add_vector,
     NevuCobject layout
 ):
     c_very_light_update_helper(
@@ -206,8 +202,8 @@ cpdef _very_light_update_helper(
 cdef inline void c_very_light_update_helper(
     list items,
     list cached_coordinates,
-    NvVector2 menu_vec,
-    NvVector2 add_vector,
+    Vector2 menu_vec,
+    Vector2 add_vector,
     NevuCobject layout
     ) noexcept:
 
@@ -225,7 +221,7 @@ cdef inline void c_very_light_update_helper(
 
     while i < n:
         item = <void*>items_ptr[i]
-        c_coords = (<NvVector2><void*>coords_ptr[i]).data
+        c_coords = (<Vector2><void*>coords_ptr[i]).data
 
         added_vec = nv_vector2_sub(c_coords, c_add_vector)
 
@@ -234,16 +230,16 @@ cdef inline void c_very_light_update_helper(
         i += 1
 
 
-ctypedef void (*DrawFuncPtr)(NevuCobject, NevuCobject, NvVector2)
+ctypedef void (*DrawFuncPtr)(NevuCobject, NevuCobject, Vector2)
 
-cdef inline void draw_item_pygame(NevuCobject layout, NevuCobject item, NvVector2 coordinates):
+cdef inline void draw_item_pygame(NevuCobject layout, NevuCobject item, Vector2 coordinates):
     if not layout.surface: return
     #pblit(item.surface, layout.surface, coordinates.to_tuple())
     layout.surface.blit(item.surface, coordinates.to_tuple()) #type: ignore
 
-_base_color_raylib = NvRect.new(255, 255, 255, 255)
+_base_color_raylib = Rect.new(255, 255, 255, 255)
 
-cdef inline void draw_item_raylib(NevuCobject layout, NevuCobject item, NvVector2 coordinates):
+cdef inline void draw_item_raylib(NevuCobject layout, NevuCobject item, Vector2 coordinates):
     c_draw_texture_maxopt(<Texture2D>(<_NvSurfRaylib>(item.surface).c_native_texture), coordinates.data, True)
 
 cdef inline void draw_widget_optimized_pygame(DrawFuncPtr draw_item, NevuCobject layout, NevuCobject item, type layout_type, type widget_type):
@@ -427,7 +423,7 @@ def scrollable_recollide_items(NevuCobject self not None, list items not None):
     return _scrollable_recollide_items(self, items)
 
 cdef inline list _scrollable_recollide_items(NevuCobject self, list items) noexcept:
-    cdef NvRect true_rect = self.get_nvrect()
+    cdef Rect true_rect = self.get_rect()
     self.absolute_coordinates.data.x = <double>true_rect.x
     self.absolute_coordinates.data.y = <double>true_rect.y
 
@@ -439,7 +435,7 @@ cdef inline list _scrollable_recollide_items(NevuCobject self, list items) noexc
     while i < n:
         item = <NevuCobject><void*>PyList_GET_ITEM(items, i)
         item.absolute_coordinates = get_item_abs_coords(self, item)
-        if _widget_drawable_rect(item.get_nvrect(), true_rect):
+        if _widget_drawable_rect(item.get_rect(), true_rect):
             collided_items.append(item)
             item._set_inner_active(True)
         else:
@@ -448,13 +444,13 @@ cdef inline list _scrollable_recollide_items(NevuCobject self, list items) noexc
 
     return collided_items
 
-cdef bint _widget_drawable_rect(NvRect item_rect, NvRect layout_rect) noexcept:
+cdef bint _widget_drawable_rect(Rect item_rect, Rect layout_rect) noexcept:
     return (item_rect.x < layout_rect.x + layout_rect.w and
             item_rect.x + item_rect.w > layout_rect.x and
             item_rect.y < layout_rect.y + layout_rect.h and
             item_rect.y + item_rect.h > layout_rect.y)
 
-cdef NvRect white_color = NvRect.new(255, 255, 255, 255)
+cdef Rect white_color = Rect.new(255, 255, 255, 255)
 
 
 cpdef void _manager_main_loop_main(self):

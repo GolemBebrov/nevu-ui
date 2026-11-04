@@ -1,5 +1,5 @@
 cimport numpy as np
-from nevu_ui.cython.nvvector2.nvvector2 cimport NvVector2
+from nevu_ui.cython.vector2.vector2 cimport Vector2
 from nevu_ui.cython.nevucobject.nevucobject cimport NevuCobject
 
 cdef class ZRequest:
@@ -36,6 +36,6 @@ cdef class ZSystem:
     cpdef void drop_request(self, ZRequest z_request)
     cpdef mark_dirty(self)
     cpdef list get_active_requests(self)
-    cpdef cycle(self, NvVector2 mouse_pos, bint mouse_down, bint mouse_up, bint any_wheel, bint wheel_down)
-    cdef ZRequest request_cycle(self, NvVector2 mouse_pos, bint any_wheel, bint wheel_down)
+    cpdef cycle(self, Vector2 mouse_pos, bint mouse_down, bint mouse_up, bint any_wheel, bint wheel_down)
+    cdef ZRequest request_cycle(self, Vector2 mouse_pos, bint any_wheel, bint wheel_down)
     cpdef void _debug_draw_raylib(self)

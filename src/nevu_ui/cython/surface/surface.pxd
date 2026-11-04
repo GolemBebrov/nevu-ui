@@ -1,6 +1,6 @@
 cimport cython
 from libc.stdint cimport uint16_t, uint8_t
-from nevu_ui.cython.nvvector2.nvvector2 cimport NvVector2
+from nevu_ui.cython.vector2.vector2 cimport Vector2
 from nevu_ui.cython.raylib.raylib cimport RenderTexture2D, Texture2D
 
 cdef class _NvSurfBase:
@@ -15,7 +15,7 @@ cdef class _NvSurfBase:
     cpdef void clear(self, object color)
     cpdef void fill(self, object color)
     cpdef void kill(self)
-    cpdef NvVector2 get_size(self)
+    cpdef Vector2 get_size(self)
     cpdef int get_width(self)
     cpdef int get_height(self)
 

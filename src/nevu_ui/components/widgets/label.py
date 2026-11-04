@@ -8,7 +8,7 @@ from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations, nevu_state
 from nevu_ui.core.enums import CacheType, RenderReturnType
 from nevu_ui.core.size.rules import Auto
-from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.cython.raylib.raylib import begin_blend_mode, end_blend_mode
 from nevu_ui.rendering import DrawTextCall
 
@@ -36,13 +36,13 @@ class Label(Widget):
         self._add_param("words_indent", bool, False)
         self._add_param("on_text_change", (type(None), Callable), None)
 
-    def _lazy_init(self, size: NvVector2 | list, text: str):  # type: ignore
+    def _lazy_init(self, size: Vector2 | list, text: str):  # type: ignore
         super()._lazy_init(size)
         assert isinstance(text, str)
         self.text = text
         if self._auto_sized:
             _, text_surface = self.cache.get_or_exec(CacheType.TextArgs, self._create_text_surf)
-            self.size = NvVector2.from_xy(text_surface.width, text_surface.height)
+            self.size = Vector2.from_xy(text_surface.width, text_surface.height)
             self._changed = True
             self.clear_surfaces()
 
@@ -83,13 +83,13 @@ class Label(Widget):
 
         return result
 
-    def _resize_content(self, resize_ratio: NvVector2):
+    def _resize_content(self, resize_ratio: Vector2):
         super()._resize_content(resize_ratio)
         if self._auto_sized:
             self.cache.clear_selected(whitelist=[CacheType.RelSize])
-            anti_rel = NvVector2(1, 1) / self._resize_ratio
+            anti_rel = Vector2(1, 1) / self._resize_ratio
             _, text_surface = self.cache.get_or_exec(CacheType.TextArgs, self._create_text_surf)
-            self.size = NvVector2.from_xy(
+            self.size = Vector2.from_xy(
                 text_surface.width * anti_rel.x + self._auto_sized_padding[0] * 2,
                 text_surface.height * anti_rel.y + self._auto_sized_padding[1] * 2)
 

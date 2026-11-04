@@ -4,7 +4,7 @@ import weakref
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Unpack, overload
 
-from nevu_ui.cython.nvrect.nvrect import NvRect
+from nevu_ui.cython.rect.rect import Rect
 from nevu_ui.presentation.color import Color
 from nevu_ui.rendering.canvas import Canvas, CanvasLineData, CanvasRectData
 
@@ -22,8 +22,7 @@ from nevu_ui.core.enums import (
 )
 from nevu_ui.core.size.rules import Auto, Px, _SizeRule
 from nevu_ui.core.state import nevu_state
-from nevu_ui.cython import Cache, NevuCobject, NvVector2, ZRequest
-from nevu_ui.cython.logic import get_rect_helper
+from nevu_ui.cython import Cache, NevuCobject, Vector2, ZRequest
 from nevu_ui.components.tooltip import Tooltip
 from nevu_ui.presentation.animations import AnimationManager
 from nevu_ui.presentation.theme import SubThemeRole
@@ -60,7 +59,7 @@ class NevuObject(NevuCobject):
     canvas: Canvas | None
     bg_variant: bool
     _system_callbacks: Callbacks
-    start_pos: NvVector2
+    start_pos: Vector2
     # ==============
 
     renderer: BaseRenderer
@@ -218,7 +217,7 @@ class NevuObject(NevuCobject):
             layer=ParamLayer.Lazy,
             setter=self._tooltip_setter,
         )
-        self._add_param("start_pos", NvVector2 | tuple | list | type(None), NvVector2(0, 0))
+        self._add_param("start_pos", Vector2 | tuple | list | type(None), Vector2(0, 0))
         self._add_param(
             "subtheme_role",
             SubThemeRole,
@@ -317,7 +316,7 @@ class NevuObject(NevuCobject):
             value = Callbacks(value)
         return value
 
-    def _create_template(self, size: NvVector2 | list):
+    def _create_template(self, size: Vector2 | list):
         return _NevuObjectTemplate(size)
 
     def _init_flags(self): ...
@@ -352,7 +351,7 @@ class NevuObject(NevuCobject):
     def _init_objects(self):
         self._auto_sized_padding = None
         self._hover_state: HoverState = HoverState.NotHovered
-        self.z_clip_rect: NvRect | None = None
+        self.z_clip_rect: Rect | None = None
         if self.animation_manager is not None:
             self.animation_manager = copy.deepcopy(self.animation_manager)
         else:
@@ -369,9 +368,9 @@ class NevuObject(NevuCobject):
                                           and any(isinstance(item, _SizeRule) for item in self.start_pos)
 
     def _init_lists(self):
-        self._resize_ratio = NvVector2(1, 1)
-        self.coordinates = NvVector2()
-        self.absolute_coordinates = NvVector2()
+        self._resize_ratio = Vector2(1, 1)
+        self.coordinates = Vector2()
+        self.absolute_coordinates = Vector2()
         self._next_frame_functions = []
 
     def _init_start(self):
@@ -393,7 +392,7 @@ class NevuObject(NevuCobject):
             self.renderer = RaylibRenderer()
         else:
             self.renderer = PygameRenderer()
-        self.size = size if isinstance(size, NvVector2) else NvVector2(size)
+        self.size = size if isinstance(size, Vector2) else Vector2(size)
         self.original_size = self.size.copy()
         #if self.size[0] <= 0 or self.size[1] <= 0:
         #    raise ValueError(f"Size in {self.__class__.__name__} MUST be greater than zero, but got {size}.")
@@ -425,10 +424,10 @@ class NevuObject(NevuCobject):
             self._sended_z_link = False
             nevu_state.window.mark_dirty()
 
-    def _start_pos_setter(self, value: NvVector2 | list | tuple | None):
+    def _start_pos_setter(self, value: Vector2 | list | tuple | None):
         return value
 
-    def _coordinates_setter(self, coordinates: NvVector2) -> bool:
+    def _coordinates_setter(self, coordinates: Vector2) -> bool:
         return True
 
     def _get_correct_color(self, color: Annotations.rgb_like_color, hover_state: HoverState, modify_amount: float = 0.2) -> Annotations.rgb_like_color:
@@ -466,16 +465,16 @@ class NevuObject(NevuCobject):
         return min(self._no_borders_current_size.x, self._no_borders_current_size.y) / 2
 
     @property
-    def current_size(self) -> NvVector2:
+    def current_size(self) -> Vector2:
         return self.cache.get_or_exec(CacheType.RelSize, self._update_size)
 
     @property
-    def _no_borders_current_size(self) -> NvVector2:
+    def _no_borders_current_size(self) -> Vector2:
         bw = self.relm(self.style.border_width)
-        return self.current_size - (NvVector2.from_xy(bw, bw) * 2)
+        return self.current_size - (Vector2.from_xy(bw, bw) * 2)
 
     @property
-    def _borders_of_current_size(self) -> NvVector2:
+    def _borders_of_current_size(self) -> Vector2:
         return (self.current_size - self._no_borders_current_size) / 2
 
     def _subtheme_role_setter(self, value: SubThemeRole):
@@ -555,11 +554,11 @@ class NevuObject(NevuCobject):
         if window is not None:
             window.mark_dirty()
 
-    def _resize(self, resize_ratio: NvVector2):
+    def _resize(self, resize_ratio: Vector2):
         self._resize_content(resize_ratio)
         self._run_callbacks(BindType.Resize, resize_ratio)
 
-    def _resize_content(self, resize_ratio: NvVector2):
+    def _resize_content(self, resize_ratio: Vector2):
         self._changed = True
         self._resize_ratio = resize_ratio
         self.cache.clear_selected(whitelist=[CacheType.RelSize])
@@ -594,11 +593,6 @@ class NevuObject(NevuCobject):
     @hover_state.setter
     def hover_state(self, value: HoverState):
         self.set_hover_state(value)
-
-    # === Rect functions ===
-
-    def get_rect_static(self):
-        return get_rect_helper(self.coordinates, self._resize_ratio, self.size)
 
     # === Cache update functions ===
 

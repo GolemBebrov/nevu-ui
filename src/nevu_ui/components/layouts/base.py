@@ -31,15 +31,15 @@ from nevu_ui.cython.logic.logic import (
     draw_floating_items_optimized,
     rl_predraw_widgets,
 )
-from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.presentation.style import Style, _StyleKwargs
 
 
-class LayoutType(NevuObject):
+class BaseLayout(NevuObject):
     items: list[NevuObject]
     floating_items: list[NevuObject]
     content_type = list
-    _parent_layout: LayoutType | None
+    _parent_layout: BaseLayout | None
     _parent_menu: Menu | None
     bg_widget: Widget | None
 
@@ -54,14 +54,14 @@ class LayoutType(NevuObject):
 
     def _rl_predraw_widgets(self):
         if self.items:
-            rl_predraw_widgets(self.items, LayoutType, Widget)
+            rl_predraw_widgets(self.items, BaseLayout, Widget)
         if self.floating_items:
-            rl_predraw_widgets(self.floating_items, LayoutType, Widget)
+            rl_predraw_widgets(self.floating_items, BaseLayout, Widget)
 
     def _boot_up(self):
         self.booted = True
         for item in self._all_items():
-            assert isinstance(item, (Widget, LayoutType))
+            assert isinstance(item, (Widget, BaseLayout))
             self._normalize_item_size(item)
 
             self._start_item(item)
@@ -113,7 +113,7 @@ class LayoutType(NevuObject):
         self._parent_layout = None
         self._last_border_name = None
 
-    def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None):
+    def _lazy_init(self, size: Vector2 | list, content: content_type | None = None):
         super()._lazy_init(size)
 
     def _add_params(self):
@@ -126,7 +126,7 @@ class LayoutType(NevuObject):
         if value is None: return
         assert isinstance(value, Widget), "bg_widget must be widget"
         value._template.size = self.size.xy
-        value.set_coordinates(NvVector2.from_xy(0, 0))
+        value.set_coordinates(Vector2.from_xy(0, 0))
         value = self.add_floating_item(value)
         value.size = self.size.xy
         value.z = -999
@@ -137,14 +137,14 @@ class LayoutType(NevuObject):
         if content is None: return
         raise NotImplementedError(f"{self.__class__.__name__} do NOT support declarative content addition")
 
-    def _coordinates_setter(self, coordinates: NvVector2) -> bool:
+    def _coordinates_setter(self, coordinates: Vector2) -> bool:
         if self.coordinates.x != coordinates.x or self.coordinates.y != coordinates.y:
             delta = coordinates - self.coordinates
             if self.cached_coordinates is not None:
                 for i, item in enumerate(self.items):
                     if i < len(self.cached_coordinates):
                         self.cached_coordinates[i] += delta
-                    if isinstance(item, LayoutType):
+                    if isinstance(item, BaseLayout):
                         item.set_coordinates(item.coordinates + delta)
                     else:
                         item.coordinates += delta
@@ -218,7 +218,7 @@ class LayoutType(NevuObject):
             return size
         x = self._size_rule_to_number(x, 0)
         y = self._size_rule_to_number(y, 1)
-        return NvVector2.from_xy(x, y)
+        return Vector2.from_xy(x, y)
 
     def _normalize_item_size(self, item: NevuObject):
         if self.booted == False: return
@@ -227,7 +227,7 @@ class LayoutType(NevuObject):
         item._template["size"] = self._normalize(item_size)
 
     def _start_item(self, item: NevuObject):
-        if isinstance(item, LayoutType):
+        if isinstance(item, BaseLayout):
             item._connect_to_layout(self)
         if self.booted is False: return
 
@@ -235,17 +235,17 @@ class LayoutType(NevuObject):
         item.start_pos = self._normalize(item.start_pos)
         item._init_start()
 
-    def _resize_content(self, resize_ratio: NvVector2):
+    def _resize_content(self, resize_ratio: Vector2):
         super()._resize_content(resize_ratio)
         self.cached_coordinates = None
         self._border_font_surface = None
         for item in self._all_items():
-            assert isinstance(item, (Widget, LayoutType))
+            assert isinstance(item, (Widget, BaseLayout))
             item._resize(self._resize_ratio)
 
     @staticmethod
-    def is_layout(item: Any) -> TypeGuard[LayoutType]:
-        return isinstance(item, LayoutType)
+    def is_layout(item: Any) -> TypeGuard[BaseLayout]:
+        return isinstance(item, BaseLayout)
 
     @staticmethod
     def is_widget(item: Any) -> TypeGuard[Widget]:
@@ -263,7 +263,7 @@ class LayoutType(NevuObject):
                     "item",
                     item,
                     self,
-                    "LayoutType.add_item/add_floating_item",
+                    "BaseLayout.add_item/add_floating_item",
                 )
             )
         if not item.single_instance:
@@ -306,7 +306,7 @@ class LayoutType(NevuObject):
 
     def set_items_style(self, style: Style):
         for item in self._all_items():
-            assert isinstance(item, (Widget, LayoutType))
+            assert isinstance(item, (Widget, BaseLayout))
             if self.is_widget(item):
                 item.style = style
                 item.cache.clear()
@@ -319,7 +319,7 @@ class LayoutType(NevuObject):
 
     def set_items_style_patch(self, **patch: Unpack[_StyleKwargs]):
         for item in self._all_items():
-            assert isinstance(item, (Widget, LayoutType))
+            assert isinstance(item, (Widget, BaseLayout))
             if self.is_widget(item):
                 item.style = item.style(**patch)
                 item.cache.clear()
@@ -327,7 +327,7 @@ class LayoutType(NevuObject):
                 item.set_items_style_patch(**patch)
 
     def _draw_start(self):
-        draw_floating_items_optimized(self, self.floating_items, LayoutType, Widget)
+        draw_floating_items_optimized(self, self.floating_items, BaseLayout, Widget)
 
     def _update_start(self):
         if self._parent_menu:
@@ -365,7 +365,7 @@ class LayoutType(NevuObject):
     def _connect_to_menu(self, menu: Menu):
         self._connect_to_parent(("_parent_menu", menu), menu.surface, menu)
 
-    def _connect_to_layout(self, layout: LayoutType):
+    def _connect_to_layout(self, layout: BaseLayout):
         self._connect_to_parent(("_parent_layout", layout), layout.surface, layout.first_parent_menu)
 
     def get_item_by_id(self, id: str) -> NevuObject | None:

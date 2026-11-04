@@ -9,20 +9,20 @@
 
 cimport cython
 import nevu_ui.core.modules as md
-from nevu_ui.cython.nvvector2.nvvector2 cimport NvVector2, nv_vector2_t
+from nevu_ui.cython.vector2.vector2 cimport Vector2, nv_vector2_t
 
 @cython.final
 @cython.freelist(32)
-cdef class NvRect:
+cdef class Rect:
     @staticmethod
-    cdef NvRect from_nvvector(NvVector2 pos, NvVector2 size):
-        return NvRect.new(pos.x, pos.y, size.x, size.y)
+    cdef Rect from_nvvector(Vector2 pos, Vector2 size):
+        return Rect.new(pos.x, pos.y, size.x, size.y)
 
     @staticmethod
-    cdef NvRect from_nv_vector_t(nv_vector2_t pos, nv_vector2_t size):
-        return NvRect.new(pos.x, pos.y, size.x, size.y)
+    cdef Rect from_nv_vector_t(nv_vector2_t pos, nv_vector2_t size):
+        return Rect.new(pos.x, pos.y, size.x, size.y)
 
-    cpdef NvRect union(self, NvRect other):
+    cpdef Rect union(self, Rect other):
         cdef float min_x, min_y, max_r, max_b
         cdef float s_right = self.x + self.w
         cdef float s_bottom = self.y + self.h
@@ -48,11 +48,11 @@ cdef class NvRect:
             max_b = s_bottom
         else:
             max_b = o_bottom
-        return NvRect.new(min_x, min_y, max_r - min_x, max_b - min_y)
+        return Rect.new(min_x, min_y, max_r - min_x, max_b - min_y)
 
     @staticmethod
-    cdef inline NvRect new(float x, float y, float w, float h):
-        cdef NvRect rec = NvRect.__new__(NvRect)
+    cdef inline Rect new(float x, float y, float w, float h):
+        cdef Rect rec = Rect.__new__(Rect)
         rec.x = x
         rec.y = y
         rec.w = w
@@ -68,7 +68,7 @@ cdef class NvRect:
             self.h = 0.0
         elif nargs == 1:
             arg = args[0]
-            if hasattr(arg, "unionall_ip") or isinstance(arg, NvRect):
+            if hasattr(arg, "unionall_ip") or isinstance(arg, Rect):
                 #pygame ReCT
                 self.x = arg.x
                 self.y = arg.y
@@ -79,28 +79,28 @@ cdef class NvRect:
                 self.y = arg.y
                 self.w = arg.width
                 self.h = arg.height
-            elif isinstance(arg, NvVector2):
+            elif isinstance(arg, Vector2):
                 self.x = arg.x
                 self.y = arg.y
                 self.w = 0.0
                 self.h = 0.0
             elif isinstance(arg, (list, tuple)):
                 if len(arg) not in (2, 4):
-                    raise TypeError(f"NvRect() takes a sequence of length 2/4, but got {len(arg)}")
+                    raise TypeError(f"Rect() takes a sequence of length 2/4, but got {len(arg)}")
                 self.x = arg[0]
                 self.y = arg[1]
                 if len(arg) == 4:
                     self.w = arg[2]
                     self.h = arg[3]
             else:
-                raise TypeError(f"NvRect() invalid constructor argument: {type(arg).__name__}")
+                raise TypeError(f"Rect() invalid constructor argument: {type(arg).__name__}")
         elif nargs == 2:
             if isinstance(args[0], int | float):
                 self.x = args[0]
                 self.y = args[1]
                 self.w = 0.0 #type: ignore
                 self.h = 0.0 #type: ignore
-            elif isinstance(args[0], NvVector2):
+            elif isinstance(args[0], Vector2):
                 self.x = args[0].x
                 self.y = args[0].y
                 self.w = args[1].x
@@ -111,49 +111,49 @@ cdef class NvRect:
             self.w = args[2]
             self.h = args[3]
         else:
-            raise TypeError(f"NvRect() takes 0, 1, or 2 arguments, but {nargs} were given")
+            raise TypeError(f"Rect() takes 0, 1, or 2 arguments, but {nargs} were given")
 
     #2 chars swizzing
     @property
     def xx(self):
-        return NvVector2.new(self.x, self.x)
+        return Vector2.new(self.x, self.x)
 
     @property
     def yy(self):
-        return NvVector2.new(self.y, self.y)
+        return Vector2.new(self.y, self.y)
 
     @property
     def xy(self):
-        return NvVector2.new(self.x, self.y)
+        return Vector2.new(self.x, self.y)
 
     @property
     def yx(self):
-        return NvVector2.new(self.y, self.x)
+        return Vector2.new(self.y, self.x)
 
     @property
     def xw(self):
-        return NvVector2.new(self.x, self.w)
+        return Vector2.new(self.x, self.w)
 
     @property
     def yh(self):
-        return NvVector2.new(self.y, self.h)
+        return Vector2.new(self.y, self.h)
 
     @property
     def wh(self):
-        return NvVector2.new(self.w, self.h)
+        return Vector2.new(self.w, self.h)
 
     @property
     def hw(self):
-        return NvVector2.new(self.h, self.w)
+        return Vector2.new(self.h, self.w)
 
     #4 chars swizzing
     @property
     def xywh(self):
-        return NvRect.new(self.x, self.y, self.w, self.h)
+        return Rect.new(self.x, self.y, self.w, self.h)
 
     @property
     def whxy(self):
-        return NvRect.new(self.w, self.h, self.x, self.y)
+        return Rect.new(self.w, self.h, self.x, self.y)
 
     #Python properties
     def __getitem__(self, int index):
@@ -180,23 +180,23 @@ cdef class NvRect:
         else:
             raise IndexError("Rect index out of range")
 
-    def __imul__(self, NvRect other):
+    def __imul__(self, Rect other):
         return self._imul(other) #type: ignore
 
-    def __isub__(self, NvRect other):
+    def __isub__(self, Rect other):
         return self._isub(other) #type: ignore
 
-    def __iadd__(self, NvRect other):
+    def __iadd__(self, Rect other):
         return self._iadd(other) #type: ignore
 
-    def __add__(self, NvRect other):
+    def __add__(self, Rect other):
         return self._add(other) #type: ignore
 
-    def __sub__(self, NvRect other):
+    def __sub__(self, Rect other):
         return self._sub(other) #type: ignore
 
     def __mul__(self, other):
-        if isinstance(other, NvRect):
+        if isinstance(other, Rect):
             return self._mul_rect(other) #type: ignore
         elif isinstance(other, (int, float)):
             return self._mul_scalar(other) #type: ignore
@@ -204,24 +204,24 @@ cdef class NvRect:
             return NotImplemented
 
     def __truediv__(self, other):
-        if isinstance(other, NvRect):
-            return NvRect.new(self.x / other.x, self.y / other.y, self.w / other.w, self.h / other.h)
+        if isinstance(other, Rect):
+            return Rect.new(self.x / other.x, self.y / other.y, self.w / other.w, self.h / other.h)
         elif isinstance(other, (int, float)):
-            return NvRect.new(self.x / other, self.y / other, self.w / other, self.h / other)
+            return Rect.new(self.x / other, self.y / other, self.w / other, self.h / other)
         else: return NotImplemented
 
     def __floordiv__(self, other):
-        if isinstance(other, NvRect):
-            return NvRect.new(self.x // other.x, self.y // other.y, self.w // other.w, self.h // other.h)
+        if isinstance(other, Rect):
+            return Rect.new(self.x // other.x, self.y // other.y, self.w // other.w, self.h // other.h)
         elif isinstance(other, (int, float)):
-            return NvRect.new(self.x // other, self.y // other, self.w // other, self.h // other)
+            return Rect.new(self.x // other, self.y // other, self.w // other, self.h // other)
         else: return NotImplemented
 
     def __neg__(self):
-        return NvRect.new(-self.x, -self.y, -self.w, -self.h)
+        return Rect.new(-self.x, -self.y, -self.w, -self.h)
 
     def __repr__(self):
-        return f"NvRect({self.x}, {self.y}, {self.w}, {self.h})"
+        return f"Rect({self.x}, {self.y}, {self.w}, {self.h})"
 
     def __hash__(self):
         return hash((self.x, self.y, self.w, self.h))
@@ -230,42 +230,42 @@ cdef class NvRect:
         return 4
 
     def __eq__(self, other):
-        if isinstance(other, NvRect):
+        if isinstance(other, Rect):
             return self.x == other.x and self.y == other.y and self.w == other.w and self.h == other.h
         else:
             return NotImplemented
 
     #Cython ccalls
     @cython.ccall
-    cdef inline NvRect _add(self, NvRect other):
-        return NvRect.new(self.x + other.x, self.y + other.y, self.w + other.w, self.h + other.h)
+    cdef inline Rect _add(self, Rect other):
+        return Rect.new(self.x + other.x, self.y + other.y, self.w + other.w, self.h + other.h)
 
     @cython.ccall
-    cdef inline NvRect _sub(self, NvRect other):
-        return NvRect.new(self.x - other.x, self.y - other.y, self.w - other.w, self.h - other.h)
+    cdef inline Rect _sub(self, Rect other):
+        return Rect.new(self.x - other.x, self.y - other.y, self.w - other.w, self.h - other.h)
 
     @cython.ccall
-    cdef inline NvRect _mul_scalar(self, float val):
-        return NvRect.new(self.x * val, self.y * val, self.w * val, self.h * val)
+    cdef inline Rect _mul_scalar(self, float val):
+        return Rect.new(self.x * val, self.y * val, self.w * val, self.h * val)
 
     @cython.ccall
-    cdef inline NvRect _mul_rect(self, NvRect other):
-        return NvRect.new(self.x * other.x, self.y * other.y, self.w * other.w, self.h * other.h)
+    cdef inline Rect _mul_rect(self, Rect other):
+        return Rect.new(self.x * other.x, self.y * other.y, self.w * other.w, self.h * other.h)
 
     @cython.ccall
-    cdef inline NvRect _iadd(self, NvRect other):
+    cdef inline Rect _iadd(self, Rect other):
         self.x += other.x
         self.y += other.y
         return self
 
     @cython.ccall
-    cdef inline NvRect _isub(self, NvRect other):
+    cdef inline Rect _isub(self, Rect other):
         self.x -= other.x
         self.y -= other.y
         return self
 
     @cython.ccall
-    cdef inline NvRect _imul(self, NvRect other):
+    cdef inline Rect _imul(self, Rect other):
         self.x *= other.x
         self.y *= other.y
         return self
@@ -280,13 +280,13 @@ cdef class NvRect:
     def get_pygame_rect(self):
         return md.pygame.Rect(self.x, self.y, self.w, self.h)
 
-    cpdef bint collide_rect(self, NvRect other):
+    cpdef bint collide_rect(self, Rect other):
         return self.x < other.x + other.w and self.x + self.w > other.x and self.y < other.y + other.h and self.y + self.h > other.y
 
     def collide_point(self, *args):
         cdef float nargs = len(args)
         if nargs == 1:
-            if isinstance(args[0], NvVector2):
+            if isinstance(args[0], Vector2):
                 return self.x < args[0].x < self.x + self.w and self.y < args[0].y < self.y + self.h
             elif isinstance(args[0], (list, tuple)):
                 return self.x < args[0][0] < self.x + self.w and self.y < args[0][1] < self.y + self.h
@@ -297,11 +297,11 @@ cdef class NvRect:
     #Properties
     @property
     def size(self):
-        return NvVector2.new(self.w, self.h)
+        return Vector2.new(self.w, self.h)
 
     @size.setter
     def size(self, value):
-        if isinstance(value, NvVector2):
+        if isinstance(value, Vector2):
             self.w = value.x
             self.h = value.y
         elif isinstance(value, (list, tuple)):
@@ -350,37 +350,37 @@ cdef class NvRect:
 
     @property
     def topleft(self):
-        return NvVector2.new(self.x, self.y)
+        return Vector2.new(self.x, self.y)
 
     @property
     def topright(self):
-        return NvVector2.new(self.x + self.w, self.y)
+        return Vector2.new(self.x + self.w, self.y)
 
     @property
     def bottomleft(self):
-        return NvVector2.new(self.x, self.y + self.h)
+        return Vector2.new(self.x, self.y + self.h)
 
     @property
     def bottomright(self):
-        return NvVector2.new(self.x + self.w, self.y + self.h)
+        return Vector2.new(self.x + self.w, self.y + self.h)
 
     def move_ip(self, *args):
         cdef int nargs = len(args)
         cdef object arg
-        cdef NvVector2 vec_arg
+        cdef Vector2 vec_arg
         if nargs == 2:
             self.x += args[0]
             self.y += args[1]
         elif nargs == 1:
             arg = args[0]
-            if isinstance(arg, NvVector2):
-                vec_arg = <NvVector2>arg
+            if isinstance(arg, Vector2):
+                vec_arg = <Vector2>arg
                 self.x += vec_arg.x
                 self.y += vec_arg.y
             elif isinstance(arg, (list, tuple)):
                 self.x += arg[0]
                 self.y += arg[1]
             else:
-                raise TypeError(f"move_ip() argument must be sequence or NvVector2, not {type(arg).__name__}")
+                raise TypeError(f"move_ip() argument must be sequence or Vector2, not {type(arg).__name__}")
         else:
             raise TypeError(f"move_ip() takes 1 or 2 arguments, but {nargs} were given")

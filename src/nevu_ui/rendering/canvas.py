@@ -22,8 +22,8 @@ from nevu_ui.core.size.rules import (
     _all_gcx,
 )
 from nevu_ui.core.state import nevu_state
-from nevu_ui.cython.nvsurface.nvsurface import NvSurface
-from nevu_ui.cython.nvvector2.nvvector2 import NvVector2
+from nevu_ui.cython.surface.surface import Surface
+from nevu_ui.cython.vector2.vector2 import Vector2
 from nevu_ui.presentation.style import Style, default_style
 
 if TYPE_CHECKING:
@@ -72,18 +72,18 @@ def _resolve_coord(val: Any, pos_idx: int, root: NevuObject | None) -> float:
         return float(val)
     return 0
 
-def _resolve_vec2_like(val: Annotations.vec2_all, root: NevuObject | None) -> NvVector2:
-    if isinstance(val, NvVector2):
-        return NvVector2.from_xy(
+def _resolve_vec2_like(val: Annotations.vec2_all, root: NevuObject | None) -> Vector2:
+    if isinstance(val, Vector2):
+        return Vector2.from_xy(
             _resolve_coord(val.x, 0, root),
             _resolve_coord(val.y, 1, root)
         )
     if isinstance(val, tuple | list) and len(val) >= 2:
-        return NvVector2.from_xy(
+        return Vector2.from_xy(
             _resolve_coord(val[0], 0, root),
             _resolve_coord(val[1], 1, root)
         )
-    return NvVector2.from_xy(0, 0)
+    return Vector2.from_xy(0, 0)
 
 class _CanvasDataType(ABC):
     def __init__(
@@ -100,7 +100,7 @@ class _CanvasDataType(ABC):
     @abstractmethod
     def resolve(self, root: NevuObject | None) -> None: ...
     @abstractmethod
-    def draw(self, surface: NvSurface, renderer: BaseRenderer, root: NevuObject) -> None: ...
+    def draw(self, surface: Surface, renderer: BaseRenderer, root: NevuObject) -> None: ...
     @abstractmethod
     def copy(self) -> _CanvasDataType: ...
 
@@ -118,9 +118,9 @@ class CanvasRectData(_CanvasDataType):
         super().__init__(style=style, id=id, relative=relative)
         self.raw_pos = copy.deepcopy(pos)
         self.raw_size = copy.deepcopy(size)
-        self.pos = NvVector2()
-        self.size = NvVector2()
-        self._cached_surface: NvSurface | None = None
+        self.pos = Vector2()
+        self.size = Vector2()
+        self._cached_surface: Surface | None = None
         self._cached_key: tuple | None = None
 
     def resolve(self, root: NevuObject | None) -> None:
@@ -128,7 +128,7 @@ class CanvasRectData(_CanvasDataType):
         self.size = _resolve_vec2_like(self.raw_size, root)
         self._cached_surface = None
 
-    def draw(self, surface: NvSurface, renderer: BaseRenderer, root: NevuObject) -> None:
+    def draw(self, surface: Surface, renderer: BaseRenderer, root: NevuObject) -> None:
         from nevu_ui.rendering.base_renderer import DrawBgCall
 
         pos = root.rel(self.pos) if self.relative else self.pos
@@ -197,14 +197,14 @@ class CanvasLineData(_CanvasDataType):
         self.raw_pos_to = copy.deepcopy(pos_to)
         self.width = width
         self.color = color
-        self.pos_from = NvVector2()
-        self.pos_to = NvVector2()
+        self.pos_from = Vector2()
+        self.pos_to = Vector2()
 
     def resolve(self, root: NevuObject | None) -> None:
         self.pos_from = _resolve_vec2_like(self.raw_pos_from, root)
         self.pos_to = _resolve_vec2_like(self.raw_pos_to, root)
 
-    def draw(self, surface: NvSurface, renderer: BaseRenderer, root: NevuObject) -> None:
+    def draw(self, surface: Surface, renderer: BaseRenderer, root: NevuObject) -> None:
         pos_from = root.rel(self.pos_from) if self.relative else self.pos_from
         pos_to = root.rel(self.pos_to) if self.relative else self.pos_to
 
@@ -249,9 +249,9 @@ class CanvasCircleData(_CanvasDataType):
         super().__init__(style=style, id=id, relative=relative)
         self.raw_pos = copy.deepcopy(pos)
         self.raw_radius = copy.deepcopy(radius)
-        self.pos = NvVector2()
+        self.pos = Vector2()
         self.radius = 0.0
-        self._cached_surface: NvSurface | None = None
+        self._cached_surface: Surface | None = None
         self._cached_key: tuple | None = None
 
     def resolve(self, root: NevuObject | None) -> None:
@@ -259,7 +259,7 @@ class CanvasCircleData(_CanvasDataType):
         self.radius = _resolve_coord(self.raw_radius, 0, root)
         self._cached_surface = None
 
-    def draw(self, surface: NvSurface, renderer: BaseRenderer, root: NevuObject) -> None:
+    def draw(self, surface: Surface, renderer: BaseRenderer, root: NevuObject) -> None:
         from nevu_ui.rendering.base_renderer import DrawBgCall
 
         center = root.rel(self.pos) if self.relative else self.pos
@@ -268,8 +268,8 @@ class CanvasCircleData(_CanvasDataType):
         if radius <= 0: return
 
         diameter = radius * 2.0
-        size = NvVector2.from_xy(diameter, diameter)
-        top_left = center - NvVector2.from_xy(radius, radius)
+        size = Vector2.from_xy(diameter, diameter)
+        top_left = center - Vector2.from_xy(radius, radius)
 
         circle_style = self.style(border_radius=radius)
 
@@ -349,7 +349,7 @@ class Canvas:
         for item in self._content:
             item.resolve(target_root)
 
-    def draw(self, surface: NvSurface, renderer: BaseRenderer, root: NevuObject) -> None:
+    def draw(self, surface: Surface, renderer: BaseRenderer, root: NevuObject) -> None:
         for item in self._content:
             item.draw(surface, renderer, root)
 

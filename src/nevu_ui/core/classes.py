@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, TypeGuard
 
 if TYPE_CHECKING:
-    from nevu_ui import NvVector2
+    from nevu_ui import Vector2
 from nevu_ui.core.enums import Backend
 
 
@@ -40,12 +40,12 @@ class TooltipType:
 
     @dataclass
     class Custom:
-        ratio: "NvVector2"
+        ratio: "Vector2"
         title: str = ""
 
     @dataclass
     class BigCustom:
-        ratio: "NvVector2"
+        ratio: "Vector2"
         title: str = ""
         content: str = ""
 

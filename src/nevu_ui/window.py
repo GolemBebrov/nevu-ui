@@ -19,8 +19,8 @@ from nevu_ui.cython.display.display import (
     WindowRendererPygame,
     WindowRendererRaylib,
 )
-from nevu_ui.cython.nvrect import NvRect
-from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.rect import Rect
+from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.cython.z_system import ZRequest, ZSystem
 from nevu_ui.overlay import overlay
 from nevu_ui.parser.base import standart_config
@@ -49,9 +49,9 @@ class _IsNamespace:
 
 class WindowKwargs(TypedDict):
     title: NotRequired[str]
-    minsize: NotRequired[NvVector2]
+    minsize: NotRequired[Vector2]
     resizable: NotRequired[bool]
-    ratio: NotRequired[NvVector2]
+    ratio: NotRequired[Vector2]
     resize_type: NotRequired[ResizeType]
     backend: NotRequired[Backend]
     base_fps: NotRequired[int]
@@ -69,9 +69,9 @@ window_initialized = False
 
 _kwargs_to_param = {
     "title": ("_title", str, "nevu window"),
-    "minsize": ("minsize", NvVector2 | type(None) | tuple | list, None),
+    "minsize": ("minsize", Vector2 | type(None) | tuple | list, None),
     "resizable": ("resizable", bool, True),
-    "ratio": ("_ratio", NvVector2 | type(None) | tuple | list, None),
+    "ratio": ("_ratio", Vector2 | type(None) | tuple | list, None),
     # "resize_type": ("_resize_type", ResizeType, ResizeType.CropToRatio),
     "backend": ("backend", Backend, Backend.Pygame),
     "base_fps": ("_fps", int, 60),
@@ -112,7 +112,7 @@ class Window:
     ]
 
     @staticmethod
-    def crop_to_ratio(width: int, height: int, ratio: NvVector2, default: tuple[float, float] | None = None):
+    def crop_to_ratio(width: int, height: int, ratio: Vector2, default: tuple[float, float] | None = None):
         default = default or (0, 0)
         if height == 0 or ratio.y == 0:
             return default
@@ -127,8 +127,8 @@ class Window:
     backend: Backend
     _title: str
     resizable: bool
-    minsize: NvVector2
-    _ratio: NvVector2
+    minsize: Vector2
+    _ratio: Vector2
     _fps: int
     debounce: bool
 
@@ -197,17 +197,17 @@ class Window:
     def _init_lists(self, size):
         minsize = self.minsize
         ratio = self._ratio
-        ratio = NvVector2(0, 0) if ratio is None else NvVector2(ratio)
+        ratio = Vector2(0, 0) if ratio is None else Vector2(ratio)
         self._ratio = ratio
-        self._original_size = NvVector2(size)
-        self.size = NvVector2(size)
+        self._original_size = Vector2(size)
+        self.size = Vector2(size)
         if self.minsize:
-            self.minsize = NvVector2(minsize)
+            self.minsize = Vector2(minsize)
 
         self._crop_width_offset = 0
         self._crop_height_offset = 0
-        self.offset = NvVector2(0, 0)
-        self._x2_offset = NvVector2(0, 0)
+        self.offset = Vector2(0, 0)
+        self._x2_offset = Vector2(0, 0)
 
     def _init_graphics(self):
         global window_specific_update
@@ -275,10 +275,10 @@ class Window:
         self._crop_width_offset, self._crop_height_offset = self.crop_to_ratio(
             current_w, current_h, target_ratio
         )
-        self.offset = NvVector2(
+        self.offset = Vector2(
             self._crop_width_offset / 2, self._crop_height_offset / 2
         )
-        self._x2_offset = NvVector2(self._crop_width_offset, self._crop_height_offset)
+        self._x2_offset = Vector2(self._crop_width_offset, self._crop_height_offset)
 
     def add_request(self, z_request: ZRequest):
         self.z_system.add(z_request)
@@ -310,7 +310,7 @@ class Window:
             rl.close_window()
             sys.exit()
         if is_window_resized():
-            self.size = NvVector2(get_screen_width(), get_screen_height())
+            self.size = Vector2(get_screen_width(), get_screen_height())
             self._debouncing.val = 0
 
     def _update_pygame(self, events, fps: int | None = None):
@@ -329,7 +329,7 @@ class Window:
                 and window_resize_type != ResizeType.ResizeFromOriginal
             ):
                 w, h = event.w, event.h
-                self.size = NvVector2(w, h)
+                self.size = Vector2(w, h)
                 self._debouncing.val = 0
         if unicoded == False:
             self.pygame_unicode = None
@@ -393,7 +393,7 @@ class Window:
             self._recalculate_render_area()
             render_width = self.size[0] - self._crop_width_offset
             render_height = self.size[1] - self._crop_height_offset
-            self.callbacks.run(BindType.Resize, NvVector2(render_width, render_height))
+            self.callbacks.run(BindType.Resize, Vector2(render_width, render_height))
         else:
             self.callbacks.run(BindType.Resize, self.size)
 
@@ -441,7 +441,7 @@ class Window:
         return self._ratio
 
     @ratio.setter
-    def ratio(self, ratio: NvVector2):
+    def ratio(self, ratio: Vector2):
         self._ratio = ratio
         self._recalculate_render_area()
 
@@ -456,10 +456,10 @@ class Window:
 
     @property
     def rel(self):
-        return NvVector2((self.size - self._x2_offset) / self.original_size)
+        return Vector2((self.size - self._x2_offset) / self.original_size)
 
-    def get_nvrect(self):
-        return NvRect(0, 0, self.size[0], self.size[1])
+    def get_rect(self):
+        return Rect(0, 0, self.size[0], self.size[1])
 
 
 _initialized_window_kwargs_buffer = None

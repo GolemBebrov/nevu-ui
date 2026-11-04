@@ -4,7 +4,7 @@ from typing import Any
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import GradientType
 from nevu_ui.cython.raylib_gradient.raylib_gradient import ClickGradient, GradientRaylib
-from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.presentation.animations.animation_base import (
     ColorAnimation,
     FloatAnimation,
@@ -51,7 +51,7 @@ class AnimatedGradient(GradientRaylib):
         self.center_initalized = False
         self.angle_initalized = False
 
-        nvvec = NvVector2.from_tuple
+        nvvec = Vector2.from_tuple
         self.animation_manager = AnimationManager()
 
         # === Colors ===

@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, Any
 
 from nevu_ui.core.state import nevu_state
 from nevu_ui.cython.cache.cache import Cache
-from nevu_ui.cython.nvfont.nvfont import NvFont
-from nevu_ui.cython.nvsurface.nvsurface import NvSurface
+from nevu_ui.cython.font.font import Font
+from nevu_ui.cython.surface.surface import Surface
 from nevu_ui.presentation.style import default_style
 from nevu_ui.core.size.rules import (
     CFill,
@@ -28,7 +28,7 @@ from nevu_ui.core.enums import (
     CacheType,
     RenderReturnType,
 )
-from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.presentation.color import Color
 
 _bg_surface_pool: dict[tuple[int, int], tuple] = {}
@@ -41,7 +41,7 @@ class _BaseCoreNamespace(ABC):
         raise NotImplementedError
 
     def _get_font(self, size: int, path: str):
-        font = NvFont(size, path)
+        font = Font(size, path)
         return font, font.size
 
     def get_font(
@@ -55,8 +55,8 @@ class _BaseCoreNamespace(ABC):
 
         relative = False,
         relm: float | None = None,
-        container_size: NvVector2 | None = None,
-    ) -> tuple[NvFont, int]:
+        container_size: Vector2 | None = None,
+    ) -> tuple[Font, int]:
 
         font_name = path or style.font_name
         font_size = size if size is not None else round(self.get_font_size(style, relative=relative, relm=relm, container_size=container_size))
@@ -71,8 +71,8 @@ class _BaseCoreNamespace(ABC):
         *,
         clear_color: Annotations.rgb_like_color | None = Color.Blank,
         normalize_color: bool = True,
-    ) -> NvSurface:
-        surface = NvSurface(size)
+    ) -> Surface:
+        surface = Surface(size)
         if clear_color is not None:
             clear_color = self.normalize_color(clear_color) if normalize_color else clear_color
             surface.clear(clear_color)
@@ -81,7 +81,7 @@ class _BaseCoreNamespace(ABC):
     @abstractmethod
     def draw_rect(
         self,
-        surface: NvSurface,
+        surface: Surface,
         pos: Annotations.vec2_like_v,
         size: Annotations.vec2_like_v,
         *,
@@ -92,7 +92,7 @@ class _BaseCoreNamespace(ABC):
     @abstractmethod
     def draw_line(
         self,
-        surface: NvSurface,
+        surface: Surface,
         pos_from: Annotations.vec2_like_v,
         pos_to: Annotations.vec2_like_v,
         *,
@@ -120,19 +120,19 @@ class _BaseCoreNamespace(ABC):
         cache: Cache | None = None,
         relative = False,
         relm: float | None = None,
-        font: NvFont | None = None,
+        font: Font | None = None,
         font_size: int | None = None,
-    ) -> NvVector2:
+    ) -> Vector2:
         if font is None:
             font, _ = self.get_font(style = style, cache=cache, relative=relative, relm=relm, size=font_size)
         result = font.measure(text)
-        return NvVector2.from_xy(result.x, result.y)
+        return Vector2.from_xy(result.x, result.y)
 
     def get_font_size(
         self,
         style: Style,
         *,
-        container_size: NvVector2 | None = None,
+        container_size: Vector2 | None = None,
         relative: bool = False,
         relm: float | None = None
     ) -> float:
@@ -289,7 +289,7 @@ class _BaseCoreNamespace(ABC):
         *,
         style: Style = default_style,
         strict_size = True,
-    ) -> NvVector2:
+    ) -> Vector2:
         result_x = container_rect[0]
         result_y = container_rect[1]
 
@@ -316,15 +316,15 @@ class _BaseCoreNamespace(ABC):
             case Align.CENTER: result_y = container_rect[1] + (container_height - inner_height) / 2
             case Align.BOTTOM: result_y = container_rect[1] + container_height - inner_height
 
-        return NvVector2(round(result_x), round(result_y))
+        return Vector2(round(result_x), round(result_y))
 
 @dataclass(kw_only=True, slots=True)
 class _BaseCall:
-    size: NvVector2
+    size: Vector2
     relative: bool = True
     relm: float | None = None
     return_type: RenderReturnType = RenderReturnType.CreateNew
-    modify_object: NvSurface | None = None
+    modify_object: Surface | None = None
     pos: Annotations.vec2_like_v | None = None
 
 
@@ -363,7 +363,7 @@ class DrawTextCall(_BaseCall):
     style: Style = default_style
     font_size: int | None = None
     color: Annotations.rgba_color | None = None
-    max_size: NvVector2 | None = None
+    max_size: Vector2 | None = None
     line_height: float = 1.25
 
     unlimited_x: bool = False
@@ -381,7 +381,7 @@ class DrawEffectsCall(_BaseCall):
 
 @dataclass(kw_only=True, slots=True)
 class DrawBordersCall(_BaseCall):
-    original_surface: NvSurface
+    original_surface: Surface
     style: Style = default_style
     color: Annotations.rgba_color | None = None
     glassy: bool = False
@@ -456,9 +456,9 @@ class BaseRenderer(ABC):
                     self._text_draw(text_lines, surface, call, text_pos)
                     return text_pos, surface
                 case RenderReturnType.CreateNew:
-                    text_lines, text_pos, text_size = self._arrange_text(call, pos = NvVector2(0, 0))
+                    text_lines, text_pos, text_size = self._arrange_text(call, pos = Vector2(0, 0))
                     surface = self.core.create_surface(text_size)
-                    self._text_draw(text_lines, surface, call, NvVector2())
+                    self._text_draw(text_lines, surface, call, Vector2())
                     return text_pos, surface
 
                 case _:
@@ -545,7 +545,7 @@ class BaseRenderer(ABC):
     @abstractmethod
     def _base_draw(
         self,
-        surface: NvSurface,
+        surface: Surface,
         call: DrawBaseCall,
     ): raise NotImplementedError
 
@@ -553,9 +553,9 @@ class BaseRenderer(ABC):
     def _text_draw(
         self,
         text_lines: list[str],
-        surface: NvSurface,
+        surface: Surface,
         call: DrawTextCall,
-        pos: NvVector2 | None = None,
+        pos: Vector2 | None = None,
     ): raise NotImplementedError
 
     @abstractmethod
@@ -563,13 +563,13 @@ class BaseRenderer(ABC):
         self,
         call: DrawTextCall,
         pos: Annotations.vec2_like_v | None = None,
-    ) -> tuple[list[str], NvVector2, NvVector2]:
+    ) -> tuple[list[str], Vector2, Vector2]:
         raise NotImplementedError
 
     @abstractmethod
     def _borders_draw(
         self,
-        surface: NvSurface,
+        surface: Surface,
         call: DrawBordersCall,
     ): raise NotImplementedError
 
@@ -579,5 +579,5 @@ class BaseRenderer(ABC):
         call: DrawEffectsCall,
         effect_texture: Any,
         gradient: ClickGradient,
-        surface: NvSurface,
+        surface: Surface,
     ): raise NotImplementedError

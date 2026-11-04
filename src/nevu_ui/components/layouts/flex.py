@@ -2,7 +2,7 @@ import copy
 from typing import Unpack
 
 from nevu_ui.components._typehints import _FlexKwargs
-from nevu_ui.components.layouts.layout_base import LayoutType
+from nevu_ui.components.layouts.base import BaseLayout
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core.enums import (
@@ -17,13 +17,13 @@ from nevu_ui.cython.logic.logic import (
     draw_widgets_optimized,
     py_get_item_abs_coords,
 )
-from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.vector2 import Vector2
 
 MAIN_LEN_STR = "main_len"
 SEC_LEN_STR = "sec_len"
 ITEMS_STR = "items"
 
-class Flex(LayoutType):
+class Flex(BaseLayout):
     _supports_global_size = False
     content_type = list[NevuObject]
 
@@ -32,7 +32,7 @@ class Flex(LayoutType):
     wrap: bool
     justify_content: FlexJustify
     align_items: Align
-    gap: int | float | NvVector2
+    gap: int | float | Vector2
     max_wrap_size: int | float
     # ==============
 
@@ -42,7 +42,7 @@ class Flex(LayoutType):
         style=None,
         **params: Unpack[_FlexKwargs],
     ):
-        super().__init__(content, size = NvVector2(0, 0), style = style, **params)
+        super().__init__(content, size = Vector2(0, 0), style = style, **params)
 
     def _init_booleans(self):
         super()._init_booleans()
@@ -58,7 +58,7 @@ class Flex(LayoutType):
         self._add_param("wrap", bool, True)
         self._add_param("justify_content", FlexJustify, FlexJustify.Start)
         self._add_param("align_items", Align, Align.CENTER)
-        self._add_param("gap", int | float | NvVector2, 10)
+        self._add_param("gap", int | float | Vector2, 10)
         self._add_param("max_wrap_size", int | float, 0)
 
     def _boot_up(self):
@@ -71,14 +71,14 @@ class Flex(LayoutType):
                 raise TypeError(f"Flex content must be NevuObject, got {type(item)}")
             self.add_item(item)
 
-    def _coordinates_setter(self, coordinates: NvVector2) -> bool:
+    def _coordinates_setter(self, coordinates: Vector2) -> bool:
         if self.coordinates.x != coordinates.x or self.coordinates.y != coordinates.y:
             delta = coordinates - self.coordinates
             if self.cached_coordinates is not None:
                 for i, item in enumerate(self.items):
                     if i < len(self.cached_coordinates):
                         self.cached_coordinates[i] += delta
-                    if isinstance(item, LayoutType):
+                    if isinstance(item, BaseLayout):
                         item.set_coordinates(item.coordinates + delta)
                         item.absolute_coordinates += delta
                     else:
@@ -86,7 +86,7 @@ class Flex(LayoutType):
                         item.absolute_coordinates += delta
         return True
 
-    def _connect_to_layout(self, layout: LayoutType):
+    def _connect_to_layout(self, layout: BaseLayout):
         super()._connect_to_layout(layout)
         self._sync_layout()
 
@@ -97,14 +97,14 @@ class Flex(LayoutType):
     def _item_add(self, item: NevuObject):
         item = super()._item_add(item)
         if self.booted:
-            item._resize(NvVector2.from_xy(1.0, 1.0))
-            if isinstance(item, LayoutType):
+            item._resize(Vector2.from_xy(1.0, 1.0))
+            if isinstance(item, BaseLayout):
                 item._regenerate_coordinates()
         return item
 
     def _on_item_add(self, item: NevuObject):
         self._sync_layout()
-        if isinstance(item, LayoutType):
+        if isinstance(item, BaseLayout):
             item._regenerate_coordinates()
         if self._parent_layout:
             self._parent_layout._on_item_add(item)
@@ -113,7 +113,7 @@ class Flex(LayoutType):
         item = super().add_item(item)
         self.cached_coordinates = None
         self._sync_layout()
-        if isinstance(item, LayoutType):
+        if isinstance(item, BaseLayout):
             item._regenerate_coordinates()
         return item
 
@@ -121,23 +121,23 @@ class Flex(LayoutType):
         super()._regenerate_coordinates()
         self._sync_layout()
 
-    def _resize_content(self, resize_ratio: NvVector2):
-        self._resize_ratio = NvVector2.from_xy(1.0, 1.0)
+    def _resize_content(self, resize_ratio: Vector2):
+        self._resize_ratio = Vector2.from_xy(1.0, 1.0)
         self.cached_coordinates = None
         self._border_font_surface = None
         self._need_update_overlay = True
 
-        fixed_ratio = NvVector2.from_xy(1.0, 1.0)
+        fixed_ratio = Vector2.from_xy(1.0, 1.0)
         for item in self._all_items():
-            assert isinstance(item, (Widget, LayoutType))
+            assert isinstance(item, (Widget, BaseLayout))
             item._resize(fixed_ratio)
 
         self._sync_layout()
 
-    def _get_gap_vec(self) -> NvVector2:
+    def _get_gap_vec(self) -> Vector2:
         gap = self.gap
         if isinstance(gap, int | float):
-            return NvVector2.from_xy(gap, gap)
+            return Vector2.from_xy(gap, gap)
         return gap
 
     def _get_available_space(self, is_row: bool) -> float:
@@ -166,7 +166,7 @@ class Flex(LayoutType):
             return
         self._recalculate_layout()
 
-    def _create_line_dicts(self, is_row: bool, gap_size: NvVector2):
+    def _create_line_dicts(self, is_row: bool, gap_size: Vector2):
         available_space = self._get_available_space(is_row)
 
         wrap = self.wrap
@@ -212,7 +212,7 @@ class Flex(LayoutType):
         if self._is_recalculating: return
         self._is_recalculating = True
         for item in self.items:
-            if isinstance(item, LayoutType) and hasattr(item, "_recalculate_size"):
+            if isinstance(item, BaseLayout) and hasattr(item, "_recalculate_size"):
                 item._recalculate_size()
 
         direction = self.orientation
@@ -227,12 +227,12 @@ class Flex(LayoutType):
         lines = self._create_line_dicts(is_row, gap_size)
 
         if is_row:
-            total_size_vec = NvVector2.from_xy(
+            total_size_vec = Vector2.from_xy(
                 max((line[MAIN_LEN_STR] for line in lines), default=0.0),
                 sum(line[SEC_LEN_STR] for line in lines) + (len(lines) - 1) * gap_size.y if lines else 0.0
             )
         else:
-            total_size_vec = NvVector2.from_xy(
+            total_size_vec = Vector2.from_xy(
                 sum(line[SEC_LEN_STR] for line in lines) + (len(lines) - 1) * gap_size.y if lines else 0.0,
                 max((line[MAIN_LEN_STR] for line in lines), default=0.0)
             )
@@ -301,11 +301,11 @@ class Flex(LayoutType):
                     target_x = self_coordinates.x + current_sec_pos + sec_offset
                     target_y = self_coordinates.y + current_main_pos
 
-                new_coords = NvVector2.from_xy(target_x, target_y)
+                new_coords = Vector2.from_xy(target_x, target_y)
 
                 item.coordinates = new_coords
                 item.set_coordinates(new_coords)
-                if isinstance(item, LayoutType):
+                if isinstance(item, BaseLayout):
                     item._regenerate_coordinates()
 
                 item.absolute_coordinates = py_get_item_abs_coords(self, item)
@@ -348,7 +348,7 @@ class Flex(LayoutType):
         base_light_update(self)
 
     def _draw_main(self):
-        draw_widgets_optimized(self, self.items, LayoutType, Widget)
+        draw_widgets_optimized(self, self.items, BaseLayout, Widget)
 
     def _create_clone(self):
         return self.__class__(

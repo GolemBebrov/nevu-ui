@@ -14,10 +14,10 @@ from nevu_ui.core.annotations import Annotations
 from nevu_ui.core.state import nevu_state
 from nevu_ui.presentation.color import Color
 
-from nevu_ui.cython.nvvector2.nvvector2 cimport NvVector2
-from nevu_ui.cython.nvsurface.nvsurface cimport _NvSurfBase, _NvSurfPygame, _NvSurfRaylib
+from nevu_ui.cython.vector2.vector2 cimport Vector2
+from nevu_ui.cython.surface.surface cimport _NvSurfBase, _NvSurfPygame, _NvSurfRaylib
 
-__pos_default = NvVector2.new(0, 0)
+__pos_default = Vector2.new(0, 0)
 
 
 cdef object _pg_Font = None
@@ -40,7 +40,7 @@ cdef inline object _get_pg_font_cls():
     return _pg_Font
 
 
-cdef class _NvFontBase:
+cdef class _FontBase:
     def __init__(self, int size, str path = FontLibrary.InterRegular):
         raise NotImplementedError()
 
@@ -54,7 +54,7 @@ cdef class _NvFontBase:
     def loaded(self) -> bool: return self._loaded
 
     def __repr__(self) -> str:
-        return f"NvFont<{self._size}>"
+        return f"Font<{self._size}>"
 
     def __str__(self) -> str:
         return self.__repr__()
@@ -62,14 +62,14 @@ cdef class _NvFontBase:
     cpdef void kill(self):
         raise NotImplementedError()
 
-    cpdef NvVector2 measure(self, str text):
+    cpdef Vector2 measure(self, str text):
         raise NotImplementedError()
 
     cpdef void render(
         self,
         str text,
         _NvSurfBase surface_like = None,
-        NvVector2 pos = __pos_default,
+        Vector2 pos = __pos_default,
         tuple color = Color.White,
     ):
         raise NotImplementedError()
@@ -84,7 +84,7 @@ cdef class _NvFontBase:
             raise RuntimeError("Font is killed")
 
 
-cdef class _NvFontRaylib(_NvFontBase):
+cdef class _FontRaylib(_FontBase):
     def __init__(self, int size, str path = FontLibrary.InterRegular):
         Annotations.window_check()
         if md.rl is None:
@@ -115,16 +115,16 @@ cdef class _NvFontRaylib(_NvFontBase):
                 md.rl.unload_font(self._native)
             self._loaded = False
 
-    cpdef NvVector2 measure(self, str text):
+    cpdef Vector2 measure(self, str text):
         self._check_loaded()
         cdef object result = md.rl.measure_text_ex(self._native, text, <float>self._size, 0)
-        return NvVector2.cfrom_xy(result.x, result.y)
+        return Vector2.cfrom_xy(result.x, result.y)
 
     cpdef void render(
         self,
         str text,
         _NvSurfBase surface_like = None,
-        NvVector2 pos = __pos_default,
+        Vector2 pos = __pos_default,
         tuple color = Color.White,
     ):
         self._check_loaded()
@@ -142,7 +142,7 @@ cdef class _NvFontRaylib(_NvFontBase):
             rendered = self.get_rendered(text, color)
         except RuntimeError as e:
             raise RuntimeError(
-                "render() failed: an active NvSurface context blocks offscreen text rendering. "
+                "render() failed: an active Surface context blocks offscreen text rendering. "
                 "To draw into the currently active surface, call "
                 "render(text, None, pos, color) inside the 'with surface:' block."
             ) from e
@@ -151,7 +151,7 @@ cdef class _NvFontRaylib(_NvFontBase):
     cpdef _NvSurfBase get_rendered(self, str text, tuple color = Color.White):
         self._check_loaded()
 
-        cdef NvVector2 text_size = self.measure(text)
+        cdef Vector2 text_size = self.measure(text)
         cdef int w = <int>text_size.x + 1
         cdef int h = <int>text_size.y + 1
         if w < 1: w = 1
@@ -169,7 +169,7 @@ cdef class _NvFontRaylib(_NvFontBase):
         return surface
 
 
-cdef class _NvFontPygame(_NvFontBase):
+cdef class _FontPygame(_FontBase):
     def __init__(self, int size, str path = FontLibrary.InterRegular):
         cdef object font_cls = _get_pg_font_cls()
         if size <= 0:
@@ -183,7 +183,7 @@ cdef class _NvFontPygame(_NvFontBase):
         self._loaded = False
         self._native = None
 
-    cpdef NvVector2 measure(self, str text):
+    cpdef Vector2 measure(self, str text):
         self._check_loaded()
 
         cdef list lines = text.split("\n")
@@ -194,23 +194,23 @@ cdef class _NvFontPygame(_NvFontBase):
                 if line_w > max_w:
                     max_w = line_w
             total_h = len(lines) * self._native.get_linesize()
-            return NvVector2.cfrom_xy(max_w, total_h)
+            return Vector2.cfrom_xy(max_w, total_h)
 
         cdef tuple result = self._native.size(text)
-        return NvVector2.cfrom_ints(result[0], result[1])
+        return Vector2.cfrom_ints(result[0], result[1])
 
     cpdef void render(
         self,
         str text,
         _NvSurfBase surface_like = None,
-        NvVector2 pos = __pos_default,
+        Vector2 pos = __pos_default,
         tuple color = Color.White,
     ):
         self._check_loaded()
 
         if surface_like is None:
             raise TypeError(
-                "render() target surface must be a NvSurface for the pygame backend, not None"
+                "render() target surface must be a Surface for the pygame backend, not None"
             )
 
         cdef object rendered = self._native.render(text, True, color)
@@ -240,20 +240,20 @@ cdef class _NvFontPygame(_NvFontBase):
         return surface
 
 
-class _NvFontMeta(type):
+class _FontMeta(type):
     def __instancecheck__(cls, instance):
-        return isinstance(instance, _NvFontBase)
+        return isinstance(instance, _FontBase)
 
 
-class NvFont(_NvFontBase, metaclass=_NvFontMeta):
+class Font(_FontBase, metaclass=_FontMeta):
     def __new__(cls, *args, **kwargs):
         Annotations.window_check()
         rtype = nevu_state.window.renderer_type
 
         if rtype.raylib:
-            return _NvFontRaylib(*args, **kwargs)
+            return _FontRaylib(*args, **kwargs)
         if rtype.pygame_like:
-            return _NvFontPygame(*args, **kwargs)
+            return _FontPygame(*args, **kwargs)
         raise RuntimeError(
-            f"NvFont does not support backend '{nevu_state.window.backend}' >:() <- this is your face when you saw this."
+            f"Font does not support backend '{nevu_state.window.backend}' >:() <- this is your face when you saw this."
         )

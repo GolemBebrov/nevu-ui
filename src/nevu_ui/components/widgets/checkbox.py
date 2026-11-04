@@ -8,7 +8,7 @@ from nevu_ui.core import Annotations
 from nevu_ui.core.enums import BindType, RenderReturnType
 from nevu_ui.core.size.base import _SizeRule
 from nevu_ui.core.state import nevu_state
-from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.rendering import DrawBaseCall
 
 
@@ -30,7 +30,7 @@ class CheckBox(Widget):
         if size is None:
             size = nevu_object_globals.library.get("size")
         if isinstance(size, int | float):
-            size = NvVector2.from_xy(size, size)
+            size = Vector2.from_xy(size, size)
         elif isinstance(size, _SizeRule):
             size = (size, size)
 
@@ -44,7 +44,7 @@ class CheckBox(Widget):
         super()._init_booleans()
         self._supports_tuple_borderradius = False
 
-    def _lazy_init(self, size: NvVector2 | list):
+    def _lazy_init(self, size: Vector2 | list):
         super()._lazy_init(size)
         if val := self.checkbox_group:
             val.add_checkbox(self)

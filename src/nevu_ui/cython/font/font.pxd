@@ -1,12 +1,12 @@
 cimport cython
 
-from nevu_ui.cython.nvvector2.nvvector2 cimport NvVector2
-from nevu_ui.cython.nvsurface.nvsurface cimport _NvSurfBase
+from nevu_ui.cython.vector2.vector2 cimport Vector2
+from nevu_ui.cython.surface.surface cimport _NvSurfBase
 from nevu_ui.presentation.color import Color
 
-cdef NvVector2 __pos_default
+cdef Vector2 __pos_default
 
-cdef class _NvFontBase:
+cdef class _FontBase:
     cdef int _size
     cdef object _native
     cdef bint _loaded
@@ -14,18 +14,18 @@ cdef class _NvFontBase:
     cdef inline int get_size(self)
     cdef inline void _check_loaded(self) except *
     cpdef void kill(self)
-    cpdef NvVector2 measure(self, str text)
+    cpdef Vector2 measure(self, str text)
     cpdef void render(
         self,
         str text,
         _NvSurfBase surface_like = ?,
-        NvVector2 pos = ?,
+        Vector2 pos = ?,
         tuple color = ?,
     )
     cpdef _NvSurfBase get_rendered(self, str text, tuple color = ?)
 
-cdef class _NvFontRaylib(_NvFontBase):
+cdef class _FontRaylib(_FontBase):
     pass
 
-cdef class _NvFontPygame(_NvFontBase):
+cdef class _FontPygame(_FontBase):
     pass

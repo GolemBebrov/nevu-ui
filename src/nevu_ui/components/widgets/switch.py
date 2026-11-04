@@ -15,8 +15,8 @@ from nevu_ui.core.enums import (
     RenderReturnType,
     SwitchAxis,
 )
-from nevu_ui.cython.nvsurface.nvsurface import NvSurface
-from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.surface.surface import Surface
+from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.cython.raylib.raylib import begin_blend_mode, end_blend_mode
 from nevu_ui.presentation.animations import (
     AnimationManager,
@@ -48,10 +48,10 @@ class Switch(Widget):
 
     def _init_lists(self):
         super()._init_lists()
-        self._circle_coordinates = NvVector2.from_xy(0, 0)
-        self._bg_circle_coords_before = NvVector2.from_xy(0, 0)
-        self._goal_circle_coords = NvVector2.from_xy(0, 0)
-        self._click_pos: NvVector2 | None = None
+        self._circle_coordinates = Vector2.from_xy(0, 0)
+        self._bg_circle_coords_before = Vector2.from_xy(0, 0)
+        self._goal_circle_coords = Vector2.from_xy(0, 0)
+        self._click_pos: Vector2 | None = None
         self._click_treshold = 5
 
     def _init_flags(self):
@@ -90,7 +90,7 @@ class Switch(Widget):
         self._add_param_link("anim_time", "animation_time")
         self._add_param("circle_size", float | int, 0.85)
 
-    def _lazy_init(self, size: NvVector2 | list, state: bool = False):
+    def _lazy_init(self, size: Vector2 | list, state: bool = False):
         super()._lazy_init(size)
         self.state = state
 
@@ -111,7 +111,7 @@ class Switch(Widget):
     def _set_bg_circle_coords(self, value, anim_time=None):
         anim_time = anim_time or self.animation_time
         self._circle_anim_manager = AnimationManager(warn=False)
-        self._goal_circle_coords = NvVector2(value)
+        self._goal_circle_coords = Vector2(value)
         self._circle_anim_manager.add_start_animation(
             "main",
             Vector2Animation(
@@ -154,10 +154,10 @@ class Switch(Widget):
         circle_size = max(0.0, min(1.0, float(self.circle_size)))
         minimal_size = self.minimal_side * circle_size
         if minimal_size <= 0:
-            size = NvVector2.from_xy(1, 1)
+            size = Vector2.from_xy(1, 1)
         else:
-            size = NvVector2.from_xy(minimal_size, minimal_size)
-        bg_texture = NvSurface(size)
+            size = Vector2.from_xy(minimal_size, minimal_size)
+        bg_texture = Surface(size)
         bg_texture.fill(Color.Blank)
         if minimal_size <= 0:
             return bg_texture
@@ -185,7 +185,7 @@ class Switch(Widget):
         circle_pos = (
             self._circle_coordinates
             + self._borders_of_current_size
-            + NvVector2.from_xy(circle_offset, circle_offset)
+            + Vector2.from_xy(circle_offset, circle_offset)
         ).get_round()
 
         is_raylib = nevu_state.window.renderer_type.raylib
@@ -225,7 +225,7 @@ class Switch(Widget):
         curr_pos = mouse.pos
 
         if self._dragging:
-            pos = NvVector2.from_xy(0, 0)
+            pos = Vector2.from_xy(0, 0)
             click_pos = self._click_pos
             assert click_pos
             coords_before = self._bg_circle_coords_before
@@ -287,7 +287,7 @@ class Switch(Widget):
                 axis = SwitchAxis.Vertical
         return axis
 
-    def _resize_content(self, resize_ratio: NvVector2):
+    def _resize_content(self, resize_ratio: Vector2):
         super()._resize_content(resize_ratio)
         self._circle_surface = None
 

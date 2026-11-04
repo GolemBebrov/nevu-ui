@@ -16,7 +16,7 @@ from nevu_ui.core.enums import (
     RenderReturnType,
 )
 from nevu_ui.core.state import nevu_state
-from nevu_ui.cython import NvRect, NvVector2
+from nevu_ui.cython import Rect, Vector2
 from nevu_ui.cython.raylib import begin_blend_mode, end_blend_mode
 from nevu_ui.presentation.theme import TupleColorRole
 from nevu_ui.presentation.style import Style
@@ -138,7 +138,7 @@ class Slider(ProgressBar):
         return result
 
     def adjust_text_rect(self, rect):
-        result_rect = NvRect(rect)
+        result_rect = Rect(rect)
         if self.style.align_x == Align.CENTER and self.style.align_y == Align.CENTER:
             return rect
 
@@ -160,7 +160,7 @@ class Slider(ProgressBar):
                 pady = -self.padding_y - border_size.y
 
         if isinstance(result_rect, tuple):
-            result_rect = NvRect(*result_rect)
+            result_rect = Rect(*result_rect)
         result_rect.move_ip(padx, pady)
         result_rect = result_rect.get_int_tuple()
         return result_rect
@@ -186,7 +186,7 @@ class Slider(ProgressBar):
         self.cache.set(CacheType.TextArgs, (self.adjust_text_rect(text_rect), text_surface))
         self._draw_text()
 
-    def _resize_content(self, resize_ratio: NvVector2):
+    def _resize_content(self, resize_ratio: Vector2):
         super()._resize_content(resize_ratio)
         self.cache.clear_selected(whitelist=[CacheType.TextArgs])
 

@@ -4,7 +4,7 @@ import copy
 from typing import Unpack
 
 from nevu_ui.components._typehints import _StackKwargs
-from nevu_ui.components.layouts import LayoutType
+from nevu_ui.components.layouts import BaseLayout
 from nevu_ui.components.layouts.menu import Menu
 from nevu_ui.components.nevuobj import NevuObject
 from nevu_ui.components.widgets import Widget
@@ -15,10 +15,10 @@ from nevu_ui.core.size.rules import (
     _SizeRule,
 )
 from nevu_ui.cython.logic.logic import base_light_update, draw_widgets_optimized, py_get_item_abs_coords
-from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.vector2 import Vector2
 
 # Nnna nanachi approved!
-class Stack(LayoutType):
+class Stack(BaseLayout):
     _supports_global_size = False
     type content_type = list[tuple[Align, NevuObject] | NevuObject]
 
@@ -32,7 +32,7 @@ class Stack(LayoutType):
         style: Annotations.nevuobj_style = None,
         **params: Unpack[_StackKwargs],
     ):
-        super().__init__(content = content, size = NvVector2(), style = style, **params)
+        super().__init__(content = content, size = Vector2(), style = style, **params)
 
     def add_items(self, content: content_type | None):
         if not content: return
@@ -91,7 +91,7 @@ class Stack(LayoutType):
         except Exception as e:
             raise RuntimeError(f"Cannot insert item in {self.__class__.__name__} with {self.get_param('id')}") from e
 
-    def _connect_to_layout(self, layout: LayoutType):
+    def _connect_to_layout(self, layout: BaseLayout):
         super()._connect_to_layout(layout)
         self._recalculate_item_coordinates()
 
@@ -128,7 +128,7 @@ class Stack(LayoutType):
         base_light_update(self)
 
     def _draw_main(self):
-        draw_widgets_optimized(self, self.items, LayoutType, Widget)
+        draw_widgets_optimized(self, self.items, BaseLayout, Widget)
 
     def _regenerate_coordinates(self):
         super()._regenerate_coordinates()
@@ -208,7 +208,7 @@ class Stack(LayoutType):
                 cached_coordinates.append(item.coordinates.copy())
                 continue
 
-            new_coords = NvVector2()
+            new_coords = Vector2()
             new_coords[main_axis] = self_coordinates[main_axis] + current_main + (spacing * 0.5)
             new_coords[cross_axis] = self_coordinates[cross_axis] + self._get_align_offset(item, alignment)
             item.set_coordinates(new_coords)
@@ -219,13 +219,13 @@ class Stack(LayoutType):
 
         self.cached_coordinates = cached_coordinates
 
-class VStack(LayoutType):
+class VStack(BaseLayout):
     def _add_params(self):
         super()._add_params()
         self._change_param_default("orientation", Orientation.Column)
         self._block_param("orientation")
 
-class HStack(LayoutType):
+class HStack(BaseLayout):
     def _add_params(self):
         super()._add_params()
         self._change_param_default("orientation", Orientation.Row)

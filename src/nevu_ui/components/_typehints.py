@@ -8,7 +8,7 @@ from nevu_ui.core import Annotations
 from nevu_ui.core.callbacks import Callbacks
 from nevu_ui.core.classes import DictAccessMixin, GlobalsBase
 from nevu_ui.core.enums import Align, FlexJustify, Orientation, SwitchAxis
-from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.components.tooltip import Tooltip
 from nevu_ui.presentation.animations import AnimationManager
 from nevu_ui.presentation.theme import SubThemeRole
@@ -16,7 +16,7 @@ from nevu_ui.presentation.style import Style
 from nevu_ui.rendering.canvas import Canvas
 
 if TYPE_CHECKING:
-    from nevu_ui.components.layouts import LayoutType
+    from nevu_ui.components.layouts import BaseLayout
     from nevu_ui.components.checkbox_group import CheckBoxGroup
     from nevu_ui.components.nevuobj import NevuObject
     from nevu_ui.components.widgets import Input, Label, ProgressBar, Switch, Widget
@@ -31,7 +31,7 @@ class _NevuObjectKwargsBase(TypedDict, total=False):
     callbacks: Callbacks | dict
     canvas: Canvas
     bg_variant: bool
-    start_pos: list | tuple | NvVector2
+    start_pos: list | tuple | Vector2
 
 class _NevuObjectKwargsShort(TypedDict, total=False):
     z: int
@@ -234,7 +234,7 @@ class _ScrollableKwargsBase(_LayoutTypeKwargs, total=False):
     key_power: int
     scroll_power: int
     inverted_scrolling: bool
-    scrollbar_relative_size: NvVector2 | None
+    scrollbar_relative_size: Vector2 | None
     basic_alignment: Align
     append_key: Any
     descend_key: Any
@@ -257,12 +257,12 @@ class _GridKwargs_xy(_Grid_Specifics_xy, _LayoutTypeKwargs): ...
 class _GridKwargs_uni(_GridKwargs_rc, _GridKwargs_xy, _LayoutTypeKwargs): ...
 
 class _MenuKwargs(_LayoutTypeKwargs, total=False):
-    main_layout: LayoutType
+    main_layout: BaseLayout
 
 class _ColorPickerKwargs(_GridKwargs_uni, total=False):
     on_change_function: Any
     raise_errors: bool
-    item_size: NvVector2
+    item_size: Vector2
     margin: int
     input_style: Style
     label_style: Style
@@ -273,7 +273,7 @@ class _FlexKwargs(_LayoutTypeKwargs, total=False):
     wrap: bool
     justify_content: FlexJustify
     align_items: Align
-    gap: int | float | NvVector2
+    gap: int | float | Vector2
     max_wrap_size: int | float
 
 

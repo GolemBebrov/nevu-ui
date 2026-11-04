@@ -1,9 +1,9 @@
 # distutils: language = c++
 
-from nevu_ui.cython.nvvector2.nvvector2 cimport NvVector2, nv_vector2_t
+from nevu_ui.cython.vector2.vector2 cimport Vector2, nv_vector2_t
 from nevu_ui.cython.raylib_shader.raylib_shader cimport RaylibShader
 from libcpp.vector cimport vector
-from nevu_ui.cython.nvrect.nvrect cimport NvRect
+from nevu_ui.cython.rect.rect cimport Rect
 ctypedef struct Vector4:
     float x
     float y
@@ -41,7 +41,7 @@ cpdef void init_raylib_pointers(dict pointers)
 cpdef int get_nvshader_location(RaylibShader shader, str name)
 cpdef void set_nvshader_value_float(RaylibShader shader, int loc_index, float value)
 cpdef void set_nvshader_value_vec4_tuple(RaylibShader shader, int loc_index, tuple value)
-cpdef void set_nvshader_value_vec2_nvvec(RaylibShader shader, int loc_index, NvVector2 value)
+cpdef void set_nvshader_value_vec2_nvvec(RaylibShader shader, int loc_index, Vector2 value)
 cpdef void set_nvshader_value_vec2_tuple(RaylibShader shader, int loc_index, tuple value)
 cpdef void begin_drawing()
 cpdef void end_drawing()

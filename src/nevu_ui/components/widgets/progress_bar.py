@@ -10,8 +10,8 @@ from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import ParamLayer, RenderReturnType
 from nevu_ui.core.state import nevu_state
-from nevu_ui.cython import NvVector2
-from nevu_ui.cython.nvsurface.nvsurface import NvSurface
+from nevu_ui.cython import Vector2
+from nevu_ui.cython.surface.surface import Surface
 from nevu_ui.cython.raylib.raylib import begin_blend_mode, end_blend_mode
 from nevu_ui.presentation.theme import PairColorRole
 from nevu_ui.presentation.color import Color
@@ -137,7 +137,7 @@ class ProgressBar(Widget):
 
         is_raylib = nevu_state.window.renderer_type.raylib
         bg_size = surface.size
-        bg_surf = NvSurface(bg_size)
+        bg_surf = Surface(bg_size)
         with bg_surf:
             bg_surf.clear(Color.Blank)
             if is_raylib:
@@ -197,7 +197,7 @@ class ProgressBar(Widget):
 
         height = round(rsize.y)
 
-        size = NvVector2.from_xy(width, height)
+        size = Vector2.from_xy(width, height)
         half_size = size / 2
 
         bw = relm(style.border_width)
@@ -241,7 +241,7 @@ class ProgressBar(Widget):
             )
         )
 
-        coords = NvVector2.from_xy(
+        coords = Vector2.from_xy(
             self._borders_of_current_size.x, self._borders_of_current_size.y + y_decrease
         )
         assert self.surface

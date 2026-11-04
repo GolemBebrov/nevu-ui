@@ -15,7 +15,7 @@ from cpython.object cimport PyObject
 import numpy as np
 import nevu_ui.core.modules as md
 from nevu_ui.core.annotations import Annotations
-from nevu_ui.cython.nvvector2.nvvector2 cimport NvVector2, nv_vector2_t, nv_vector2_new
+from nevu_ui.cython.vector2.vector2 cimport Vector2, nv_vector2_t, nv_vector2_new
 from nevu_ui.core.state import nevu_state
 from nevu_ui.presentation.color import Color
 from nevu_ui.cython.raylib.raylib cimport (
@@ -178,15 +178,15 @@ cdef class _NvSurfBase:
     cpdef void kill(self):
         pass
 
-    cpdef NvVector2 get_size(self):
-        return NvVector2.cfrom_xy(self._width, self._height)
+    cpdef Vector2 get_size(self):
+        return Vector2.cfrom_xy(self._width, self._height)
 
     cpdef int get_width(self): return self._width
     cpdef int get_height(self): return self._height
 
     @property
-    def size(self) -> NvVector2:
-        return NvVector2.cfrom_xy(self._width, self._height)
+    def size(self) -> Vector2:
+        return Vector2.cfrom_xy(self._width, self._height)
 
     @property
     def width(self) -> int: return self._width
@@ -205,7 +205,7 @@ cdef class _NvSurfBase:
         raise NotImplementedError
 
     def __repr__(self) -> str:
-        return f"NvSurface<{self.width}x{self.height}>"
+        return f"Surface<{self.width}x{self.height}>"
 
     def __str__(self) -> str:
         return self.__repr__()
@@ -221,7 +221,7 @@ cdef class _NvSurfRaylib(_NvSurfBase):
     cpdef void clear(self, object color):
         cdef bint ctx_active = is_context_active(self)
         if is_other_context_active(self):
-            raise RuntimeError("Cannot clear surface: another NvSurface context is active")
+            raise RuntimeError("Cannot clear surface: another Surface context is active")
         if not ctx_active:
             self.on_begin()
         c_clear_background(_to_color_tuple(color))
@@ -230,17 +230,17 @@ cdef class _NvSurfRaylib(_NvSurfBase):
 
     cpdef void blit(self, object source, dest: Annotations.dest_like_v):
         if source is None:
-            raise TypeError("blit() source must be a NvSurface, not None")
+            raise TypeError("blit() source must be a Surface, not None")
 
         cdef bint ctx_active = is_context_active(self)
         if is_other_context_active(self):
-            raise RuntimeError("Cannot blit onto surface: another NvSurface context is active")
+            raise RuntimeError("Cannot blit onto surface: another Surface context is active")
         if not ctx_active:
             self.on_begin()
 
         cdef nv_vector2_t nv_vec_dest
-        if type(dest) is NvVector2:
-            nv_vec_dest = (<NvVector2>dest).data
+        if type(dest) is Vector2:
+            nv_vec_dest = (<Vector2>dest).data
         elif type(dest) is tuple:
             nv_vec_dest = nv_vector2_new((<tuple>dest)[0], (<tuple>dest)[1])
         else:
@@ -260,15 +260,15 @@ cdef class _NvSurfRaylib(_NvSurfBase):
                 if not ctx_active:
                     self.on_end()
                 raise TypeError(
-                    f"Cannot blit {type(source).__name__} onto raylib NvSurface, "
-                    f"source must be a raylib NvSurface, pyray RenderTexture, or pyray Texture"
+                    f"Cannot blit {type(source).__name__} onto raylib Surface, "
+                    f"source must be a raylib Surface, pyray RenderTexture, or pyray Texture"
                 )
         else:
             if not ctx_active:
                 self.on_end()
             raise TypeError(
-                f"Cannot blit {type(source).__name__} onto raylib NvSurface, "
-                f"source must be a raylib NvSurface, pyray RenderTexture, or pyray Texture"
+                f"Cannot blit {type(source).__name__} onto raylib Surface, "
+                f"source must be a raylib Surface, pyray RenderTexture, or pyray Texture"
             )
 
         if not ctx_active:
@@ -324,9 +324,9 @@ cdef class _NvSurfPygame(_NvSurfBase):
 
     def __init__(self, size: Annotations.dest_like_v, bint use_pure_copy = False):
         cdef int w, h
-        if type(size) is NvVector2:
-            w = <int>(<NvVector2>size).x
-            h = <int>(<NvVector2>size).y
+        if type(size) is Vector2:
+            w = <int>(<Vector2>size).x
+            h = <int>(<Vector2>size).y
         elif type(size) is tuple:
             w = <int>(<tuple>size)[0]
             h = <int>(<tuple>size)[1]
@@ -387,9 +387,9 @@ cdef class _NvSurfPygame(_NvSurfBase):
         cdef _NvSurfPygame src = <_NvSurfPygame>source
         cdef int dx, dy
 
-        if type(dest) is NvVector2:
-            dx = <int>(<NvVector2>dest).x
-            dy = <int>(<NvVector2>dest).y
+        if type(dest) is Vector2:
+            dx = <int>(<Vector2>dest).x
+            dy = <int>(<Vector2>dest).y
         elif type(dest) is tuple:
             dx = <int>(<tuple>dest)[0]
             dy = <int>(<tuple>dest)[1]
@@ -412,8 +412,8 @@ cdef class _NvSurfPygame(_NvSurfBase):
             return
 
         raise TypeError(
-            f"Cannot blit {type(source).__name__} onto pygame NvSurface, "
-            f"source must be a pygame NvSurface"
+            f"Cannot blit {type(source).__name__} onto pygame Surface, "
+            f"source must be a pygame Surface"
         )
 
     cdef void c_blit_fast(self, _NvSurfPygame src, int dx, int dy) noexcept:
@@ -447,12 +447,12 @@ cdef class _NvSurfPygame(_NvSurfBase):
         return new_surf
 
 
-class _NvSurfaceMeta(type):
+class _SurfaceMeta(type):
     def __instancecheck__(cls, instance):
         return isinstance(instance, _NvSurfBase)
 
 
-class NvSurface(_NvSurfBase, metaclass=_NvSurfaceMeta):
+class Surface(_NvSurfBase, metaclass=_SurfaceMeta):
     def __new__(cls, *args, **kwargs):
         Annotations.window_check()
         rtype = nevu_state.window.renderer_type
@@ -462,5 +462,5 @@ class NvSurface(_NvSurfBase, metaclass=_NvSurfaceMeta):
         if rtype.pygame_like:
             return _NvSurfPygame(*args, **kwargs)
         raise RuntimeError(
-            f"NvSurface does not support backend '{nevu_state.window.backend}' >:() <- this is your face when you saw this."
+            f"Surface does not support backend '{nevu_state.window.backend}' >:() <- this is your face when you saw this."
         )

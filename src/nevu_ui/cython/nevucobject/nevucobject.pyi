@@ -8,9 +8,9 @@ from typing_extensions import TypeAlias
 from nevu_ui.core.enums import CustomFunctions
 from nevu_ui.cython.cache.cache import Cache
 from nevu_ui.cython.nvparam.nvparam import NvParam
-from nevu_ui.cython.nvrect.nvrect import NvRect
-from nevu_ui.cython.nvsurface.nvsurface import _NvSurfBase
-from nevu_ui.cython.nvvector2.nvvector2 import NvVector2
+from nevu_ui.cython.rect.rect import Rect
+from nevu_ui.cython.surface.surface import _NvSurfBase
+from nevu_ui.cython.vector2.vector2 import Vector2
 from nevu_ui.cython.z_system.z_system import ZRequest
 
 C_CustomFunctions: TypeAlias = int
@@ -35,10 +35,10 @@ class NevuCobject:
     _dead: bool
     booted: bool
     _inner_active: bool
-    coordinates: NvVector2
-    absolute_coordinates: NvVector2
-    size: NvVector2
-    _resize_ratio: NvVector2
+    coordinates: Vector2
+    absolute_coordinates: Vector2
+    size: Vector2
+    _resize_ratio: Vector2
     _style: object
     hover_state: object
     _system_callbacks: object
@@ -71,9 +71,9 @@ class NevuCobject:
     def relx(self, num: float) -> float: ...
     def rely(self, num: float) -> float: ...
     def relm(self, num: float) -> float: ...
-    def rel(self, vec: NvVector2) -> NvVector2: ...
-    def get_nvrect(self) -> NvRect: ...
-    def set_coordinates(self, coordinates: NvVector2) -> None: ...
+    def rel(self, vec: Vector2) -> Vector2: ...
+    def get_rect(self) -> Rect: ...
+    def set_coordinates(self, coordinates: Vector2) -> None: ...
     def clear_all(self) -> None: ...
     def clear_surfaces(self) -> None: ...
     def get_actual_size(self): ...

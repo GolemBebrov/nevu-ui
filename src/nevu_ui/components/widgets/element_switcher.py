@@ -19,7 +19,7 @@ from nevu_ui.core.enums import (
     RenderReturnType,
 )
 from nevu_ui.core.state import nevu_state
-from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.cython.raylib.raylib import begin_blend_mode, end_blend_mode
 from nevu_ui.presentation.style import Style
 from nevu_ui.rendering import DrawTextCall
@@ -34,7 +34,7 @@ class ElementSwitcher(Widget):
     right_text: str
     left_key: Any
     right_key: Any
-    offset_perc: NvVector2
+    offset_perc: Vector2
     words_indent: bool
 
     def __init__(
@@ -74,7 +74,7 @@ class ElementSwitcher(Widget):
             CustomFunctions.update_main
         )
 
-    def _lazy_init(self, size: NvVector2 | list, elements: list[Element] | None = None):
+    def _lazy_init(self, size: Vector2 | list, elements: list[Element] | None = None):
         super()._lazy_init(size)
         elements = elements or []
         self.elements = Elements.create(*elements)
@@ -142,7 +142,7 @@ class ElementSwitcher(Widget):
     def _correct_style_rad(
         self,
         style: Style,
-        size: NvVector2,
+        size: Vector2,
         rad_idxs: tuple[int, int],
         norad_idxs: tuple[int, int],
     ):
@@ -181,7 +181,7 @@ class ElementSwitcher(Widget):
 
         button_width = self._get_arrow_width()
         button_height = self.current_size.y - (bw * 2) - self.button_padding * 2
-        button_size = NvVector2(button_width, button_height)
+        button_size = Vector2(button_width, button_height)
 
         subtheme_role = self.subtheme_role
         self.button_left = Button(
@@ -233,9 +233,9 @@ class ElementSwitcher(Widget):
         b_left = self.button_left
         current_size = self.current_size
         y_pos = (current_size.y - b_left.current_size.y) / 2
-        b_left.coordinates = NvVector2.from_xy(edge_offset, y_pos)
+        b_left.coordinates = Vector2.from_xy(edge_offset, y_pos)
         right_x = current_size.x - b_right.current_size.x - edge_offset
-        b_right.coordinates = NvVector2.from_xy(right_x, y_pos)
+        b_right.coordinates = Vector2.from_xy(right_x, y_pos)
         b_left.absolute_coordinates.sadd(self.absolute_coordinates, b_left.coordinates)
         b_right.absolute_coordinates.sadd(self.absolute_coordinates, b_right.coordinates)
 
@@ -273,7 +273,7 @@ class ElementSwitcher(Widget):
         self.button_left._resize(self._resize_ratio)
         self.button_right._resize(self._resize_ratio)
 
-    def _resize_content(self, resize_ratio: NvVector2):
+    def _resize_content(self, resize_ratio: Vector2):
         super()._resize_content(resize_ratio)
         self.cache.clear_selected(whitelist=[CacheType.TextArgs])
         self._position_buttons()
