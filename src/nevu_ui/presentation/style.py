@@ -11,8 +11,11 @@ from typing import (
     final,
     override,
 )
-
+from nevu_ui.core.size.rules import (
+    _SizeRule,
+)
 from nevu_ui.assets import FontLibrary
+from nevu_ui.core.annotations import Annotations
 from nevu_ui.core.enums import Align, HoverState, Malign
 from nevu_ui.presentation.color.color_theme import ColorSubTheme
 
@@ -57,6 +60,13 @@ class StateVariable[TV]:
         else:
             raise KeyError
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, StateVariable):
+            return False
+        return (self.static, self.hover, self.active) == (other.static, other.hover, other.active)
+
+    def __hash__(self) -> int:
+        return hash((self.static, self.hover, self.active))
 
 T = TypeVar("T")
 type SVar[T] = T | StateVariable[T]
@@ -72,13 +82,21 @@ class _StyleKwargs(TypedDict, total=False):
     font_path: SVar[str]
     align_x: SVar[Align | Malign]
     align_y: SVar[Align | Malign]
+    text_align_x: SVar[Align | Malign]
+    text_align_y: SVar[Align | Malign]
     transparency: SVar[int]
     bg_image: SVar[str]
+    background_image: SVar[str]
     colortheme: SVar[ColorTheme]
     gradient: SVar[GradientPygame | GradientRaylib | Gradient]
     font_role: SVar[PairColorRole]
     color_role: SVar[SubThemeRole]
     subtheme_role: SVar[SubThemeRole]
+    background_color: SVar[Annotations.rgb_like_color]
+    bg_color: SVar[Annotations.rgb_like_color]
+    border_color: SVar[Annotations.rgb_like_color]
+    br_color: SVar[Annotations.rgb_like_color]
+    font_color: SVar[Annotations.rgb_like_color]
 
 @final
 class Style:
@@ -93,13 +111,21 @@ class Style:
             "font_path": ("font_name", self._parse_str),
             "align_x": ("align_x", self._parse_align),
             "align_y": ("align_y", self._parse_align),
+            "text_align_x": ("text_align_x", self._parse_align),
+            "text_align_y": ("text_align_y", self._parse_align),
             "transparency": ("transparency", self._parse_transparency),
-            "bg_image": ("bg_image", self._parse_str),
+            "bg_image": ("background_image", self._parse_str),
+            "background_image": ("background_image", self._parse_str),
             "colortheme": ("colortheme", self._parse_colortheme),
             "gradient": ("gradient", self._parse_gradient),
             "color_role": ("color_role", self._parse_color_role),
             "subtheme_role": ("subtheme_role", self._parse_subtheme_role),
             "font_role": ("font_role", self._parse_font_role),
+            "background_color": ("background_color", self._parse_color),
+            "bg_color": ("background_color", self._parse_color),
+            "border_color": ("border_color", self._parse_color),
+            "br_color": ("border_color", self._parse_color),
+            "font_color": ("font_color", self._parse_color),
         }
         self._kwargs_for_copy = copy.deepcopy(kwargs)
         self.kwargs_dict = {}
@@ -126,6 +152,8 @@ class Style:
         return self._parse_type(value, Align)
 
     def _parse_font_size(self, value: int) -> tuple[bool, None]:
+        if isinstance(value, _SizeRule):
+            return True, None
         return self._parse_int(value, min_restriction=1)
 
     def _parse_transparency(self, value: int) -> tuple[bool, None]:
@@ -145,6 +173,16 @@ class Style:
 
     def _parse_font_role(self, value: PairColorRole) -> tuple[bool, None]:
         return self._parse_type(value, PairColorRole)
+
+    def _parse_color(self, value: Annotations.rgb_like_color) -> tuple[bool, None]:
+        if not isinstance(value, tuple | list):
+            return False, None
+        if not 5 > len(value) > 2:
+            return False, None
+        if not all(isinstance(v, int) and 0 <= v <= 255 for v in value):
+            return False, None
+        return True, None
+
 
     def _parse_int(
         self,
@@ -187,19 +225,24 @@ class Style:
         return pair.oncolor if inverted else pair.color
 
     def _init_default(self) -> None:
-        self.colortheme = copy.copy(ColorThemeLibrary.material3_blue)
+        self.colortheme = copy.copy(ColorThemeLibrary.material3_dark)
         self.border_width = 1
         self.border_radius = 0
         self.font_name = FontLibrary.InterRegular
         self.font_size = 20
         self.align_x = Align.CENTER
         self.align_y = Align.CENTER
+        self.text_align_x = Align.CENTER
+        self.text_align_y = Align.CENTER
         self.transparency = None
-        self.bg_image = None
+        self.background_image = None
         self.gradient = None
         self.color_role = None
         self.font_role = None
         self.subtheme_role = None
+        self.background_color = None
+        self.border_color = None
+        self.font_color = None
 
     def _add_style_parameter(self, name: str, attribute_name: str, checker_lambda: Any):
         self.kwargs_dict[name] = (attribute_name, checker_lambda)
@@ -283,6 +326,60 @@ class Style:
 
     def __deepcopy__(self, memo):
         return copy.copy(self)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Style):
+            return NotImplemented
+
+        d1 = self.__dict__
+        d2 = other.__dict__
+
+        if d1.get("_curr_state") != d2.get("_curr_state"):
+            return False
+
+        attrs = (
+            "border_radius", "border_width", "font_size", "font_name",
+            "align_x", "align_y", "transparency", "bg_image", "gradient",
+            "color_role", "subtheme_role", "font_role", "colortheme",
+            "text_align_x", "text_align_y", "background_color", "border_color",
+            "font_color",
+        )
+        return all(d1.get(k) == d2.get(k) for k in attrs)
+
+    def __hash__(self) -> int:
+        d = self.__dict__
+
+        br = d.get("border_radius")
+        if isinstance(br, list):
+            br = tuple(br)
+
+        theme = d.get("colortheme")
+        theme_key = getattr(theme, "name", id(theme))
+
+        grad = d.get("gradient")
+        grad_key = id(grad) if grad is not None else None
+
+        return hash((
+            d.get("_curr_state"),
+            br,
+            d.get("border_width"),
+            d.get("font_size"),
+            d.get("font_name"),
+            d.get("align_x"),
+            d.get("align_y"),
+            d.get("transparency"),
+            d.get("bg_image"),
+            grad_key,
+            d.get("color_role"),
+            d.get("subtheme_role"),
+            d.get("font_role"),
+            d.get("text_align_x"),
+            d.get("text_align_y"),
+            d.get("background_color"),
+            d.get("border_color"),
+            d.get("font_color"),
+            theme_key,
+        ))
 
 hstate_to_state = {
     HoverState.Clicked: "active",
