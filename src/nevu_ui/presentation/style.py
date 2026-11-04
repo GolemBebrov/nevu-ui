@@ -22,7 +22,7 @@ from nevu_ui.presentation.theme import ColorSubTheme
 if TYPE_CHECKING:
     from nevu_ui.rendering.pygame.gradient import GradientPygame
     from nevu_ui.rendering.raylib.gradient import GradientRaylib
-    from nevu_ui.rendering.uni_gradient import Gradient
+    from nevu_ui.rendering.gradient import Gradient
 from nevu_ui.presentation.theme import (
     ColorTheme,
     PairColorRole,

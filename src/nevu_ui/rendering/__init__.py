@@ -6,7 +6,7 @@ from .base_renderer import (
     DrawTextCall,
     _BaseCoreNamespace,
 )
-from .uni_gradient import Gradient
+from .gradient import Gradient
 
 __all__ = [
     "BaseRenderer",

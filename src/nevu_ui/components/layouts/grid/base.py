@@ -7,7 +7,7 @@ from nevu_ui.components._typehints import (
     _GridKwargs_xy,
 )
 from nevu_ui.components.layouts import BaseLayout
-from nevu_ui.components.nevuobj import NevuObject
+from nevu_ui.components.nevuobject import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.size.base import _SizeRule

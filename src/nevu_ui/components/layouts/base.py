@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, TypeGuard, Unpack
 if TYPE_CHECKING:
     from nevu_ui.components.layouts.menu import Menu
 from nevu_ui.components._typehints import _LayoutTemplate, _LayoutTypeKwargs
-from nevu_ui.components.nevuobj import NevuObject
+from nevu_ui.components.nevuobject import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import CustomFunctions, ParamLayer

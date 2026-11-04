@@ -1,4 +1,4 @@
-from .nevuobj import NevuObject
+from .nevuobject import NevuObject
 from . import widgets, layouts
 from .checkbox_group import CheckBoxGroup
 from .tooltip import Tooltip

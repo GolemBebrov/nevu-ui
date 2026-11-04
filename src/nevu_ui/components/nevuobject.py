@@ -28,8 +28,8 @@ from nevu_ui.presentation.animations import AnimationManager
 from nevu_ui.presentation.theme import SubThemeRole
 from nevu_ui.presentation.style import Style, default_style
 from nevu_ui.rendering.base_renderer import BaseRenderer, DrawBaseCall, DrawBgCall
-from nevu_ui.rendering.pygame.new_renderer import PygameRenderer
-from nevu_ui.rendering.raylib.new_renderer import RaylibRenderer
+from nevu_ui.rendering.pygame.renderer import PygameRenderer
+from nevu_ui.rendering.raylib.renderer import RaylibRenderer
 
 global_counter = 0
 

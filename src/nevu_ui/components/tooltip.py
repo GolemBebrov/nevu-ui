@@ -14,7 +14,7 @@ from nevu_ui.presentation.animations.animations_library import smootherstep
 from nevu_ui.presentation.style import Style, default_style
 
 if TYPE_CHECKING:
-    from nevu_ui.components.nevuobj import NevuObject
+    from nevu_ui.components.nevuobject import NevuObject
 from nevu_ui.core.enums import (
     AnimationManagerState,
     BindType,

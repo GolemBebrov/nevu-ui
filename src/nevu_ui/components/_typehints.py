@@ -18,7 +18,7 @@ from nevu_ui.rendering.canvas import Canvas
 if TYPE_CHECKING:
     from nevu_ui.components.layouts import BaseLayout
     from nevu_ui.components.checkbox_group import CheckBoxGroup
-    from nevu_ui.components.nevuobj import NevuObject
+    from nevu_ui.components.nevuobject import NevuObject
     from nevu_ui.components.widgets import Input, Label, ProgressBar, Switch, Widget
     from nevu_ui.presentation.theme import PairColorRole, SubThemeRole, TupleColorRole
     from nevu_ui.presentation.style import Style

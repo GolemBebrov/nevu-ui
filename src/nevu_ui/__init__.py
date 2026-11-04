@@ -1,7 +1,7 @@
 from .core import size
 from .core.annotations import VERSION, Annotations
 from .core.classes import TooltipType, nevu_globals
-from .components.nevuobj import NevuObject  # noqa: I001
+from .components.nevuobject import NevuObject  # noqa: I001
 from .components._typehints import nevu_object_globals
 from .components.widgets import (
     Button,

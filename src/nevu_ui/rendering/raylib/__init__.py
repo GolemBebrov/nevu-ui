@@ -1,4 +1,4 @@
 from .gradient import GradientRaylib
-from .new_renderer import RaylibRenderer
+from .renderer import RaylibRenderer
 
 __all__ = ["GradientRaylib", "RaylibRenderer"]

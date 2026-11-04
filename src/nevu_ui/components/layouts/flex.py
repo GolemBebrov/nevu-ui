@@ -3,7 +3,7 @@ from typing import Unpack
 
 from nevu_ui.components._typehints import _FlexKwargs
 from nevu_ui.components.layouts.base import BaseLayout
-from nevu_ui.components.nevuobj import NevuObject
+from nevu_ui.components.nevuobject import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core.enums import (
     Align,

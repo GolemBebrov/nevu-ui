@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, TypeGuard
 
 if TYPE_CHECKING:
-    from nevu_ui.components.nevuobj import NevuObject
+    from nevu_ui.components.nevuobject import NevuObject
     from nevu_ui.cython.vector2 import Vector2
 
 from nevu_ui.core.classes import SurfaceLike

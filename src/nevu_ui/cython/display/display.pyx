@@ -70,14 +70,14 @@ cdef class WindowRendererRaylib:
     cdef inline void _init_base(self, root):
         self.root = root
         self.load_raylib_fast_bindings()
-        self._sdf_shader = RaylibShader.c_create_from_code(ShaderLibrary.BaseVertex, ShaderLibrary.StandardSDF)
+        self._sdf_shader = RaylibShader.c_create_from_code(ShaderLibrary.BaseVertex.read_text(), ShaderLibrary.StandardSDF.read_text())
         self._sdf_locs = {
             "texture0": get_nvshader_location(self._sdf_shader, "texture0"),
             "colDiffuse": get_nvshader_location(self._sdf_shader, "colDiffuse"),
             "rectSize": get_nvshader_location(self._sdf_shader, "rectSize"),
             "radius": get_nvshader_location(self._sdf_shader, "radius"),
             }
-        self._glassy_sdf_shader = RaylibShader.c_create_from_code(ShaderLibrary.BaseVertex, ShaderLibrary.GlassySDF)
+        self._glassy_sdf_shader = RaylibShader.c_create_from_code(ShaderLibrary.BaseVertex.read_text(), ShaderLibrary.GlassySDF.read_text())
         self._glassy_sdf_locs = {
             "texture0": get_nvshader_location(self._glassy_sdf_shader, "texture0"),
             "colDiffuse": get_nvshader_location(self._glassy_sdf_shader, "colDiffuse"),
@@ -85,7 +85,7 @@ cdef class WindowRendererRaylib:
             "radius": get_nvshader_location(self._glassy_sdf_shader, "radius"),
         }
         set_nvshader_value_vec4_tuple(self._sdf_shader, self._sdf_locs['colDiffuse'], (1.0, 1.0, 1.0, 1.0))
-        self._glassy_border_shader = RaylibShader.c_create_from_code(ShaderLibrary.BaseVertex, ShaderLibrary.GlassyBorder)
+        self._glassy_border_shader = RaylibShader.c_create_from_code(ShaderLibrary.BaseVertex.read_text(), ShaderLibrary.GlassyBorder.read_text())
         self._glassy_border_locs = {
             "texture0": get_nvshader_location(self._glassy_border_shader, "texture0"),
             "colDiffuse": get_nvshader_location(self._glassy_border_shader, "colDiffuse"),
@@ -96,7 +96,7 @@ cdef class WindowRendererRaylib:
         }
         set_nvshader_value_vec4_tuple(self._glassy_border_shader, self._glassy_border_locs['colDiffuse'], (1.0, 1.0, 1.0, 1.0))
 
-        self._border_shader = RaylibShader.c_create_from_code(ShaderLibrary.BaseVertex, ShaderLibrary.StandardBorder)
+        self._border_shader = RaylibShader.c_create_from_code(ShaderLibrary.BaseVertex.read_text(), ShaderLibrary.StandardBorder.read_text())
         self._border_locs = {
             "texture0": get_nvshader_location(self._border_shader, "texture0"),
             "colDiffuse": get_nvshader_location(self._border_shader, "colDiffuse"),
@@ -107,7 +107,7 @@ cdef class WindowRendererRaylib:
         }
         set_nvshader_value_vec4_tuple(self._border_shader, self._border_locs['colDiffuse'], (1.0, 1.0, 1.0, 1.0),)
 
-        self._line_sdf_shader = RaylibShader.c_create_from_code(ShaderLibrary.BaseVertex, ShaderLibrary.StandardLine)
+        self._line_sdf_shader = RaylibShader.c_create_from_code(ShaderLibrary.BaseVertex.read_text(), ShaderLibrary.StandardLine.read_text())
         self._line_sdf_locs = {
             "p1": get_nvshader_location(self._line_sdf_shader, "p1"),
             "p2": get_nvshader_location(self._line_sdf_shader, "p2"),

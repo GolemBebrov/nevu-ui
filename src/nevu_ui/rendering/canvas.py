@@ -27,7 +27,7 @@ from nevu_ui.cython.vector2.vector2 import Vector2
 from nevu_ui.presentation.style import Style, default_style
 
 if TYPE_CHECKING:
-    from nevu_ui.components.nevuobj import NevuObject
+    from nevu_ui.components.nevuobject import NevuObject
     from nevu_ui.rendering.base_renderer import BaseRenderer
 
 def _percent(total: float, value: float) -> float: return total * value / 100.0

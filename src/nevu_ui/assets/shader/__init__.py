@@ -13,12 +13,12 @@ BASE_VERTEX = _DIR / "base.vert"
 GRADIENT = _DIR / "gradient.frag"
 
 class ShaderLibrary:
-    StandardBorder = STANDARD_BORDER.read_text()
-    StandardLine = STANDARD_LINE.read_text()
-    StandardSDF = STANDARD_SDF.read_text()
-    GlassyBorder = GLASSY_BORDER.read_text()
-    GlassySDF = GLASSY_SDF.read_text()
-    Gradient = GRADIENT.read_text()
-    BaseVertex = BASE_VERTEX.read_text()
+    StandardBorder = STANDARD_BORDER
+    StandardLine = STANDARD_LINE
+    StandardSDF = STANDARD_SDF
+    GlassyBorder = GLASSY_BORDER
+    GlassySDF = GLASSY_SDF
+    Gradient = GRADIENT
+    BaseVertex = BASE_VERTEX
 
 __all__ = ["ShaderLibrary"]

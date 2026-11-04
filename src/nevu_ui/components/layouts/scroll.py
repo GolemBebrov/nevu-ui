@@ -6,7 +6,7 @@ from typing import Any, TypeGuard, Unpack
 
 from nevu_ui.components._typehints import _AlignTemplate, _ScrollableKwargs
 from nevu_ui.components.layouts import BaseLayout
-from nevu_ui.components.nevuobj import NevuObject
+from nevu_ui.components.nevuobject import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import (
