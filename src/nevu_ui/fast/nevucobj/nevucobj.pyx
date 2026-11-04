@@ -17,21 +17,23 @@ from nevu_ui.fast.nevucache.nevucache cimport Cache
 from nevu_ui.core.state import nevu_state
 from nevu_ui.core.enums import CacheType, BindType, CustomFunctions
 from nevu_ui.core.callbacks import Callbacks
-from nevu_ui.core.classes import _strategy_type, Strategy
 from nevu_ui.fast.zsystem.fast_zsystem cimport ZSystem, ZRequest
 from nevu_ui.core.enums import (
     HoverState, EventType, CacheType, ParamLayer, AnimationType
 )
 from libc.stdint cimport uint8_t
 cimport cython
+
+from nevu_ui.fast.logic.fast_logic cimport relm_helper, rel_helper, mass_rel_helper, vec_rel_helper, get_nvrect_helper
+from nevu_ui.fast.nvrect.nvrect cimport NvRect
+
 cdef extern from "Python.h":
     object PyObject_CallMethodNoArgs(object self, object name)
 
 cdef str nevucobject_setattr_underscore = "_"
 cdef str nevucobject_setattr_set = "__set__"
 
-from nevu_ui.fast.logic.fast_logic cimport relm_helper, rel_helper, mass_rel_helper, vec_rel_helper, get_nvrect_helper
-from nevu_ui.fast.nvrect.nvrect cimport NvRect
+
 
 cdef enum C_CustomFunctions:
     UpdateStart = 1 << 0
@@ -41,6 +43,24 @@ cdef enum C_CustomFunctions:
     DrawMain = 1 << 4
     DrawEnd = 1 << 5
 
+class WeakMethod(weakref.ref):
+    __slots__ = ("_meth_name",)
+
+    def __new__(cls, meth, callback=None):
+        obj = getattr(meth, "__self__", None)
+        if obj is None:
+            raise TypeError(f"argument should be a bound method, not {type(meth)}")
+        self = super().__new__(cls, obj, callback)
+        self._meth_name = meth.__name__
+        return self
+
+    def __call__(self):
+        obj = super().__call__()
+        if obj is None:
+            return None
+        return getattr(obj, self._meth_name, None)
+
+
 @cython.freelist(32)
 cdef class NevuCobject:
     def __cinit__(self, *args, **kwargs):
@@ -49,6 +69,7 @@ cdef class NevuCobject:
         self.size = NvVector2.new(0, 0)
         self._resize_ratio = NvVector2.new(1, 1)
         self.params = list()
+        self._inner_active = True
         self._blacklisted_params = list()
         self._param_links = dict()
         self._params_map = dict()
@@ -70,7 +91,7 @@ cdef class NevuCobject:
         self._has_position_anim = False
         self.node_type = 0
         self._system_callbacks = Callbacks()
-        self.specific_cache_whitelist = [CacheType.Image, CacheType.Gradient, CacheType.Surface,  CacheType.Borders, CacheType.Background, CacheType.SDLTexture, CacheType.RlFont, CacheType.TextArgs, CacheType.ClickTexture]
+        self.specific_cache_whitelist = [CacheType.Image, CacheType.Gradient, CacheType.Surface,  CacheType.Borders, CacheType.Background, CacheType.Font, CacheType.TextArgs, CacheType.ClickTexture]
 
     def _add_custom_flags(self, int flags: CustomFunctions):
         self._custom_flags |= <uint8_t>flags
@@ -78,13 +99,13 @@ cdef class NevuCobject:
     def _remove_custom_flags(self, int flags: CustomFunctions):
         self._custom_flags &= ~<uint8_t>flags
 
-    cpdef _set_node_type(self, short node_type):
+    cpdef void _set_node_type(self, short node_type):
         self.node_type = node_type
 
     cpdef list _get_param_names(self):
         return list(self._params_map.keys())
 
-    cpdef object _find_param(self, str name):
+    cpdef NvParam _find_param(self, str name):
         return self._params_map.get(name)
 
     cpdef void _add_param(self, str name, supported_classes, default, getter, setter, int layer):
@@ -141,7 +162,7 @@ cdef class NevuCobject:
     cpdef NvRect get_nvrect(self):
         return get_nvrect_helper(self.absolute_coordinates, self._resize_ratio, self.size)
 
-    cpdef set_coordinates(self, NvVector2 coordinates):
+    cpdef void set_coordinates(self, NvVector2 coordinates):
         if self.coordinates == coordinates:
             return
         cdef bint need_to_set = self._coordinates_setter(coordinates) #type: ignore
@@ -164,12 +185,10 @@ cdef class NevuCobject:
     cpdef void clear_surfaces(self):
         if nevu_state.window.renderer_type.raylib:
             self._clear_rl_specific()
-        self.cache.c_clear_selected(whitelist = self.specific_cache_whitelist, blacklist = [])
+        self.cache.c_clear_selected(whitelist=self.specific_cache_whitelist, blacklist=[])
 
     cdef inline NvVector2 c_get_actual_size(self):
-        if self.get_param_value("strategy") == Strategy.Relative:
-            return self.size * self._resize_ratio
-        return self.size
+        return self.size * self._resize_ratio
 
     def get_actual_size(self):
         return self.c_get_actual_size()
@@ -177,6 +196,7 @@ cdef class NevuCobject:
     cpdef void _update_start(self): ...
     cpdef void _update_main(self): ...
     cpdef void _update_end(self): ...
+
     cpdef void update(self):
         if not self._active or self._dead: return
         self._c_run_callbacks(BindType.BeforeUpdate)
@@ -209,11 +229,11 @@ cdef class NevuCobject:
         self._c_run_callbacks(BindType.Change)
 
     cdef inline void _update_core(self):
-        if self.animation_manager:
+        if self.animation_manager is not None and self.animation_manager.state != 3:
             self.animation_manager.update()
 
     cdef inline void _update_core_end(self):
-        if not self._sended_z_link and nevu_state.window != None:
+        if self._inner_active and self._active and not self._sended_z_link and nevu_state.window != None:
             self._sended_z_link = True
             self._z_request = ZRequest.new(
                 self,
@@ -235,15 +255,18 @@ cdef class NevuCobject:
                 func = func()
             if func:
                 func()
-            i+=1
+            i += 1
         next_frame_functions.clear()
 
     @staticmethod
     def _ensure_func_safety(function):
         if function is None: return None
 
+        if isinstance(function, weakref.ref):
+            return function
+
         if hasattr(function, '__self__') and function.__self__ is not None:
-            return weakref.WeakMethod(function)
+            return WeakMethod(function)
 
         return weakref.ref(function)
 
@@ -268,30 +291,28 @@ cdef class NevuCobject:
             else:
                 callbacks.run_noargs(bind_type, self)
 
-    #=== Selection functions ===
-    cpdef _click(self):
+    # === Selection functions ===
+    cpdef void _click(self):
         self._force_state_set_continue = True
         self.set_hover_state(HoverState.Clicked)
-    cpdef _unhover(self): self.set_hover_state(HoverState.NotHovered)
-    cpdef _hover(self): self.set_hover_state(HoverState.Hovered)
-    cpdef _kup(self):
+    cpdef void _unhover(self): self.set_hover_state(HoverState.NotHovered)
+    cpdef void _hover(self): self.set_hover_state(HoverState.Hovered)
+    cpdef void _kup(self):
         self._is_kup = True
         self._force_state_set_continue = True
         self.set_hover_state(HoverState.Hovered)
-    cpdef _kup_abandon(self):
+    cpdef void _kup_abandon(self):
         self._kup_abandoned = True
         self._force_state_set_continue = True
         self.set_hover_state(HoverState.NotHovered)
 
-    cpdef set_hover_state(self, value):
+    cpdef void set_hover_state(self, value):
         if self._hover_state == value and not self._force_state_set_continue: return
         self._run_callbacks(BindType.StateChange, value)
-
         if self._force_state_set_continue: self._force_state_set_continue = False
         self._hover_state = value
 
         self.style.mark_state(value)
-
 
         if value == HoverState.Clicked:
             self._run_callbacks(BindType.Click)
@@ -311,7 +332,6 @@ cdef class NevuCobject:
         self._run_callbacks(BindType.AfterStateChange, value)
 
     def __getattribute__(self, name):
-        cdef dict params_map
         cdef PyObject* param
         if PyUnicode_GET_LENGTH(name) > 0 and PyUnicode_READ_CHAR(name, 0) == 95:
             return PyObject_GenericGetAttr(self, name)

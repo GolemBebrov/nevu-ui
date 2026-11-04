@@ -7,6 +7,7 @@
 # cython: initializedcheck=False
 
 from nevu_ui.fast.nvvector2.nvvector2 cimport NvVector2
+from nevu_ui.fast.nvsurface.nvsurface cimport _NvSurfBase
 from libcpp.vector cimport vector
 from nevu_ui.fast.nvparam.nvparam cimport NvParam
 from nevu_ui.fast.nvrect.nvrect cimport NvRect
@@ -15,7 +16,7 @@ from nevu_ui.fast.zsystem.fast_zsystem cimport ZRequest
 from libc.stdint cimport uint8_t
 
 cdef class NevuCobject:
-    cdef public bint _sended_z_link, _dragging, _is_kup, _kup_abandoned, _force_state_set_continue, _visible, _active, _changed, _first_update, _wait_mode, _dead, booted
+    cdef public bint _sended_z_link, _dragging, _is_kup, _kup_abandoned, _force_state_set_continue, _visible, _active, _changed, _first_update, _wait_mode, _dead, booted, _inner_active
     cdef public NvVector2 coordinates, absolute_coordinates, size, _resize_ratio,
     cdef public object _style, hover_state
     cdef public object _system_callbacks # type: Callbacks
@@ -23,13 +24,15 @@ cdef class NevuCobject:
     cdef public unsigned short node_type #1 - layout, 0 - widget
     cdef public dict _params_map, _param_links
     cdef public Cache cache
+    cdef public long long _update_stamp
     cdef public bint _has_position_anim
+    cdef public _NvSurfBase surface
     cdef uint8_t _custom_flags
-    cdef ZRequest _z_request
+    cdef public ZRequest _z_request
     cdef list specific_cache_whitelist
-    cpdef _set_node_type(self, short node_type)
+    cpdef void _set_node_type(self, short node_type)
     cpdef list _get_param_names(self)
-    cpdef object _find_param(self, str name)
+    cpdef NvParam _find_param(self, str name)
     cpdef void _add_param(self, str name, supported_classes, default, getter, setter, int layer)
     cpdef NvParam get_param_strict(self, str name)
     cpdef NvParam get_param(self, str name)
@@ -46,23 +49,22 @@ cdef class NevuCobject:
     cpdef void _update_end(self)
     cpdef double relx(self, double num)
     cpdef double rely(self, double num)
-    cpdef set_hover_state(self, value)
+    cpdef void set_hover_state(self, value)
     cpdef double relm(self, double num)
     cpdef NvVector2 rel(self, NvVector2 vec)
     cpdef NvRect get_nvrect(self)
-    cpdef set_coordinates(self, NvVector2 coordinates)
+    cpdef void set_coordinates(self, NvVector2 coordinates)
     cpdef void clear_all(self)
     cdef inline void c_set_coords_xy(self, double x, double y) noexcept
     cpdef void clear_surfaces(self)
     cdef inline NvVector2 c_get_actual_size(self)
     cpdef void update(self)
-    cpdef _click(self)
+    cpdef void _click(self)
     cpdef void draw(self)
-    cpdef _unhover(self)
-    cpdef _hover(self)
-    cpdef _kup(self)
-    #cpdef _scroll(self, bint scrolled)
-    cpdef _kup_abandon(self)
+    cpdef void _unhover(self)
+    cpdef void _hover(self)
+    cpdef void _kup(self)
+    cpdef void _kup_abandon(self)
     cdef inline void _c_run_callbacks(self, bind_type, args = None)
     cdef inline void _update_core(self)
     cdef inline void _update_core_end(self)
