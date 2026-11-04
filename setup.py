@@ -177,7 +177,7 @@ def get_extensions():
             "src/nevu_ui/cython/raylib_gradient/raylib_gradient.pyx",
         ),
         get_extension(
-            "nevu_ui.cython.shapes.shapes", "src/nevu_ui/cython/shapes/shapes.pyx"
+            "nevu_ui.cython.pygame_shapes.pygame_shapes", "src/nevu_ui/cython/pygame_shapes/pygame_shapes.pyx"
         ),
         get_extension(
             "nevu_ui.cython.z_system.z_system",

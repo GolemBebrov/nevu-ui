@@ -6,7 +6,7 @@ from . import (
     rect,
     vector2,
     raylib,
-    shapes,
+    pygame_shapes,
     z_system,
 )
 from .cache import Cache
@@ -36,7 +36,7 @@ __all__ = [
     "rect",
     "vector2",
     "raylib",
-    "shapes",
+    "pygame_shapes",
     "z_system",
 
 ]

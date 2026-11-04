@@ -14,11 +14,11 @@ import nevu_ui.core.modules as md
 from nevu_ui.core.annotations import Annotations
 from nevu_ui.core.enums import CacheType
 from nevu_ui.cython.vector2 import Vector2
-from nevu_ui.cython.shapes import (
+from nevu_ui.cython.pygame_shapes import (
     transform_into_outlined_rounded_rect,
     transform_into_rounded_rect,
 )
-from nevu_ui.cython.shapes.shapes import draw_sdf_line
+from nevu_ui.cython.pygame_shapes.pygame_shapes import draw_sdf_line
 from nevu_ui.presentation.color import Color
 from nevu_ui.presentation.style import default_style
 from nevu_ui.rendering.base_renderer import (
