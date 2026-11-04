@@ -19,10 +19,6 @@ class CanvasType(StrEnum):
     Line = "line"
     Circle = "circle"
 
-class FlexDirection(IntEnum):
-    Row = 0
-    Column = 1
-
 class FlexJustify(StrEnum):
     Start = "start"
     Center = "center"

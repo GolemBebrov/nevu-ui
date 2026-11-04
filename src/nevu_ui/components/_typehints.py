@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, TypedDict, Unpack
 from nevu_ui.core import Annotations
 from nevu_ui.core.callbacks import Callbacks
 from nevu_ui.core.classes import DictAccessMixin, GlobalsBase
-from nevu_ui.core.enums import Align, FlexDirection, FlexJustify, SwitchAxis
+from nevu_ui.core.enums import Align, FlexDirection, FlexJustify, Orientation, SwitchAxis
 from nevu_ui.fast.nvvector2 import NvVector2
 from nevu_ui.overlay.tooltip import Tooltip
 from nevu_ui.presentation.animations import AnimationManager
@@ -105,6 +105,7 @@ class _ButtonKwargs(_LabelKwargs, total=False):
 
 class _ElementSwitcherKwargs(_WidgetKwargs, total=False):
     on_content_change: Callable
+    current_element_index: int
     current_index: int
     button_padding: int
     words_indent: bool
@@ -224,19 +225,21 @@ class _LayoutTypeKwargs(_NevuObjectKwargs, total=False):
 class _StackKwargsBase(TypedDict, total=False):
     spacing: float
     basic_alignment: Align
+    orientation: Orientation
 
 class _StackKwargs(_StackKwargsBase, _LayoutTypeKwargs): ...
 
 
 class _ScrollableKwargsBase(_LayoutTypeKwargs, total=False):
-    arrow_scroll_power: int
-    wheel_scroll_power: int
+    key_power: int
+    scroll_power: int
     inverted_scrolling: bool
-    scrollbar_perc: NvVector2 | None
+    scrollbar_relative_size: NvVector2 | None
     basic_alignment: Align
     append_key: Any
     descend_key: Any
     spacing: float
+    orientation: Orientation
 
 class _ScrollableKwargs(_ScrollableKwargsBase, _LayoutTypeKwargs): ...
 

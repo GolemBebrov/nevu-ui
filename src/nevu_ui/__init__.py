@@ -45,7 +45,7 @@ from .core.enums import (
     LinearSide,
     RadialPosition,
     BindType,
-    FlexDirection, FlexJustify
+    FlexJustify
 )
 from .core.size.units import (
     Fill,
@@ -236,7 +236,6 @@ __all__ = [  # noqa: RUF022
     "EventType",
     "Backend",
     "AnimationType",
-    "FlexDirection",
     "FlexJustify",
     # ===Submodules===
     "animations",

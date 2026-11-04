@@ -9,8 +9,8 @@ from nevu_ui.core.enums import (
     Align,
     CacheType,
     CustomFunctions,
-    FlexDirection,
     FlexJustify,
+    Orientation,
 )
 from nevu_ui.fast.logic.fast_logic import (
     base_light_update,
@@ -28,7 +28,7 @@ class Flex(LayoutType):
     content_type = list[NevuObject]
 
     # === Params ===
-    direction: FlexDirection
+    orientation: Orientation
     wrap: bool
     justify_content: FlexJustify
     align_items: Align
@@ -54,7 +54,7 @@ class Flex(LayoutType):
 
     def _add_params(self):
         super()._add_params()
-        self._add_param("direction", FlexDirection, FlexDirection.Row)
+        self._add_param("orientation", Orientation, Orientation.Row)
         self._add_param("wrap", bool, True)
         self._add_param("justify_content", FlexJustify, FlexJustify.Start)
         self._add_param("align_items", Align, Align.CENTER)
@@ -215,11 +215,11 @@ class Flex(LayoutType):
             if isinstance(item, LayoutType) and hasattr(item, "_recalculate_size"):
                 item._recalculate_size()
 
-        direction = self.direction
+        direction = self.orientation
         justify = self.justify_content
         align = self.align_items
 
-        is_row = (direction == FlexDirection.Row)
+        is_row = (direction == Orientation.Row)
         gap_size = self._get_gap_vec()
         if not is_row:
             gap_size = gap_size.yx
