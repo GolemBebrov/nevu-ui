@@ -138,11 +138,11 @@ def get_extension(name: str, source: str) -> Extension:
 def get_extensions():
     extensions = [
         get_extension(
-            "nevu_ui.cython.nvvector2.nvvector2",
-            "src/nevu_ui/cython/nvvector2/nvvector2.pyx",
+            "nevu_ui.cython.vector2.vector2",
+            "src/nevu_ui/cython/vector2/vector2.pyx",
         ),
         get_extension(
-            "nevu_ui.cython.nvrect.nvrect", "src/nevu_ui/cython/nvrect/nvrect.pyx"
+            "nevu_ui.cython.rect.rect", "src/nevu_ui/cython/rect/rect.pyx"
         ),
         get_extension(
             "nevu_ui.cython.nvparam.nvparam", "src/nevu_ui/cython/nvparam/nvparam.pyx"
@@ -151,10 +151,10 @@ def get_extensions():
             "nevu_ui.cython.nevucobject.nevucobject", "src/nevu_ui/cython/nevucobject/nevucobject.pyx"
         ),
         get_extension(
-            "nevu_ui.cython.nvfont.nvfont", "src/nevu_ui/cython/nvfont/nvfont.pyx"
+            "nevu_ui.cython.font.font", "src/nevu_ui/cython/font/font.pyx"
         ),
         get_extension(
-            "nevu_ui.cython.nvsurface.nvsurface", "src/nevu_ui/cython/nvsurface/nvsurface.pyx"
+            "nevu_ui.cython.surface.surface", "src/nevu_ui/cython/surface/surface.pyx"
         ),
         get_extension(
             "nevu_ui.cython.callbacks.callbacks", "src/nevu_ui/cython/callbacks/callbacks.pyx"
