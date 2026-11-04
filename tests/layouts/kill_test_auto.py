@@ -9,10 +9,10 @@ rl.set_trace_log_level(rl.TraceLogLevel.LOG_ERROR)
 layouts = [
     (ui.LayoutType, (1, 1)),
     (ui.Grid, (1, 1)),
-    (ui.ScrollableColumn, (1, 1)),
-    (ui.ScrollableRow, (1, 1)),
-    (ui.StackColumn, (1, 1)),
-    (ui.StackRow, (1, 1)),
+    (ui.VScroll, (1, 1)),
+    (ui.HScroll, (1, 1)),
+    (ui.VStack, (1, 1)),
+    (ui.HStack, (1, 1)),
 ]
 
 widgets = [
@@ -22,13 +22,13 @@ widgets = [
     (ui.Label, ("test",)),
     (ui.Button, (lambda: None, "test",)),
     (ui.Input, None),
-    (ui.RectCheckBox, None),
-    
+    (ui.CheckBox, None),
+
 ]
 def check_for_leaks(class_type):
     gc.collect()
     leftover_objects = [obj for obj in gc.get_objects() if isinstance(obj, class_type)]
-    
+
     assert len(leftover_objects) == 0, (
         f"Утечка памяти! Найдено {len(leftover_objects)} уцелевших "
         f"объектов класса {class_type.__name__} после kill()."
@@ -40,7 +40,7 @@ def main_layout(layout_type, size):
         layout = layout_type()
     else:
         layout = layout_type(size)
-    menu.layout = layout
+    menu._parent_layout = layout
 
     for _ in range(50):
         menu.update()
@@ -48,7 +48,7 @@ def main_layout(layout_type, size):
 
     layout.kill()
     del layout
-    
+
     check_for_leaks(layout_type)
 
 def main_widget(widget_type, args):
@@ -56,40 +56,40 @@ def main_widget(widget_type, args):
     layout = ui.StackColumn()
     widget = widget_type(*args)
     layout.add_item(widget)
-    
+
     for _ in range(50):
         menu.update()
         menu.draw()
-    
+
     widget.kill()
     del widget
     layout.kill()
     del layout
-    
+
     check_for_leaks(widget_type)
     check_for_leaks(ui.StackColumn)
 
 if __name__ == "__main__":
     window = ui.Window((1, 1), backend=ui.Backend.RayLib)
     print("\n=== Starting automated test... ===")
-    
+
     try:
         for layout_type, args in layouts:
             print(f"Testing layout: {layout_type.__name__}...", end=" ", flush=True)
             main_layout(layout_type, args)
             print("OK")
-            
+
         ui.nevu_object_globals.modify(size=(1, 1), single_instance=True)
-        
+
         for widget_type, args in widgets:
             if args is None:
                 args = tuple()
             print(f"Testing widget: {widget_type.__name__}...", end=" ", flush=True)
             main_widget(widget_type, args)
             print("OK")
-            
+
         print("\n==== All tests passed successfully! No leaks detected. ====\n")
-        
+
     except AssertionError as e:
         print("\n\n!!!! TEST FAILED !!!!")
         print(e)

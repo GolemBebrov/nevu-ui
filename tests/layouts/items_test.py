@@ -19,7 +19,7 @@ class App(ui.Manager):
         def set_ov_value(text):
             ov_label.text = f"Equpped: {text}"
 
-        ov_lay = ui.FlexLayout(ov_label, single_instance=True)
+        ov_lay = ui.Flex(ov_label, single_instance=True)
         ov_lay.coordinates = ui.NvVector2(30, 50)
         def delete_item(item):
             scrollable.kill_item(item)
@@ -28,7 +28,7 @@ class App(ui.Manager):
             c += 1
             label = ui.Label(f"Item: {c}", (7% ui.vw, 5 % ui.vh), subtheme_role=ui.SubThemeRole.PRIMARY, glassy = True, font_role=ui.PairColorRole.SURFACE)
 
-            row = ui.FlexLayout(single_instance = True)
+            row = ui.Flex(single_instance = True)
             b1 = ui.Button(lambda item = row: delete_item(row), "rm -rf /*", subtheme_role=ui.SubThemeRole.ERROR)
             b2 = ui.Button(lambda c = c: set_ov_value(c), "Equip", subtheme_role=ui.SubThemeRole.TERTIARY)
             row.add_items([
@@ -37,10 +37,10 @@ class App(ui.Manager):
             scrollable.add_item(row)
 
 
-        scrollable = ui.ScrollableColumn([ui.FlexLayout(ui.Button(add_label, "add"))], (50%ui.vw, 100%ui.fill), basic_alignment=ui.Align.CENTER, single_instance=True)
+        scrollable = ui.VScroll([ui.Flex(ui.Button(add_label, "add"))], (50%ui.vw, 100%ui.fill), basic_alignment=ui.Align.CENTER, single_instance=True)
         menu = ui.Menu(
             window,
-            ui.fill_all,
+            (1600, 900),
             style=style,
             main_layout=scrollable
         )

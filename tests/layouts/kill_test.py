@@ -23,11 +23,11 @@ layouts = [
     (ui.Grid, size),
     (ui.Row, size),
     (ui.Column, size),
-    (ui.ScrollableColumn, size),
-    (ui.ScrollableRow, size),
-    (ui.StackColumn, size),
-    (ui.StackRow, size),
-    (ui.FlexLayout, size)
+    (ui.VScroll, size),
+    (ui.HScroll, size),
+    (ui.VStack, size),
+    (ui.HStack, size),
+    (ui.Flex, size)
 ]
 
 widgets = [
@@ -37,7 +37,7 @@ widgets = [
     (ui.Label, ("test",)),
     (ui.Button, (lambda: None, "test",)),
     (ui.Input, None),
-    (ui.RectCheckBox, None),
+    (ui.CheckBox, None),
     (ui.Switch, None),
 ]
 
@@ -80,11 +80,11 @@ def dump_referrers(target, name="target"):
 
 def main_layout(layout_type, size, custom_menu = None):
     menu = custom_menu or ui.Menu(window, size)
-    if layout_type is ui.StackColumn or layout_type is ui.StackRow or layout_type is ui.FlexLayout:
+    if layout_type is ui.VStack or layout_type is ui.HStack or layout_type is ui.Flex:
         layout = layout_type()
     else:
         layout = layout_type(size = size)
-    menu.layout = layout
+    menu._parent_layout = layout
 
     for _ in range(time):
         menu.update()
@@ -106,7 +106,7 @@ def main_widget(widget_type, args, custom_menu = None):
     layout = ui.StackColumn()
     widget = widget_type(*args)
     layout.add_item(widget)
-    menu.layout = layout
+    menu._parent_layout = layout
 
     for _ in range(time):
         menu.update()

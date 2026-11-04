@@ -7,7 +7,7 @@ from nevu_ui.overlay.tooltip import Tooltip
 from nevu_ui.rendering.canvas import Canvas
 
 
-def checkboxgroup_wrapper(checkbox: ui.RectCheckBox | None):
+def checkboxgroup_wrapper(checkbox: ui.CheckBox | None):
     if checkbox is None: print("You discontinued the selection"); return
     assert checkbox.id
     if "1" in checkbox.id:
@@ -56,7 +56,7 @@ def create_test_instances():
         ),
         border_radius = 50)
 
-    test_menu = ui.Menu(test_window, (100%vw, 100%vh), widgets_style(border_radius = 10, border_width = 0, bg_image = "tests/test3.jpg"))
+    test_menu = ui.Menu(test_window, (100%vw, 100%vh), widgets_style(border_radius = 10, border_width = 0, bg_image = "tests/test.jpg"))
     widgets_size = (75%vw, 35%vh)
 
     widget_kwargs = {"style": widgets_style, "size": widgets_size}
@@ -85,33 +85,33 @@ def create_test_instances():
     canvas = (Canvas()
         .draw_line((0, 0), ui.fill_all, 10)
         .draw_line((100%ui.fill, 0), (0, 100%ui.fill), 10)
-        .draw_rect((0, 0), ui.fill_perc(50), style = ui.Style(colortheme=ui.ColorThemeLibrary.material3_green))
+        .draw_rect((0, 0), ui.fill_perc(50), style = ui.Style(gradient=ui.Gradient([(ui.Color.Red, 100), (ui.Color.White, 10), (ui.Color.Aqua, 1)]), colortheme=ui.ColorThemeLibrary.material3_green, border_radius=999))
     )
 
     label = ui.Label("Frutiger Aero Label \n(not really)", size=widget_kwargs["size"], canvas = canvas, style=widget_style3(borderradius=250), font_role=ui.PairColorRole.BACKGROUND, clickable=True)
     input_box = ui.Input(**widget_kwargs, placeholder = "Input!", multi_line=True, tooltip = Tooltip(TooltipType.BigCustom(ui.NvVector2(0.2, 0.4),"This is INPUT...", "it can: \n1. - store text! 3. - store text! \n2. - store text! 4. - store text!"), widgets_style(font_size=10, borderradius=(0,35,35,35))))
-
+    print(input_box.style.border_radius)
     #Faputa Approved
     rect_checkbox_row = ui.Row(
         size = (90*fill, 35*fill),
         x = 3,
-        single_instance = False,
+        single_instance = True,
         content = {
-            1: ui.RectCheckBox(id = "check_box1", size = 35, style = widgets_style(borderradius=17), checkbox_group=checkbox_group),
-            2.2: ui.RectCheckBox(id = "check_box2", size = 35, style = widgets_style, checkbox_group=checkbox_group),
-            3: ui.RectCheckBox(id = "check_box3", size = 35, style = widgets_style, checkbox_group=checkbox_group)
+            1: ui.CheckBox(id = "check_box1", size = 35, style = widgets_style(border_radius=17), checkbox_group=checkbox_group),
+            2.2: ui.CheckBox(id = "check_box2", size = 35, style = widgets_style, checkbox_group=checkbox_group),
+            3: ui.CheckBox(id = "check_box3", size = 35, style = widgets_style, checkbox_group=checkbox_group)
         },
         bg_widget = ui.Widget(ui.fill_all, z = 1, draw_content = False)
     )
 
-    panel = ui.ScrollableRow([label], (90*fill, 35*fill), bg_widget = ui.Widget((1, 1), bg_variant=True))
+    panel = ui.HScroll([label], (90*fill, 35*fill), bg_widget = ui.Widget((1, 1), bg_variant=True))
 
     btn_list = []
     for i in range(20):
-        btn = ui.Button(lambda: print(i), f"Button {i}", (120, 50))
+        btn = ui.Button(lambda: print(i), f"Button {i}", (120, 50), style = ui.Style(text_align_y =  ui.Align.BOTTOM))
         btn_list.append(btn)
 
-    my_flex = ui.FlexLayout(
+    my_flex = ui.Flex(
         *btn_list,
         direction=ui.FlexDirection.Column,
         wrap=True,
@@ -120,8 +120,14 @@ def create_test_instances():
     )
 
     element_swither = ui.ElementSwitcher(
-        **widget_kwargs,
         elements = ["ooo","an apple", "nom nom", "mehhh"],
+        size = (1200, 400),
+        style = ui.Style(
+            font_size=20%ui.fill,
+            br=(0, 180, 180, 180),
+            bw=10,
+            gradient=ui.Gradient([ui.Color.Red, (ui.Color.Blue, 1)], direction=ui.LinearSide.Top)
+        ),
         clickable = True
     )
 
@@ -136,7 +142,6 @@ def create_test_instances():
     slider_bar = ui.Slider(
         (300, 300),
         widgets_style2(
-            bg_image = "tests/test1.png",
             border_radius = 999,
             bw = 10,
             align_x = ui.StateVariable(ui.Align.CENTER, ui.Align.RIGHT, ui.Align.LEFT),
@@ -158,9 +163,9 @@ def create_test_instances():
 
 class NevuTest(ui.Manager):
     def __init__(self):
-        self.window, self.test_menu, self.showcase_widgets, self.styles = create_test_instances()
+        self.wwindow, self.test_menu, self.showcase_widgets, self.styles = create_test_instances()
 
-        super().__init__(self.window, [self.test_menu])
+        super().__init__(self.wwindow, [self.test_menu])
         self.do_fps_test = False
         self._dirty_mode = False
         self.print_debug_fps = False

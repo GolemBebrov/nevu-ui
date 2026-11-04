@@ -7,7 +7,7 @@ from basic import NevuTest
 
 import nevu_ui as ui
 from nevu_ui.core.size.units import *
-
+ui.window._I_AM_DEBUG = True
 pygame.init()
 curi = 0
 
@@ -23,10 +23,7 @@ class TestScrollable(NevuTest):
         print(len(self.scrollable.items))
 
     def create_layout(self):
-        self.center = (random.random(), random.random())
-        self.show_tooltip = False
         self.fps = 9999
-        self.timer = 1000
         self.font = pygame.font.Font("tests/vk_font.ttf", 20)
         self.max_timer = 100
         self.anim_manager = ui.presentation.animations.AnimationManager()
@@ -34,10 +31,10 @@ class TestScrollable(NevuTest):
         a = list(a)
         a.append((ui.Align.CENTER, ui.Button(self.add, "add", (50*vw, 33*vh), style = ui.Style(font_name="tests/vk_font.ttf", font_size=64, colortheme=ui.StateVariable(ui.ColorThemeLibrary.github_light, ui.ColorThemeLibrary.material3_dark, ui.ColorThemeLibrary.material3_blue)), hoverable=True, clickable=True)))
         a.append((ui.Align.CENTER, ui.Label("add", [50*vw,33*vh], hoverable=True, clickable=True)))
-        self.scrollable = ui.ScrollableColumn(
+        self.scrollable = ui.VScroll(
             size = (100*fill, 100*fill),
-            wheel_scroll_power = 1,
-            scrollbar_perc = ui.NvVector2(2,5),
+            scroll_power = 1,
+            scrollbar_relative_size = ui.NvVector2(2,5),
             style = self.styles[-1](border_width = 1),
             z = -1,
             content = a,
