@@ -27,10 +27,8 @@ cpdef void draw_floating_items_optimized(
 )
 cdef NvRect get_nvrect_helper(NvVector2 master_coordinates, NvVector2 resize_ratio, NvVector2 size)
 cdef inline void _fast_cycle_in_list(str func_name, list items)
-cpdef void logic_update_helper(
-    NvVector2 master_coordinates,
-    NvVector2 dr_coordinates_old,
-    ZSystem z_system
+cpdef void logic_update_helper (
+    NevuCobject self
 )
 
 cpdef void draw_widgets_optimized(
