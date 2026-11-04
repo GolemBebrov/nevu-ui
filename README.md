@@ -9,7 +9,7 @@
 **Nevu UI** is a GUI library for easily creating interfaces in `Python`, which provides a set of ready-made, customizable components and convenient tools for creating interfaces in games and applications.
 
 ### Key features:
-*   **Layouts:** Containers that automatically position elements inside themselves, for example `Grid`, `ScrollableColumn`.
+*   **Layouts:** Containers that automatically position elements inside themselves, for example `Grid`, `VScroll`.
 *   **Widgets:** Ready-made graphical elements, for example `Button`, `Label`, `Input`.
 *   **Styling:** Customization of the widgets' appearance via `Style` to suit your needs.
 *   **Animations:** Support for animations via `AnimationManager`.
@@ -227,11 +227,15 @@ if __name__ == "__main__":
 *   `Grid`
 *   `Row`
 *   `Column`
-*   `ScrollableRow`
-*   `ScrollableColumn`
-*   `ColorPicker`
-*   `StackColumn`
-*   `StackRow`
+*   `Scroll`
+*   `HScroll`
+*   `VScroll`
+*   `Stack`
+*   `HStack`
+*   `VStack`
+*   `Flex`
+*   `HFlex`
+*   `VFlex`
 *   `CheckBoxGroup`
 
 ### **Widgets**
@@ -251,7 +255,6 @@ if __name__ == "__main__":
 ### **Available Backends**
 
 *   `Pygame-ce`
-*   `Sdl(Pygame-ce._sdl2)`
 *   `RayLib`
 
 ## Backend Exclusives
