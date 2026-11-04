@@ -5,7 +5,7 @@ from .empty_widget import EmptyWidget
 from .input import Input
 from .label import Label
 from .progress_bar import ProgressBar
-from .rect_checkbox import RectCheckBox
+from .rect_checkbox import CheckBox
 from .slider_bar import Slider
 from .switch import Switch
 from .widget import Widget
@@ -18,7 +18,7 @@ __all__ = [
     "Input",
     "Label",
     "ProgressBar",
-    "RectCheckBox",
+    "CheckBox",
     "Slider",
     "Switch",
     "Widget"

@@ -14,7 +14,6 @@ from .nevucache import Cache
 from .nevucobj import NevuCobject
 from .nvparam import NvParam
 from .nvrect import NvRect
-from .nvrendertex import NvRenderTexture
 from .nvvector2 import NvVector2
 from .zsystem import ZRequest, ZSystem
 
@@ -25,7 +24,6 @@ __all__ = [
     "NevuCobject",
     "NvParam",
     "NvRect",
-    "NvRenderTexture",
     "NvVector2",
     "ZRequest",
     "ZSystem",

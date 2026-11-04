@@ -1,3 +1,9 @@
-from . import nevuobj, widgets, layouts  # noqa: I001
-
-__all__ = ['layouts', 'nevuobj', 'widgets']
+from .nevuobj import NevuObject
+from . import widgets, layouts
+from .checkbox_group import CheckBoxGroup
+__all__ = [
+    'widgets',
+    'layouts',
+    'NevuObject',
+    'CheckBoxGroup'
+]

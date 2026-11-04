@@ -5,7 +5,6 @@ from .base_renderer import (
     DrawEffectsCall,
     DrawTextCall,
     _BaseCoreNamespace,
-    _BaseSpecifiedDraw,
 )
 from .uni_gradient import Gradient
 
@@ -17,5 +16,4 @@ __all__ = [
     "DrawTextCall",
     "Gradient",
     "_BaseCoreNamespace",
-    "_BaseSpecifiedDraw",
 ]
