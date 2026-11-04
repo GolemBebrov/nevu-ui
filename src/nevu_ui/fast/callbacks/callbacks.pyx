@@ -79,8 +79,9 @@ cdef class Callbacks:
 
         callbacks_list[:] = live_callbacks
 
-    def run(self, bind_type: BindType, *args, **kwargs):
+    def run(self, bind_type: BindType, *args, **kwargs) -> bool:
         cdef list callbacks_list
         callbacks_list = self._storage.get(bind_type)
-        if not callbacks_list: return
+        if not callbacks_list: return False
         self.c_run(callbacks_list, args, kwargs)
+        return True
