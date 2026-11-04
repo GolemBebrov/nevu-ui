@@ -19,8 +19,8 @@ from nevu_ui.core.enums import (
     RenderReturnType,
 )
 from nevu_ui.core.state import nevu_state
-from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.fast.raylib.nevu_raylib import begin_blend_mode, end_blend_mode
+from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.raylib.raylib import begin_blend_mode, end_blend_mode
 from nevu_ui.presentation.style import Style
 from nevu_ui.rendering import DrawTextCall
 from nevu_ui.utils import keyboard

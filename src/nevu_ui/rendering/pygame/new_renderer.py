@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Any, override
 
-from nevu_ui.fast.nvsurface.nvsurface import NvSurface
+from nevu_ui.cython.nvsurface.nvsurface import NvSurface
 
 if TYPE_CHECKING:
     from nevu_ui.presentation.style import Style
@@ -13,13 +13,13 @@ if TYPE_CHECKING:
 import nevu_ui.core.modules as md
 from nevu_ui.core.annotations import Annotations
 from nevu_ui.core.enums import CacheType
-from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.fast.shapes import (
+from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.shapes import (
     transform_into_outlined_rounded_rect,
     transform_into_rounded_rect,
 )
-from nevu_ui.fast.shapes.fast_shapes import draw_sdf_line
-from nevu_ui.presentation.color.color import Color
+from nevu_ui.cython.shapes.shapes import draw_sdf_line
+from nevu_ui.presentation.color import Color
 from nevu_ui.presentation.style import default_style
 from nevu_ui.rendering.base_renderer import (
     BaseRenderer,

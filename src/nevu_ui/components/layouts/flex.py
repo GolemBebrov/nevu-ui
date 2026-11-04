@@ -12,12 +12,12 @@ from nevu_ui.core.enums import (
     FlexJustify,
     Orientation,
 )
-from nevu_ui.fast.logic.fast_logic import (
+from nevu_ui.cython.logic.logic import (
     base_light_update,
     draw_widgets_optimized,
     py_get_item_abs_coords,
 )
-from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.cython.nvvector2 import NvVector2
 
 MAIN_LEN_STR = "main_len"
 SEC_LEN_STR = "sec_len"

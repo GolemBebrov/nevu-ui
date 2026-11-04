@@ -1,0 +1,68 @@
+from nevu_ui.cython.nvrect.nvrect cimport NvRect
+from nevu_ui.cython.nvvector2.nvvector2 cimport NvVector2, nv_vector2_t
+from nevu_ui.cython.z_system.z_system cimport ZSystem
+from nevu_ui.cython.nevucobject.nevucobject cimport NevuCobject
+
+cpdef double rel_helper(double num, double resize_ratio, double min_val, double max_val)
+
+cpdef double relm_helper(double num, double resize_ratio_x, double resize_ratio_y, double min_val, double max_val)
+
+cpdef NvVector2 mass_rel_helper(list mass, double resize_ratio_x, double resize_ratio_y, bint vector)
+
+cpdef NvVector2 vec_rel_helper(NvVector2 vec, double resize_ratio_x, double resize_ratio_y)
+
+cpdef tuple get_rect_helper(NvVector2 master_coordinates, NvVector2 resize_ratio, NvVector2 size)
+
+cpdef object get_rect_helper_pygame(NvVector2 master_coordinates, NvVector2 resize_ratio, NvVector2 size)
+
+cpdef tuple get_rect_helper_cached(NvVector2 master_coordinates, NvVector2 csize)
+
+cpdef object get_rect_helper_cached_pygame(NvVector2 master_coordinates, NvVector2 csize)
+cdef inline NvVector2 get_item_abs_coords(NevuCobject layout, NevuCobject item)
+cpdef void draw_floating_items_optimized(
+    NevuCobject layout,
+    list items,
+    type layout_type,
+    type widget_type
+)
+cdef NvRect get_nvrect_helper(NvVector2 master_coordinates, NvVector2 resize_ratio, NvVector2 size)
+cdef inline void _fast_cycle_in_list(str func_name, list items)
+cpdef void logic_update_helper (
+    NevuCobject self
+)
+
+cpdef void draw_widgets_optimized(
+    NevuCobject layout,
+    list items,
+    type layout_type,
+    type widget_type
+)
+
+cpdef void rl_predraw_widgets(
+    list items,
+    type layout_type,
+    type widget_type,
+)
+
+cdef inline void _light_update_helper(
+    list items,
+    list cached_coordinates,
+    nv_vector2_t menu_vec,
+    double add_x,
+    double add_y
+) noexcept
+
+cpdef _very_light_update_helper(
+    list items,
+    list cached_coordinates,
+    NvVector2 menu_vec,
+    NvVector2 add_vector,
+    NevuCobject layout
+)
+
+
+cpdef bint collide_horizontal(NvVector2 r1_tl, NvVector2 r1_br, NvVector2 r2_tl, NvVector2 r2_br)
+
+cpdef bint collide_vertical(NvVector2 r1_tl, NvVector2 r1_br, NvVector2 r2_tl, NvVector2 r2_br)
+
+cpdef bint collide_vector(NvVector2 r1_tl, NvVector2 r1_br, NvVector2 r2_tl, NvVector2 r2_br)

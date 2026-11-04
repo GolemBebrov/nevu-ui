@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, TypeGuard
 
 if TYPE_CHECKING:
     from nevu_ui.components.nevuobj import NevuObject
-    from nevu_ui.fast.nvvector2 import NvVector2
+    from nevu_ui.cython.nvvector2 import NvVector2
 
 from nevu_ui.core.classes import SurfaceLike
 from nevu_ui.core.size.base import _SizeRule

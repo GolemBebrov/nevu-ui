@@ -12,12 +12,12 @@ from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.size.base import _SizeRule
 from nevu_ui.core.size.rules import Cgc, Cgch, Cgcw, Gc, Gch, Gcw
-from nevu_ui.fast.logic.fast_logic import (
+from nevu_ui.cython.logic.logic import (
     base_light_update,
     draw_widgets_optimized,
     py_get_item_abs_coords,
 )
-from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.cython.nvvector2 import NvVector2
 
 
 class Grid(LayoutType):

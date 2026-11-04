@@ -16,9 +16,9 @@ from nevu_ui.core.enums import (
     RenderReturnType,
 )
 from nevu_ui.core.state import nevu_state
-from nevu_ui.fast import NvRect, NvVector2
-from nevu_ui.fast.raylib import begin_blend_mode, end_blend_mode
-from nevu_ui.presentation.color import TupleColorRole
+from nevu_ui.cython import NvRect, NvVector2
+from nevu_ui.cython.raylib import begin_blend_mode, end_blend_mode
+from nevu_ui.presentation.theme import TupleColorRole
 from nevu_ui.presentation.style import Style
 from nevu_ui.rendering import DrawTextCall
 from nevu_ui.utils import mouse
@@ -79,7 +79,7 @@ class Slider(ProgressBar):
         self._add_param_link("pad_x", "padding_x")
         self._add_param("padding_y", int, 10)
         self._add_param_link("pad_y", "padding_y")
-        self._add_param("bar_font_role", TupleColorRole, TupleColorRole.INVERSE_PRIMARY)
+        self._add_param("bar_font_role", TupleColorRole, TupleColorRole.InversePrimary)
 
     def _system_callback_binds(self):
         super()._system_callback_binds()

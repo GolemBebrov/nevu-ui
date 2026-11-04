@@ -8,10 +8,10 @@ from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import BindType, CustomFunctions, RenderReturnType
 from nevu_ui.core.state import nevu_state
-from nevu_ui.fast.nvrect import NvRect
-from nevu_ui.fast.nvsurface.nvsurface import NvSurface
-from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.fast.raylib.nevu_raylib import begin_blend_mode, end_blend_mode
+from nevu_ui.cython.nvrect import NvRect
+from nevu_ui.cython.nvsurface.nvsurface import NvSurface
+from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.raylib.raylib import begin_blend_mode, end_blend_mode
 from nevu_ui.presentation.color import Color
 from nevu_ui.rendering import DrawTextCall
 from nevu_ui.utils import Keys, keyboard, mouse

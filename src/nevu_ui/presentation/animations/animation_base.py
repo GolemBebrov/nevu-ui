@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any, Callable
 
-from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.cython.nvvector2 import NvVector2
 from nevu_ui.utils.time import time
 
 

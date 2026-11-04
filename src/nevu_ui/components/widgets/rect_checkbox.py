@@ -8,7 +8,7 @@ from nevu_ui.core import Annotations
 from nevu_ui.core.enums import BindType, RenderReturnType
 from nevu_ui.core.size.base import _SizeRule
 from nevu_ui.core.state import nevu_state
-from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.cython.nvvector2 import NvVector2
 from nevu_ui.rendering import DrawBaseCall
 
 

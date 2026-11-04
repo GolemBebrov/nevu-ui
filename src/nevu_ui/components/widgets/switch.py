@@ -15,9 +15,9 @@ from nevu_ui.core.enums import (
     RenderReturnType,
     SwitchAxis,
 )
-from nevu_ui.fast.nvsurface.nvsurface import NvSurface
-from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.fast.raylib.nevu_raylib import begin_blend_mode, end_blend_mode
+from nevu_ui.cython.nvsurface.nvsurface import NvSurface
+from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.raylib.raylib import begin_blend_mode, end_blend_mode
 from nevu_ui.presentation.animations import (
     AnimationManager,
     Vector2Animation,

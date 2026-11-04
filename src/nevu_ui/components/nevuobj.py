@@ -4,8 +4,8 @@ import weakref
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Unpack, overload
 
-from nevu_ui.fast.nvrect.nvrect import NvRect
-from nevu_ui.presentation.color.color import Color
+from nevu_ui.cython.nvrect.nvrect import NvRect
+from nevu_ui.presentation.color import Color
 from nevu_ui.rendering.canvas import Canvas, CanvasLineData, CanvasRectData
 
 #Киширика киширису наносит ответный удар.
@@ -22,11 +22,11 @@ from nevu_ui.core.enums import (
 )
 from nevu_ui.core.size.rules import Auto, Px, _SizeRule
 from nevu_ui.core.state import nevu_state
-from nevu_ui.fast import Cache, NevuCobject, NvVector2, ZRequest
-from nevu_ui.fast.logic import get_rect_helper
-from nevu_ui.overlay.tooltip import Tooltip
+from nevu_ui.cython import Cache, NevuCobject, NvVector2, ZRequest
+from nevu_ui.cython.logic import get_rect_helper
+from nevu_ui.components.tooltip import Tooltip
 from nevu_ui.presentation.animations import AnimationManager
-from nevu_ui.presentation.color import SubThemeRole
+from nevu_ui.presentation.theme import SubThemeRole
 from nevu_ui.presentation.style import Style, default_style
 from nevu_ui.rendering.base_renderer import BaseRenderer, DrawBaseCall, DrawBgCall
 from nevu_ui.rendering.pygame.new_renderer import PygameRenderer
@@ -222,7 +222,7 @@ class NevuObject(NevuCobject):
         self._add_param(
             "subtheme_role",
             SubThemeRole,
-            SubThemeRole.TERTIARY,
+            SubThemeRole.Tertiary,
             setter=self._subtheme_role_setter,
             layer=ParamLayer.Basic,
         )

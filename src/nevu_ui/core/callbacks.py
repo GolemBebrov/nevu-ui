@@ -1,3 +1,3 @@
-from nevu_ui.fast.callbacks.callbacks import Callbacks
+from nevu_ui.cython.callbacks.callbacks import Callbacks
 
 __all__ = ["Callbacks"]

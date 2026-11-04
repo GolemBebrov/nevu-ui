@@ -22,8 +22,8 @@ from nevu_ui.core.size.rules import (
     _all_gcx,
 )
 from nevu_ui.core.state import nevu_state
-from nevu_ui.fast.nvsurface.nvsurface import NvSurface
-from nevu_ui.fast.nvvector2.nvvector2 import NvVector2
+from nevu_ui.cython.nvsurface.nvsurface import NvSurface
+from nevu_ui.cython.nvvector2.nvvector2 import NvVector2
 from nevu_ui.presentation.style import Style, default_style
 
 if TYPE_CHECKING:

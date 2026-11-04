@@ -2,7 +2,7 @@ import functools
 
 import nevu_ui.core.modules as md
 from nevu_ui.core.enums import Backend
-from nevu_ui.fast.raylib.nevu_raylib import is_key_down, is_key_pressed, is_key_up
+from nevu_ui.cython.raylib.raylib import is_key_down, is_key_pressed, is_key_up
 
 
 class _BaseKeyboard:

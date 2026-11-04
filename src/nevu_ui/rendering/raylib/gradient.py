@@ -3,8 +3,8 @@ from typing import Any
 
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import GradientType
-from nevu_ui.fast.nvraygrad.nvraygrad import ClickGradient, GradientRaylib
-from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.cython.raylib_gradient.raylib_gradient import ClickGradient, GradientRaylib
+from nevu_ui.cython.nvvector2 import NvVector2
 from nevu_ui.presentation.animations.animation_base import (
     ColorAnimation,
     FloatAnimation,

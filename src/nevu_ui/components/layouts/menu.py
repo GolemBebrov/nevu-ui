@@ -4,9 +4,9 @@ from itertools import chain
 from typing import TYPE_CHECKING, Unpack
 
 from nevu_ui.core.state import nevu_state
-from nevu_ui.fast.logic.fast_logic import draw_widgets_optimized, rl_predraw_widgets
-from nevu_ui.fast.raylib.nevu_raylib import begin_blend_mode, end_blend_mode
-from nevu_ui.presentation.color.color import Color
+from nevu_ui.cython.logic.logic import draw_widgets_optimized, rl_predraw_widgets
+from nevu_ui.cython.raylib.raylib import begin_blend_mode, end_blend_mode
+from nevu_ui.presentation.color import Color
 
 if TYPE_CHECKING:
     from nevu_ui import NevuObject, Window
@@ -15,14 +15,14 @@ from nevu_ui.components.layouts.layout_base import LayoutType
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core.annotations import Annotations
 from nevu_ui.core.enums import Backend, BindType, ParamLayer
-from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.presentation.color.color_theme import PairColorRole
+from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.presentation.theme import PairColorRole
 
 
 class _MenuBgWidget(Widget):
     @property
     def subtheme_content(self):
-        return self.style.get_pair_color(PairColorRole.BACKGROUND, inverted = self.inverted)
+        return self.style.get_pair_color(PairColorRole.Background, inverted = self.inverted)
 
 class Menu(LayoutType):
     main_layout: LayoutType | None

@@ -138,56 +138,53 @@ def get_extension(name: str, source: str) -> Extension:
 def get_extensions():
     extensions = [
         get_extension(
-            "nevu_ui.fast.nvvector2.nvvector2",
-            "src/nevu_ui/fast/nvvector2/nvvector2.pyx",
+            "nevu_ui.cython.nvvector2.nvvector2",
+            "src/nevu_ui/cython/nvvector2/nvvector2.pyx",
         ),
         get_extension(
-            "nevu_ui.fast.nvrect.nvrect", "src/nevu_ui/fast/nvrect/nvrect.pyx"
+            "nevu_ui.cython.nvrect.nvrect", "src/nevu_ui/cython/nvrect/nvrect.pyx"
         ),
         get_extension(
-            "nevu_ui.fast.nvparam.nvparam", "src/nevu_ui/fast/nvparam/nvparam.pyx"
+            "nevu_ui.cython.nvparam.nvparam", "src/nevu_ui/cython/nvparam/nvparam.pyx"
         ),
         get_extension(
-            "nevu_ui.fast.nevucobj.nevucobj", "src/nevu_ui/fast/nevucobj/nevucobj.pyx"
+            "nevu_ui.cython.nevucobject.nevucobject", "src/nevu_ui/cython/nevucobject/nevucobject.pyx"
         ),
         get_extension(
-            "nevu_ui.fast.nvfont.nvfont", "src/nevu_ui/fast/nvfont/nvfont.pyx"
+            "nevu_ui.cython.nvfont.nvfont", "src/nevu_ui/cython/nvfont/nvfont.pyx"
         ),
         get_extension(
-            "nevu_ui.fast.nvsurface.nvsurface", "src/nevu_ui/fast/nvsurface/nvsurface.pyx"
+            "nevu_ui.cython.nvsurface.nvsurface", "src/nevu_ui/cython/nvsurface/nvsurface.pyx"
         ),
         get_extension(
-            "nevu_ui.fast.callbacks.callbacks", "src/nevu_ui/fast/callbacks/callbacks.pyx"
+            "nevu_ui.cython.callbacks.callbacks", "src/nevu_ui/cython/callbacks/callbacks.pyx"
         ),
         get_extension(
-            "nevu_ui.fast.nevucache.nevucache",
-            "src/nevu_ui/fast/nevucache/nevucache.pyx",
+            "nevu_ui.cython.cache.cache",
+            "src/nevu_ui/cython/cache/cache.pyx",
         ),
         get_extension(
-            "nevu_ui.fast.logic.fast_logic", "src/nevu_ui/fast/logic/fast_logic.pyx"
+            "nevu_ui.cython.logic.logic", "src/nevu_ui/cython/logic/logic.pyx"
         ),
         get_extension(
-            "nevu_ui.fast.nvshader.nvshader", "src/nevu_ui/fast/nvshader/nvshader.pyx"
+            "nevu_ui.cython.raylib_shader.raylib_shader", "src/nevu_ui/cython/raylib_shader/raylib_shader.pyx"
         ),
         get_extension(
-            "nevu_ui.fast.nvdisplay.display", "src/nevu_ui/fast/nvdisplay/display.pyx"
+            "nevu_ui.cython.display.display", "src/nevu_ui/cython/display/display.pyx"
         ),
         get_extension(
-            "nevu_ui.fast.nvraygrad.nvraygrad",
-            "src/nevu_ui/fast/nvraygrad/nvraygrad.pyx",
+            "nevu_ui.cython.raylib_gradient.raylib_gradient",
+            "src/nevu_ui/cython/raylib_gradient/raylib_gradient.pyx",
         ),
         get_extension(
-            "nevu_ui.fast.shapes.fast_shapes", "src/nevu_ui/fast/shapes/fast_shapes.pyx"
+            "nevu_ui.cython.shapes.shapes", "src/nevu_ui/cython/shapes/shapes.pyx"
         ),
         get_extension(
-            "nevu_ui.fast.zsystem.fast_zsystem",
-            "src/nevu_ui/fast/zsystem/fast_zsystem.pyx",
+            "nevu_ui.cython.z_system.z_system",
+            "src/nevu_ui/cython/z_system/z_system.pyx",
         ),
         get_extension(
-            "nevu_ui.fast.raylib.nevu_raylib", "src/nevu_ui/fast/raylib/nevu_raylib.pyx"
-        ),
-        get_extension(
-            "nevu_ui.fast.nvspecific.nvspec", "src/nevu_ui/fast/nvspecific/nvspec.pyx"
+            "nevu_ui.cython.raylib.raylib", "src/nevu_ui/cython/raylib/raylib.pyx"
         ),
     ]
 

@@ -2,8 +2,8 @@ from typing import final
 
 import nevu_ui.core.modules as md
 from nevu_ui.core.enums import Backend, PressType
-from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.fast.raylib.nevu_raylib import get_mouse_position, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_up
+from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.raylib.raylib import get_mouse_position, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_up
 
 
 class _BaseMouse:

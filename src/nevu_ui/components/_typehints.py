@@ -8,19 +8,19 @@ from nevu_ui.core import Annotations
 from nevu_ui.core.callbacks import Callbacks
 from nevu_ui.core.classes import DictAccessMixin, GlobalsBase
 from nevu_ui.core.enums import Align, FlexJustify, Orientation, SwitchAxis
-from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.overlay.tooltip import Tooltip
+from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.components.tooltip import Tooltip
 from nevu_ui.presentation.animations import AnimationManager
-from nevu_ui.presentation.color import SubThemeRole
+from nevu_ui.presentation.theme import SubThemeRole
 from nevu_ui.presentation.style import Style
 from nevu_ui.rendering.canvas import Canvas
 
 if TYPE_CHECKING:
     from nevu_ui.components.layouts import LayoutType
-    from nevu_ui.components.layouts.misc.checkbox_group import CheckBoxGroup
+    from nevu_ui.components.checkbox_group import CheckBoxGroup
     from nevu_ui.components.nevuobj import NevuObject
     from nevu_ui.components.widgets import Input, Label, ProgressBar, Switch, Widget
-    from nevu_ui.presentation.color import PairColorRole, SubThemeRole, TupleColorRole
+    from nevu_ui.presentation.theme import PairColorRole, SubThemeRole, TupleColorRole
     from nevu_ui.presentation.style import Style
 
 class _NevuObjectKwargsBase(TypedDict, total=False):

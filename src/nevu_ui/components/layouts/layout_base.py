@@ -27,11 +27,11 @@ from nevu_ui.core.size.rules import (
     _all_gcx,
     _SizeRule,
 )
-from nevu_ui.fast.logic.fast_logic import (
+from nevu_ui.cython.logic.logic import (
     draw_floating_items_optimized,
     rl_predraw_widgets,
 )
-from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.cython.nvvector2 import NvVector2
 from nevu_ui.presentation.style import Style, _StyleKwargs
 
 

@@ -18,17 +18,18 @@ from nevu_ui.core.enums import (
     RenderReturnType,
 )
 from nevu_ui.core.state import _analize_bg, nevu_state
-from nevu_ui.fast.logic import logic_update_helper
-from nevu_ui.fast.nvsurface.nvsurface import NvSurface
-from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.fast.raylib.nevu_raylib import begin_blend_mode, end_blend_mode
+from nevu_ui.cython.logic import logic_update_helper
+from nevu_ui.cython.nvsurface.nvsurface import NvSurface
+from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.raylib.raylib import begin_blend_mode, end_blend_mode
 from nevu_ui.presentation.animations import (
     AnimationManager,
     ColorAnimation,
     FloatAnimation,
     ease_out_quad,
 )
-from nevu_ui.presentation.color import Color, PairColorRole, SubThemeRole
+from nevu_ui.presentation.theme import PairColorRole, SubThemeRole
+from nevu_ui.presentation.color import Color
 from nevu_ui.presentation.style import Style
 from nevu_ui.rendering import DrawBaseCall, DrawBordersCall, DrawEffectsCall
 from nevu_ui.rendering.raylib.gradient import ClickGradient
@@ -87,14 +88,14 @@ class Widget(NevuObject):
         self._add_param("hoverable", bool, False)
         self._add_param("invert_on_click", bool, False)
         self._change_param_default("z", 1)
-        self._add_param("font_role", PairColorRole, PairColorRole.INVERSE_SURFACE)
+        self._add_param("font_role", PairColorRole, PairColorRole.InverseSurface)
         self._add_param("draw_borders", bool, True)
         self._add_param("draw_content", bool, True)
         self._add_param("ripple_effect", bool, True)
         self._add_param("animate_color_change", bool, True)
         self._add_param("override_color", tuple | None, None)
         self._add_param("glassy", bool, False)
-        self._change_param_default("subtheme_role", SubThemeRole.SECONDARY)
+        self._change_param_default("subtheme_role", SubThemeRole.Secondary)
 
     def _set_next_bg_color_anim(self, color):
         if self._bg_color_anim_manager:

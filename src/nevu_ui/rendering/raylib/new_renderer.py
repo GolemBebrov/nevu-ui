@@ -2,15 +2,15 @@ from __future__ import annotations
 import math
 from typing import Any, override
 
-from nevu_ui.fast.nvsurface.nvsurface import NvSurface
+from nevu_ui.cython.nvsurface.nvsurface import NvSurface
 from nevu_ui.presentation.style import Style, default_style
 import nevu_ui.core.modules as md
 from nevu_ui.core.annotations import Annotations
 from nevu_ui.core.enums import CacheType
 from nevu_ui.core.state import nevu_state
-from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.fast.raylib.nevu_raylib import begin_blend_mode, end_blend_mode
-from nevu_ui.presentation.color.color import Color
+from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.raylib.raylib import begin_blend_mode, end_blend_mode
+from nevu_ui.presentation.color import Color
 from nevu_ui.rendering.base_renderer import (
     BaseRenderer,
     DrawBaseCall,

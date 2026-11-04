@@ -6,9 +6,9 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from nevu_ui.core.state import nevu_state
-from nevu_ui.fast.nevucache.nevucache import Cache
-from nevu_ui.fast.nvfont.nvfont import NvFont
-from nevu_ui.fast.nvsurface.nvsurface import NvSurface
+from nevu_ui.cython.cache.cache import Cache
+from nevu_ui.cython.nvfont.nvfont import NvFont
+from nevu_ui.cython.nvsurface.nvsurface import NvSurface
 from nevu_ui.presentation.style import default_style
 from nevu_ui.core.size.rules import (
     CFill,
@@ -28,7 +28,7 @@ from nevu_ui.core.enums import (
     CacheType,
     RenderReturnType,
 )
-from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.cython.nvvector2 import NvVector2
 from nevu_ui.presentation.color import Color
 
 _bg_surface_pool: dict[tuple[int, int], tuple] = {}

@@ -84,12 +84,13 @@ from .core.size.units import (
     Auto
 )
 from .core.state import nevu_state
-from .fast import NvVector2
-from .fast.nevucache.nevucache import Cache
-from .fast.nvrect import NvRect
+from .cython import NvVector2
+from .cython.cache.cache import Cache
+from .cython.nvrect import NvRect
 from .manager import Manager
 from .components.layouts.menu import Menu
-from .overlay import Tooltip, overlay
+from .overlay import overlay
+from .components import Tooltip
 from .parser import (
     apply_config,
     get_all_colors,
@@ -101,8 +102,7 @@ from .parser import (
 )
 
 from .presentation import animations
-from .presentation.color import (
-    Color,
+from .presentation.theme import (
     ColorPair,
     ColorSubTheme,
     ColorTheme,
@@ -111,9 +111,10 @@ from .presentation.color import (
     SubThemeRole,
     TupleColorRole,
 )
+from .presentation.color import Color
 from .presentation.style import StateVariable, Style, default_style
 from .rendering import Gradient
-from .assets import FontLibrary
+from .assets.font import FontLibrary
 from .utils import InputType, Keys, Time, keyboard, load_font, mouse, time
 from .window import (
     ConfiguredWindow,

@@ -2,7 +2,7 @@ import math
 import random
 from typing import Callable
 
-from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.cython.nvvector2 import NvVector2
 
 
 def linear(value: float) -> float:

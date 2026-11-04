@@ -1,7 +1,7 @@
 import sys
 from typing import TYPE_CHECKING, NotRequired, TypeGuard, Unpack, final
 
-from nevu_ui.fast.raylib.nevu_raylib import get_screen_height, get_screen_width, is_window_resized, set_target_fps, window_should_close
+from nevu_ui.cython.raylib.raylib import get_screen_height, get_screen_width, is_window_resized, set_target_fps, window_should_close
 from typing_extensions import TypedDict
 
 from nevu_ui.core.callbacks import Callbacks
@@ -14,14 +14,14 @@ from nevu_ui.core.classes import ConfigType, Counter
 from nevu_ui.core.enums import Backend, BindType, ResizeType
 from nevu_ui.core.modules import init_modules
 from nevu_ui.core.state import nevu_state
-from nevu_ui.fast.nvdisplay.display import (
+from nevu_ui.cython.display.display import (
     WindowRendererBase,
     WindowRendererPygame,
     WindowRendererRaylib,
 )
-from nevu_ui.fast.nvrect import NvRect
-from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.fast.zsystem import ZRequest, ZSystem
+from nevu_ui.cython.nvrect import NvRect
+from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.cython.z_system import ZRequest, ZSystem
 from nevu_ui.overlay import overlay
 from nevu_ui.parser.base import standart_config
 from nevu_ui.utils import keyboard, mouse, set_keyboard, set_mouse, time
@@ -344,7 +344,7 @@ class Window:
         window_update_utils(events)
 
     def update_zsystem(self):
-        """Manual zsystem update"""
+        """Manual ZSystem update"""
         self.z_system.cycle(
             mouse.pos,
             mouse.left_fdown,

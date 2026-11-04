@@ -14,21 +14,21 @@ from typing import (
 from nevu_ui.core.size.rules import (
     _SizeRule,
 )
-from nevu_ui.assets import FontLibrary
+from nevu_ui.assets.font import FontLibrary
 from nevu_ui.core.annotations import Annotations
 from nevu_ui.core.enums import Align, HoverState, Malign
-from nevu_ui.presentation.color.color_theme import ColorSubTheme
+from nevu_ui.presentation.theme import ColorSubTheme
 
 if TYPE_CHECKING:
     from nevu_ui.rendering.pygame.gradient import GradientPygame
     from nevu_ui.rendering.raylib.gradient import GradientRaylib
     from nevu_ui.rendering.uni_gradient import Gradient
-from nevu_ui.presentation.color import (
+from nevu_ui.presentation.theme import (
     ColorTheme,
-    ColorThemeLibrary,
     PairColorRole,
     SubThemeRole,
 )
+from nevu_ui.presentation.theme.presets import ColorThemeLibrary
 
 TV = TypeVar("TV")
 
@@ -211,7 +211,7 @@ class Style:
             subtheme = self.colortheme.get_subtheme(subtheme)
         assert isinstance(subtheme, ColorSubTheme)
         if inverted:
-            return subtheme.oncolor if swap else subtheme.oncontainer
+            return subtheme.oncolor if swap else subtheme.on_container
         return subtheme.color if swap else subtheme.container
 
     def get_content_color(self, subtheme: SubThemeRole | ColorSubTheme, *, inverted: bool = False, swap: bool = False):
@@ -222,7 +222,7 @@ class Style:
 
     def get_pair_color(self, font_role: PairColorRole, *, inverted: bool = False):
         pair = self.colortheme.get_pair(font_role)
-        return pair.oncolor if inverted else pair.color
+        return pair.on_color if inverted else pair.color
 
     def _init_default(self) -> None:
         self.colortheme = copy.copy(ColorThemeLibrary.material3_dark)

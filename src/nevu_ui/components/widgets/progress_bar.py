@@ -10,10 +10,11 @@ from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import ParamLayer, RenderReturnType
 from nevu_ui.core.state import nevu_state
-from nevu_ui.fast import NvVector2
-from nevu_ui.fast.nvsurface.nvsurface import NvSurface
-from nevu_ui.fast.raylib.nevu_raylib import begin_blend_mode, end_blend_mode
-from nevu_ui.presentation.color import Color, PairColorRole
+from nevu_ui.cython import NvVector2
+from nevu_ui.cython.nvsurface.nvsurface import NvSurface
+from nevu_ui.cython.raylib.raylib import begin_blend_mode, end_blend_mode
+from nevu_ui.presentation.theme import PairColorRole
+from nevu_ui.presentation.color import Color
 from nevu_ui.rendering import DrawBaseCall
 
 
@@ -87,7 +88,7 @@ class ProgressBar(Widget):
         self._add_param_link("current", "current_value")
         self._add_param("on_current_value_change", type(None) | Callable, None)
         self._add_param_link("on_value_change", "on_current_value_change")
-        self._add_param("filled_rect_role", PairColorRole, PairColorRole.BACKGROUND)
+        self._add_param("filled_rect_role", PairColorRole, PairColorRole.Background)
         self._add_param_link("role", "filled_rect_role")
 
     @property

@@ -8,8 +8,8 @@ from typing import Any
 from nevu_ui.core.classes import ConfigType
 from nevu_ui.core.enums import ConfigLoadType
 from nevu_ui.parser import check, standart_config
-from nevu_ui.presentation.color.color_theme import ColorPair, ColorSubTheme, ColorTheme
-from nevu_ui.presentation.color.color_theme_library import ColorThemeLibrary
+from nevu_ui.presentation.theme import ColorPair, ColorSubTheme, ColorTheme
+from nevu_ui.presentation.theme.presets import ColorThemeLibrary
 from nevu_ui.presentation.style import Style
 
 

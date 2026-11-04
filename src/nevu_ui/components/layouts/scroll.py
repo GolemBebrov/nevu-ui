@@ -17,18 +17,18 @@ from nevu_ui.core.enums import (
     Orientation,
 )
 from nevu_ui.core.state import nevu_state
-from nevu_ui.fast.logic.fast_logic import (
+from nevu_ui.cython.logic.logic import (
     _very_light_update_helper,
     draw_widgets_optimized,
     py_get_item_abs_coords,
     rl_predraw_widgets,
 )
-from nevu_ui.fast.nvspecific.nvspec import (
+from nevu_ui.cython.logic.logic import (
     scrollable_recollide_items,
     scrollable_update_collided,
 )
-from nevu_ui.fast.nvvector2 import NvVector2
-from nevu_ui.presentation.color import SubThemeRole
+from nevu_ui.cython.nvvector2 import NvVector2
+from nevu_ui.presentation.theme import SubThemeRole
 from nevu_ui.presentation.style import Style
 from nevu_ui.utils import keyboard, mouse
 from nevu_ui.utils.keys import Keys
@@ -51,7 +51,7 @@ class ScrollBar(Widget):
         super()._add_params()
         self._change_param_default("clickable", True)
         self._change_param_default("hoverable", True)
-        self._change_param_default("subtheme_role", SubThemeRole.TERTIARY)
+        self._change_param_default("subtheme_role", SubThemeRole.Tertiary)
 
     def _init_numerical(self):
         super()._init_numerical()

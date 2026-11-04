@@ -1,3 +1,3 @@
 from . import animations
-from . import color
+from . import theme
 from . import style

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, final
 from nevu_ui.core.enums import Backend
 
 if TYPE_CHECKING:
-    from nevu_ui.fast.zsystem import ZSystem
+    from nevu_ui.cython.z_system import ZSystem
     from nevu_ui.manager import Manager
     from nevu_ui.overlay import OverlayManager
     from nevu_ui.window import Window
