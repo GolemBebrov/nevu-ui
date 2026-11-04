@@ -39,8 +39,8 @@ class LayoutType(NevuObject):
     items: list[NevuObject]
     floating_items: list[NevuObject]
     content_type = list
-    layout: LayoutType | None
-    menu: Menu | None
+    _parent_layout: LayoutType | None
+    _parent_menu: Menu | None
     bg_widget: Widget | None
 
     def _all_items(self) -> Iterator[NevuObject]:
@@ -53,7 +53,10 @@ class LayoutType(NevuObject):
         return ValueError(f"Cant use {item} in uninitialized layout {self}")
 
     def _rl_predraw_widgets(self):
-        rl_predraw_widgets(list(self._all_items()), LayoutType, Widget)
+        if self.items:
+            rl_predraw_widgets(self.items, LayoutType, Widget)
+        if self.floating_items:
+            rl_predraw_widgets(self.floating_items, LayoutType, Widget)
 
     def _boot_up(self):
         self.booted = True
@@ -73,9 +76,9 @@ class LayoutType(NevuObject):
         content: Any = None,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[_LayoutTypeKwargs],
+        **params: Unpack[_LayoutTypeKwargs],
     ):
-        super().__init__(size, style, **constant_kwargs)
+        super().__init__(size, style, **params)
         self._set_node_type(1)
         self.add_items(content)
         self._template = self._create_template(content = content, size = self._template.size)
@@ -93,6 +96,7 @@ class LayoutType(NevuObject):
     def _init_booleans(self):
         super()._init_booleans()
         self._can_be_main_layout = True
+        self._locked = False
         self._add_custom_flags(
             CustomFunctions.update_start |
             CustomFunctions.draw_start |
@@ -105,8 +109,8 @@ class LayoutType(NevuObject):
         super()._init_objects()
         self.surface = None
         self.first_parent_menu = None
-        self.menu = None
-        self.layout = None
+        self._parent_menu = None
+        self._parent_layout = None
         self._last_border_name = None
 
     def _lazy_init(self, size: NvVector2 | list, content: content_type | None = None):
@@ -225,7 +229,7 @@ class LayoutType(NevuObject):
     def _start_item(self, item: NevuObject):
         if isinstance(item, LayoutType):
             item._connect_to_layout(self)
-        if self.booted == False: return
+        if self.booted is False: return
 
         item._wait_mode = False
         item.start_pos = self._normalize(item.start_pos)
@@ -250,6 +254,8 @@ class LayoutType(NevuObject):
     def _on_item_add(self, item: NevuObject): ...
 
     def _item_add(self, item: NevuObject):
+        if self._locked:
+            raise RuntimeError(f"{self.__class__.__name__} with {self.get_param("id")} is locked.")
         if not isinstance(item, NevuObject):
             raise TypeError(
                 Annotations.format_nvtype_nvobject_error(
@@ -273,8 +279,8 @@ class LayoutType(NevuObject):
         return item
 
     def _after_item_add(self, item: NevuObject):
-        if self.layout:
-            self.layout._on_item_add(item)
+        if self._parent_layout:
+            self._parent_layout._on_item_add(item)
 
     def add_item(self, item: NevuObject):
         item = self._item_add(item)
@@ -291,6 +297,12 @@ class LayoutType(NevuObject):
         self._after_item_add(item)
         self._on_item_add(item)
         return item
+
+    def lock(self):
+        self._locked = True
+
+    def unlock(self):
+        self._locked = False
 
     def set_items_style(self, style: Style):
         for item in self._all_items():
@@ -318,12 +330,12 @@ class LayoutType(NevuObject):
         draw_floating_items_optimized(self, self.floating_items, LayoutType, Widget)
 
     def _update_start(self):
-        if self.menu:
-            self.surface = self.menu.surface  # type: ignore
+        if self._parent_menu:
+            self.surface = self._parent_menu.surface  # type: ignore
 
-        elif self.layout:
-            self.surface = self.layout.surface
-            self.first_parent_menu = self.layout.first_parent_menu
+        elif self._parent_layout:
+            self.surface = self._parent_layout.surface
+            self.first_parent_menu = self._parent_layout.first_parent_menu
 
         for item in self.floating_items:
             assert self.first_parent_menu, self._unconnected_layout_error(item)
@@ -351,10 +363,10 @@ class LayoutType(NevuObject):
         self.cached_coordinates = None
 
     def _connect_to_menu(self, menu: Menu):
-        self._connect_to_parent(("menu", menu), menu.surface, menu)  # type: ignore
+        self._connect_to_parent(("_parent_menu", menu), menu.surface, menu)
 
     def _connect_to_layout(self, layout: LayoutType):
-        self._connect_to_parent(("layout", layout), layout.surface, layout.first_parent_menu)
+        self._connect_to_parent(("_parent_layout", layout), layout.surface, layout.first_parent_menu)
 
     def get_item_by_id(self, id: str) -> NevuObject | None:
         if id is None:
@@ -374,7 +386,7 @@ class LayoutType(NevuObject):
             copy.deepcopy(self._template["content"]),
             self._template["size"],
             copy.deepcopy(self.style),
-            **self.constant_kwargs,
+            **self.kwargs,
         )
 
     def get_item_list_pos(self, item: NevuObject) -> int:
@@ -421,10 +433,27 @@ class LayoutType(NevuObject):
                     if isinstance(item, tuple):
                         item[-1].kill()
         self.items.clear()
-        self.constant_kwargs = None
+        self.kwargs = None
         self.first_parent_menu = None
-        self.menu = None
-        if self.menu:
-            self.menu._layout = None
-        if self.layout:
-            self.layout = None
+        if self._parent_menu:
+            self._parent_menu._layout = None
+            self._parent_menu = None
+        if self._parent_layout:
+            self._parent_layout = None
+
+    def turn_off(self, *, recursive=True):
+        super().turn_off(recursive=recursive)
+        if recursive:
+            for item in self._all_items():
+                item.turn_off(recursive=recursive)
+
+    def turn_on(self, *, recursive=True):
+        super().turn_on(recursive=recursive)
+        if recursive:
+            for item in self._all_items():
+                item.turn_on(recursive=recursive)
+
+    def _set_inner_active(self, value: bool):
+        super()._set_inner_active(value)
+        for item in self._all_items():
+            item._set_inner_active(value)

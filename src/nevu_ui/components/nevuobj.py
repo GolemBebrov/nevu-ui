@@ -4,6 +4,7 @@ import weakref
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Unpack, overload
 
+from nevu_ui.fast.nvrect.nvrect import NvRect
 from nevu_ui.presentation.color.color import Color
 from nevu_ui.rendering.canvas import Canvas, CanvasLineData, CanvasRectData
 
@@ -157,7 +158,7 @@ class NevuObject(NevuCobject):
             weakref.finalize(self, del_obj, self.__class__.__name__)
 
     # === ParamEngine functions ===
-    # INFO: ParamEngine Version V4.2C
+    # INFO: ParamEngine Version V4.3C
 
     def _add_param(
         self,
@@ -206,7 +207,7 @@ class NevuObject(NevuCobject):
         self._add_param("id", str | type(None), None)
         self._add_param("floating", bool, False)
         self._add_param("single_instance", bool, False)
-        self._add_param("z", int, 0)
+        self._add_param("z", int, 0, setter=self._z_setter)
         self._add_param_link("depth", "z")
         self._add_param("canvas", Canvas | None, None, setter = self._canvas_setter, layer = ParamLayer.Lazy)
         self._add_param("bg_variant", bool, False)
@@ -285,15 +286,15 @@ class NevuObject(NevuCobject):
     def _is_valid_type(self, value, needed_types):
         needed_types = (needed_types,)
         for needed_type in needed_types:
-            if needed_type == Callable and callable(value): return True
-            if needed_type == Any: return True
-            if type(needed_type) == tuple and needed_type[0] == Any: return True
+            if needed_type is Callable and callable(value): return True
+            if needed_type is Any: return True
+            if type(needed_type) is tuple and needed_type[0] is Any: return True
             if isinstance(value, needed_type): return True
         return False
 
     def _process_param(self, name, param_name, needed_types, value):
         assert needed_types
-        if param_name not in self._get_param_names():
+        if param_name in self._get_param_names():
             if param_name in self._blacklisted_params:
                 raise ValueError(Annotations.format_param_engine_error(f"Param {name} is unconfigurable", self))
             if not self._is_valid_type(value, needed_types):
@@ -309,8 +310,7 @@ class NevuObject(NevuCobject):
         self._system_callbacks.bind(BindType.Unhover, _nevuobject_on_unhover)
         self._system_callbacks.bind(BindType.Hover, _nevuobject_on_hover)
 
-    def _boot_up(self):
-        pass
+    def _boot_up(self): ...
 
     def _callback_setter(self, value: Callbacks | dict):
         if isinstance(value, dict):
@@ -320,14 +320,9 @@ class NevuObject(NevuCobject):
     def _create_template(self, size: NvVector2 | list):
         return _NevuObjectTemplate(size)
 
-    def _init_flags(self):
-        pass
-
-    def _init_test_flags(self):
-        pass
-
-    def _init_numerical(self):
-        pass
+    def _init_flags(self): ...
+    def _init_test_flags(self): ...
+    def _init_numerical(self): ...
 
     def _declare_constants(self, **kwargs):
         self._add_params()
@@ -357,11 +352,12 @@ class NevuObject(NevuCobject):
     def _init_objects(self):
         self._auto_sized_padding = None
         self._hover_state: HoverState = HoverState.NotHovered
+        self.z_clip_rect: NvRect | None = None
         if self.animation_manager is not None:
             self.animation_manager = copy.deepcopy(self.animation_manager)
         else:
             self.animation_manager = AnimationManager()
-        self.z_request: ZRequest | None = None
+        self._z_request: ZRequest | None = None
         if not self.kwargs.get("subtheme_role") and self.style.subtheme_role:
                 self.subtheme_role = self.style.subtheme_role
 
@@ -379,8 +375,7 @@ class NevuObject(NevuCobject):
         self._next_frame_functions = []
 
     def _init_start(self):
-        if self.booted:
-            return
+        if self.booted: return
         self._wait_mode = False
         self._template.size = list(self._template.size)
         for i, item in enumerate(self._template.size):  # type: ignore
@@ -400,8 +395,9 @@ class NevuObject(NevuCobject):
             self.renderer = PygameRenderer()
         self.size = size if isinstance(size, NvVector2) else NvVector2(size)
         self.original_size = self.size.copy()
+        #if self.size[0] <= 0 or self.size[1] <= 0:
+        #    raise ValueError(f"Size in {self.__class__.__name__} MUST be greater than zero, but got {size}.")
         self._system_callback_binds()
-        #print(self.start_pos)
         self.set_coordinates(self.start_pos)
 
     def _handle_size_rules(
@@ -421,6 +417,13 @@ class NevuObject(NevuCobject):
         return number
 
     # === Utils ===
+
+    def _set_inner_active(self, value: bool):
+        self._inner_active = value
+        if value is False:
+            self._clear_z_request()
+            self._sended_z_link = False
+            nevu_state.window.mark_dirty()
 
     def _start_pos_setter(self, value: NvVector2 | list | tuple | None):
         return value
@@ -445,7 +448,7 @@ class NevuObject(NevuCobject):
 
     @wait_mode.setter
     def wait_mode(self, value: bool):
-        if self._wait_mode == True and not value:
+        if self._wait_mode is True and not value:
             self._lazy_init_wrapper(**self._template.__dict__)
         self._wait_mode = value
 
@@ -456,7 +459,7 @@ class NevuObject(NevuCobject):
         self._next_frame_functions.append(self._ensure_func_safety(function))
 
     def get_font(self, override_size=None):
-        return self.renderer.core.get_font(style=self.style, cache=self.cache, size=override_size, relative=True)
+        return self.renderer.core.get_font(style=self.style, cache=self.cache, size=override_size, relative=True, relm=self.relm(1))
 
     @property
     def max_borderradius(self):
@@ -480,8 +483,7 @@ class NevuObject(NevuCobject):
         self._on_subtheme_role_change()
         return value
 
-    def _on_subtheme_role_change(self):
-        pass
+    def _on_subtheme_role_change(self): ...
 
     @property
     def subtheme(self):
@@ -494,22 +496,35 @@ class NevuObject(NevuCobject):
             value.connect_to_master(self)
         return value
 
+    def _z_setter(self, value):
+        if value != self.z:
+            window = nevu_state.window
+            if window is not None:
+                window.mark_dirty()
+        return value
+
     def _canvas_setter(self, value: Canvas | None):
         old_canvas = self.canvas
         if old_canvas:
             old_canvas._root = None
-        if not value: return value
-        if not value._single_instance:
-           value = value.copy()
+        if not value:
+            return value
+        if not value.single_instance:
+            value = value.copy()
         value._connect_to_root(self)
         return value
 
     # === Action functions ===
-    def show(self):
-        self.visible = True
-
-    def hide(self):
+    def turn_off(self, *, recursive=True):
         self.visible = False
+        self.active = False
+
+    def turn_on(self, *, recursive=True):
+        self.visible = True
+        self.active = True
+
+    def show(self): self.visible = True
+    def hide(self): self.visible = False
 
     @property
     def visible(self):
@@ -519,15 +534,12 @@ class NevuObject(NevuCobject):
     def visible(self, value: bool):
         self._visible = value
         self._on_visible_set()
+        nevu_state.window.mark_dirty()
 
-    def _on_visible_set(self):
-        pass
+    def _on_visible_set(self): ...
 
-    def activate(self):
-        self.active = True
-
-    def disactivate(self):
-        self.active = False
+    def activate(self): self.active = True
+    def disactivate(self): self.active = False
 
     @property
     def active(self):
@@ -536,22 +548,29 @@ class NevuObject(NevuCobject):
     @active.setter
     def active(self, value: bool):
         self._active = value
+        window = nevu_state.window
+        if not value:
+            self._clear_z_request()
+            self._sended_z_link = False
+        if window is not None:
+            window.mark_dirty()
 
     def _resize(self, resize_ratio: NvVector2):
         self._resize_content(resize_ratio)
         self._run_callbacks(BindType.Resize, resize_ratio)
 
-
     def _resize_content(self, resize_ratio: NvVector2):
         self._changed = True
         self._resize_ratio = resize_ratio
         self.cache.clear_selected(whitelist=[CacheType.RelSize])
+        if self.canvas:
+            self.canvas.resolve(self)
         if self.tooltip:
             self.tooltip.resize(resize_ratio)
 
     @property
     def style(self) -> Style:
-        return self._style
+        return self._style # type: ignore
 
     @style.setter
     def style(self, style: Style):
@@ -563,43 +582,8 @@ class NevuObject(NevuCobject):
     def _draw_end(self): self._draw_canvas()
 
     def _draw_canvas(self):
-        if not self.canvas: return
-        for item in self.canvas._content:
-
-            item_type = type(item)
-            if item_type is CanvasRectData:
-                style = item.style
-                if item.relative:
-                    pos = self.rel(item.pos)
-                    size = self.rel(item.size)
-                else:
-                    pos, size = item.pos, item.size
-                surflike = self.renderer.run_bg(
-                    call = DrawBgCall(
-                        size = size,
-                        style = style,
-                        bg_color = item.style.get_content_color(self.subtheme_role, inverted = self.inverted or False, swap = self.bg_variant),
-                        border_color = item.style.get_border_color(self.subtheme_role, inverted = self.inverted or False, swap = self.bg_variant),
-                        image_support = True,
-                        radius_support=True,
-                        gradient_support = True,
-                        return_type = RenderReturnType.CreateNew
-                    )
-                )
-                if hasattr(self, "surface"):
-                    self.surface.blit(surflike, pos.get_int_tuple())
-            elif item_type is CanvasLineData:
-                style = item.style
-                if item.relative:
-                    pos_from = self.rel(item.pos_from)
-                    pos_to = self.rel(item.pos_to)
-                else:
-                    pos_from, pos_to = item.pos_from, item.pos_to
-                rad = style.border_radius
-                color = item.color or item.style.get_border_color(self.subtheme_role, inverted = self.inverted or False, swap = self.bg_variant)
-                if hasattr(self, "surface"):
-                    self.renderer.core.draw_line(self.surface, pos_from, pos_to, radius=rad, color=color, width=item.width, relative=item.relative)
-
+        if self.canvas and self.surface:
+            self.canvas.draw(self.surface, self.renderer, self)
 
     # === Hover state ===
 
@@ -641,14 +625,18 @@ class NevuObject(NevuCobject):
         # === Kill functions ===
 
     def _clear_z_request(self):
-        if hasattr(self, "z_request") and self.z_request:
-            self.z_request.on_click_func = None
-            self.z_request.on_hover_func = None
-            self.z_request.on_scroll_func = None
-            self.z_request.on_unhover_func = None
-            self.z_request.on_keyup_func = None
-            self.z_request.on_keyup_abandon_func = None
-            self.z_request = None
+        if hasattr(self, "_z_request") and self._z_request:
+            window = nevu_state.window
+            if window is not None and window.z_system is not None:
+                window.z_system.drop_request(self._z_request)
+            self._z_request.on_click_func = None
+            self._z_request.on_click_func = None
+            self._z_request.on_hover_func = None
+            self._z_request.on_scroll_func = None
+            self._z_request.on_unhover_func = None
+            self._z_request.on_keyup_func = None
+            self._z_request.on_keyup_abandon_func = None
+            self._z_request = None
 
     def kill(self):
         self._kill_base()
@@ -665,17 +653,17 @@ class NevuObject(NevuCobject):
             self.renderer = None
         if self._sended_z_link and nevu_state.window:
             nevu_state.window.z_system.mark_dirty()
-            self.z_request = None
+            self._z_request = None
 
     def _kill_end(self): ...
 
-def _nevuobject_on_hover(self: "NevuObject"):
+def _nevuobject_on_hover(self: NevuObject):
     nevu_state._hovered += 1
 
-def _nevuobject_on_unhover(self: "NevuObject"):
+def _nevuobject_on_unhover(self: NevuObject):
     nevu_state._hovered -= 1
 
-def _nevuobject_after_copy(self: "NevuObject", clone: "NevuObject", no_cache: bool = False) -> None:
+def _nevuobject_after_copy(self: NevuObject, clone: NevuObject, no_cache: bool = False) -> None:
     clone._active = self._active
     clone._visible = self._visible
     clone._dead = self._dead
