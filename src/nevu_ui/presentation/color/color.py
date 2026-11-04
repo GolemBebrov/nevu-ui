@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import colorsys
 import random
 from typing import TypeGuard
@@ -215,10 +217,6 @@ class Color:
             }
         return cls._COLOR_MAP
 
-    @classmethod
-    def __getitem__(cls, key: str) -> Annotations.rgb_color | None:
-        return cls._get_map().get(key.lower())
-
     @staticmethod
     def hex_to_rgb(hex_color: str) -> Annotations.rgb_color:
         """Converts HEX string to RGB tuple."""
@@ -238,7 +236,7 @@ class Color:
 
     @staticmethod
     def rgb_to_hsl(color: Annotations.rgb_color) -> Annotations.hsl_color:
-        """Converts RGB (0-255) to HSL (0-1)."""
+        """Converts RGB to HSL."""
         assert is_rgb_like(color), "Invalid RGB color format."
         r, g, b, a = color if is_rgba(color) else (color[0], color[1], color[2], 255)
         h, l, s = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
@@ -257,8 +255,14 @@ class Color:
 
     @staticmethod
     def _invert_rgb(color: Annotations.rgb_like_color) -> Annotations.rgb_like_color:
-        result = tuple(255 - c for c in color)
-        assert is_rgb_like(result)
+        cond = is_rgba(color)
+        if cond:
+            a = color[3]
+            color = color[:3]
+        result = (255 - color[0], 255 - color[1], 255 - color[2])
+        assert is_rgb(result)
+        if cond:
+            return (*result, a)
         return result
 
     @staticmethod
@@ -271,41 +275,66 @@ class Color:
 
     @staticmethod
     def lighten(
-        color: Annotations.rgb_color, amount: float = 0.2
-    ) -> Annotations.rgb_color:
+        color: Annotations.rgb_like_color, amount: float = 0.2
+    ) -> Annotations.rgb_like_color:
         """
-        Lightens the color.
-        amount: from 0.0 (no change) to 1.0 (completely white).
+        Lightens RGB or RGBA color (does not affect alpha channel).
+        amount: from 0.0 to 1.0
         """
+        cond = is_rgba(color)
+        if cond:
+            a = color[3]
+            color = color[:3]
+
         if not (0.0 <= amount <= 1.0):
             raise ValueError("The 'amount' value should be between 0.0 and 1.0.")
+
+        assert is_rgb(color)
         h, l, s = Color.rgb_to_hsl(color)
         l = l + (1 - l) * amount
+
+        if cond:
+            return (*Color.hsl_to_rgb((h, l, s)), a)
         return Color.hsl_to_rgb((h, l, s))
 
     @staticmethod
     def darken(
-        color: Annotations.rgb_color, amount: float = 0.2
-    ) -> Annotations.rgb_color:
+        color: Annotations.rgb_like_color, amount: float = 0.2
+    ) -> Annotations.rgb_like_color:
         """
-        Makes the color darker.
-        amount: from 0.0 (no change) to 1.0 (completely black).
+        Darkens RGB or RGBA color (does not affect alpha channel).
+        amount: from 0.0 to 1.0.
         """
+        cond = is_rgba(color)
+        if cond:
+            a = color[3]
+            color = color[:3]
+
         if not (0.0 <= amount <= 1.0):
             raise ValueError("The 'amount' value should be between 0.0 and 1.0.")
+
+        assert is_rgb(color)
         h, l, s = Color.rgb_to_hsl(color)
         l = l * (1 - amount)
+
+        if cond:
+            return (*Color.hsl_to_rgb((h, l, s)), a)
         return Color.hsl_to_rgb((h, l, s))
 
     @staticmethod
-    def random_rgb() -> Annotations.rgb_color:
+    def random_rgb(r: int | None = None, g: int | None = None, b: int | None = None) -> Annotations.rgb_color:
         """Returns a random RGB color."""
-        return (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+        return (r or random.randint(0, 255), g or random.randint(0, 255), b or random.randint(0, 255))
 
     @staticmethod
-    def random_hsl() -> Annotations.hsl_color:
+    def random_rgba(r: int | None = None, g: int | None = None, b: int | None = None, a: int | None = None) -> Annotations.rgba_color:
+        """Returns a random RGBA color."""
+        return (r or random.randint(0, 255), g or random.randint(0, 255), b or random.randint(0, 255), a or random.randint(0, 255))
+
+    @staticmethod
+    def random_hsl(h: int | None = None, s: int | None = None, l: int | None = None) -> Annotations.hsl_color:
         """Returns a random HSL color."""
-        return (random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1))
+        return (h or random.uniform(0, 1), s or random.uniform(0, 1), l or random.uniform(0, 1))
 
     @staticmethod
     def text_color_for_bg(
@@ -316,7 +345,7 @@ class Color:
         on a given background color.
         """
         if is_rgba(bg_color):
-            r, g, b, a = bg_color
+            r, g, b = bg_color[:3]
         elif is_rgb(bg_color):
             r, g, b = bg_color
         else:
