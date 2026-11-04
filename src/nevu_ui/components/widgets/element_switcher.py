@@ -2,6 +2,7 @@ import copy
 from collections.abc import Callable
 from typing import Any, Unpack
 
+from nevu_ui.core.classes import Element, Elements
 import nevu_ui.core.modules as md
 from nevu_ui.components._typehints import (
     _ElementSwitcherKwargs,
@@ -18,51 +19,15 @@ from nevu_ui.core.enums import (
     RenderReturnType,
 )
 from nevu_ui.core.state import nevu_state
-from nevu_ui.fast.nvrendertex import NvRenderTexture
 from nevu_ui.fast.nvvector2 import NvVector2
+from nevu_ui.fast.raylib.nevu_raylib import begin_blend_mode, end_blend_mode
 from nevu_ui.presentation.style import Style
 from nevu_ui.rendering import DrawTextCall
 from nevu_ui.utils import keyboard
 
-
-class Element:
-    __slots__ = ["id", "text"]
-
-    def __init__(self, text, id: str | None = None):
-        self.text = text
-        self.id = id
-
-
-class Elements:
-    @staticmethod
-    def create(*items):
-        final_list = []
-        element_list = []
-        element_pair = []
-        try:
-            for item in items:
-                if isinstance(item, Element):
-                    element_list.append(item)
-                    continue
-                elif not isinstance(item, str):
-                    if isinstance(item, (list, tuple)) and len(item) == 2:
-                        element_pair = [str(item[0]), item[1] if item[1] else None]
-                    else:
-                        element_pair = [str(item), None]
-                else:
-                    element_pair = [item, None]
-                final_list.append(element_pair)
-        except Exception as e:
-            raise ValueError("Some objects cannot be converted into str", e) from e
-
-        element_list.extend(Element(pair[0], pair[1]) for pair in final_list)
-        return element_list
-
-
 class ElementSwitcher(Widget):
-    # === Params ===
     on_content_change: Callable | None
-    _сurrent_index: int
+    current_element_index: int
     button_padding: int
     arrow_width: int
     left_text: str
@@ -72,27 +37,27 @@ class ElementSwitcher(Widget):
     offset_perc: NvVector2
     words_indent: bool
 
-    # ==============
     def __init__(
         self,
-        size: Annotations.nevuobj_size = None,
         elements: list[Element | Any | list] | None = None,
+        size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[_ElementSwitcherKwargs],
+        **params: Unpack[_ElementSwitcherKwargs],
     ):
-        super().__init__(size, style, **constant_kwargs)
-        self._template = _ElementSwitcherTemplate(self._template.size, elements)
+        super().__init__(size, style, **params)
+        self._template = _ElementSwitcherTemplate(size = self._template.size, elements=elements)
 
     def _add_params(self):
         super()._add_params()
         self._add_param("on_content_change", (type(None), Callable), None)
-        self._add_param("current_index", int, 0)
+        self._add_param("current_element_index", int, 0, setter=self._current_element_index_setter)
+        self._add_param_link("current_index", "current_element_index")
         self._add_param("button_padding", int, 2)
         self._add_param("arrow_width", int, 30)
-        self._add_param("left_text", (str), "<")
+        self._add_param("left_text", str, "<")
         self._add_param("words_indent", bool, False)
         self._add_param("left_key", Any, None)
-        self._add_param("right_text", (str), ">")
+        self._add_param("right_text", str, ">")
         self._add_param("right_key", Any, None)
 
     def _system_callback_binds(self):
@@ -109,21 +74,10 @@ class ElementSwitcher(Widget):
             CustomFunctions.update_main
         )
 
-    def _lazy_init(self, size: NvVector2 | list, elements: list[Element] | None = None):  # type: ignore
+    def _lazy_init(self, size: NvVector2 | list, elements: list[Element] | None = None):
         super()._lazy_init(size)
-        elements: list[Element] = elements or []
+        elements = elements or []
         self.elements = Elements.create(*elements)
-        self.cache.get_or_exec(
-            CacheType.TextArgs,
-            lambda: self.renderer.run_text(
-                DrawTextCall(
-                    continuous=False,
-                    text=self.current_element_text,
-                    words_indent=self.words_indent,
-                    return_type=RenderReturnType.CreateNew,
-                ),
-            ),
-        )
         self._create_buttons()
 
     def _init_numerical(self):
@@ -166,8 +120,6 @@ class ElementSwitcher(Widget):
         rad_idxs: tuple[int, int],
         offset: float,
     ):
-        changed_br: list[float]
-
         r1, r2 = rad_idxs
 
         if isinstance(style.border_radius, tuple | list):
@@ -181,8 +133,8 @@ class ElementSwitcher(Widget):
         else:
             changed_br = [0] * 4
             changed_br[r1], changed_br[r2] = (
-                style.border_radius - offset,
-                style.border_radius - offset,
+                int(style.border_radius - offset),
+                int(style.border_radius - offset),
             )
 
         style.border_radius = tuple(changed_br)
@@ -208,7 +160,7 @@ class ElementSwitcher(Widget):
 
     def _shape_buttons_radius(self, offset: float):
         assert self.button_left and self.button_right, "Buttons not initialized"
-        button_style = self.style(border_width = 0)
+        button_style = self.style(border_width=0)
         button_style_left = button_style()
         button_style_right = button_style()
         idx_left = (0, 3)
@@ -238,7 +190,6 @@ class ElementSwitcher(Widget):
             button_size,
             self.style,
             z=self.z + 1,
-            inline=True,
             invert_on_click=False,
             inverted=self.inverted,
             subtheme_role=subtheme_role,
@@ -250,7 +201,6 @@ class ElementSwitcher(Widget):
             self.style,
             throw_errors=True,
             z=self.z + 1,
-            inline=True,
             invert_on_click=False,
             inverted=self.inverted,
             subtheme_role=subtheme_role,
@@ -259,11 +209,11 @@ class ElementSwitcher(Widget):
         self._start_button(self.button_left)
         self._start_button(self.button_right)
 
+        self._position_buttons()
         self._shape_buttons_radius(self.button_padding + self.style.border_width)
-        self._delayed_button_update = True
+        self._delayed_button_update = False
 
     def _start_button(self, button: Button):
-        button.surface = self.surface
         button._init_start()
         button.booted = True
         button._boot_up()
@@ -286,6 +236,8 @@ class ElementSwitcher(Widget):
         b_left.coordinates = NvVector2.from_xy(edge_offset, y_pos)
         right_x = current_size.x - b_right.current_size.x - edge_offset
         b_right.coordinates = NvVector2.from_xy(right_x, y_pos)
+        b_left.absolute_coordinates.sadd(self.absolute_coordinates, b_left.coordinates)
+        b_right.absolute_coordinates.sadd(self.absolute_coordinates, b_right.coordinates)
 
     def _get_arrow_width(self):
         return round(
@@ -293,6 +245,27 @@ class ElementSwitcher(Widget):
                 (self.size.x - self.style.border_width * 2) / 100 * self.arrow_width
             )
         )
+
+    def turn_off(self, *, recursive=True):
+        super().turn_off(recursive=recursive)
+        if hasattr(self, "button_left") and self.button_left:
+            self.button_left.turn_off()
+        if hasattr(self, "button_right") and self.button_right:
+            self.button_right.turn_off()
+
+    def turn_on(self, *, recursive=True):
+        super().turn_on(recursive=recursive)
+        if hasattr(self, "button_left") and self.button_left:
+            self.button_left.turn_on()
+        if hasattr(self, "button_right") and self.button_right:
+            self.button_right.turn_on()
+
+    def _set_inner_active(self, value: bool):
+        super()._set_inner_active(value)
+        if hasattr(self, "button_left") and self.button_left:
+            self.button_left._set_inner_active(value)
+        if hasattr(self, "button_right") and self.button_right:
+            self.button_right._set_inner_active(value)
 
     def _resize_buttons(self):
         assert self.button_left and self.button_right, "Buttons not initialized"
@@ -302,39 +275,54 @@ class ElementSwitcher(Widget):
 
     def _resize_content(self, resize_ratio: NvVector2):
         super()._resize_content(resize_ratio)
+        self.cache.clear_selected(whitelist=[CacheType.TextArgs])
         self._position_buttons()
         self._resize_buttons()
         self._delayed_button_update = True
 
-    @property
-    def current_index(self):
-        return self.get_param_strict("current_index").value
-
-    @current_index.setter
-    def current_index(self, index: int):
-        self.set_param_value("current_index", index)
+    def _current_element_index_setter(self, index: int):
         self._changed = True
         self._delayed_button_update = True
         self.cache.clear_selected(whitelist=[CacheType.TextArgs])
         if self.on_content_change:
-            self.on_content_change(self.current_element_text, self.current_element.id)  # type: ignore
+            element = self.elements[index] if self.elements and 0 <= index < len(self.elements) else None
+            element_text = element.text if element else "Not selected"
+            element_id = element.id if element else None
+            self.on_content_change(element_text, element_id)
+        return index
 
     @property
-    def current_element(self):
-        return self.elements[self.current_index] if self.elements else None
+    def current_element(self) -> Element | None:
+        if not self.elements:
+            return None
+        idx = self.current_element_index
+        if 0 <= idx < len(self.elements):
+            return self.elements[idx]
+        return None
+
+    @current_element.setter
+    def current_element(self, element: Element | int | str):
+        if isinstance(element, int):
+            self.current_element_index = element
+        elif isinstance(element, Element):
+            self.current_element_index = self.elements.index(element)
+        elif isinstance(element, str):
+            self.move_to(element)
 
     @property
     def current_element_text(self):
         return self.current_element.text if self.current_element else "Not selected"
 
     def step(self, step: int = 1):
-        self.current_index = (self.current_index + step) % len(self.elements)
+        if not self.elements:
+            return
+        self.current_element_index = (self.current_element_index + step) % len(self.elements)
 
     def move_to(self, id: str):
         assert id, "id cannot be None"
         try:
             index = next(i for i, el in enumerate(self.elements) if el.id == id)
-            self.current_index = index
+            self.current_element_index = index
         except StopIteration as e:
             raise ValueError(f"Element with id {id} not found") from e
 
@@ -376,6 +364,8 @@ class ElementSwitcher(Widget):
 
         update_button(self.button_left)
         update_button(self.button_right)
+        if not self._changed:
+            self._changed = self.button_left._changed or self.button_right._changed
 
         if not self._delayed_button_update:
             return
@@ -384,6 +374,34 @@ class ElementSwitcher(Widget):
         self._style_update_buttons()
         self._delayed_button_update = False
 
+    def _create_text(self):
+        button_left = self.button_left
+        assert button_left
+        cropped_size = self.current_size.xy
+        text_area_offset = button_left.coordinates.x + button_left.current_size.x
+        cropped_size.x = max(1.0, cropped_size.x - text_area_offset * 2)
+        result = self.renderer.run_text(
+            DrawTextCall(
+                size=self.current_size,
+                text=self.current_element_text,
+                color=self.subtheme_font,
+                style=self.style,
+                words_indent=self.words_indent,
+                max_size=cropped_size,
+                relm = self.relm(1),
+                return_type=RenderReturnType.CreateNew,
+            )
+        )
+        if nevu_state.window.renderer_type.raylib:
+            texture = result[1].native.texture
+            rl = md.rl
+            rl.set_texture_filter(
+                texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR
+            )
+            rl.set_texture_wrap(texture, rl.TextureWrap.TEXTURE_WRAP_CLAMP)
+        self.cache.set(CacheType.TextPos, result[0])
+        return result
+
     def _update_button(self, button: Button):
         button.absolute_coordinates.sadd(self.absolute_coordinates, button.coordinates)
         button.update()
@@ -391,59 +409,27 @@ class ElementSwitcher(Widget):
     def _draw_start(self):
         assert self.button_left and self.button_right, "Buttons not initialized"
         super()._draw_start()
-        if self._changed:
-            self.button_left.surface = self.surface
-            self.button_right.surface = self.surface
 
     def _draw_main(self):
         assert self.button_left and self.button_right, "Buttons not initialized"
         super()._draw_main()
-        if not self._changed:
-            return
         assert self.surface
 
-        button_left = self.button_left
-        button_right = self.button_right
-
-        button_left._changed = True
-        button_right._changed = True
-
-        cropped_size = self.current_size.xy
-        text_area_offset = button_left.coordinates.x + button_left.current_size.x
-        cropped_size.x -= text_area_offset * 2
-        cached_args = self.cache.get_or_exec(
-            CacheType.TextArgs,
-            lambda: self.renderer.run_text(
-                DrawTextCall(
-                    text=self.current_element_text,
-                    words_indent=self.words_indent,
-                    max_size=cropped_size,
-                    return_type=RenderReturnType.CreateNew,
-                )
-            ),
-        )
-        text_rect, text_surface = cached_args
-        coordinates = tuple(text_rect)
         self._draw_buttons()
 
-        assert text_surface is not None, "Text surface or rect is None"
+        text_rect, text_surface = self.cache.get_or_exec(CacheType.TextArgs, self._create_text)
+        coordinates = (text_rect[0], text_rect[1])
 
-        dtype = nevu_state.window.renderer_type
-        surface = self.surface
-
-        if dtype.raylib:
-            assert isinstance(surface, NvRenderTexture)
-            rl = md.rl
-            texture = text_surface.texture
-            rl.set_texture_filter(
-                texture, rl.TextureFilter.TEXTURE_FILTER_ANISOTROPIC_16X
-            )
-            rl.set_texture_wrap(texture, rl.TextureWrap.TEXTURE_WRAP_CLAMP)
-            surface.blit(text_surface, coordinates, blend_mode=self._correct_blend)
-
-        elif dtype.pygame_like:
-            assert isinstance(surface, md.pygame.Surface)
-            surface.blit(text_surface, coordinates)
+        is_raylib = nevu_state.window.renderer_type.raylib
+        with self.surface:
+            if is_raylib:
+                begin_blend_mode(self._correct_blend)
+            self.surface.blit(self.button_left.surface, self.button_left.coordinates)
+            self.surface.blit(self.button_right.surface, self.button_right.coordinates)
+            if text_surface:
+                self.surface.blit(text_surface, coordinates)
+            if is_raylib:
+                end_blend_mode()
 
     def _mark_dirty(self, *args):
         assert self.button_left and self.button_right, "Buttons not initialized"
@@ -451,7 +437,6 @@ class ElementSwitcher(Widget):
         self.button_left._changed = True
         self.button_right._changed = True
         self._delayed_button_update = True
-        self.clear_texture()
 
     def _draw_buttons(self):
         assert self.button_left and self.button_right, "Buttons not initialized"
@@ -460,10 +445,10 @@ class ElementSwitcher(Widget):
 
     def _create_clone(self):
         return self.__class__(
-            self._template["size"],
             copy.deepcopy(self._template["elements"]),
+            self._template["size"],
             copy.deepcopy(self.style),
-            **self.constant_kwargs,
+            **self.kwargs,
         )
 
     def _kill_base(self):
@@ -475,9 +460,6 @@ class ElementSwitcher(Widget):
         self.button_left = None
         self.button_right = None
         self._delayed_button_update = False
-
-
-# === NOT CLASS FUNCTIONS ===
 
 
 def _element_switcher_on_style_change(self):

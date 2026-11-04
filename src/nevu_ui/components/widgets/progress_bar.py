@@ -10,7 +10,8 @@ from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import ParamLayer, RenderReturnType
 from nevu_ui.core.state import nevu_state
-from nevu_ui.fast import NvRenderTexture, NvVector2
+from nevu_ui.fast import NvVector2
+from nevu_ui.fast.nvsurface.nvsurface import NvSurface
 from nevu_ui.fast.raylib.nevu_raylib import begin_blend_mode, end_blend_mode
 from nevu_ui.presentation.color import Color, PairColorRole
 from nevu_ui.rendering import DrawBaseCall
@@ -23,14 +24,14 @@ class ProgressBar(Widget):
     current_value: int | float
     filled_rect_role: PairColorRole
     on_current_value_change: Callable | None
-
     # ==============
+
     @overload
     def __init__(
         self,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[_ProgressBarKwargsLongFull],
+        **params: Unpack[_ProgressBarKwargsLongFull],
     ): ...
 
     @overload
@@ -38,16 +39,16 @@ class ProgressBar(Widget):
         self,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Unpack[_ProgressBarKwargsShortFull],
+        **params: Unpack[_ProgressBarKwargsShortFull],
     ): ...
 
     def __init__(
         self,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **constant_kwargs: Any,
+        **params: Any,
     ):
-        super().__init__(size, style, **constant_kwargs)
+        super().__init__(size, style, **params)
         self.set_progress_by_value(self.current_value)
 
     def _init_booleans(self):
@@ -103,7 +104,6 @@ class ProgressBar(Widget):
     def _base_clear(self):
         self._changed = True
         self._changed_value = True
-        self.clear_texture()
 
     def _start_value_setter(self, value):
         self._base_clear()
@@ -117,6 +117,7 @@ class ProgressBar(Widget):
 
     def _current_value_setter(self, value):
         self._base_clear()
+        value = min(self.end_value, max(self.start_value, value))
         if self._changed_other_val:
             self._changed_other_val = False
             return value
@@ -124,32 +125,26 @@ class ProgressBar(Widget):
         return value
 
     def set_progress_by_value(self, value: float):
+        if (self.end_value - self.start_value) == 0:
+            self.progress = 1
+            return
         self.progress = (value - self.start_value) / (self.end_value - self.start_value)
 
     def _draw_start(self):
         super()._draw_start()
         surface = self.surface
 
-        dtype = nevu_state.window.renderer_type
-
-        if dtype.raylib:
-            assert isinstance(surface, NvRenderTexture)
-            texture = surface.texture
-            bg_surf = NvRenderTexture(NvVector2.from_xy(texture.width, texture.height))
-            with bg_surf:
-                bg_surf.fast_clear(Color.Blank)
+        is_raylib = nevu_state.window.renderer_type.raylib
+        bg_size = surface.size
+        bg_surf = NvSurface(bg_size)
+        with bg_surf:
+            bg_surf.clear(Color.Blank)
+            if is_raylib:
                 begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-                bg_surf.fast_blit(surface, (0, 0))
+            bg_surf.blit(surface, (0, 0))
+            if is_raylib:
                 end_blend_mode()
-            self.bgsurface = bg_surf
-
-        elif dtype.pygame_like:
-            pygame = md.pygame
-            assert isinstance(surface, pygame.Surface)
-            bgsurface = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-            bgsurface.blit(surface, (0, 0))
-            self.bgsurface = bgsurface
-            surface.fill(Color.Blank)
+        self.bg_surface = bg_surf
 
         if self._changed_value:
             curr_value = self.current_value
@@ -164,36 +159,22 @@ class ProgressBar(Widget):
             else:
                 self.set_progress_by_value(curr_value)
 
-        self.clear_texture()
-
     def _create_surface(self, bar_surf=None, coords=None):
         assert self.surface
         assert coords
-        self.clear_texture()
         surface = self.surface
-        bg_surf = self.bgsurface
-        rtype = nevu_state.window.renderer_type
+        bg_surf = self.bg_surface
 
-        if rtype.raylib:
-            assert isinstance(surface, NvRenderTexture)
-            assert isinstance(bg_surf, NvRenderTexture)
-            surf_fast_blit = surface.fast_blit
-            with surface:
-                surface.fast_clear(Color.Blank)
+        is_raylib = nevu_state.window.renderer_type.raylib
+        with surface:
+            surface.clear(Color.Blank)
+            if is_raylib:
                 begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-                surf_fast_blit(bg_surf, (0, 0))
-                if bar_surf:
-                    surf_fast_blit(bar_surf, coords)
-                end_blend_mode()
-
-        elif rtype.pygame_like:
-            assert isinstance(surface, md.pygame.Surface)
-            assert isinstance(bg_surf, md.pygame.Surface)
-            surface.fill(Color.Blank)
-            surf_blit = surface.blit
-            surf_blit(bg_surf, (0, 0))
+            surface.blit(bg_surf, (0, 0))
             if bar_surf:
-                surf_blit(bar_surf, coords)
+                surface.blit(bar_surf, coords)
+            if is_raylib:
+                end_blend_mode()
 
     def _draw_main(self):
         super()._draw_main()
@@ -240,23 +221,21 @@ class ProgressBar(Widget):
         color = self.style.get_pair_color(self.filled_rect_role, inverted = self.inverted)
 
         renderer = self.renderer
-        surf = renderer.core.create_clear(size)
+        bar_surface = renderer.core.create_surface(size)
         if nevu_state.window.renderer_type.raylib:
-            assert isinstance(surf, NvRenderTexture)
             md.rl.set_texture_filter(
-                surf.texture, md.rl.TextureFilter.TEXTURE_FILTER_TRILINEAR
+                bar_surface.native.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR
             )
 
         renderer.run_base(
             DrawBaseCall(
-                radius=radius,
-                easy_background=False,
+                style=self.style,
+                radius_support=True,
                 size=size,
                 color=color,
                 gradient_support=False,
                 return_type=RenderReturnType.Modify,
-                modify_object=surf,
-                standstill=True,
+                modify_object=bar_surface,
                 glassy = self.glassy
             )
         )
@@ -266,4 +245,4 @@ class ProgressBar(Widget):
         )
         assert self.surface
 
-        self._create_surface(surf, coords.to_tuple())
+        self._create_surface(bar_surface, coords.to_tuple())
