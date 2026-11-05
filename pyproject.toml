@@ -76,8 +76,19 @@ Issues = "https://github.com/GolemBebrov/nevu-ui/issues"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"*" = ["*.pyx", "*.pxd", "*.ttf", "*.pyi", "*.frag", "*.vert"]
-
+"*" = [
+    "*.pyx",
+    "*.pxd",
+    "*.ttf",
+    "*.pyi",
+    "py.typed",
+    "*.frag",
+    "*.vert",
+    "*/*.frag",
+    "*/*.vert",
+    "**/*.frag",
+    "**/*.vert",
+]
 [tool.setuptools.exclude-package-data]
 "*" = ["*.cpp", "*.c", "*.h", "*.hpp"]
 
