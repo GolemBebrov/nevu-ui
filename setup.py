@@ -145,7 +145,7 @@ def get_extensions():
             "nevu_ui.cython.rect.rect", "src/nevu_ui/cython/rect/rect.pyx"
         ),
         get_extension(
-            "nevu_ui.cython.nvparam.nvparam", "src/nevu_ui/cython/nvparam/nvparam.pyx"
+            "nevu_ui.cython.param.param", "src/nevu_ui/cython/param/param.pyx"
         ),
         get_extension(
             "nevu_ui.cython.nevucobject.nevucobject", "src/nevu_ui/cython/nevucobject/nevucobject.pyx"
