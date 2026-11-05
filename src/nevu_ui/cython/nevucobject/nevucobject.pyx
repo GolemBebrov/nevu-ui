@@ -8,7 +8,7 @@
 from __future__ import annotations
 import weakref
 from nevu_ui.cython.vector2.vector2 cimport Vector2
-from nevu_ui.cython.nvparam.nvparam cimport NvParam
+from nevu_ui.cython.param.param cimport Param
 from cpython.unicode cimport PyUnicode_READ_CHAR, PyUnicode_GET_LENGTH
 from cpython.dict cimport PyDict_GetItem
 from cpython.object cimport PyObject, PyObject_GenericSetAttr, PyObject_GenericGetAttr
@@ -16,7 +16,7 @@ from cpython.list cimport PyList_GET_SIZE, PyList_GET_ITEM
 from nevu_ui.cython.cache.cache cimport Cache
 from nevu_ui.core.state import nevu_state
 from nevu_ui.core.enums import CacheType, BindType, CustomFunctions
-from nevu_ui.core.callbacks import Callbacks
+from nevu_ui.cython.callbacks.callbacks import Callbacks
 from nevu_ui.cython.z_system.z_system cimport ZSystem, ZRequest
 from nevu_ui.core.enums import (
     HoverState, EventType, CacheType, ParamLayer, AnimationType
@@ -105,37 +105,37 @@ cdef class NevuCobject:
     cpdef list _get_param_names(self):
         return list(self._params_map.keys())
 
-    cpdef NvParam _find_param(self, str name):
+    cpdef Param _find_param(self, str name):
         return self._params_map.get(name)
 
     cpdef void _add_param(self, str name, supported_classes, default, getter, setter, int layer):
-        param = NvParam.new(name, layer, None, default, supported_classes, getter, setter)
+        param = Param.new(name, layer, None, default, supported_classes, getter, setter)
         self.params.append(param)
         self._params_map[name] = param
 
-    cpdef NvParam get_param_strict(self, str name):
+    cpdef Param get_param_strict(self, str name):
         cdef PyObject* p_ptr = PyDict_GetItem(self._params_map, name)
-        return <NvParam>p_ptr
+        return <Param>p_ptr
 
-    cpdef NvParam get_param(self, str name):
+    cpdef Param get_param(self, str name):
         cdef PyObject* p_ptr = PyDict_GetItem(self._params_map, name)
 
         if p_ptr == NULL:
             return None
 
-        return <NvParam><object>p_ptr
+        return <Param><object>p_ptr
 
     cpdef object get_param_value(self, str name):
         cdef PyObject* p_ptr = PyDict_GetItem(self._params_map, name)
         if p_ptr == NULL: return None
-        cdef NvParam param = <NvParam>p_ptr
+        cdef Param param = <Param>p_ptr
         return param.get()
 
     cpdef void set_param_value(self, str name, object new_value):
         cdef PyObject* p_ptr = PyDict_GetItem(self._params_map, name)
         if p_ptr == NULL:
             raise KeyError(f"Parameter '{name}' not found")
-        cdef NvParam param = <NvParam>p_ptr
+        cdef Param param = <Param>p_ptr
         param.set(new_value)
 
     cpdef double relx_custom(self, double num, double min, double max):
@@ -338,7 +338,7 @@ cdef class NevuCobject:
         if self._params_map is not None:
             param = PyDict_GetItem(self._params_map, name)
             if param != NULL:
-                return (<NvParam>param).get()
+                return (<Param>param).get()
 
         return PyObject_GenericGetAttr(self, name)
 
@@ -346,7 +346,7 @@ cdef class NevuCobject:
         cdef dict params_map
         cdef object prop
         cdef PyObject* param
-        cdef NvParam c_param
+        cdef Param c_param
 
         if len(name) >= 1 and name[0] == nevucobject_setattr_underscore:
             if PyObject_GenericSetAttr(self, name, value) < 0:
@@ -362,7 +362,7 @@ cdef class NevuCobject:
         if params_map is not None:
             param = PyDict_GetItem(params_map, name)
             if param != NULL:
-                c_param = <NvParam><object>param
+                c_param = <Param><object>param
                 c_param.set(value)
                 return
 

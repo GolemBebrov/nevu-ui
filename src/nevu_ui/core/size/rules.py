@@ -1,5 +1,4 @@
-from nevu_ui.core.size.base import _PercentSizeRule, _SizeRule, _AutoSizeRule
-
+from nevu_ui.core.size import _PercentSizeRule, _SizeRule, _AutoSizeRule
 
 class Px(_SizeRule): ...
 
@@ -17,7 +16,6 @@ class Cvh(_PercentSizeRule): ...
 class Cvw(_PercentSizeRule): ...
 _all_vx = {Vh, Vw, Cvh, Cvw}
 
-
 class Gc(_PercentSizeRule): ...
 class Gcw(_PercentSizeRule): ...
 class Gch(_PercentSizeRule): ...
@@ -28,7 +26,7 @@ _all_gcx = {Gc, Gcw, Gch, Cgc, Cgcw, Cgch}
 
 class Auto(_AutoSizeRule): ...
 
-class RuleMode:
+class _RuleMode:
     def __init__(self) -> None:
         self.to_dp = {
             Fill: CFill,
@@ -59,4 +57,11 @@ class RuleMode:
         return self.independent(size_rule)
 
 
-rule_mode = RuleMode()
+rule_mode = _RuleMode()
+
+__all__ = [
+    "Auto",
+    "Fill", "FillW", "FillH", "CFill", "CFillW", "CFillH",
+    "Vh", "Vw", "Cvh", "Cvw",
+    "Gc", "Gcw", "Gch", "Cgc", "Cgcw", "Cgch", "rule_mode"
+]

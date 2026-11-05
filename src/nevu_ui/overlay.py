@@ -1,9 +1,6 @@
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from nevu_ui.cython.surface.surface import Surface
-
-if TYPE_CHECKING:
-    from pygame import Surface
 
 import nevu_ui.core.modules as md
 from nevu_ui.core.classes import SurfaceLike
@@ -42,9 +39,9 @@ class OverlayManager:
         self.mark_unsorted()
         self.mark_undone()
 
-    def add_element(self, name, surface, coordinates: Vector2, layer: layer_type = 0):
+    def add_element(self, name, surface: Surface, coordinates: Vector2, layer: layer_type = 0):
         if nevu_state.window.renderer_type.raylib:
-            md.rl.set_texture_filter(surface.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
+            md.rl.set_texture_filter(surface.native.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
         self.pipeline[name] = (surface, coordinates, layer, OvItemType.Texture)
         self.mark_all()
 
@@ -68,7 +65,7 @@ class OverlayManager:
     def change_element(
         self,
         name: Any,
-        surface: SurfaceLike,
+        surface: Surface,
         coordinates: Vector2,
         layer: layer_type = 0,
         strict: bool = False,
@@ -76,7 +73,7 @@ class OverlayManager:
     ):
         if self.has_element(name):
             if nevu_state.window.renderer_type.raylib:
-                md.rl.set_texture_filter(surface.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
+                md.rl.set_texture_filter(surface.native.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
             self.pipeline[name] = (
                 surface,
                 coordinates,
@@ -211,7 +208,7 @@ class OverlayManager:
                     func = element[1][0]
                     func()
                 else:
-                    display.blit(surf.texture, coords.to_tuple())
+                    display.blit(surf.native.texture, coords.to_tuple())
             md.rl.end_texture_mode()
             md.rl.end_blend_mode()
 

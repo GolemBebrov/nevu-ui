@@ -17,12 +17,13 @@ from nevu_ui.core.size.rules import (
     Fill,
     FillH,
     FillW,
-    _SizeRule,
 )
+from nevu_ui.core.size import _SizeRule
 if TYPE_CHECKING:
     from nevu_ui.presentation.style import Style
     from nevu_ui.rendering.raylib.gradient import ClickGradient
 from nevu_ui.core.annotations import Annotations
+from nevu_ui.core.error_formats import format_nvtype_renderer_error
 from nevu_ui.core.enums import (
     Align,
     CacheType,
@@ -399,7 +400,7 @@ class BaseRenderer(ABC):
 
     def _get_unexpected_error(self, error: Exception, func_name: str):
         raise ValueError(
-            Annotations.format_nvtype_renderer_error(
+            format_nvtype_renderer_error(
                 f"unexpected error - '{error}'", func_name
             )
         )

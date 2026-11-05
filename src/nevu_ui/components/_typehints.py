@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, TypedDict, Unpack
 
 from nevu_ui.core import Annotations
-from nevu_ui.core.callbacks import Callbacks
+from nevu_ui.cython.callbacks.callbacks import Callbacks
 from nevu_ui.core.classes import DictAccessMixin, GlobalsBase
 from nevu_ui.core.enums import Align, FlexJustify, Orientation, SwitchAxis
 from nevu_ui.cython.vector2 import Vector2

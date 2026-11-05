@@ -211,7 +211,7 @@ class Style:
             subtheme = self.colortheme.get_subtheme(subtheme)
         assert isinstance(subtheme, ColorSubTheme)
         if inverted:
-            return subtheme.oncolor if swap else subtheme.on_container
+            return subtheme.on_color if swap else subtheme.on_container
         return subtheme.color if swap else subtheme.container
 
     def get_content_color(self, subtheme: SubThemeRole | ColorSubTheme, *, inverted: bool = False, swap: bool = False):

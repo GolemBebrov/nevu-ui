@@ -3,7 +3,7 @@ import sys
 import nevu_ui.core.modules as md
 from nevu_ui.components.layouts.menu import Menu
 from nevu_ui.core.annotations import Annotations
-from nevu_ui.core.callbacks import Callbacks
+from nevu_ui.cython.callbacks.callbacks import Callbacks
 from nevu_ui.cython.logic.logic import fast_cycle_in_list
 from nevu_ui.cython.logic.logic import (
     _manager_main_loop_main,

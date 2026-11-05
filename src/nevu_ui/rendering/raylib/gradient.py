@@ -5,13 +5,13 @@ from nevu_ui.core import Annotations
 from nevu_ui.core.enums import GradientType
 from nevu_ui.cython.raylib_gradient.raylib_gradient import ClickGradient, GradientRaylib
 from nevu_ui.cython.vector2 import Vector2
-from nevu_ui.presentation.animations.animation_base import (
+from nevu_ui.presentation.animations import (
     ColorAnimation,
     FloatAnimation,
     Vector2Animation,
 )
-from nevu_ui.presentation.animations.animation_manager import AnimationManager
-from nevu_ui.presentation.animations.animations_library import ease_in_out_quad
+from nevu_ui.presentation.animations.manager import AnimationManager
+from nevu_ui.presentation.animations.presets import ease_in_out_quad
 
 def animated_slot(
     start: Any = None,

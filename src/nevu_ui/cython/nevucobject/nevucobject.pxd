@@ -9,7 +9,7 @@
 from nevu_ui.cython.vector2.vector2 cimport Vector2
 from nevu_ui.cython.surface.surface cimport _NvSurfBase
 from libcpp.vector cimport vector
-from nevu_ui.cython.nvparam.nvparam cimport NvParam
+from nevu_ui.cython.param.param cimport Param
 from nevu_ui.cython.rect.rect cimport Rect
 from nevu_ui.cython.cache.cache cimport Cache
 from nevu_ui.cython.z_system.z_system cimport ZRequest
@@ -32,10 +32,10 @@ cdef class NevuCobject:
     cdef list specific_cache_whitelist
     cpdef void _set_node_type(self, short node_type)
     cpdef list _get_param_names(self)
-    cpdef NvParam _find_param(self, str name)
+    cpdef Param _find_param(self, str name)
     cpdef void _add_param(self, str name, supported_classes, default, getter, setter, int layer)
-    cpdef NvParam get_param_strict(self, str name)
-    cpdef NvParam get_param(self, str name)
+    cpdef Param get_param_strict(self, str name)
+    cpdef Param get_param(self, str name)
     cpdef object get_param_value(self, str name)
     cpdef void set_param_value(self, str name, object new_value)
     cpdef double relx_custom(self, double num, double min, double max)

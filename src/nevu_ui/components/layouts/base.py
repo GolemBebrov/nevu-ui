@@ -11,6 +11,7 @@ from nevu_ui.components._typehints import _LayoutTemplate, _LayoutTypeKwargs
 from nevu_ui.components.nevuobject import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
+from nevu_ui.core.error_formats import format_nvtype_nvobject_error
 from nevu_ui.core.enums import CustomFunctions, ParamLayer
 from nevu_ui.core.size.rules import (
     Auto,
@@ -258,7 +259,7 @@ class BaseLayout(NevuObject):
             raise RuntimeError(f"{self.__class__.__name__} with {self.get_param("id")} is locked.")
         if not isinstance(item, NevuObject):
             raise TypeError(
-                Annotations.format_nvtype_nvobject_error(
+                format_nvtype_nvobject_error(
                     "NevuObject",
                     "item",
                     item,

@@ -2,37 +2,37 @@ import copy
 import difflib
 import weakref
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, Unpack, overload
+from typing import Any, Unpack, overload
 
 from nevu_ui.cython.rect.rect import Rect
 from nevu_ui.presentation.color import Color
-from nevu_ui.rendering.canvas import Canvas, CanvasLineData, CanvasRectData
+from nevu_ui.rendering.canvas import Canvas
 
 #Киширика киширису наносит ответный удар.
 from nevu_ui.components._typehints import KwargsLibrary, nevu_object_globals, _NevuObjectTemplate
 
 from nevu_ui.core import Annotations
-from nevu_ui.core.callbacks import Callbacks
+from nevu_ui.core.error_formats import format_param_engine_error, format_nvtype_nvobject_error
+from nevu_ui.cython.callbacks.callbacks import Callbacks
 from nevu_ui.core.enums import (
     BindType,
     CacheType,
     HoverState,
     ParamLayer,
-    RenderReturnType,
 )
-from nevu_ui.core.size.rules import Auto, Px, _SizeRule
+from nevu_ui.core.size.rules import Auto, Px
+from nevu_ui.core.size import _SizeRule
 from nevu_ui.core.state import nevu_state
-from nevu_ui.cython import Cache, NevuCobject, Vector2, ZRequest
+from nevu_ui.cython import NevuCobject, Vector2, ZRequest
 from nevu_ui.components.tooltip import Tooltip
 from nevu_ui.presentation.animations import AnimationManager
 from nevu_ui.presentation.theme import SubThemeRole
 from nevu_ui.presentation.style import Style, default_style
-from nevu_ui.rendering.base_renderer import BaseRenderer, DrawBaseCall, DrawBgCall
+from nevu_ui.rendering.base_renderer import BaseRenderer
 from nevu_ui.rendering.pygame.renderer import PygameRenderer
 from nevu_ui.rendering.raylib.renderer import RaylibRenderer
 
 global_counter = 0
-
 
 def add_obj(self):
     global global_counter
@@ -58,7 +58,7 @@ class NevuObject(NevuCobject):
     callbacks: Callbacks
     canvas: Canvas | None
     bg_variant: bool
-    _system_callbacks: Callbacks
+    _system_callbacks: Callbacks # type: ignore
     start_pos: Vector2
     # ==============
 
@@ -111,7 +111,7 @@ class NevuObject(NevuCobject):
         else:
             _size = size
         if _size is None:
-            raise ValueError(Annotations.format_param_engine_error("size is None and no global size set", self))
+            raise ValueError(format_param_engine_error("size is None and no global size set", self))
         self._template = _NevuObjectTemplate(_size)
         style = style or nevu_object_globals.library.get("style") or default_style
         self._first_update_functions = []
@@ -256,7 +256,7 @@ class NevuObject(NevuCobject):
             if current_layer != layer:
                 continue
             if constant_name in processed:
-                raise ValueError(Annotations.format_param_engine_error(f"Param {name}({constant_name}) is already set.", self))
+                raise ValueError(format_param_engine_error(f"Param {name}({constant_name}) is already set.", self))
             self._process_param(name, constant_name, needed_types, value)
             processed.add(constant_name)
 
@@ -272,7 +272,7 @@ class NevuObject(NevuCobject):
             if suggestion:
                 cause += f". did you mean {suggestion[0]}?"
             raise ValueError(
-                Annotations.format_param_engine_error(
+                format_param_engine_error(
                     cause,
                     self,
                     add_info="\nAvailable params:\n" + available_param_names,
@@ -285,19 +285,19 @@ class NevuObject(NevuCobject):
     def _is_valid_type(self, value, needed_types):
         needed_types = (needed_types,)
         for needed_type in needed_types:
-            if needed_type is Callable and callable(value): return True
-            if needed_type is Any: return True
-            if type(needed_type) is tuple and needed_type[0] is Any: return True
-            if isinstance(value, needed_type): return True
+            if needed_type is Callable and callable(value): return True  # noqa: E701
+            if needed_type is Any: return True  # noqa: E701
+            if type(needed_type) is tuple and needed_type[0] is Any: return True  # noqa: E701
+            if isinstance(value, needed_type): return True  # noqa: E701
         return False
 
     def _process_param(self, name, param_name, needed_types, value):
         assert needed_types
         if param_name in self._get_param_names():
             if param_name in self._blacklisted_params:
-                raise ValueError(Annotations.format_param_engine_error(f"Param {name} is unconfigurable", self))
+                raise ValueError(format_param_engine_error(f"Param {name} is unconfigurable", self))
             if not self._is_valid_type(value, needed_types):
-                raise TypeError(Annotations.format_nvtype_nvobject_error(needed_types.__name__, param_name, value, self, "__init__"))
+                raise TypeError(format_nvtype_nvobject_error(needed_types.__name__, param_name, value, self, "__init__"))
         param = self.get_param_strict(param_name)
         assert param
         param.set(value)
@@ -337,14 +337,14 @@ class NevuObject(NevuCobject):
                 self.style = result
             else:
                 if not standart_config.styles:
-                    raise ValueError(Annotations.format_param_engine_error("No config styles found, maybe you forgot to load config", self))
+                    raise ValueError(format_param_engine_error("No config styles found, maybe you forgot to load config", self))
                 suggestions = difflib.get_close_matches(
                     "style", standart_config.styles.keys()
                 )
                 err_msg = f"style {style} not found."
                 if suggestions:
                     err_msg += f" did you mean {', '.join(suggestions)}?"
-                raise ValueError(Annotations.format_param_engine_error(err_msg, self))
+                raise ValueError(format_param_engine_error(err_msg, self))
         else:
             self.style = style
 
@@ -374,11 +374,11 @@ class NevuObject(NevuCobject):
         self._next_frame_functions = []
 
     def _init_start(self):
-        if self.booted: return
+        if self.booted: return  # noqa: E701
         self._wait_mode = False
-        self._template.size = list(self._template.size)
-        for i, item in enumerate(self._template.size):  # type: ignore
-            self._template.size[i] = self._handle_size_rules(item)  # type: ignore
+        self._template.size = list(self._template.size) # type: ignore
+        for i, item in enumerate(self._template.size):
+            self._template.size[i] = self._handle_size_rules(item)
         if not self._wait_mode:
             self._lazy_init_wrapper(**self._template.__dict__)
 
@@ -387,7 +387,7 @@ class NevuObject(NevuCobject):
         self._init_param_layer(ParamLayer.Lazy, **self.kwargs)
 
     def _lazy_init(self, size):
-        if not nevu_state.window: raise ValueError("Window not initialized.")
+        if not nevu_state.window: raise ValueError("Window not initialized.")  # noqa: E701
         if nevu_state.window.renderer_type.raylib:
             self.renderer = RaylibRenderer()
         else:
@@ -582,7 +582,7 @@ class NevuObject(NevuCobject):
 
     def _draw_canvas(self):
         if self.canvas and self.surface:
-            self.canvas.draw(self.surface, self.renderer, self)
+            self.canvas.draw(self.surface, self.renderer, self) # type: ignore
 
     # === Hover state ===
 
@@ -644,10 +644,10 @@ class NevuObject(NevuCobject):
 
         self._clear_z_request()
         if hasattr(self, "renderer"):
-            self.renderer = None
+            self.renderer = None # type: ignore
         if self._sended_z_link and nevu_state.window:
             nevu_state.window.z_system.mark_dirty()
-            self._z_request = None
+            self._z_request = None # type: ignore
 
     def _kill_end(self): ...
 
@@ -657,7 +657,7 @@ def _nevuobject_on_hover(self: NevuObject):
 def _nevuobject_on_unhover(self: NevuObject):
     nevu_state._hovered -= 1
 
-def _nevuobject_after_copy(self: NevuObject, clone: NevuObject, no_cache: bool = False) -> None:
+def _nevuobject_after_copy(self: NevuObject, clone: NevuObject) -> None:
     clone._active = self._active
     clone._visible = self._visible
     clone._dead = self._dead

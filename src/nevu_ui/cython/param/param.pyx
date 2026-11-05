@@ -25,10 +25,10 @@ cdef inline object _resolve_callable(object target) noexcept:
 
     return target
 
-cdef class NvParam:
+cdef class Param:
     @staticmethod
-    cdef NvParam new(str name, int layer, object value, object default, object type, object getter, object setter):
-        cdef NvParam constant = <NvParam>NvParam.__new__(NvParam)
+    cdef Param new(str name, int layer, object value, object default, object type, object getter, object setter):
+        cdef Param constant = <Param>Param.__new__(Param)
         constant.name = name
         constant.value = value
         constant.layer = layer
@@ -38,9 +38,9 @@ cdef class NvParam:
         constant.setter = setter
         constant.flags = 0
         if setter is not None:
-            constant.flags |= NvParamFlagSetter
+            constant.flags |= ParamFlagSetter
         if getter is not None:
-            constant.flags |= NvParamFlagGetter
+            constant.flags |= ParamFlagGetter
         return constant
 
     def __init__(self, str name, int layer, object value, object default, object type, object getter=None, object setter=None):
@@ -53,9 +53,9 @@ cdef class NvParam:
         self.setter = setter
         self.flags = 0
         if setter is not None:
-            self.flags |= NvParamFlagSetter
+            self.flags |= ParamFlagSetter
         if getter is not None:
-            self.flags |= NvParamFlagGetter
+            self.flags |= ParamFlagGetter
 
     cpdef bool check(self, value):
         if self.type is TYPING_ANY:
@@ -72,7 +72,7 @@ cdef class NvParam:
                 f"but got '{value} ({type(value).__name__})'."
             )
 
-        if self.flags & NvParamFlagSetter:
+        if self.flags & ParamFlagSetter:
             actual_setter = _resolve_callable(self.setter)
             if actual_setter is not None:
                 new_value = actual_setter(value)
@@ -84,14 +84,14 @@ cdef class NvParam:
 
     cpdef object get(self):
         cdef object actual_getter
-        if self.flags & NvParamFlagGetter:
+        if self.flags & ParamFlagGetter:
             actual_getter = _resolve_callable(self.getter)
             if actual_getter is not None:
                 return actual_getter(self.value)
         return self.value
 
     def __repr__(self) -> str:
-        return f"NvParam(name={self.name}, layer={self.layer}, value={self.value}, default={self.default}, type={self.type}, getter={self.getter}, setter={self.setter})"
+        return f"Param(name={self.name}, layer={self.layer}, value={self.value}, default={self.default}, type={self.type}, getter={self.getter}, setter={self.setter})"
 
     def __str__(self) -> str:
         return f"{self.name}: {self.value}"

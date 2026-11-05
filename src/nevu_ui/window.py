@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, NotRequired, TypeGuard, Unpack, final
 from nevu_ui.cython.raylib.raylib import get_screen_height, get_screen_width, is_window_resized, set_target_fps, window_should_close
 from typing_extensions import TypedDict
 
-from nevu_ui.core.callbacks import Callbacks
+from nevu_ui.cython.callbacks.callbacks import Callbacks
 
 if TYPE_CHECKING:
     from pygame import Surface

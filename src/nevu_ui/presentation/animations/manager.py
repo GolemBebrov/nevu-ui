@@ -1,14 +1,14 @@
 import copy
 
 from nevu_ui.core.enums import AnimationManagerState, AnimationType
-from nevu_ui.presentation.animations.animation_base import (
+from . import (
     Animation,
     AnimationQueue,
     ColorAnimation,
     FloatAnimation,
     Vector2Animation,
 )
-from nevu_ui.presentation.animations.animations_library import linear
+from nevu_ui.presentation.animations.presets import linear
 
 
 class AnimationManager:

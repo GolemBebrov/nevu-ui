@@ -21,7 +21,7 @@ from nevu_ui.cython.raylib.raylib import begin_blend_mode, end_blend_mode
 from nevu_ui.presentation.animations import (
     AnimationManager,
     Vector2Animation,
-    animations_library,
+    presets,
 )
 from nevu_ui.presentation.color import Color
 from nevu_ui.rendering import DrawBaseCall
@@ -85,7 +85,7 @@ class Switch(Widget):
         super()._add_params()
         self._add_param("axis", SwitchAxis, SwitchAxis.Auto, layer=ParamLayer.Basic)
         self._add_param("on_switch_change", type(None) | Callable, None)
-        self._add_param("easing_func", Callable, animations_library.smootherstep)
+        self._add_param("easing_func", Callable, presets.smootherstep)
         self._add_param("animation_time", float, 0.15)
         self._add_param_link("anim_time", "animation_time")
         self._add_param("circle_size", float | int, 0.85)

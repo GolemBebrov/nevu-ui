@@ -2,7 +2,7 @@ from . import (
     logic,
     cache,
     nevucobject,
-    nvparam,
+    param,
     rect,
     vector2,
     raylib,
@@ -11,7 +11,7 @@ from . import (
 )
 from .cache import Cache
 from .nevucobject import NevuCobject
-from .nvparam import NvParam
+from .param import Param
 from .rect import Rect
 from .vector2 import Vector2
 from .z_system import ZRequest, ZSystem
@@ -21,7 +21,7 @@ __all__ = [
 # === Classes ===
     "Cache",
     "NevuCobject",
-    "NvParam",
+    "Param",
     "Rect",
     "Vector2",
     "ZRequest",
@@ -32,7 +32,7 @@ __all__ = [
     "logic",
     "cache",
     "nevucobject",
-    "nvparam",
+    "param",
     "rect",
     "vector2",
     "raylib",

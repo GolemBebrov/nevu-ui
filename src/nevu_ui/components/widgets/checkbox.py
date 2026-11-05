@@ -6,7 +6,7 @@ from nevu_ui.components._typehints import _RectCheckBoxKwargs, nevu_object_globa
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import BindType, RenderReturnType
-from nevu_ui.core.size.base import _SizeRule
+from nevu_ui.core.size import _SizeRule
 from nevu_ui.core.state import nevu_state
 from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.rendering import DrawBaseCall

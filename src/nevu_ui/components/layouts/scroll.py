@@ -9,6 +9,7 @@ from nevu_ui.components.layouts import BaseLayout
 from nevu_ui.components.nevuobject import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
+from nevu_ui.core.error_formats import format_nvtype_nvobject_error
 from nevu_ui.core.enums import (
     Align,
     BindType,
@@ -197,7 +198,7 @@ class Scroll(BaseLayout, ABC):
             elif isinstance(content_item, NevuObject):
                 align, item = self.basic_alignment, content_item
             else:
-                raise TypeError(Annotations.format_nvtype_nvobject_error("list[tuple[Align, NevuObject] or NevuObject]", "content", f"{content}.\nWrong part: {content_item}", self))
+                raise TypeError(format_nvtype_nvobject_error("list[tuple[Align, NevuObject] or NevuObject]", "content", f"{content}.\nWrong part: {content_item}", self))
             assert type(align) is Align and isinstance(item, NevuObject), (
                 f"Incorrect align or item ({align}, {item})"
             )

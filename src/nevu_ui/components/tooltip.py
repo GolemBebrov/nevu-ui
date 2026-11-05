@@ -8,9 +8,10 @@ import nevu_ui.core.modules as md
 from nevu_ui.core.classes import Counter, SurfaceLike, TooltipType
 from nevu_ui.core.state import nevu_state
 from nevu_ui.cython import Cache, Rect, Vector2
-from nevu_ui.presentation.animations.animation_base import Vector2Animation
-from nevu_ui.presentation.animations.animation_manager import AnimationManager
-from nevu_ui.presentation.animations.animations_library import smootherstep
+from nevu_ui.cython.surface.surface import Surface
+from nevu_ui.presentation.animations import Vector2Animation
+from nevu_ui.presentation.animations.manager import AnimationManager
+from nevu_ui.presentation.animations.presets import smootherstep
 from nevu_ui.presentation.style import Style, default_style
 
 if TYPE_CHECKING:
@@ -97,14 +98,14 @@ class _TooltipBase:
         self._cached_surf = None
         self.clear_all()
 
-    def _get_surf_content(self, renderer: BaseRenderer) -> SurfaceLike:
+    def _get_surf_content(self, renderer: BaseRenderer) -> Surface:
         br = self.style.border_radius
         title_rect = Rect(0, 0, *self._csize)
 
         surf = renderer.run_base(
             DrawBaseCall(
                 size=self._csize,
-                radius=br,
+                style=self.style,
                 color=self.style.colortheme.get_subtheme(
                     SubThemeRole.Tertiary
                 ).on_container,
@@ -114,27 +115,22 @@ class _TooltipBase:
 
         title_kwargs = renderer.run_text(
             DrawTextCall(
+                size = self._csize,
                 text=self.title,
-                font_size=self.style.font_size * self.ratio.y,
+                font_size=self.style.font_size,
                 color=self.style.colortheme.get_tuple(TupleColorRole.InversePrimary),
                 return_type=RenderReturnType.CreateNew,
                 max_size=self._csize,
             )
         )
 
-        _, title_surf = title_kwargs  # type: ignore
-
-        assert SurfaceLike.as_type(surf)
-        assert SurfaceLike.as_type(title_surf)
+        _, title_surf = title_kwargs
 
         title_width = title_surf.width
         title_rect[0] += self._csize.x / 2 - title_width / 2
 
-        adds = {}
-        if nevu_state.window.renderer_type.raylib:
-            adds["blend_mode"] = md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY
-
-        surf.blit(title_surf, title_rect.get_int_tuple(), **adds)
+        assert surf
+        surf.blit(title_surf, title_rect.get_int_tuple())
 
         return surf
 
@@ -150,13 +146,11 @@ class _ExtendedTooltipBase(_TooltipBase):
         super().__init__(title, style)
         self.content = content
 
-    def _get_surf_content(self, renderer: BaseRenderer) -> SurfaceLike:
-        br = self.style.border_radius
-
+    def _get_surf_content(self, renderer: BaseRenderer) -> Surface:
         surf = renderer.run_base(
             DrawBaseCall(
                 size=self._csize,
-                radius=br,
+                style=self.style,
                 color=self.style.colortheme.get_subtheme(
                     SubThemeRole.Tertiary
                 ).on_container,
@@ -171,42 +165,39 @@ class _ExtendedTooltipBase(_TooltipBase):
 
         title_kwargs = renderer.run_text(
             DrawTextCall(
-                font_size=self.style.font_size * self.ratio.y,
+                size = self._csize,
+                style=self.style,
                 text=self.title,
                 color=self.style.colortheme.get_tuple(TupleColorRole.InversePrimary),
                 return_type=RenderReturnType.CreateNew,
                 max_size=title_size,
+                relm=(self.ratio.x + self.ratio.y)
             )
         )
 
         content_kwargs = renderer.run_text(
             DrawTextCall(
-                font_size=self.style.font_size * self.ratio.y,
+                size=self._csize,
+                style=self.style,
                 text=self.content,
                 color=self.style.colortheme.get_tuple(TupleColorRole.InversePrimary),
                 return_type=RenderReturnType.CreateNew,
                 max_size=content_size,
+                relm=(self.ratio.x + self.ratio.y)
             )
         )
 
-        _, title_surf = title_kwargs  # type: ignore
-        _, content_surf = content_kwargs  # type: ignore
-
-        assert SurfaceLike.as_type(surf)
-        assert SurfaceLike.as_type(title_surf)
-        assert SurfaceLike.as_type(content_surf)
+        _, title_surf = title_kwargs
+        _, content_surf = content_kwargs
 
         title_width = title_surf.width
         content_width = content_surf.width
         title_rect[0] += title_size.x / 2 - title_width / 2 + 0.001
         content_rect[0] += content_size.x / 2 - content_width / 2 + 0.001
 
-        adds = {}
-        if nevu_state.window.renderer_type.raylib:
-            adds["blend_mode"] = md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY
-
-        surf.blit(title_surf, (title_rect.x, title_rect.y + 0.001), **adds)
-        surf.blit(content_surf, (content_rect.x, content_rect.y + 0.001), **adds)
+        assert surf
+        surf.blit(title_surf, (title_rect.x, title_rect.y + 0.001))
+        surf.blit(content_surf, (content_rect.x, content_rect.y + 0.001))
         return surf
 
 

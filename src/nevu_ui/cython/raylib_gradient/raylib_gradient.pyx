@@ -166,7 +166,7 @@ cdef class GradientRaylib:
         global _SHARED_BLANK_TEXTURE
         global _LOC_TYPE, _LOC_ANGLE, _LOC_CENTER, _LOC_COLORS, _LOC_STOPS, _LOC_COUNT, _LOC_ALPHA, _LOC_SIZE
         if _SHARED_SHADER == None:
-            _SHARED_SHADER = RaylibShader.c_create_from_code(ShaderLibrary.BaseVertex.read_text(), ShaderLibrary.Gradient.read_text())
+            _SHARED_SHADER = RaylibShader.c_create_from_code(ShaderLibrary.BaseVertex.read_text(), ShaderLibrary.StandardGradient.read_text())
 
             _LOC_TYPE = get_nvshader_location(_SHARED_SHADER, "gradientType")
             _LOC_ANGLE = get_nvshader_location(_SHARED_SHADER, "angle")

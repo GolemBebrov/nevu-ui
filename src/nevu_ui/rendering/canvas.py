@@ -7,7 +7,7 @@ from weakref import ReferenceType, ref
 
 from nevu_ui.core.annotations import Annotations
 from nevu_ui.core.enums import RenderReturnType
-from nevu_ui.core.size.base import _SizeRule
+from nevu_ui.core.size import _SizeRule
 from nevu_ui.core.size.rules import (
     CFill,
     CFillH,

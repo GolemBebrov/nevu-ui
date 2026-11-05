@@ -32,7 +32,7 @@ class CheckBoxGroup:
         self.on_multiple_toggled([c for c in self._content if c.toggled])
 
     def _on_toggle_single_wrapper(self, checkbox: CheckBox, *args):
-        if checkbox.toggled == False:
+        if checkbox.toggled is False:
             return self.on_single_toggled(None)
         for item in self._content:
             if item is not checkbox:
