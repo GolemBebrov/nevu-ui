@@ -286,8 +286,9 @@ cdef class ZSystem:
             candidate_req = <ZRequest>self.live_requests[best_idx]
 
             if any_wheel and candidate_req.on_scroll_func is not None:
-                candidate_req.on_scroll_func()(BindType.Scroll, wheel_down)
+                func = candidate_req.on_scroll_func()
+                if func is not None:
+                    func(BindType.Scroll, wheel_down)
 
             return candidate_req
-
         return None

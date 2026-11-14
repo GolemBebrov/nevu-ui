@@ -13,12 +13,13 @@ from nevu_ui.core import Annotations
 from nevu_ui.core.size import _SizeRule
 from nevu_ui.core.size.rules import Cgc, Cgch, Cgcw, Gc, Gch, Gcw
 from nevu_ui.cython.logic.logic import (
-    base_light_update,
-    draw_widgets_optimized,
-    py_get_item_abs_coords,
+    update_items,
+    draw_items,
+    get_absolute_coordinates,
 )
 from nevu_ui.cython.vector2 import Vector2
 
+_still_offset = Vector2()
 
 class Grid(BaseLayout):
     row: int | float
@@ -77,15 +78,9 @@ class Grid(BaseLayout):
         super()._regenerate_coordinates()
         if not self.booted: return
         self.cached_coordinates = []
-        c_vec = (
-            Vector2.from_xy(
-                self._no_borders_current_size.x / self.column,
-                self._no_borders_current_size.y / self.row,
-            )
-            if self._parent_menu
-            else Vector2.from_xy(
-                self.relx(self.cell_width), self.rely(self.cell_height)
-            )
+        c_vec = Vector2.from_xy(
+            self._no_borders_current_size.x / self.column,
+            self._no_borders_current_size.y / self.row,
         )
         coords_marg_vec = self.coordinates + self._borders_of_current_size
         cached_coords_append = self.cached_coordinates.append
@@ -94,13 +89,16 @@ class Grid(BaseLayout):
             size_adapt_vec = (c_vec - item.get_actual_size()) / 2
             coordinates = coords_marg_vec + curr_cell_vec + size_adapt_vec
             item.set_coordinates(coordinates.copy())
-            item.absolute_coordinates = py_get_item_abs_coords(self, item)
+            item.absolute_coordinates = get_absolute_coordinates(self, item)
             cached_coords_append(coordinates.copy())
 
     def _update_main(self):
-        if not self.items or not self.cached_coordinates or not self.first_parent_menu:
+        items = self.items
+        cached_coordinates = self.cached_coordinates
+        menu = self.first_parent_menu
+        if not items or not cached_coordinates or not menu:
             return
-        base_light_update(self)
+        update_items(items, cached_coordinates, menu.absolute_coordinates, _still_offset, self, False)
 
     def _parse_gcx(self, grid_cell_rule: _SizeRule, grid_cell_type: type[_SizeRule], pos: int):  # type: ignore
         if self.first_parent_menu is None:
@@ -135,11 +133,15 @@ class Grid(BaseLayout):
         for coordinates in self.grid_coordinates:
             if Vector2(coordinates) == Vector2(x - 1, y - 1):
                 raise ValueError("Grid item already exists")
-        super().add_item(item)
         self.grid_coordinates.append(Vector2.from_xy(x - 1, y - 1))
+        try:
+            super().add_item(item)
+        except Exception:
+            self.grid_coordinates.pop()
+            raise
 
     def _draw_main(self):
-        draw_widgets_optimized(self, self.items, BaseLayout, Widget)
+        draw_items(self, self.items, BaseLayout, Widget)
 
     def get_column(self, x: any_number) -> list[NevuObject]:
         return [

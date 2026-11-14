@@ -6,23 +6,16 @@
 # cython: nonecheck=False
 # cython: initializedcheck=False
 
-from cpython.object cimport PyObject, PyObject_GenericGetAttr as getattr
-import nevu_ui.core.modules as md
 import cython
 cimport cython
 from nevu_ui.cython.callbacks.callbacks cimport Callbacks
 from nevu_ui.core.enums import BindType
 from nevu_ui.core.state import nevu_state
-from cpython.list cimport PyList_GET_SIZE, PyList_GET_ITEM, PyList_GetItemRef
-from cpython.tuple cimport PyTuple_GET_SIZE, PyTuple_GET_ITEM
+from cpython.list cimport PyList_GET_SIZE, PyList_GET_ITEM
 from nevu_ui.cython.surface.surface cimport _NvSurfRaylib
-from cpython.object cimport PyObject, PyObject_CallFunctionObjArgs
+from cpython.object cimport PyObject
 from nevu_ui.cython.raylib.raylib cimport c_draw_texture_maxopt, Texture2D
-from nevu_ui.presentation.color import Color
 cdef extern from "Python.h":
-    double PyFloat_AsDouble(PyObject* obj)
-    object PyObject_CallNoArgs(object func)
-    object PyObject_CallMethodNoArgs(object obj, object name)
     ctypedef struct PyListObject:
         PyObject **ob_item
 from nevu_ui.core.state import nevu_state
@@ -30,7 +23,7 @@ from nevu_ui.cython.rect.rect cimport Rect
 from nevu_ui.cython.nevucobject.nevucobject cimport NevuCobject
 from nevu_ui.cython.vector2.vector2 cimport Vector2, nv_vector2_t, nv_vector2_mul_vector, nv_vector2_add, nv_vector2_sub, nv_vector2_add_triple,nv_vector2_new
 from nevu_ui.cython.z_system.z_system cimport ZSystem
-from nevu_ui.core.enums import AnimationManagerState, AnimationType
+from nevu_ui.core.enums import AnimType
 
 cdef inline double _rel_corner_helper_c(double result, double c_min, double c_max, bint has_min, bint has_max) nogil:
     if has_min and result < c_min: return c_min
@@ -56,13 +49,6 @@ cpdef double relm_helper(double num, double resize_ratio_x, double resize_ratio_
     cdef double c_max = max_val if has_max else 0.0
     return _rel_corner_helper_c(result, c_min, c_max, has_min, has_max)
 
-cpdef Vector2 mass_rel_helper(list mass, double resize_ratio_x, double resize_ratio_y, bint vector):
-    if len(mass) < 2:
-        raise ValueError("mass must be a sequence with two elements")
-    cdef double x = _rel_helper_c(PyFloat_AsDouble(PyList_GET_ITEM(mass, 0)), resize_ratio_x, 0, 0, 0, 0)
-    cdef double y = _rel_helper_c(PyFloat_AsDouble(PyList_GET_ITEM(mass, 1)), resize_ratio_y, 0, 0, 0, 0)
-    return Vector2.new(x, y)
-
 cpdef Vector2 vec_rel_helper(Vector2 vec, double resize_ratio_x, double resize_ratio_y):
     cdef double x = _rel_helper_c(vec.x, resize_ratio_x, 0, 0, 0, 0)
     cdef double y = _rel_helper_c(vec.y, resize_ratio_y, 0, 0, 0, 0)
@@ -71,173 +57,84 @@ cpdef Vector2 vec_rel_helper(Vector2 vec, double resize_ratio_x, double resize_r
 cdef inline nv_vector2_t rel_vec(nv_vector2_t vec, nv_vector2_t resize_ratio) noexcept nogil:
     return nv_vector2_mul_vector(vec, resize_ratio)
 
-cdef inline tuple _get_rect_base(double mx, double my, double rx, double ry, double sx, double sy):
-    return (mx, my, sx * rx, sy * ry)
+cdef inline Rect get_rect(Vector2 absolute_coordinates, Vector2 ratio, Vector2 size):
+    return Rect.from_nv_vector_t(absolute_coordinates.data, nv_vector2_mul_vector(size.data, ratio.data))
 
-cdef Rect get_rect_helper(Vector2 master_coordinates, Vector2 resize_ratio, Vector2 size):
-    return Rect.from_nv_vector_t(master_coordinates.data, nv_vector2_mul_vector(size.data, resize_ratio.data))
-cpdef get_rect_helper_pygame(Vector2 master_coordinates, Vector2 resize_ratio, Vector2 size):
-    return md.pygame.Rect(_get_rect_base(master_coordinates.x, master_coordinates.y, resize_ratio.x, resize_ratio.y, size.x, size.y))
-
-cdef inline tuple _get_rect_base_cached(double mx, double my, double csx, double csy): return (mx, my, csx, csy)
-
-cpdef tuple get_rect_helper_cached(Vector2 master_coordinates, Vector2 csize):
-    return _get_rect_base_cached(master_coordinates.x, master_coordinates.y, csize.x, csize.y)
-
-cpdef get_rect_helper_cached_pygame(Vector2 master_coordinates, Vector2 csize):
-    return md.pygame.Rect(_get_rect_base_cached(master_coordinates.x, master_coordinates.y, csize.x, csize.y))
-
-cpdef void logic_update_helper (
-    NevuCobject self
-):
-    cdef nv_vector2_t master_coordinates = self.absolute_coordinates.data
-    cdef nv_vector2_t dr_coordinates_old = self._dr_coordinates_old.data
+cpdef void check_moved(NevuCobject nevuobject):
+    cdef nv_vector2_t absolute_coordinates = nevuobject.absolute_coordinates.data
+    cdef nv_vector2_t dr_coordinates_old = nevuobject._dr_coordinates_old.data
     cdef ZSystem z_system
-    if master_coordinates.x != dr_coordinates_old.x or master_coordinates.y != dr_coordinates_old.y:
+    if absolute_coordinates.x != dr_coordinates_old.x or absolute_coordinates.y != dr_coordinates_old.y:
         z_system = nevu_state.z_system
         z_system.c_mark_dirty()
-        self._dr_coordinates_old.x = master_coordinates.x
-        self._dr_coordinates_old.y = master_coordinates.y
+        nevuobject._dr_coordinates_old.x = absolute_coordinates.x
+        nevuobject._dr_coordinates_old.y = absolute_coordinates.y
 
-cdef object _pos_type = AnimationType.Position
-cdef object _state_continuous = AnimationManagerState.Continuous
-cdef object _state_ended = AnimationManagerState.Ended
-cdef object _state_idle = AnimationManagerState.Idle
+cdef object _pos_type = AnimType.Position
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.nonecheck(False)
-@cython.initializedcheck(False)
-@cython.cdivision(True)
-cdef inline void _light_update_helper(
-    list items,
-    list cached_coordinates,
-    nv_vector2_t menu_vec,
-    double add_x,
-    double add_y
-    ) noexcept:
-    cdef Py_ssize_t n_items = PyList_GET_SIZE(items)
-    if n_items == 0:
-        return
+cdef inline Vector2 c_get_absolute_coordinates(NevuCobject layout, NevuCobject item):
+    return item.coordinates._add((<NevuCobject><void*>layout.first_parent_menu).absolute_coordinates)
 
-    cdef NevuCobject item
-    cdef nv_vector2_t c_coords, new_coords
-    cdef nv_vector2_t add_vec = nv_vector2_new(add_x, add_y)
+def get_absolute_coordinates(NevuCobject layout not None, NevuCobject item not None):
+    return c_get_absolute_coordinates(layout, item)
 
-    cdef PyObject** items_ptr = (<PyListObject*>items).ob_item
-    cdef PyObject** coords_ptr = (<PyListObject*>cached_coordinates).ob_item
-
-    cdef object raw_anim_val, animation_manager, anim_state
-    cdef Py_ssize_t i
-
-    for i in range(n_items):
-        item = <NevuCobject><void*>items_ptr[i]
-
-        c_coords = (<Vector2><void*>coords_ptr[i]).data
-        new_coords = nv_vector2_add(c_coords, add_vec)
-
-        animation_manager = item.animation_manager
-        anim_state = animation_manager.state
-
-        if anim_state is not _state_ended and anim_state is not _state_idle:
-            raw_anim_val = animation_manager.get_animation_value(_pos_type)
-            if raw_anim_val is not None:
-                new_coords = nv_vector2_add_triple(
-                    c_coords,
-                    rel_vec((<Vector2><void*>raw_anim_val).data, item._resize_ratio.data),
-                    add_vec
-                )
-
-        item.c_set_coords_xy(new_coords.x, new_coords.y)
-
-        item.absolute_coordinates.data = nv_vector2_add(new_coords, menu_vec)
-
-        item.update()
-
-cpdef void base_light_update(NevuCobject self, double add_x = 0, double add_y = 0):
-    _light_update_helper(
-        <list><void*>self.items,
-        <list><void*>self.cached_coordinates,
-        (<NevuCobject><void*>self.first_parent_menu).absolute_coordinates.data,
-        add_x, add_y
-    )
-
-cpdef bint collide_horizontal(Vector2 r1_tl, Vector2 r1_br, Vector2 r2_tl, Vector2 r2_br):
-    return r1_tl.x < r2_br.x and r1_br.x > r2_tl.x
-
-
-cpdef bint collide_vertical(Vector2 r1_tl, Vector2 r1_br, Vector2 r2_tl, Vector2 r2_br):
-    return r1_tl.y < r2_br.y and r1_br.y > r2_tl.y
-
-
-cpdef bint collide_vector(Vector2 r1_tl, Vector2 r1_br, Vector2 r2_tl, Vector2 r2_br):
-    return (r1_tl.x < r2_br.x and r1_br.x > r2_tl.x) and (r1_tl.y < r2_br.y and r1_br.y > r2_tl.y)
-
-
-cdef inline Vector2 get_item_abs_coords(NevuCobject layout, NevuCobject item):
-    return item.coordinates._add(
-        (<NevuCobject><void*>layout.first_parent_menu).absolute_coordinates
-    )
-
-def py_get_item_abs_coords(NevuCobject layout not None, NevuCobject item not None):
-    return get_item_abs_coords(layout, item)
-
-
-cpdef _very_light_update_helper(
+cpdef update_items(
     list items,
     list cached_coordinates,
     Vector2 menu_vec,
     Vector2 add_vector,
-    NevuCobject layout
+    NevuCobject layout,
+    bint weak,
 ):
-    c_very_light_update_helper(
+    c_update_items(
         items,
         cached_coordinates,
         menu_vec,
         add_vector,
-        layout
+        layout,
+        weak
     )
 
-
-cdef inline void c_very_light_update_helper(
+cdef inline void c_update_items(
     list items,
     list cached_coordinates,
     Vector2 menu_vec,
     Vector2 add_vector,
-    NevuCobject layout
-    ) noexcept:
-
-    cdef Py_ssize_t n = PyList_GET_SIZE(items)
-
-    cdef PyObject** items_ptr = (<PyListObject*>items).ob_item
-    cdef PyObject** coords_ptr = (<PyListObject*>cached_coordinates).ob_item
-
+    NevuCobject layout,
+    bint weak
+) noexcept:
     cdef void* item
-    cdef nv_vector2_t c_coords, c_menu_vec, c_add_vector, added_vec
+    cdef nv_vector2_t coordinates, c_menu_vec, c_add_vector, added_vec
+    cdef object animation_value
 
     c_add_vector = add_vector.data
     c_menu_vec = menu_vec.data
+    cdef Py_ssize_t n_items = PyList_GET_SIZE(items)
+    cdef Py_ssize_t n_coords = PyList_GET_SIZE(cached_coordinates)
+    cdef Py_ssize_t count = n_items if n_items < n_coords else n_coords
     cdef Py_ssize_t i = 0
 
-    while i < n:
-        item = <void*>items_ptr[i]
-        c_coords = (<Vector2><void*>coords_ptr[i]).data
-
-        added_vec = nv_vector2_sub(c_coords, c_add_vector)
-
+    while i < count:
+        item = <void*>PyList_GET_ITEM(items, i)
+        coordinates = (<Vector2><void*>PyList_GET_ITEM(cached_coordinates, i)).data
+        added_vec = nv_vector2_sub(coordinates, c_add_vector)
+        animation_value = (<NevuCobject>item).animation_manager.get(_pos_type)
+        if animation_value is not None:
+            added_vec = nv_vector2_add(
+                added_vec,
+                rel_vec((<Vector2><void*>animation_value).data, (<NevuCobject>item)._resize_ratio.data)
+            )
         (<NevuCobject>item).c_set_coords_xy(added_vec.x, added_vec.y)
         (<NevuCobject>item).absolute_coordinates.data = nv_vector2_add(added_vec, c_menu_vec)
+        if not weak:
+            (<NevuCobject>item).update()
         i += 1
-
 
 ctypedef void (*DrawFuncPtr)(NevuCobject, NevuCobject, Vector2)
 
 cdef inline void draw_item_pygame(NevuCobject layout, NevuCobject item, Vector2 coordinates):
     if not layout.surface: return
-    #pblit(item.surface, layout.surface, coordinates.to_tuple())
     layout.surface.blit(item.surface, coordinates.to_tuple()) #type: ignore
-
-_base_color_raylib = Rect.new(255, 255, 255, 255)
 
 cdef inline void draw_item_raylib(NevuCobject layout, NevuCobject item, Vector2 coordinates):
     c_draw_texture_maxopt(<Texture2D>(<_NvSurfRaylib>(item.surface).c_native_texture), coordinates.data, True)
@@ -250,7 +147,7 @@ cdef inline void draw_widget_optimized_pygame(DrawFuncPtr draw_item, NevuCobject
     if item._changed:
         item.draw()
 
-    if item.node_type == 0:
+    if item.node_type == 0 and item.surface is not None:
         draw_item(layout, item, item.coordinates)
 
 cdef inline void draw_widget_optimized_pygame_rel(DrawFuncPtr draw_item, NevuCobject layout, NevuCobject item, type layout_type, type widget_type):
@@ -261,7 +158,7 @@ cdef inline void draw_widget_optimized_pygame_rel(DrawFuncPtr draw_item, NevuCob
     if item._changed:
         item.draw()
 
-    if item.node_type == 0:
+    if item.node_type == 0 and item.surface is not None:
         draw_item(layout, item, layout.coordinates + item.rel(item.coordinates))
 
 cdef inline void draw_widget_optimized_raylib(DrawFuncPtr draw_item, NevuCobject layout, NevuCobject item, type layout_type, type widget_type):
@@ -269,7 +166,7 @@ cdef inline void draw_widget_optimized_raylib(DrawFuncPtr draw_item, NevuCobject
         item.draw()
         return
 
-    if item.node_type == 0:
+    if item.node_type == 0 and item.surface is not None:
         draw_item(layout, item, item.coordinates)
 
 cdef inline void draw_widget_optimized_raylib_rel(DrawFuncPtr draw_item, NevuCobject layout, NevuCobject item, type layout_type, type widget_type):
@@ -277,9 +174,8 @@ cdef inline void draw_widget_optimized_raylib_rel(DrawFuncPtr draw_item, NevuCob
         item.draw()
         return
 
-    if item.node_type == 0:
+    if item.node_type == 0 and item.surface is not None:
         draw_item(layout, item, layout.coordinates + item.rel(item.coordinates))
-
 
 cdef DrawFuncPtr _cached_draw_item = NULL
 cdef bint _cached_is_raylib = False
@@ -298,123 +194,77 @@ cdef inline void _check_draw_item() noexcept:
     _cached_draw_item = <DrawFuncPtr>draw_func
     _draw_func_resolved = True
 
-
-
-cpdef void draw_widgets_optimized(
+cpdef void draw_items(
     NevuCobject layout,
     list items,
     type layout_type,
     type widget_type
 ):
-    cdef Py_ssize_t n = PyList_GET_SIZE(items)
     cdef NevuCobject item
-    cdef PyObject** items_ptr = (<PyListObject*>items).ob_item
     _check_draw_item()
 
     cdef Py_ssize_t i = 0
     if _cached_is_raylib:
-        while i < n:
-            item = <NevuCobject><void*>items_ptr[i]
-            if not item._visible: i += 1; continue
-            draw_widget_optimized_raylib(_cached_draw_item, layout, item, layout_type, widget_type)
+        while i < PyList_GET_SIZE(items):
+            item = <NevuCobject><void*>PyList_GET_ITEM(items, i)
+            if item._visible and not item._wait_mode and not item._dead:
+                draw_widget_optimized_raylib(_cached_draw_item, layout, item, layout_type, widget_type)
             i += 1
     else:
-        while i < n:
-            item = <NevuCobject><void*>items_ptr[i]
-            if not item._visible: i += 1; continue
-            draw_widget_optimized_pygame(_cached_draw_item, layout, item, layout_type, widget_type)
+        while i < PyList_GET_SIZE(items):
+            item = <NevuCobject><void*>PyList_GET_ITEM(items, i)
+            if item._visible and not item._wait_mode and not item._dead:
+                draw_widget_optimized_pygame(_cached_draw_item, layout, item, layout_type, widget_type)
             i += 1
 
-cpdef void draw_floating_items_optimized(
+cpdef void draw_floating_items(
     NevuCobject layout,
     list items,
     type layout_type,
     type widget_type
 ):
-    cdef Py_ssize_t n = PyList_GET_SIZE(items)
     cdef NevuCobject item
-    cdef PyObject** items_ptr = (<PyListObject*>items).ob_item
     _check_draw_item()
 
     cdef Py_ssize_t i = 0
     if _cached_is_raylib:
-        while i < n:
-            item = <NevuCobject><void*>items_ptr[i]
-            if not item._visible: i += 1; continue
-            draw_widget_optimized_raylib_rel(_cached_draw_item, layout, item, layout_type, widget_type)
+        while i < PyList_GET_SIZE(items):
+            item = <NevuCobject><void*>PyList_GET_ITEM(items, i)
+            if item._visible and not item._wait_mode and not item._dead:
+                draw_widget_optimized_raylib_rel(_cached_draw_item, layout, item, layout_type, widget_type)
             i += 1
     else:
-        while i < n:
-            item = <NevuCobject><void*>items_ptr[i]
-            if not item._visible: i += 1; continue
-            draw_widget_optimized_pygame_rel(_cached_draw_item, layout, item, layout_type, widget_type)
+        while i < PyList_GET_SIZE(items):
+            item = <NevuCobject><void*>PyList_GET_ITEM(items, i)
+            if item._visible and not item._wait_mode and not item._dead:
+                draw_widget_optimized_pygame_rel(_cached_draw_item, layout, item, layout_type, widget_type)
             i += 1
 
 @cython.optimize.unpack_method_calls(True)
-cpdef void rl_predraw_widgets(
+cpdef void predraw_raylib_widgets(
     list items,
     type layout_type,
     type widget_type,
 ):
-    cdef Py_ssize_t n = PyList_GET_SIZE(items)
-    cdef PyObject** items_ptr = (<PyListObject*>items).ob_item
     cdef NevuCobject item
     cdef Py_ssize_t i = 0
-    while i < n:
-        item = <NevuCobject><void*>items_ptr[i]
-        if not item._visible: i+=1; continue
-        if item.node_type == 1:
-            item._rl_predraw_widgets() # type: ignore
-        else:
-            if item._changed:
-                item.draw()
-        i += 1
-
-def fast_cycle_range(object func not None, Py_ssize_t start, Py_ssize_t end, Py_ssize_t step):
-    cdef Py_ssize_t i = start
-    cdef object f = func
-    if step == 0:
-        raise ValueError("step must not be 0")
-    if step > 0:
-        while i < end:
-            PyObject_CallNoArgs(f)
-            i += step
-    else:
-        while i > end:
-            PyObject_CallNoArgs(f)
-            i += step
-
-def fast_cycle_list(func, list items not None):
-    cdef Py_ssize_t n = PyList_GET_SIZE(items)
-    cdef Py_ssize_t i
-    cdef object item
-    cdef object call_method = func.__call__
-
-    for i in range(n):
-        item = <object>PyList_GET_ITEM(items, i)
-        call_method(item)
-
-def fast_cycle_in_list(str func_name not None, list items not None):
-    _fast_cycle_in_list(func_name, items)
-
-cdef inline void _fast_cycle_in_list(str func_name, list items):
-    cdef Py_ssize_t n = PyList_GET_SIZE(items)
-    cdef Py_ssize_t i = 0
-    cdef PyObject** items_ptr = (<PyListObject*>items).ob_item
-    cdef object item
-    while i < n:
-        item = <object><void*>items_ptr[i]
-        PyObject_CallMethodNoArgs(item, func_name)
+    while i < PyList_GET_SIZE(items):
+        item = <NevuCobject><void*>PyList_GET_ITEM(items, i)
+        if item._visible and not item._wait_mode and not item._dead:
+            if item.node_type == 1:
+                item._rl_predraw_widgets()
+            else:
+                if item._changed:
+                    item.draw()
         i += 1
 
 def scrollable_update_collided(list collided_items not None):
     _scrollable_update_collided(collided_items)
 
 cdef inline void _scrollable_update_collided(list collided_items) noexcept:
-    cdef Py_ssize_t n = PyList_GET_SIZE(collided_items)
-    cdef Py_ssize_t i = 0 #type: ignore
+    cdef Py_ssize_t i = 0
     cdef NevuCobject item
-    while i < n:
+    while i < PyList_GET_SIZE(collided_items):
         item = <NevuCobject>PyList_GET_ITEM(collided_items, i)
         item.update()
         i += 1
@@ -422,19 +272,19 @@ cdef inline void _scrollable_update_collided(list collided_items) noexcept:
 def scrollable_recollide_items(NevuCobject self not None, list items not None):
     return _scrollable_recollide_items(self, items)
 
-cdef inline list _scrollable_recollide_items(NevuCobject self, list items) noexcept:
+cdef list _scrollable_recollide_items(NevuCobject self, list items):
     cdef Rect true_rect = self.get_rect()
     self.absolute_coordinates.data.x = <double>true_rect.x
     self.absolute_coordinates.data.y = <double>true_rect.y
 
     cdef Py_ssize_t n = PyList_GET_SIZE(items)
     cdef NevuCobject item
-    cdef Py_ssize_t i = 0 #type: ignore
+    cdef Py_ssize_t i = 0
     cdef list collided_items = []
 
     while i < n:
         item = <NevuCobject><void*>PyList_GET_ITEM(items, i)
-        item.absolute_coordinates = get_item_abs_coords(self, item)
+        item.absolute_coordinates = c_get_absolute_coordinates(self, item)
         if _widget_drawable_rect(item.get_rect(), true_rect):
             collided_items.append(item)
             item._set_inner_active(True)
@@ -450,24 +300,17 @@ cdef bint _widget_drawable_rect(Rect item_rect, Rect layout_rect) noexcept:
             item_rect.y < layout_rect.y + layout_rect.h and
             item_rect.y + item_rect.h > layout_rect.y)
 
-cdef Rect white_color = Rect.new(255, 255, 255, 255)
-
-
 cpdef void _manager_main_loop_main(self):
     c_manager_main_loop_main(self)
-
-cdef str update_text = "update"
-cdef str draw_text = "draw"
 
 cdef inline void update_menu_list(list menus, Py_ssize_t n):
     cdef Py_ssize_t i = 0
     if n == 0: return
 
     cdef void* menu
-    cdef PyObject** menus_ptr = (<PyListObject*>menus).ob_item
 
-    while i < n:
-        menu = <void*>menus_ptr[i]
+    while i < PyList_GET_SIZE(menus):
+        menu = <void*>PyList_GET_ITEM(menus, i)
         (<NevuCobject>menu).update()
         i += 1
 
@@ -476,10 +319,9 @@ cdef inline void draw_menu_list(list menus, Py_ssize_t n):
     if n == 0: return
 
     cdef void* menu
-    cdef PyObject** menus_ptr = (<PyListObject*>menus).ob_item
 
-    while i < n:
-        menu = <void*>menus_ptr[i]
+    while i < PyList_GET_SIZE(menus):
+        menu = <void*>PyList_GET_ITEM(menus, i)
         (<NevuCobject>menu).draw()
         i += 1
 
@@ -489,7 +331,7 @@ cdef inline void c_manager_main_loop_main(self):
     w_update = self.window.update
     w_clear = self.window.clear
     w_draw_overlay = self.window.draw_overlay
-    cdef bint callbacks_available = self.callbacks is not None
+    cdef bint callbacks_available
     cdef str bind_update, bind_before_update, bind_draw, bind_before_draw
     bind_update = BindType.Update.value
     bind_before_update = BindType.BeforeUpdate.value
@@ -524,22 +366,22 @@ cdef inline void c_manager_main_loop_main(self):
         w_clear(self.background)
 
         if callbacks_available:
-            callbacks.run_(bind_before_update, empty_args, empty_kwargs)
+            callbacks._frun(bind_before_update, empty_args, empty_kwargs)
         before_update()
         w_update(None, self.fps)
         if menus_size > 0:
             update_menu_list(menus, menus_size)
         if callbacks_available:
-            callbacks.c_run(bind_update, empty_args, empty_kwargs)
+            callbacks._frun(bind_update, empty_args, empty_kwargs)
         on_update()
 
         if callbacks_available:
-            callbacks.c_run(bind_before_draw, empty_args, empty_kwargs)
+            callbacks._frun(bind_before_draw, empty_args, empty_kwargs)
         before_draw()
         if menus_size > 0:
             draw_menu_list(menus, menus_size)
         if callbacks_available:
-            callbacks.c_run(bind_draw, empty_args, empty_kwargs)
+            callbacks._frun(bind_draw, empty_args, empty_kwargs)
         on_draw()
 
         if draw_overlay:

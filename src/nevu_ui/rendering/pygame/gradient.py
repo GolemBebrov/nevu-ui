@@ -10,7 +10,7 @@ from nevu_ui.core import (
     LinearSide,
     RadialPosition,
 )
-from nevu_ui.presentation.color import Color
+from nevu_ui.presentation import color as nv_color
 
 _gradient_invert_dict = {
     LinearSide.Right: LinearSide.Left,
@@ -39,25 +39,33 @@ _gradient_radial_value_dict = {
     RadialPosition.BottomLeft: (0, 1),
 }
 
+
 class GradientPygame:
     def __init__(
         self,
-        colors: list[Annotations.rgb_like_color],
-        type: GradientType = GradientType.Linear,
-        direction: GradientConfig = LinearSide.Right,
+        colors: list[Annotations.rgb_like_color | tuple[Annotations.rgb_like_color, float]],
+        direction: GradientConfig | tuple[float, float] | list[float] = LinearSide.Right,
         transparency=None,
     ):
         self.colors = self._validate_colors(colors)
-        self.type = type
         self.direction = direction
-        if self.type not in GradientType:
-            raise ValueError(f"Gradient type '{self.type}' is not supported. Choose linear or radial.")
-        if self.type == GradientType.Linear and self.direction not in LinearSide:
-            raise ValueError(f"Linear gradient direction '{self.direction}' is not supported.")
-        elif self.type == GradientType.Radial and self.direction not in RadialPosition and not isinstance(self.direction, tuple | list):
-            raise ValueError(f"Radial gradient direction '{self.direction}' is not supported.")
+        self.type = self._detect_type(direction)
         self.transparency = transparency
         self._precompute_colors_and_stops()
+
+    @staticmethod
+    def _detect_type(direction) -> GradientType:
+        if isinstance(direction, LinearSide):
+            return GradientType.Linear
+        if isinstance(direction, RadialPosition) or (
+            isinstance(direction, (tuple, list)) and len(direction) == 2
+        ):
+            return GradientType.Radial
+        if isinstance(direction, (int, float)) and not isinstance(direction, bool):
+            raise NotImplementedError(
+                "Arbitrary angle gradients are not supported in Pygame backend; use LinearSide."
+            )
+        raise ValueError(f"Gradient direction '{direction}' is not supported.")
 
     def _precompute_colors_and_stops(self):
         colors_only = [c[0] for c in self.colors]
@@ -81,7 +89,7 @@ class GradientPygame:
         self._stops = stops
 
     def with_transparency(self, transparency):
-        return GradientPygame(self.colors, self.type, self.direction, transparency)
+        return GradientPygame(self.colors, self.direction, transparency)
 
     def apply_gradient(self, width, height):
         if self._has_alpha:
@@ -233,40 +241,43 @@ class GradientPygame:
         correct_colors = []
         for item in colors:
             if not isinstance(item, list | tuple):
-                raise TypeError(f"Color {item} in gradient colors has invalid type.")
+                raise TypeError(f"color {item} in gradient colors has invalid type.")
             if len(item) == 2 and 3 <= len(item[0]) <= 4:
-                color, weight = item[0], item[1]
+                col, weight = item[0], item[1]
             elif 3 <= len(item) <= 4:
-                color, weight = item, 1.0
+                col, weight = item, 1.0
             else:
                 raise ValueError(f"Gradient color has invalid structure: {item}.")
 
-            if isinstance(color, str):
+            if isinstance(col, str):
                 try:
-                    color_tuple = getattr(Color, color.capitalize())
+                    color_tuple = getattr(nv_color, col.capitalize())
                 except AttributeError:
-                    raise ValueError(f"Unsupported color name: '{color}'.")
+                    raise ValueError(f"Unsupported color name: '{col}'.")
                 correct_colors.append((color_tuple, weight))
 
             elif (
-                isinstance(color, (tuple, list))
-                and 3 <= len(color) <= 4
-                and all(isinstance(c, int | float) and 0 <= c <= 255 for c in color)
+                isinstance(col, (tuple, list))
+                and 3 <= len(col) <= 4
+                and all(isinstance(c, int | float) and 0 <= c <= 255 for c in col)
             ):
-                correct_colors.append((tuple(color), weight))
+                correct_colors.append((tuple(col), weight))
             else:
                 raise ValueError(
                     "Each color must be a tuple of 3 or 4 integers (RGB/RGBA), a valid color name, or a tuple of (color, weight)."
                 )
         return correct_colors
 
-    def invert(self, new_direction = None):
+    def invert(self, new_direction=None):
         if new_direction is None:
-            new_direction = _gradient_invert_dict.get(self.direction)
+            if isinstance(self.direction, (tuple, list)):
+                new_direction = (1.0 - self.direction[0], 1.0 - self.direction[1])
+            else:
+                new_direction = _gradient_invert_dict.get(self.direction)
         if new_direction is None:
             raise ValueError(
                 f"Inversion for direction '{self.direction}' is not supported."
             )
         return GradientPygame(
-            list(reversed(self.colors)), self.type, new_direction, self.transparency
+            list(reversed(self.colors)), new_direction, self.transparency
         )

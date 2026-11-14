@@ -31,7 +31,7 @@ def check(config: dict):
             try:
                 is_valid, err_msg = valid_dict[key](struct[key])
             except Exception as e:
-                is_valid, err_msg = valid_dict[key](struct[key]), "Unknown error"
+                is_valid, err_msg = False, str(e)
             if is_valid:
                 print(" - OK")
             else:
@@ -63,23 +63,22 @@ def _validate_items(items: dict, valid_items: dict):
     for item in items:
         if _simple_mode:
             if not isinstance(items[item], valid_items[Any]):
+                expected_type_str = _format_expected_types(valid_items[Any])
+                actual_type_str = type(items[item]).__name__
                 err_batch.append(
                     f"{item}: {expected_type_str} but get {actual_type_str} '{items[item]}'"
-                )  # type: ignore
+                )
             _valid_keys.append(item)
             continue
         if item not in valid_items.keys():
             if Any in valid_items:
                 if not isinstance(item, valid_items[Any]):
+                    valid_str = _format_expected_types(valid_items[Any])
                     err_batch.append(
-                        f"{item}: {err_msg_invalid_type.format(item=item, valid_items=valid_items)}"
+                        f"{item}: {err_msg_invalid_type.format(item=item, typeitem=type(item), valid_item=valid_str)}"
                     )
                 continue
             err_batch.append(f"{item}: {err_msg_invalid_item.format(item=item)}")
-        elif item in _valid_keys:
-            err_batch.append(f"{item}: {err_msg_created.format(item=item)}")
-        else:
-            _valid_keys.append(item)
 
     if not _simple_mode:
         for item in _valid_keys:
@@ -145,7 +144,7 @@ def validate_generated(generated: Any):
     if isinstance(generated, bool):
         return True, msg_valid
     return False, err_msg_invalid_type.format(
-        item=generated.name, typeitem=type(generated), valid_item=bool.__name__
+            item=repr(generated), typeitem=type(generated), valid_item=bool.__name__
     )
 
 

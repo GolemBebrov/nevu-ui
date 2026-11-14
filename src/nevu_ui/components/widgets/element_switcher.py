@@ -2,7 +2,6 @@ import copy
 from collections.abc import Callable
 from typing import Any, Unpack
 
-from nevu_ui.core.classes import Element, Elements
 import nevu_ui.core.modules as md
 from nevu_ui.components._typehints import (
     _ElementSwitcherKwargs,
@@ -11,6 +10,7 @@ from nevu_ui.components._typehints import (
 from nevu_ui.components.widgets.button import Button
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
+from nevu_ui.core.classes import Element, Elements
 from nevu_ui.core.enums import (
     BindType,
     CacheType,
@@ -19,11 +19,12 @@ from nevu_ui.core.enums import (
     RenderReturnType,
 )
 from nevu_ui.core.state import nevu_state
-from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.cython.raylib.raylib import begin_blend_mode, end_blend_mode
-from nevu_ui.presentation.style import Style
+from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.rendering import DrawTextCall
 from nevu_ui.utils import keyboard
+
+_hovered_states = {HoverState.Clicked, HoverState.Hovered}
 
 class ElementSwitcher(Widget):
     on_content_change: Callable | None
@@ -34,7 +35,6 @@ class ElementSwitcher(Widget):
     right_text: str
     left_key: Any
     right_key: Any
-    offset_perc: Vector2
     words_indent: bool
 
     def __init__(
@@ -59,6 +59,7 @@ class ElementSwitcher(Widget):
         self._add_param("left_key", Any, None)
         self._add_param("right_text", str, ">")
         self._add_param("right_key", Any, None)
+        self._change_param_default("hoverable", False)
 
     def _system_callback_binds(self):
         super()._system_callback_binds()
@@ -69,175 +70,99 @@ class ElementSwitcher(Widget):
     def _init_booleans(self):
         super()._init_booleans()
         self._delayed_button_update = False
-        self.hoverable = False
-        self._add_custom_flags(
-            CustomFunctions.update_main
-        )
+        self._add_custom_flags(CustomFunctions.update_main)
 
     def _lazy_init(self, size: Vector2 | list, elements: list[Element] | None = None):
         super()._lazy_init(size)
-        elements = elements or []
-        self.elements = Elements.create(*elements)
+        self.elements = Elements.create(*(elements or []))
         self._create_buttons()
-
-    def _init_numerical(self):
-        super()._init_numerical()
-        self._additional_y_marg = 1
 
     @property
     def _global_hovered(self):
-        return (
-            self.hover_state in [HoverState.Hovered, HoverState.Clicked]
-            or self._button_hovered
-        )
+        return self.hover_state in _hovered_states or self._buttons_hovered
 
     @property
-    def _button_hovered(self):
+    def _buttons_hovered(self):
         assert self.button_left and self.button_right, "Buttons not initialized"
-        return self.button_left.hover_state in [
-            HoverState.Hovered,
-            HoverState.Clicked,
-        ] or self.button_right.hover_state in [HoverState.Hovered, HoverState.Clicked]
+        return self.button_left.hover_state in _hovered_states or self.button_right.hover_state in _hovered_states
 
     def _update_start(self):
         super()._update_start()
-        if self._dead:
-            return
-        if not self._global_hovered:
-            return
-        lkey = self.left_key
-        rkey = self.right_key
+        if not self._global_hovered: return
         fdown = keyboard.is_fdown
-        if lkey and fdown(lkey):
+        if (lkey := self.left_key) and fdown(lkey):
             self.previous()
-        elif rkey and fdown(rkey):
+        elif (rkey := self.right_key) and fdown(rkey):
             self.next()
 
-    def _change_style_rad(
+    def _calc_button_radius(
         self,
-        style: Style,
-        norad_idxs: tuple[int, int],
-        rad_idxs: tuple[int, int],
-        offset: float,
-    ):
-        r1, r2 = rad_idxs
-
-        if isinstance(style.border_radius, tuple | list):
-            nr1, nr2 = norad_idxs
-            changed_br = list(style.border_radius)
-            changed_br[nr1], changed_br[nr2] = 0, 0
-            changed_br[r1], changed_br[r2] = (
-                changed_br[r1] - offset,
-                changed_br[r2] - offset,
-            )
-        else:
-            changed_br = [0] * 4
-            changed_br[r1], changed_br[r2] = (
-                int(style.border_radius - offset),
-                int(style.border_radius - offset),
-            )
-
-        style.border_radius = tuple(changed_br)
-
-    def _correct_style_rad(
-        self,
-        style: Style,
         size: Vector2,
-        rad_idxs: tuple[int, int],
-        norad_idxs: tuple[int, int],
-    ):
-        assert isinstance(style.border_radius, tuple | list), "Style must have tuple or list border radius"
-        norad = list(norad_idxs)
-        correct_br: list[float] = list(style.border_radius)
-        hsize_x = size.x / 2
-        hsize_y = size.y / 2
+        outer_idxs: tuple[int, int],
+        inner_idxs: tuple[int, int],
+        offset: float,
+    ) -> tuple[float, float, float, float]:
+        base_radius = self.style.border_radius
+        half = size / 2
+        res = [0.0] * 4
 
-        for i in range(2):
-            curr_radius = correct_br[rad_idxs[i]]
-            if curr_radius > hsize_x or curr_radius > hsize_y:
-                correct_br[norad[i]] = curr_radius
-        style.border_radius = tuple(correct_br)
+        for outer, inner in zip(outer_idxs, inner_idxs):
+            r = max(0, base_radius[outer] - offset)
+            res[outer] = r
+            if r > half.x or r > half.y:
+                res[inner] = r
+
+        return res[0], res[1], res[2], res[3]
 
     def _shape_buttons_radius(self, offset: float):
         assert self.button_left and self.button_right, "Buttons not initialized"
-        button_style = self.style(border_width=0)
-        button_style_left = button_style()
-        button_style_right = button_style()
-        idx_left = (0, 3)
-        idx_right = (1, 2)
-
-        button_size = self.button_left.size
-
-        self._change_style_rad(button_style_left, idx_right, idx_left, offset)
-        self._correct_style_rad(button_style_left, button_size, idx_left, idx_right)
-        self._change_style_rad(button_style_right, idx_left, idx_right, offset)
-        self._correct_style_rad(button_style_right, button_size, idx_right, idx_left)
-
-        self.button_left.style = button_style_left
-        self.button_right.style = button_style_right
+        self.button_left.style = self.style(
+            border_width=0,
+            border_radius=self._calc_button_radius(self.button_left.size, (0, 3), (1, 2), offset),
+        )
+        self.button_right.style = self.style(
+            border_width=0,
+            border_radius=self._calc_button_radius(self.button_right.size, (1, 2), (0, 3), offset),
+        )
 
     def _create_buttons(self):
-        bw = self.relm(self.style.border_width)
-
         button_width = self._get_arrow_width()
-        button_height = self.current_size.y - (bw * 2) - self.button_padding * 2
-        button_size = Vector2(button_width, button_height)
+        button_height = self.current_size.y - (self.relm(self.style.border_width) * 2) - self.button_padding * 2
+        button_kwargs = {
+            "size": Vector2.from_xy(button_width, button_height),
+            "style": self.style,
+            "z": self.z + 1,
+            "invert_on_click": False,
+            "inverted": self.inverted,
+            "subtheme_role": self.subtheme_role,
+        }
 
-        subtheme_role = self.subtheme_role
-        self.button_left = Button(
-            self.previous,
-            self.left_text,
-            button_size,
-            self.style,
-            z=self.z + 1,
-            invert_on_click=False,
-            inverted=self.inverted,
-            subtheme_role=subtheme_role,
-        )
-        self.button_right = Button(
-            self.next,
-            self.right_text,
-            button_size,
-            self.style,
-            throw_errors=True,
-            z=self.z + 1,
-            invert_on_click=False,
-            inverted=self.inverted,
-            subtheme_role=subtheme_role,
-        )
+        self.button_left = Button(self.previous, self.left_text, **button_kwargs)
+        self.button_right = Button(self.next, self.right_text, **button_kwargs)
 
-        self._start_button(self.button_left)
-        self._start_button(self.button_right)
+        self._start_buttons(self.button_left, self.button_right)
 
         self._position_buttons()
         self._shape_buttons_radius(self.button_padding + self.style.border_width)
         self._delayed_button_update = False
 
-    def _start_button(self, button: Button):
-        button._init_start()
-        button.booted = True
-        button._boot_up()
-        button._system_callbacks.bind(BindType.StyleChange, self._mark_dirty, weak=True)
-        button._run_callbacks(BindType.StyleChange)
-
-    def _style_update_buttons(self):
-        assert self.button_left is not None
-        assert self.button_right is not None
-        self.button_left._run_callbacks(BindType.StyleChange)
-        self.button_right._run_callbacks(BindType.StyleChange)
+    def _start_buttons(self, *buttons: Button):
+        for button in buttons:
+            button._init_start()
+            button.booted = True
+            button._boot_up()
+            button._system_callbacks.bind(BindType.StyleChange, self._mark_dirty, weak=True)
+            button._run_callbacks(BindType.StyleChange)
 
     def _position_buttons(self):
         assert self.button_left and self.button_right, "Buttons not initialized"
         edge_offset = self.relm(self.style.border_width) + self.button_padding
-        b_right = self.button_right
-        b_left = self.button_left
+        button_right, button_left = self.button_right, self.button_left
         current_size = self.current_size
-        y_pos = (current_size.y - b_left.current_size.y) / 2
-        b_left.coordinates = Vector2.from_xy(edge_offset, y_pos)
-        right_x = current_size.x - b_right.current_size.x - edge_offset
-        b_right.coordinates = Vector2.from_xy(right_x, y_pos)
-        b_left.absolute_coordinates.sadd(self.absolute_coordinates, b_left.coordinates)
-        b_right.absolute_coordinates.sadd(self.absolute_coordinates, b_right.coordinates)
+        y_pos = (current_size.y - button_left.current_size.y) / 2
+        button_left.coordinates = Vector2.from_xy(edge_offset, y_pos)
+        right_x = current_size.x - button_right.current_size.x - edge_offset
+        button_right.coordinates = Vector2.from_xy(right_x, y_pos)
 
     def _get_arrow_width(self):
         return round(
@@ -313,11 +238,6 @@ class ElementSwitcher(Widget):
     def current_element_text(self):
         return self.current_element.text if self.current_element else "Not selected"
 
-    def step(self, step: int = 1):
-        if not self.elements:
-            return
-        self.current_element_index = (self.current_element_index + step) % len(self.elements)
-
     def move_to(self, id: str):
         assert id, "id cannot be None"
         try:
@@ -334,8 +254,7 @@ class ElementSwitcher(Widget):
         assert id, "id cannot be None"
         return next((item for item in reversed(self.elements) if item.id == id), None)
 
-    def count(self):
-        return len(self.elements)
+    def count(self): return len(self.elements)
 
     def remove(self, id: str):
         assert id, "id cannot be None"
@@ -345,33 +264,32 @@ class ElementSwitcher(Widget):
         except ValueError as e:
             raise ValueError(f"Element with id {id} not found") from e
 
+    def next(self): self.step(1)
+    def previous(self): self.step(-1)
+    def step(self, step: int = 1):
+        if not self.elements:
+            return
+        self.current_element_index = (self.current_element_index + step) % len(self.elements)
+
     def add_element(self, element: Element):
         self.elements.append(element)
         self._changed = True
 
-    def next(self):
-        self.step(1)
-
-    def previous(self):
-        self.step(-1)
-
     def _update_main(self):
         super()._update_main()
+        button_left, button_right = self.button_left, self.button_right
 
-        update_button = self._update_button
+        assert button_left and button_right, "Buttons not initialized"
+        self._update_buttons(button_left, button_right)
 
-        assert self.button_left and self.button_right, "Buttons not initialized"
-
-        update_button(self.button_left)
-        update_button(self.button_right)
         if not self._changed:
-            self._changed = self.button_left._changed or self.button_right._changed
-
+            self._changed = button_left._changed or button_right._changed
         if not self._delayed_button_update:
             return
 
         self._position_buttons()
-        self._style_update_buttons()
+        button_left._run_callbacks(BindType.StyleChange)
+        button_right._run_callbacks(BindType.StyleChange)
         self._delayed_button_update = False
 
     def _create_text(self):
@@ -395,20 +313,15 @@ class ElementSwitcher(Widget):
         if nevu_state.window.renderer_type.raylib:
             texture = result[1].native.texture
             rl = md.rl
-            rl.set_texture_filter(
-                texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR
-            )
+            rl.set_texture_filter(texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR)
             rl.set_texture_wrap(texture, rl.TextureWrap.TEXTURE_WRAP_CLAMP)
         self.cache.set(CacheType.TextPos, result[0])
         return result
 
-    def _update_button(self, button: Button):
-        button.absolute_coordinates.sadd(self.absolute_coordinates, button.coordinates)
-        button.update()
-
-    def _draw_start(self):
-        assert self.button_left and self.button_right, "Buttons not initialized"
-        super()._draw_start()
+    def _update_buttons(self, *buttons: Button):
+        for button in buttons:
+            button.absolute_coordinates.sadd(self.absolute_coordinates, button.coordinates)
+            button.update()
 
     def _draw_main(self):
         assert self.button_left and self.button_right, "Buttons not initialized"
@@ -418,7 +331,6 @@ class ElementSwitcher(Widget):
         self._draw_buttons()
 
         text_rect, text_surface = self.cache.get_or_exec(CacheType.TextArgs, self._create_text)
-        coordinates = (text_rect[0], text_rect[1])
 
         is_raylib = nevu_state.window.renderer_type.raylib
         with self.surface:
@@ -427,7 +339,7 @@ class ElementSwitcher(Widget):
             self.surface.blit(self.button_left.surface, self.button_left.coordinates)
             self.surface.blit(self.button_right.surface, self.button_right.coordinates)
             if text_surface:
-                self.surface.blit(text_surface, coordinates)
+                self.surface.blit(text_surface, (text_rect[0], text_rect[1]))
             if is_raylib:
                 end_blend_mode()
 
@@ -453,16 +365,15 @@ class ElementSwitcher(Widget):
 
     def _kill_base(self):
         super()._kill_base()
-        if hasattr(self, "button_left"):
+        if getattr(self, "button_left", None) is not None:
             self.button_left.kill()
-        if hasattr(self, "button_right"):
+            self.button_left = None
+        if getattr(self, "button_right", None) is not None:
             self.button_right.kill()
-        self.button_left = None
-        self.button_right = None
+            self.button_right = None
         self._delayed_button_update = False
 
-
-def _element_switcher_on_style_change(self):
+def _element_switcher_on_style_change(self: ElementSwitcher):
     if not self.booted:
         return
     self._shape_buttons_radius(self.button_padding + self.style.border_width)

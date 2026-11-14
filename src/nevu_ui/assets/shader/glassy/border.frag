@@ -117,10 +117,10 @@ void main(){
                     + vec3(edgeLight) * 0.90
                     + glassTint * (fresnel * 0.40)) * edgeFade;
 
-    vec4 glassMat = vec4(glassColor, bg.a) * fragColor * colDiffuse;
+    vec4 glassMat = vec4(glassColor * bg.a, bg.a) * fragColor * colDiffuse;
 
     float borderMix = smoothstep(-thickness - aa, -thickness + aa, d);
-    vec4 resultColor = mix(glassMat, borderColor, borderMix);
-
+    vec4 premulBorder = vec4(borderColor.rgb * borderColor.a, borderColor.a);
+    vec4 resultColor = mix(glassMat, premulBorder, borderMix);
     finalColor = resultColor * alpha;
 }

@@ -5,19 +5,18 @@ import weakref
 from typing import TYPE_CHECKING, Any, final
 
 import nevu_ui.core.modules as md
-from nevu_ui.core.classes import Counter, SurfaceLike, TooltipType
+from nevu_ui.core.classes import Counter, TooltipType
 from nevu_ui.core.state import nevu_state
 from nevu_ui.cython import Cache, Rect, Vector2
 from nevu_ui.cython.surface.surface import Surface
 from nevu_ui.presentation.animations import Vector2Animation
 from nevu_ui.presentation.animations.manager import AnimationManager
 from nevu_ui.presentation.animations.presets import smootherstep
-from nevu_ui.presentation.style import Style, default_style
+from nevu_ui.presentation.style import Style
 
 if TYPE_CHECKING:
     from nevu_ui.components.nevuobject import NevuObject
 from nevu_ui.core.enums import (
-    AnimationManagerState,
     BindType,
     CacheType,
     HoverState,
@@ -45,12 +44,12 @@ class _TooltipBase:
         "title",
     )
 
-    def __init__(self, title: str, style: Style = default_style):
+    def __init__(self, title: str, style: Style | None = None):
         self.initial_ratio = Vector2.from_xy(1, 1)
         self.ratio = Vector2.from_xy(1, 1)
         self.pos = Vector2()
         self.size = Vector2()
-        self.style = copy.deepcopy(style)
+        self.style = copy.deepcopy(style) if style else Style()
         self.title = title
         self.cache = Cache()
         self._cached_surf = None
@@ -115,7 +114,8 @@ class _TooltipBase:
 
         title_kwargs = renderer.run_text(
             DrawTextCall(
-                size = self._csize,
+                size=self._csize,
+                style=self.style,
                 text=self.title,
                 font_size=self.style.font_size,
                 color=self.style.colortheme.get_tuple(TupleColorRole.InversePrimary),
@@ -142,7 +142,7 @@ class _TooltipBase:
 class _ExtendedTooltipBase(_TooltipBase):
     __slots__ = tuple(list(_TooltipBase.__slots__) + ["content"])
 
-    def __init__(self, title: str, content, style: Style = default_style):
+    def __init__(self, title: str, content, style: Style | None = None):
         super().__init__(title, style)
         self.content = content
 
@@ -155,6 +155,7 @@ class _ExtendedTooltipBase(_TooltipBase):
                     SubThemeRole.Tertiary
                 ).on_container,
                 return_type=RenderReturnType.CreateNew,
+                relm=(self.ratio.x + self.ratio.y) / 2
             )
         )
 
@@ -171,7 +172,7 @@ class _ExtendedTooltipBase(_TooltipBase):
                 color=self.style.colortheme.get_tuple(TupleColorRole.InversePrimary),
                 return_type=RenderReturnType.CreateNew,
                 max_size=title_size,
-                relm=(self.ratio.x + self.ratio.y)
+                relm=(self.ratio.x + self.ratio.y) / 2
             )
         )
 
@@ -202,32 +203,32 @@ class _ExtendedTooltipBase(_TooltipBase):
 
 
 class _SmallTooltip(_TooltipBase):
-    def __init__(self, title: str, style: Style = default_style):
+    def __init__(self, title: str, style: Style | None = None):
         super().__init__(title, style)
         self.initial_ratio = Vector2(0.2, 0.2)
 
 
 class _MediumTooltip(_ExtendedTooltipBase):
-    def __init__(self, title: str, content, style: Style = default_style):
+    def __init__(self, title: str, content, style: Style | None = None):
         super().__init__(title, content, style)
         self.initial_ratio = Vector2(0.4, 0.3)
 
 
 class _LargeTooltip(_ExtendedTooltipBase):
-    def __init__(self, title: str, content, style: Style = default_style):
+    def __init__(self, title: str, content, style: Style | None = None):
         super().__init__(title, content, style)
         self.initial_ratio = Vector2(0.6, 0.4)
 
 
 class _CustomTooltip(_TooltipBase):
-    def __init__(self, ratio: Vector2, title: str, style: Style = default_style):
+    def __init__(self, ratio: Vector2, title: str, style: Style | None = None):
         super().__init__(title, style)
         self.initial_ratio = ratio
 
 
 class _BigCustomTooltip(_ExtendedTooltipBase):
     def __init__(
-        self, ratio: Vector2, title: str, content: str, style: Style = default_style
+        self, ratio: Vector2, title: str, content: str, style: Style | None = None
     ):
         super().__init__(title, content, style)
         self.initial_ratio = ratio
@@ -244,7 +245,7 @@ class Tooltip:
         | TooltipType.BigCustom
     )
 
-    def __init__(self, type: tooltip_type, style: Style = default_style):
+    def __init__(self, type: tooltip_type, style: Style | None = None):
         self.style = style
         self.tooltip_type = type
         self.master: NevuObject | None = None
@@ -322,13 +323,12 @@ class Tooltip:
 
             if self.anim_manager is not None:
                 self.anim_manager.update()
-                anim_pos = self.anim_manager.get_animation_value("tooltip_animation")
+                anim_pos = self.anim_manager.get("pos")
                 if anim_pos is not None:
                     if anim_pos.x != self.old_coord.x or anim_pos.y != self.old_coord.y:
                         self.old_coord = anim_pos.copy()
                         self._on()
-
-                if self.anim_manager.state != AnimationManagerState.Start:
+                else:
                     self.anim_manager = None
 
             elif abs(x) > 10 or abs(y) > 10:
@@ -350,16 +350,12 @@ class Tooltip:
             self._on()
             return
 
-        self.anim_manager = AnimationManager(warn=False)
-        self.anim_manager.add_start_animation(
-            "tooltip_animation",
-            Vector2Animation(
-                self.old_coord.copy(),
-                new_pos.copy(),
-                0.2,
-                smootherstep
-            ),
-        )
+        if self.anim_manager is None:
+            self.anim_manager = AnimationManager(warn=False)
+
+        anim = Vector2Animation(self.old_coord.copy(), new_pos.copy(), 0.2, smootherstep)
+        self.anim_manager.bind("move", "pos", anim)
+        self.anim_manager.call("move")
 
     def connect_to_master(self, master: NevuObject):
         self.master = weakref.proxy(master)

@@ -19,7 +19,7 @@ from libc.math cimport roundf
 cdef extern from "Python.h":
     float PyFloat_AsDouble(PyObject* obj) nogil
 
-cdef struct Color:
+ctypedef struct Color:
     unsigned char r
     unsigned char g
     unsigned char b

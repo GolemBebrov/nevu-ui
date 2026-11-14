@@ -12,19 +12,16 @@ import nevu_ui.core.modules as md
 from nevu_ui.assets.font import FontLibrary
 from nevu_ui.core.annotations import Annotations
 from nevu_ui.core.state import nevu_state
-from nevu_ui.presentation.color import Color
+from nevu_ui.presentation import color as nv_color
 
 from nevu_ui.cython.vector2.vector2 cimport Vector2
 from nevu_ui.cython.surface.surface cimport _NvSurfBase, _NvSurfPygame, _NvSurfRaylib
 
 __pos_default = Vector2.new(0, 0)
-
-
 cdef object _pg_Font = None
 
 cdef inline tuple _to_color_tuple(color):
     return tuple(color)
-
 
 cdef inline object _get_pg_font_cls():
     global _pg_Font
@@ -38,7 +35,6 @@ cdef inline object _get_pg_font_cls():
             pg_font.init()
         _pg_Font = pg_font.Font
     return _pg_Font
-
 
 cdef class _FontBase:
     def __init__(self, int size, str path = FontLibrary.InterRegular):
@@ -70,11 +66,11 @@ cdef class _FontBase:
         str text,
         _NvSurfBase surface_like = None,
         Vector2 pos = __pos_default,
-        tuple color = Color.White,
+        tuple color = nv_color.White,
     ):
         raise NotImplementedError()
 
-    cpdef _NvSurfBase get_rendered(self, str text, tuple color = Color.White):
+    cpdef _NvSurfBase get_rendered(self, str text, tuple color = nv_color.White):
         raise NotImplementedError()
 
     cdef inline int get_size(self): return self._size
@@ -125,7 +121,7 @@ cdef class _FontRaylib(_FontBase):
         str text,
         _NvSurfBase surface_like = None,
         Vector2 pos = __pos_default,
-        tuple color = Color.White,
+        tuple color = nv_color.White,
     ):
         self._check_loaded()
 
@@ -148,7 +144,7 @@ cdef class _FontRaylib(_FontBase):
             ) from e
         surface_like.blit(rendered, (pos.data.x, pos.data.y))
 
-    cpdef _NvSurfBase get_rendered(self, str text, tuple color = Color.White):
+    cpdef _NvSurfBase get_rendered(self, str text, tuple color = nv_color.White):
         self._check_loaded()
 
         cdef Vector2 text_size = self.measure(text)
@@ -158,7 +154,7 @@ cdef class _FontRaylib(_FontBase):
         if h < 1: h = 1
 
         cdef _NvSurfRaylib surface = _NvSurfRaylib((w, h))
-        surface.clear(Color.Blank)
+        surface.clear(nv_color.Blank)
 
         cdef tuple color_tuple = _to_color_tuple(color)
         if len(color_tuple) == 3:
@@ -175,8 +171,9 @@ cdef class _FontPygame(_FontBase):
         if size <= 0:
             raise ValueError(f"Font size must be positive, got {size}")
 
-        self._native = font_cls(path, size)
-        self._size = size
+        cdef int actual_size = max(1, <int>round(size / 1.21))
+        self._native = font_cls(path, actual_size)
+        self._size = actual_size
         self._loaded = True
 
     cpdef void kill(self):
@@ -204,7 +201,7 @@ cdef class _FontPygame(_FontBase):
         str text,
         _NvSurfBase surface_like = None,
         Vector2 pos = __pos_default,
-        tuple color = Color.White,
+        tuple color = nv_color.White,
     ):
         self._check_loaded()
 
@@ -224,7 +221,7 @@ cdef class _FontPygame(_FontBase):
         if w > 0 and h > 0:
             surface_like.blit(rendered, (pos.data.x, pos.data.y))
 
-    cpdef _NvSurfBase get_rendered(self, str text, tuple color = Color.White):
+    cpdef _NvSurfBase get_rendered(self, str text, tuple color = nv_color.White):
         self._check_loaded()
 
         cdef object rendered = self._native.render(text, True, color)

@@ -69,5 +69,8 @@ void main() {
 
     float dither = noise * (2.5 / 255.0);
 
-    finalColor = vec4(color.rgb + dither, color.a * alpha);
+    float finalAlpha = clamp(color.a * alpha, 0.0, 1.0);
+    vec3 finalRgb = clamp(color.rgb + dither, 0.0, 1.0) * finalAlpha;
+
+    finalColor = vec4(finalRgb, finalAlpha);
 }

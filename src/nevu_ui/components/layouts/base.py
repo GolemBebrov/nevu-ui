@@ -29,8 +29,8 @@ from nevu_ui.core.size.rules import (
     _SizeRule,
 )
 from nevu_ui.cython.logic.logic import (
-    draw_floating_items_optimized,
-    rl_predraw_widgets,
+    draw_floating_items,
+    predraw_raylib_widgets,
 )
 from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.presentation.style import Style, _StyleKwargs
@@ -55,9 +55,9 @@ class BaseLayout(NevuObject):
 
     def _rl_predraw_widgets(self):
         if self.items:
-            rl_predraw_widgets(self.items, BaseLayout, Widget)
+            predraw_raylib_widgets(self.items, BaseLayout, Widget)
         if self.floating_items:
-            rl_predraw_widgets(self.floating_items, BaseLayout, Widget)
+            predraw_raylib_widgets(self.floating_items, BaseLayout, Widget)
 
     def _boot_up(self):
         self.booted = True
@@ -112,7 +112,6 @@ class BaseLayout(NevuObject):
         self.first_parent_menu = None
         self._parent_menu = None
         self._parent_layout = None
-        self._last_border_name = None
 
     def _lazy_init(self, size: Vector2 | list, content: content_type | None = None):
         super()._lazy_init(size)
@@ -123,7 +122,7 @@ class BaseLayout(NevuObject):
 
     def _bg_widget_setter(self, value):
         if self.bg_widget:
-            self.bg_widget.kill()
+            self.kill_item(self.bg_widget)
         if value is None: return
         assert isinstance(value, Widget), "bg_widget must be widget"
         value._template.size = self.size.xy
@@ -215,10 +214,13 @@ class BaseLayout(NevuObject):
 
     def _normalize(self, size):
         x, y = copy.deepcopy(size)
-        if any(type(it) is Auto for it in (x, y)):
-            return size
-        x = self._size_rule_to_number(x, 0)
-        y = self._size_rule_to_number(y, 1)
+        has_auto = type(x) is Auto or type(y) is Auto
+        if type(x) is not Auto:
+            x = self._size_rule_to_number(x, 0)
+        if type(y) is not Auto:
+            y = self._size_rule_to_number(y, 1)
+        if has_auto:
+            return (x, y)
         return Vector2.from_xy(x, y)
 
     def _normalize_item_size(self, item: NevuObject):
@@ -271,6 +273,8 @@ class BaseLayout(NevuObject):
             item = item.clone()
         if self.is_layout(item):
             item._connect_to_layout(self)
+        else:
+            item._parent_layout = self
         self._normalize_item_size(item)
         self._start_item(item)
         if self.booted:
@@ -328,7 +332,7 @@ class BaseLayout(NevuObject):
                 item.set_items_style_patch(**patch)
 
     def _draw_start(self):
-        draw_floating_items_optimized(self, self.floating_items, BaseLayout, Widget)
+        draw_floating_items(self, self.floating_items, BaseLayout, Widget)
 
     def _update_start(self):
         if self._parent_menu:
@@ -434,11 +438,15 @@ class BaseLayout(NevuObject):
                     if isinstance(item, tuple):
                         item[-1].kill()
         self.items.clear()
+        self.floating_items.clear()
         self.kwargs = None
         self.first_parent_menu = None
         if self._parent_menu:
-            self._parent_menu._layout = None
+            menu = self._parent_menu
             self._parent_menu = None
+            if getattr(menu, "main_layout", None) is self:
+                menu._main_layout_list = []
+                menu.get_param_strict("main_layout").value = None
         if self._parent_layout:
             self._parent_layout = None
 

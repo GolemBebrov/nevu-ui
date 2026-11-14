@@ -17,7 +17,7 @@ import nevu_ui.core.modules as md
 from nevu_ui.core.annotations import Annotations
 from nevu_ui.cython.vector2.vector2 cimport Vector2, nv_vector2_t, nv_vector2_new
 from nevu_ui.core.state import nevu_state
-from nevu_ui.presentation.color import Color
+from nevu_ui.presentation import color
 from nevu_ui.cython.raylib.raylib cimport (
     RenderTexture2D,
     Texture2D,
@@ -83,6 +83,7 @@ cdef inline object _get_pg_surface_cls():
     return _pg_Surface
 
 cdef _NvSurfBase _active_context = None
+cdef int _context_depth = 0
 
 cdef inline bint is_context_active(_NvSurfBase item) noexcept:
     return _active_context is item
@@ -152,19 +153,24 @@ cdef class _NvSurfBase:
         raise NotImplementedError
 
     def __enter__(self) -> _NvSurfBase:
-        global _active_context
-        if _active_context is not None:
+        global _active_context, _context_depth
+        if _active_context is not None and _active_context is not self:
             raise RuntimeError("Cannot nest surface contexts")
         if not self._loaded:
             raise RuntimeError("Surface is killed")
-        _active_context = self
-        self.on_begin()
+        if _active_context is None:
+            _active_context = self
+            self.on_begin()
+        _context_depth += 1
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        global _active_context
-        _active_context = None
-        self.on_end()
+        global _active_context, _context_depth
+        if _context_depth > 0:
+            _context_depth -= 1
+        if _context_depth == 0:
+            _active_context = None
+            self.on_end()
 
     cpdef void blit(self, object source, dest: Annotations.dest_like_v):
         raise NotImplementedError
@@ -237,6 +243,7 @@ cdef class _NvSurfRaylib(_NvSurfBase):
             raise RuntimeError("Cannot blit onto surface: another Surface context is active")
         if not ctx_active:
             self.on_begin()
+            begin_blend_mode(5)
 
         cdef nv_vector2_t nv_vec_dest
         if type(dest) is Vector2:
@@ -273,6 +280,7 @@ cdef class _NvSurfRaylib(_NvSurfBase):
 
         if not ctx_active:
             self.on_end()
+            end_blend_mode()
 
     def __init__(self, size: Annotations.dest_like_v):
         global _TYPE_RENDER_TEXTURE, _TYPE_TEXTURE, _PTR_RENDER_TEXTURE, _PTR_TEXTURE, _CDATA_BASE, _rl_types_inited
@@ -304,7 +312,7 @@ cdef class _NvSurfRaylib(_NvSurfBase):
         if not self._loaded:
             raise RuntimeError("Surface is killed")
         new_surf = _NvSurfRaylib((self._width, self._height))
-        new_surf.clear(Color.Blank)
+        new_surf.clear(color.Blank)
         begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA)
         new_surf.blit(self, (0, 0))
         end_blend_mode()
@@ -384,7 +392,7 @@ cdef class _NvSurfPygame(_NvSurfBase):
             self._native.fill(tuple(color))
 
     cpdef void blit(self, object source, dest: Annotations.dest_like_v):
-        cdef _NvSurfPygame src = <_NvSurfPygame>source
+        cdef _NvSurfPygame src
         cdef int dx, dy
 
         if type(dest) is Vector2:
@@ -404,6 +412,7 @@ cdef class _NvSurfPygame(_NvSurfBase):
             self._native.blit(source, (dx, dy))
             return
         elif type(source) is _NvSurfPygame:
+            src = <_NvSurfPygame>source
             if self._use_pure_copy and self._pixels_ptr != NULL and src._pixels_ptr != NULL:
                 _c_raw_blit(self._pixels_ptr, self._pitch, self._width, self._height, src._pixels_ptr, src._pitch, src._width, src._height, dx, dy)
                 return
@@ -440,7 +449,7 @@ cdef class _NvSurfPygame(_NvSurfBase):
         cdef object addr = getattr(new_surf._native, "_pixels_address", None)
         if addr is not None:
             new_surf._pixels_ptr = <uint8_t*><uintptr_t>addr
-            new_surf._pitch = self._pitch
+            new_surf._pitch = new_surf._native.get_pitch()
         else:
             new_surf._pixels_ptr = NULL
             new_surf._pitch = 0

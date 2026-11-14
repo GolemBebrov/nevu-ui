@@ -9,7 +9,6 @@ from nevu_ui.components.widgets.label import Label
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import BindType
 
-
 class Button(Label):
     # === Params ===
     is_active: bool
@@ -49,7 +48,7 @@ class Button(Label):
 
 # === NOT CLASS FUNCTIONS ===
 
-def _button_on_keyup(self):
+def _button_on_keyup(self: Button):
     if not ((func := self.function) and self.is_active):
         return
     try:

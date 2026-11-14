@@ -15,25 +15,18 @@ from cpython.object cimport PyObject, PyObject_GenericSetAttr, PyObject_GenericG
 from cpython.list cimport PyList_GET_SIZE, PyList_GET_ITEM
 from nevu_ui.cython.cache.cache cimport Cache
 from nevu_ui.core.state import nevu_state
-from nevu_ui.core.enums import CacheType, BindType, CustomFunctions
 from nevu_ui.cython.callbacks.callbacks import Callbacks
 from nevu_ui.cython.z_system.z_system cimport ZSystem, ZRequest
+from nevu_ui.cython.logic.logic cimport relm_helper, rel_helper, vec_rel_helper, get_rect
+from nevu_ui.cython.rect.rect cimport Rect
 from nevu_ui.core.enums import (
-    HoverState, EventType, CacheType, ParamLayer, AnimationType
+    HoverState, CacheType, BindType, CustomFunctions
 )
 from libc.stdint cimport uint8_t
 cimport cython
 
-from nevu_ui.cython.logic.logic cimport relm_helper, rel_helper, mass_rel_helper, vec_rel_helper, get_rect_helper
-from nevu_ui.cython.rect.rect cimport Rect
-
-cdef extern from "Python.h":
-    object PyObject_CallMethodNoArgs(object self, object name)
-
 cdef str nevucobject_setattr_underscore = "_"
 cdef str nevucobject_setattr_set = "__set__"
-
-
 
 cdef enum C_CustomFunctions:
     UpdateStart = 1 << 0
@@ -61,13 +54,11 @@ class WeakMethod(weakref.ref):
         return getattr(obj, self._meth_name, None)
 
 
+cdef list _clear_surfaces_whitelist = [CacheType.Image, CacheType.Gradient, CacheType.Surface,  CacheType.Borders, CacheType.Background, CacheType.Font, CacheType.TextArgs, CacheType.ClickTexture]
+
 @cython.freelist(32)
 cdef class NevuCobject:
     def __cinit__(self, *args, **kwargs):
-        self.coordinates = Vector2.new(0, 0)
-        self.absolute_coordinates = Vector2.new(0, 0)
-        self.size = Vector2.new(0, 0)
-        self._resize_ratio = Vector2.new(1, 1)
         self.params = list()
         self._inner_active = True
         self._blacklisted_params = list()
@@ -88,10 +79,8 @@ cdef class NevuCobject:
         self._wait_mode = False
         self._dead = False
         self._auto_sized = False
-        self._has_position_anim = False
         self.node_type = 0
         self._system_callbacks = Callbacks()
-        self.specific_cache_whitelist = [CacheType.Image, CacheType.Gradient, CacheType.Surface,  CacheType.Borders, CacheType.Background, CacheType.Font, CacheType.TextArgs, CacheType.ClickTexture]
 
     def _add_custom_flags(self, int flags: CustomFunctions):
         self._custom_flags |= <uint8_t>flags
@@ -138,15 +127,6 @@ cdef class NevuCobject:
         cdef Param param = <Param>p_ptr
         param.set(new_value)
 
-    cpdef double relx_custom(self, double num, double min, double max):
-        return rel_helper(num, self._resize_ratio.x, min, max)
-
-    cpdef double rely_custom(self, double num, double min, double max):
-        return rel_helper(num, self._resize_ratio.y, min, max)
-
-    cpdef double relm_custom(self, double num, double min, double max):
-        return relm_helper(num, self._resize_ratio.x, self._resize_ratio.y, min, max)
-
     cpdef double relx(self, double num):
         return rel_helper(num, self._resize_ratio.x, -1.0, -1.0)
 
@@ -160,7 +140,7 @@ cdef class NevuCobject:
         return vec_rel_helper(vec, self._resize_ratio.x, self._resize_ratio.y)
 
     cpdef Rect get_rect(self):
-        return get_rect_helper(self.absolute_coordinates, self._resize_ratio, self.size)
+        return get_rect(self.absolute_coordinates, self._resize_ratio, self.size)
 
     cpdef void set_coordinates(self, Vector2 coordinates):
         if self.coordinates == coordinates:
@@ -178,14 +158,14 @@ cdef class NevuCobject:
         self.coordinates = new_coords
 
     cpdef void clear_all(self):
-        if nevu_state.window.renderer_type.raylib:
+        if nevu_state.window is not None and nevu_state.window.renderer_type.raylib:
             self._clear_rl_specific()
         self.cache.c_clear()
 
     cpdef void clear_surfaces(self):
-        if nevu_state.window.renderer_type.raylib:
+        if nevu_state.window is not None and nevu_state.window.renderer_type.raylib:
             self._clear_rl_specific()
-        self.cache.c_clear_selected(whitelist=self.specific_cache_whitelist, blacklist=[])
+        self.cache.c_clear_selected(whitelist=_clear_surfaces_whitelist, blacklist=[])
 
     cdef inline Vector2 c_get_actual_size(self):
         return self.size * self._resize_ratio
@@ -229,7 +209,7 @@ cdef class NevuCobject:
         self._c_run_callbacks(BindType.Change)
 
     cdef inline void _update_core(self):
-        if self.animation_manager is not None and self.animation_manager.state != 3:
+        if self.animation_manager is not None:
             self.animation_manager.update()
 
     cdef inline void _update_core_end(self):
@@ -271,6 +251,8 @@ cdef class NevuCobject:
         return weakref.ref(function)
 
     def _run_callbacks(self, bind_type, *args):
+        if self.animation_manager:
+            self.animation_manager.call(bind_type)
         if not self._system_callbacks: return
         if not self.callbacks: return
         self._system_callbacks.run(bind_type, self, *args)
@@ -279,6 +261,8 @@ cdef class NevuCobject:
     cdef inline void _c_run_callbacks(self, bind_type, args = None):
         callbacks = self.callbacks
         sys_callbacks = self._system_callbacks
+        if self.animation_manager:
+            self.animation_manager.call(bind_type)
         cdef bint has_args = args is not None
         if sys_callbacks is not None:
             if has_args:
@@ -305,7 +289,6 @@ cdef class NevuCobject:
         self._kup_abandoned = True
         self._force_state_set_continue = True
         self.set_hover_state(HoverState.NotHovered)
-
     cpdef void set_hover_state(self, value):
         if self._hover_state == value and not self._force_state_set_continue: return
         self._run_callbacks(BindType.StateChange, value)
@@ -343,7 +326,6 @@ cdef class NevuCobject:
         return PyObject_GenericGetAttr(self, name)
 
     def __setattr__(self, name, value):
-        cdef dict params_map
         cdef object prop
         cdef PyObject* param
         cdef Param c_param
@@ -358,9 +340,8 @@ cdef class NevuCobject:
             prop.__set__(self, value)
             return
 
-        params_map = self._params_map
-        if params_map is not None:
-            param = PyDict_GetItem(params_map, name)
+        if self._params_map is not None:
+            param = PyDict_GetItem(self._params_map, name)
             if param != NULL:
                 c_param = <Param><object>param
                 c_param.set(value)

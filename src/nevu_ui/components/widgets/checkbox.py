@@ -2,7 +2,7 @@ from collections.abc import Callable
 from typing import Any, Unpack
 
 import nevu_ui.core.modules as md
-from nevu_ui.components._typehints import _RectCheckBoxKwargs, nevu_object_globals
+from nevu_ui.components._typehints import _RectCheckBoxKwargs, nevu_object_defaults
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations
 from nevu_ui.core.enums import BindType, RenderReturnType
@@ -10,7 +10,6 @@ from nevu_ui.core.size import _SizeRule
 from nevu_ui.core.state import nevu_state
 from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.rendering import DrawBaseCall
-
 
 class CheckBox(Widget):
     # === Params ===
@@ -28,7 +27,7 @@ class CheckBox(Widget):
         **params: Unpack[_RectCheckBoxKwargs],
     ):
         if size is None:
-            size = nevu_object_globals.library.get("size")
+            size = nevu_object_defaults.library.get("size")
         if isinstance(size, int | float):
             size = Vector2.from_xy(size, size)
         elif isinstance(size, _SizeRule):
@@ -38,11 +37,7 @@ class CheckBox(Widget):
 
     def _system_callback_binds(self):
         super()._system_callback_binds()
-        self._system_callbacks.bind(BindType.Click, _rect_checkbox_click, weak=True)
-
-    def _init_booleans(self):
-        super()._init_booleans()
-        self._supports_tuple_borderradius = False
+        self._system_callbacks.bind(BindType.Click, _checkbox_click, weak=True, add_to_end=False)
 
     def _lazy_init(self, size: Vector2 | list):
         super()._lazy_init(size)
@@ -51,7 +46,6 @@ class CheckBox(Widget):
 
     def _add_params(self):
         from nevu_ui.components.checkbox_group import CheckBoxGroup
-
         super()._add_params()
         self._add_param("on_toggle_function", type(None) | Callable, None)
         self._add_param_link("on_toggle", "on_toggle_function")
@@ -76,6 +70,7 @@ class CheckBox(Widget):
         old_value = self.toggled
         if old_value == value:
             return value
+        self.get_param_strict("toggled").value = value
         self._changed = True
         self.clear_surfaces()
         if self.on_toggle_function:
@@ -86,8 +81,8 @@ class CheckBox(Widget):
         if not self.toggled:
             return
 
-        margin = self.current_size * (1 - self.toggled_rect_scale)
-        margin.to_round()
+        margin = self.current_size * ((1 - self.toggled_rect_scale) / 2)
+        margin.round()
 
         active_size = self.current_size - (margin * 2)
 
@@ -97,23 +92,18 @@ class CheckBox(Widget):
         inner_radius = self._borders_of_current_size.x * 2
         inner_radius = [inner_radius] * 4
 
-        br = self.style.border_radius
-
-        if isinstance(br, int | float):
-            br = [br] * 4
+        radius = self.style.border_radius
 
         for i in range(len(inner_radius)):
-            inner_radius[i] += br[i]
+            inner_radius[i] += radius[i]
             inner_radius[i] = max(0, int(inner_radius[i]))
 
-
         color = self.subtheme_border
-        color = (color[0], color[1], color[2], self.toggled_rect_opacity)
         dot_surface = self.renderer.run_base(
             DrawBaseCall(
                 style=self.style,
                 cache=self.cache,
-                color=color,
+                color=(color[0], color[1], color[2], self.toggled_rect_opacity),
                 size=active_size,
                 gradient_support=False,
                 return_type=RenderReturnType.CreateNew,
@@ -125,7 +115,7 @@ class CheckBox(Widget):
         if nevu_state.window.renderer_type.raylib:
             md.rl.set_texture_filter(
                 dot_surface.native.texture, md.rl.TextureFilter.TEXTURE_FILTER_BILINEAR
-            )  # type: ignore
+            )
 
-def _rect_checkbox_click(self):
+def _checkbox_click(self: CheckBox):
     self.toggled = not self.toggled

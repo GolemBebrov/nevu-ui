@@ -4,12 +4,13 @@ import weakref
 from collections.abc import Callable
 from typing import Any, Unpack, overload
 
+from nevu_ui.core.classes import FlexConfig
 from nevu_ui.cython.rect.rect import Rect
-from nevu_ui.presentation.color import Color
+from nevu_ui.presentation import color
 from nevu_ui.rendering.canvas import Canvas
 
 #Киширика киширису наносит ответный удар.
-from nevu_ui.components._typehints import KwargsLibrary, nevu_object_globals, _NevuObjectTemplate
+from nevu_ui.components._typehints import KwargsLibrary, nevu_object_defaults, _NevuObjectTemplate
 
 from nevu_ui.core import Annotations
 from nevu_ui.core.error_formats import format_param_engine_error, format_nvtype_nvobject_error
@@ -27,7 +28,7 @@ from nevu_ui.cython import NevuCobject, Vector2, ZRequest
 from nevu_ui.components.tooltip import Tooltip
 from nevu_ui.presentation.animations import AnimationManager
 from nevu_ui.presentation.theme import SubThemeRole
-from nevu_ui.presentation.style import Style, default_style
+from nevu_ui.presentation.style import Style
 from nevu_ui.rendering.base_renderer import BaseRenderer
 from nevu_ui.rendering.pygame.renderer import PygameRenderer
 from nevu_ui.rendering.raylib.renderer import RaylibRenderer
@@ -107,13 +108,13 @@ class NevuObject(NevuCobject):
     ):
         self.kwargs = params.copy()
         if self._supports_global_size:
-            _size = size or nevu_object_globals.library.get("size")
+            _size = size or nevu_object_defaults.library.get("size")
         else:
             _size = size
         if _size is None:
             raise ValueError(format_param_engine_error("size is None and no global size set", self))
         self._template = _NevuObjectTemplate(_size)
-        style = style or nevu_object_globals.library.get("style") or default_style
+        style = style or nevu_object_defaults.library.get("style") or Style()
         self._first_update_functions = []
 
         # === Pre Init ===
@@ -204,7 +205,6 @@ class NevuObject(NevuCobject):
 
     def _add_params(self):
         self._add_param("id", str | type(None), None)
-        self._add_param("floating", bool, False)
         self._add_param("single_instance", bool, False)
         self._add_param("z", int, 0, setter=self._z_setter)
         self._add_param_link("depth", "z")
@@ -217,6 +217,7 @@ class NevuObject(NevuCobject):
             layer=ParamLayer.Lazy,
             setter=self._tooltip_setter,
         )
+        self._add_param("flex_config", FlexConfig | type(None), None)
         self._add_param("start_pos", Vector2 | tuple | list | type(None), Vector2(0, 0))
         self._add_param(
             "subtheme_role",
@@ -243,7 +244,7 @@ class NevuObject(NevuCobject):
                 continue
             if param.name in self.kwargs:
                 continue
-            val = nevu_object_globals.library.get(param.name)
+            val = nevu_object_defaults.library.get(param.name)
             param.value = val if val is not None else param.default
 
     def _apply_params(self, current_layer, **kwargs):
@@ -287,7 +288,9 @@ class NevuObject(NevuCobject):
         for needed_type in needed_types:
             if needed_type is Callable and callable(value): return True  # noqa: E701
             if needed_type is Any: return True  # noqa: E701
-            if type(needed_type) is tuple and needed_type[0] is Any: return True  # noqa: E701
+            if type(needed_type) is tuple:
+                if Any in needed_type: return True  # noqa: E701
+                if Callable in needed_type and callable(value): return True  # noqa: E701
             if isinstance(value, needed_type): return True  # noqa: E701
         return False
 
@@ -297,7 +300,8 @@ class NevuObject(NevuCobject):
             if param_name in self._blacklisted_params:
                 raise ValueError(format_param_engine_error(f"Param {name} is unconfigurable", self))
             if not self._is_valid_type(value, needed_types):
-                raise TypeError(format_nvtype_nvobject_error(needed_types.__name__, param_name, value, self, "__init__"))
+                type_name = getattr(needed_types, "__name__", str(needed_types))
+                raise TypeError(format_nvtype_nvobject_error(type_name, param_name, value, self, "__init__"))
         param = self.get_param_strict(param_name)
         assert param
         param.set(value)
@@ -308,6 +312,7 @@ class NevuObject(NevuCobject):
         self._system_callbacks.bind(BindType.BeforeCopy, _nevuobject_after_copy)
         self._system_callbacks.bind(BindType.Unhover, _nevuobject_on_unhover)
         self._system_callbacks.bind(BindType.Hover, _nevuobject_on_hover)
+        self._system_callbacks.bind(BindType.Scroll, _nevuobject_on_scroll)
 
     def _boot_up(self): ...
 
@@ -349,19 +354,16 @@ class NevuObject(NevuCobject):
             self.style = style
 
     def _init_objects(self):
+        self._parent_layout = None
         self._auto_sized_padding = None
         self._hover_state: HoverState = HoverState.NotHovered
-        self.z_clip_rect: Rect | None = None
         if self.animation_manager is not None:
             self.animation_manager = copy.deepcopy(self.animation_manager)
         else:
-            self.animation_manager = AnimationManager()
+            self.animation_manager = AnimationManager(warn=False)
         self._z_request: ZRequest | None = None
         if not self.kwargs.get("subtheme_role") and self.style.subtheme_role:
-                self.subtheme_role = self.style.subtheme_role
-
-    def _set_position_anim_flag(self, value: bool):
-        self._has_position_anim = value
+            self.subtheme_role = self.style.subtheme_role
 
     def _init_booleans(self):
         self._start_pos_relative_placed = isinstance(self.start_pos, list | tuple) and len(self.start_pos) == 2 \
@@ -376,9 +378,9 @@ class NevuObject(NevuCobject):
     def _init_start(self):
         if self.booted: return  # noqa: E701
         self._wait_mode = False
-        self._template.size = list(self._template.size) # type: ignore
+        self._template.size = list(self._template.size)  # type: ignore
         for i, item in enumerate(self._template.size):
-            self._template.size[i] = self._handle_size_rules(item)
+            self._template.size[i] = self._handle_size_rules(item, i)
         if not self._wait_mode:
             self._lazy_init_wrapper(**self._template.__dict__)
 
@@ -400,21 +402,27 @@ class NevuObject(NevuCobject):
         self.set_coordinates(self.start_pos)
 
     def _handle_size_rules(
-        self, number: _SizeRule | float
+        self, number: _SizeRule | float, pos: int = 0
     ) -> _SizeRule | int | float:
         if isinstance(number, _SizeRule):
             if type(number) is Px:
                 return number.value
             elif type(number) is Auto:
                 self._auto_sized = True
-                self._auto_sized_padding = number.value
-                if isinstance(self._auto_sized_padding, int | float):
-                    self._auto_sized_padding = (number.value, number.value)
+                val = number.value
+                if isinstance(val, (tuple, list)) and len(val) >= 2:
+                    self._auto_sized_padding = (val[0], val[1])
+                elif isinstance(val, (int, float)):
+                    if not hasattr(self, "_auto_sized_padding") or self._auto_sized_padding is None:
+                        self._auto_sized_padding = [val, val]
+                    else:
+                        self._auto_sized_padding = list(self._auto_sized_padding)
+                        self._auto_sized_padding[pos] = val
+                        self._auto_sized_padding = tuple(self._auto_sized_padding)
                 return 1
             else:
                 self._wait_mode = True
         return number
-
     # === Utils ===
 
     def _set_inner_active(self, value: bool):
@@ -424,22 +432,19 @@ class NevuObject(NevuCobject):
             self._sended_z_link = False
             nevu_state.window.mark_dirty()
 
-    def _start_pos_setter(self, value: Vector2 | list | tuple | None):
-        return value
-
     def _coordinates_setter(self, coordinates: Vector2) -> bool:
         return True
 
-    def _get_correct_color(self, color: Annotations.rgb_like_color, hover_state: HoverState, modify_amount: float = 0.2) -> Annotations.rgb_like_color:
+    def _get_correct_color(self, current_color: Annotations.rgb_like_color, hover_state: HoverState, modify_amount: float = 0.2) -> Annotations.rgb_like_color:
         if (
             hover_state == HoverState.Clicked
             and not self.invert_on_click
             and self.clickable
         ):
-            color = Color.lighten(color, modify_amount)
+            current_color = color.lighten(current_color, modify_amount)
         elif hover_state == HoverState.Hovered and self.hoverable:
-            color = Color.darken(color, modify_amount)
-        return color
+            current_color = color.darken(current_color, modify_amount)
+        return current_color
 
     @property
     def wait_mode(self):
@@ -533,7 +538,11 @@ class NevuObject(NevuCobject):
     def visible(self, value: bool):
         self._visible = value
         self._on_visible_set()
-        nevu_state.window.mark_dirty()
+        if not value:
+            self._clear_z_request()
+            self._sended_z_link = False
+        if nevu_state.window is not None:
+            nevu_state.window.mark_dirty()
 
     def _on_visible_set(self): ...
 
@@ -597,7 +606,7 @@ class NevuObject(NevuCobject):
     # === Cache update functions ===
 
     def _update_size(self):
-        return self.rel(self.size)
+        return self.rel(self.size or Vector2())
 
     # === Clone functions ===
 
@@ -617,13 +626,13 @@ class NevuObject(NevuCobject):
         return self.clone()
 
         # === Kill functions ===
-
     def _clear_z_request(self):
+        if self._hover_state != HoverState.NotHovered:
+            self._unhover()
         if hasattr(self, "_z_request") and self._z_request:
             window = nevu_state.window
             if window is not None and window.z_system is not None:
                 window.z_system.drop_request(self._z_request)
-            self._z_request.on_click_func = None
             self._z_request.on_click_func = None
             self._z_request.on_hover_func = None
             self._z_request.on_scroll_func = None
@@ -632,15 +641,15 @@ class NevuObject(NevuCobject):
             self._z_request.on_keyup_abandon_func = None
             self._z_request = None
 
-    def kill(self):
-        self._kill_base()
-        self._kill_end()
+    def _clear_rl_specific(self): ...
 
     def _kill_base(self):
         self._dead = True
         self.visible = False
         self.active = False
-        self.is_active = False
+        if self.get_param("is_active") is not None:
+            self.is_active = False
+        self._parent_layout = None
 
         self._clear_z_request()
         if hasattr(self, "renderer"):
@@ -648,6 +657,10 @@ class NevuObject(NevuCobject):
         if self._sended_z_link and nevu_state.window:
             nevu_state.window.z_system.mark_dirty()
             self._z_request = None # type: ignore
+
+    def kill(self):
+        self._kill_base()
+        self._kill_end()
 
     def _kill_end(self): ...
 
@@ -661,3 +674,12 @@ def _nevuobject_after_copy(self: NevuObject, clone: NevuObject) -> None:
     clone._active = self._active
     clone._visible = self._visible
     clone._dead = self._dead
+
+def _nevuobject_on_scroll(self: NevuObject, side: bool):
+    if getattr(self, "_handles_scroll", False):
+        return
+    if getattr(self, "multi_line", False) and getattr(self, "max_scroll_y", 0) > 0:
+        return
+    parent = getattr(self, "_parent_layout", None)
+    if parent is not None:
+        parent._run_callbacks(BindType.Scroll, side)

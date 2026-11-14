@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 from nevu_ui.core.size import _SizeRule
 from nevu_ui.core.state import nevu_state
 
-VERSION = "0.9.1"
+VERSION = "0.9.2"
 
 class NevuNotInitializedError(RuntimeError): ...
 
@@ -33,9 +33,10 @@ class Annotations:
     type rgba_color = tuple[int, int, int, int]
     type rgb_like_color = rgb_color | rgba_color
     type hsl_color = tuple[float, float, float]
-    type hsla_color = tuple[float, float, float, int]
-    type hex_color = str
-    type any_color = rgb_like_color | hsl_color | hex_color
+    type hsla_color = tuple[float, float, float, float]
+    type hsl_like_color = hsl_color | hsla_color
+    #type hex_color = str
+    type any_color = rgb_like_color | hsl_like_color
 
     # === NevuObject annotation ===
     type size_item = _SizeRule | float

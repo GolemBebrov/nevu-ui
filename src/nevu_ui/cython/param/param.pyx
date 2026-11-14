@@ -28,20 +28,20 @@ cdef inline object _resolve_callable(object target) noexcept:
 cdef class Param:
     @staticmethod
     cdef Param new(str name, int layer, object value, object default, object type, object getter, object setter):
-        cdef Param constant = <Param>Param.__new__(Param)
-        constant.name = name
-        constant.value = value
-        constant.layer = layer
-        constant.default = default
-        constant.type = type
-        constant.getter = getter
-        constant.setter = setter
-        constant.flags = 0
+        cdef Param param = <Param>Param.__new__(Param)
+        param.name = name
+        param.value = value
+        param.layer = layer
+        param.default = default
+        param.type = type
+        param.getter = getter
+        param.setter = setter
+        param.flags = 0
         if setter is not None:
-            constant.flags |= ParamFlagSetter
+            param.flags |= ParamFlagSetter
         if getter is not None:
-            constant.flags |= ParamFlagGetter
-        return constant
+            param.flags |= ParamFlagGetter
+        return param
 
     def __init__(self, str name, int layer, object value, object default, object type, object getter=None, object setter=None):
         self.name = name
@@ -98,8 +98,8 @@ cdef class Param:
 
     cdef inline str _get_cool_error_message(self) noexcept:
         if isinstance(self.type, tuple):
-            return ', '.join([t.__name__ for t in self.type])
-        return self.type.__name__
+            return ', '.join([getattr(t, '__name__', str(t)) for t in self.type])
+        return getattr(self.type, '__name__', str(self.type))
 
     cpdef void reset(self):
         self.set(self.default)

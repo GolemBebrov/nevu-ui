@@ -24,7 +24,7 @@ from nevu_ui.core.size.rules import (
 from nevu_ui.core.state import nevu_state
 from nevu_ui.cython.surface.surface import Surface
 from nevu_ui.cython.vector2.vector2 import Vector2
-from nevu_ui.presentation.style import Style, default_style
+from nevu_ui.presentation.style import Style
 
 if TYPE_CHECKING:
     from nevu_ui.components.nevuobject import NevuObject
@@ -222,6 +222,7 @@ class CanvasLineData(_CanvasDataType):
             color=color,
             width=self.width,
             relative=self.relative,
+            relm=root.relm(1),
         )
 
     def copy(self) -> CanvasLineData:
@@ -320,11 +321,11 @@ class CanvasCircleData(_CanvasDataType):
 class Canvas:
     def __init__(
         self,
-        style: Style = default_style,
+        style: Style | None = None,
         content: list[_CanvasDataType] | None = None,
         single_instance: bool = False,
     ):
-        self._base_style = style
+        self._base_style = style or Style()
         self._content: list[_CanvasDataType] = [item.copy() for item in content] if content else []
         self._root: ReferenceType[NevuObject] | None = None
         self.single_instance = single_instance
@@ -451,7 +452,7 @@ class Canvas:
         if size is not None:
             item.raw_size = copy.deepcopy(size)
         if style is not None:
-            item.style = style
+            item.style = style or item.style
         if relative is not None:
             item.relative = relative
         item.resolve(self._valid_root())
@@ -481,7 +482,7 @@ class Canvas:
         if color is not None:
             item.color = color
         if style is not None:
-            item.style = style
+            item.style = style or item.style
         if relative is not None:
             item.relative = relative
         item.resolve(self._valid_root())
@@ -505,7 +506,7 @@ class Canvas:
         if radius is not None:
             item.raw_radius = copy.deepcopy(radius)
         if style is not None:
-            item.style = style
+            item.style = style or item.style
         if relative is not None:
             item.relative = relative
         item.resolve(self._valid_root())

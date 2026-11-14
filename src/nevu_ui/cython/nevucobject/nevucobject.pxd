@@ -25,11 +25,9 @@ cdef class NevuCobject:
     cdef public dict _params_map, _param_links
     cdef public Cache cache
     cdef public long long _update_stamp
-    cdef public bint _has_position_anim
     cdef public _NvSurfBase surface
     cdef uint8_t _custom_flags
     cdef public ZRequest _z_request
-    cdef list specific_cache_whitelist
     cpdef void _set_node_type(self, short node_type)
     cpdef list _get_param_names(self)
     cpdef Param _find_param(self, str name)
@@ -38,9 +36,6 @@ cdef class NevuCobject:
     cpdef Param get_param(self, str name)
     cpdef object get_param_value(self, str name)
     cpdef void set_param_value(self, str name, object new_value)
-    cpdef double relx_custom(self, double num, double min, double max)
-    cpdef double rely_custom(self, double num, double min, double max)
-    cpdef double relm_custom(self, double num, double min, double max)
     cpdef void _draw_start(self)
     cpdef void _draw_main(self)
     cpdef void _draw_end(self)

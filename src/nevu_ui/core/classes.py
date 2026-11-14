@@ -1,10 +1,12 @@
 import contextlib
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, TypeGuard
+from typing import TYPE_CHECKING
+from .size import _SizeRule
 
 if TYPE_CHECKING:
     from nevu_ui import Vector2
-from nevu_ui.core.enums import Backend
+from nevu_ui.core.annotations import Annotations
+from nevu_ui.core.enums import Align, Backend
 
 
 class ConfigType:
@@ -119,23 +121,17 @@ class GlobalsBase:
 nevu_globals = {}
 
 # Namespace
-
-
-
-class SurfaceLike:
-    def blit(self, surface, dest): ...
-    def fill(self, color): ...
-    @property
-    def width(self) -> int | float: ...
-    @property
-    def height(self) -> int | float: ...
-    @staticmethod
-    def as_type(type: Any) -> TypeGuard["SurfaceLike"]:
-        return True
+@dataclass
+class FlexConfig:
+    max_size: Annotations.nevuobj_size | None = None
+    min_size: Annotations.nevuobj_size | None = None
+    grow: float = 0
+    shrink: float = 0
+    align_self: Align | None = None
+    basis: float | _SizeRule | None = None
 
 class Element:
-    __slots__ = ["id", "text"]
-
+    __slots__ = ("id", "text")
     def __init__(self, text, id: str | None = None):
         self.text = text
         self.id = id

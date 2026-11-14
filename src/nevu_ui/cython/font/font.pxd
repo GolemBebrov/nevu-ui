@@ -2,7 +2,7 @@ cimport cython
 
 from nevu_ui.cython.vector2.vector2 cimport Vector2
 from nevu_ui.cython.surface.surface cimport _NvSurfBase
-from nevu_ui.presentation.color import Color
+from nevu_ui.presentation import color
 
 cdef Vector2 __pos_default
 

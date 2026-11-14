@@ -9,7 +9,6 @@ from nevu_ui.core.state import nevu_state
 from nevu_ui.cython.cache.cache import Cache
 from nevu_ui.cython.font.font import Font
 from nevu_ui.cython.surface.surface import Surface
-from nevu_ui.presentation.style import default_style
 from nevu_ui.core.size.rules import (
     CFill,
     CFillH,
@@ -19,8 +18,9 @@ from nevu_ui.core.size.rules import (
     FillW,
 )
 from nevu_ui.core.size import _SizeRule
+from nevu_ui.presentation.style import Style
 if TYPE_CHECKING:
-    from nevu_ui.presentation.style import Style
+
     from nevu_ui.rendering.raylib.gradient import ClickGradient
 from nevu_ui.core.annotations import Annotations
 from nevu_ui.core.error_formats import format_nvtype_renderer_error
@@ -30,7 +30,7 @@ from nevu_ui.core.enums import (
     RenderReturnType,
 )
 from nevu_ui.cython.vector2 import Vector2
-from nevu_ui.presentation.color import Color
+from nevu_ui.presentation import color
 
 _bg_surface_pool: dict[tuple[int, int], tuple] = {}
 
@@ -48,7 +48,7 @@ class _BaseCoreNamespace(ABC):
     def get_font(
         self,
         *,
-        style: Style = default_style,
+        style: Style | None = None,
         cache: Cache | None = None,
 
         size: int | None = None,
@@ -58,7 +58,7 @@ class _BaseCoreNamespace(ABC):
         relm: float | None = None,
         container_size: Vector2 | None = None,
     ) -> tuple[Font, int]:
-
+        style = style or Style()
         font_name = path or style.font_name
         font_size = size if size is not None else round(self.get_font_size(style, relative=relative, relm=relm, container_size=container_size))
 
@@ -70,7 +70,7 @@ class _BaseCoreNamespace(ABC):
         self,
         size: Annotations.vec2_like_v,
         *,
-        clear_color: Annotations.rgb_like_color | None = Color.Blank,
+        clear_color: Annotations.rgb_like_color | None = color.Blank,
         normalize_color: bool = True,
     ) -> Surface:
         surface = Surface(size)
@@ -86,8 +86,8 @@ class _BaseCoreNamespace(ABC):
         pos: Annotations.vec2_like_v,
         size: Annotations.vec2_like_v,
         *,
-        color: Annotations.rgb_like_color = Color.White,
-        style: Style = default_style,
+        color: Annotations.rgb_like_color = color.White,
+        style: Style | None = None,
     ) -> None: raise NotImplementedError
 
     @abstractmethod
@@ -101,8 +101,8 @@ class _BaseCoreNamespace(ABC):
         radius: Annotations.rad_like | None = None,
         relative: bool = False,
         relm: float | None  = None,
-        color: Annotations.rgb_like_color = Color.White,
-        style: Style = default_style,
+        color: Annotations.rgb_like_color = color.White,
+        style: Style | None = None,
     ) -> None: raise NotImplementedError
 
     @abstractmethod
@@ -117,7 +117,7 @@ class _BaseCoreNamespace(ABC):
         self,
         text: str,
         *,
-        style: Style = default_style,
+        style: Style | None = None,
         cache: Cache | None = None,
         relative = False,
         relm: float | None = None,
@@ -171,8 +171,9 @@ class _BaseCoreNamespace(ABC):
         *,
         line_height_px: int,
         half_leading: float,
-        style = default_style,
+        style: Style | None = None,
     ):
+        style = style or Style()
         match style.text_align_x:
             case Align.CENTER: dx = (block_width - line_width) / 2
             case Align.RIGHT:  dx = block_width - line_width
@@ -189,7 +190,7 @@ class _BaseCoreNamespace(ABC):
         *,
         max_width: float = float("inf"),
         separator: str = " ",
-        style: Style = default_style,
+        style: Style | None = None,
         literal_newline_support: bool = True,
         cache: Cache | None = None,
         relative: bool = False,
@@ -197,6 +198,7 @@ class _BaseCoreNamespace(ABC):
         font: Any | None = None,
         font_size: int | None = None,
     ) -> list[str]:
+        style = style or Style()
         if max_width <= 0:
             raise ValueError("max_width must be greater than zero.")
         if math.isnan(max_width):
@@ -280,17 +282,19 @@ class _BaseCoreNamespace(ABC):
         color: Annotations.rgb_like_color
     ) -> Annotations.rgba_color:
         if len(color) == 3:
-            return color[0], color[1], color[2], 255
-        return color
+            return int(color[0]), int(color[1]), int(color[2]), 255
+        return int(color[0]), int(color[1]), int(color[2]), int(color[3])
 
     def align_inner_rect(
         self,
         container_rect: Annotations.rect_like,
         inner_size: Annotations.vec2_like_v,
         *,
-        style: Style = default_style,
+        style: Style | None = None,
         strict_size = True,
     ) -> Vector2:
+        style = style or Style()
+
         result_x = container_rect[0]
         result_y = container_rect[1]
 
@@ -333,7 +337,7 @@ class _BaseCall:
 class DrawBgCall(_BaseCall):
     bg_color: Annotations.rgba_color
     border_color: Annotations.rgba_color | None = None
-    style: Style = default_style
+    style: Style | None = None
     cache: Cache | None = None
 
     gradient_support: bool = False
@@ -346,7 +350,7 @@ class DrawBgCall(_BaseCall):
 @dataclass(kw_only=True, slots=True, unsafe_hash=True)
 class DrawBaseCall(_BaseCall):
     color: Annotations.rgba_color
-    style: Style = default_style
+    style: Style | None = None
     cache: Cache | None = None
 
     gradient_support: bool = False
@@ -361,7 +365,7 @@ class DrawTextCall(_BaseCall):
     text: str
 
     cache: Cache | None = None
-    style: Style = default_style
+    style: Style | None = None
     font_size: int | None = None
     color: Annotations.rgba_color | None = None
     max_size: Vector2 | None = None
@@ -383,23 +387,16 @@ class DrawEffectsCall(_BaseCall):
 @dataclass(kw_only=True, slots=True)
 class DrawBordersCall(_BaseCall):
     original_surface: Surface
-    style: Style = default_style
+    style: Style | None = None
     color: Annotations.rgba_color | None = None
     glassy: bool = False
 
 
 class BaseRenderer(ABC):
-    __slots__ = [
-        "_key_to_func",
-        "_pipeline",
-        "_root",
-        "core",
-        "release",
-        "unsafe",
-    ]
+    __slots__ = ("core",)
 
     def _get_unexpected_error(self, error: Exception, func_name: str):
-        raise ValueError(
+        return ValueError(
             format_nvtype_renderer_error(
                 f"unexpected error - '{error}'", func_name
             )
@@ -425,7 +422,7 @@ class BaseRenderer(ABC):
                 case _:
                     raise ValueError(f"Invalid return type: {return_type}")
         except Exception as e:
-            raise self._get_unexpected_error(e, "run_base")
+            raise self._get_unexpected_error(e, "run_base") from None
 
     def run_borders(self, call: DrawBordersCall):
         return_type = call.return_type
@@ -443,7 +440,7 @@ class BaseRenderer(ABC):
                 case _:
                     raise ValueError(f"Invalid return type: {return_type}")
         except Exception as e:
-            raise self._get_unexpected_error(e, "run_text")
+            raise self._get_unexpected_error(e, "run_borders") from None
 
     def run_text(self, call: DrawTextCall):
         return_type = call.return_type
@@ -465,7 +462,7 @@ class BaseRenderer(ABC):
                 case _:
                     raise ValueError(f"Unknown return type: {return_type}")
         except Exception as e:
-            raise self._get_unexpected_error(e, "run_text")
+            raise self._get_unexpected_error(e, "run_text") from None
 
     def run_effects(self, call: DrawEffectsCall):
         core = self.core
@@ -488,7 +485,7 @@ class BaseRenderer(ABC):
                 case _:
                     raise ValueError(f"Invalid return type: {return_type}")
         except Exception as e:
-            raise self._get_unexpected_error(e, "run_effects")
+            raise self._get_unexpected_error(e, "run_effects") from None
 
     def run_bg(self, call: DrawBgCall):
         return_type = call.return_type
@@ -496,7 +493,7 @@ class BaseRenderer(ABC):
             pos=call.pos,
             size=call.size,
             color=call.bg_color,
-            style=call.style,
+            style=call.style or Style(),
             cache=call.cache,
             gradient_support=call.gradient_support,
             image_support=call.image_support,
@@ -509,7 +506,7 @@ class BaseRenderer(ABC):
             pos=call.pos,
             size=call.size,
             color=call.border_color,
-            style=call.style,
+            style=call.style or Style(),
         )
         try:
             match return_type:
@@ -517,9 +514,10 @@ class BaseRenderer(ABC):
                     surface = call.modify_object
                     if surface is None:
                         raise ValueError("Modify return type selected but no modify_object provided.")
+                    surface.clear(color.Blank)
                     self._base_draw(surface, base_call)
                     result_surface = surface.copy()
-                    borders_call.original_surface = surface
+                    borders_call.original_surface = result_surface
                     self._borders_draw(surface, borders_call)
 
                 case RenderReturnType.CreateNew:
@@ -529,15 +527,17 @@ class BaseRenderer(ABC):
                         pair = (self.core.create_surface(call.size), self.core.create_surface(call.size))
                         _bg_surface_pool[key] = pair
                     surface, result_surface = pair
+                    surface.clear(color.Blank)
+                    result_surface.clear(color.Blank)
                     self._base_draw(surface, base_call)
                     borders_call.original_surface = surface
                     self._borders_draw(result_surface, borders_call)
-                    return result_surface
+                    return result_surface.copy()
 
                 case _:
                     raise ValueError(f"Invalid return type: {return_type}")
         except Exception as e:
-            raise self._get_unexpected_error(e, "run_base")
+            raise self._get_unexpected_error(e, "run_bg") from None
 
     @abstractmethod
     def _get_core_namespace(self) -> _BaseCoreNamespace:

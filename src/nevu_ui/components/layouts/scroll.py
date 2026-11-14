@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import weakref
-from abc import ABC
 from typing import Any, TypeGuard, Unpack
 
 from nevu_ui.components._typehints import _AlignTemplate, _ScrollableKwargs
@@ -12,6 +11,7 @@ from nevu_ui.core import Annotations
 from nevu_ui.core.error_formats import format_nvtype_nvobject_error
 from nevu_ui.core.enums import (
     Align,
+    AnimType,
     BindType,
     CustomFunctions,
     HoverState,
@@ -19,10 +19,10 @@ from nevu_ui.core.enums import (
 )
 from nevu_ui.core.state import nevu_state
 from nevu_ui.cython.logic.logic import (
-    _very_light_update_helper,
-    draw_widgets_optimized,
-    py_get_item_abs_coords,
-    rl_predraw_widgets,
+    update_items,
+    draw_items,
+    get_absolute_coordinates,
+    predraw_raylib_widgets,
 )
 from nevu_ui.cython.logic.logic import (
     scrollable_recollide_items,
@@ -37,14 +37,14 @@ from nevu_ui.utils.keys import Keys
 class ScrollBar(Widget):
     def __init__(
         self,
-        size,
-        style,
+        size: Annotations.nevuobj_size,
+        style: Style,
         orientation: Orientation,
-        master: Scroll | None = None,
-        **params: Unpack[_ScrollableKwargs],
+        master: Scroll,
+        **params,
     ):
         super().__init__(size, style, **params)
-        self.master: Scroll = master  # type: ignore
+        self.master: Scroll = master
         self.orientation = orientation
         self._add_custom_flags(CustomFunctions.update_main)
 
@@ -56,10 +56,10 @@ class ScrollBar(Widget):
 
     def _init_numerical(self):
         super()._init_numerical()
-        self._percentage = 0.0
+        self._percentage = 0
         self.z = 99
-        self._drag_start_mouse = 0.0
-        self._drag_start_percentage = 0.0
+        self._drag_start_mouse = 0
+        self._drag_start_percentage = 0
 
     def _init_booleans(self):
         super()._init_booleans()
@@ -68,11 +68,7 @@ class ScrollBar(Widget):
     def _init_lists(self):
         super()._init_lists()
         self.track_start_local = Vector2(0, 0)
-        self.track_start_abs = Vector2(0, 0)
         self.track_length = Vector2(0, 0)
-
-    def _orientation_to_int(self):
-        return self.orientation.axis
 
     def _system_callback_binds(self):
         super()._system_callback_binds()
@@ -86,7 +82,7 @@ class ScrollBar(Widget):
 
     @percentage.setter
     def percentage(self, value: float):
-        axis = self._orientation_to_int()
+        axis = self.orientation.axis
         self._percentage = max(0.0, min(float(value), 100.0))
         movable_area = self.track_length[axis] - self.current_size[axis]
         if movable_area <= 0:
@@ -95,16 +91,13 @@ class ScrollBar(Widget):
         path_to_add = movable_area * (self._percentage / 100.0)
         self.coordinates[axis] = self.track_start_local[axis] + path_to_add
 
-    def set_scroll_params(
-        self, start_local: Vector2, start_abs: Vector2, length: Vector2
-    ):
+    def set_scroll_params(self, start_local: Vector2, length: Vector2):
         self.track_start_local = start_local
-        self.track_start_abs = start_abs
         self.track_length = length
 
     def _update_main(self):
         super()._update_main()
-        axis = self._orientation_to_int()
+        axis = self.orientation.axis
         if self.scrolling:
             movable_area = self.track_length[axis] - self.current_size[axis]
             if movable_area > 0:
@@ -121,7 +114,8 @@ class ScrollBar(Widget):
         self.scrolling = False
 
 
-class Scroll(BaseLayout, ABC):
+class Scroll(BaseLayout):
+    _handles_scroll = True
     key_power: float | int
     scroll_power: float | int
     append_key: Any
@@ -171,8 +165,8 @@ class Scroll(BaseLayout, ABC):
 
     def _add_params(self):
         super()._add_params()
-        self._add_param("key_power", int, 5)
-        self._add_param("scroll_power", int, 5)
+        self._add_param("key_power", int | float, 5)
+        self._add_param("scroll_power", int | float, 5)
         self._add_param("inverted_scrolling", bool, False)
         self._add_param("scrollbar_relative_size", Vector2 | type(None), None)
         self._add_param("basic_alignment", Align | type(None), None)
@@ -206,6 +200,7 @@ class Scroll(BaseLayout, ABC):
 
     def _init_scroll_bar(self):
         self.scroll_bar = self._create_scroll_bar()
+        self.scroll_bar._parent_layout = self
         self._boot_scrollbar(self.scroll_bar)
 
     def _boot_up(self):
@@ -235,11 +230,11 @@ class Scroll(BaseLayout, ABC):
             self._last_known_abs_coords.x = self.absolute_coordinates.x
             self._last_known_abs_coords.y = self.absolute_coordinates.y
 
-        rl_predraw_widgets(self.collided_items, BaseLayout, Widget)
+        predraw_raylib_widgets(self.collided_items, BaseLayout, Widget)
         if self.floating_items:
-            rl_predraw_widgets(self.floating_items, BaseLayout, Widget)
+            predraw_raylib_widgets(self.floating_items, BaseLayout, Widget)
 
-        if self.actual_max_main > 0:
+        if self.actual_max_main > 0 and self.scroll_bar._changed:
             self.scroll_bar.draw()
 
     @staticmethod
@@ -247,9 +242,9 @@ class Scroll(BaseLayout, ABC):
         return isinstance(layout, Scroll)
 
     def _draw_main(self):
-        draw_widgets_optimized(self, self.collided_items, BaseLayout, Widget)
+        draw_items(self, self.collided_items, BaseLayout, Widget)
         if self.actual_max_main > 0:
-            draw_widgets_optimized(self, [self.scroll_bar], BaseLayout, Widget)
+            draw_items(self, [self.scroll_bar], BaseLayout, Widget)
 
     def _update_main(self):
         super()._update_main()
@@ -272,22 +267,31 @@ class Scroll(BaseLayout, ABC):
             scroll_bar.update()
             if old_percentage != scroll_bar.percentage:
                 self._scroll_needs_update = True
-
-        if self._scroll_needs_update:
+            if not scroll_bar.visible:
+                scroll_bar.turn_on()
+        else:
+            if scroll_bar.visible:
+                scroll_bar.turn_off()
+        has_animating_items = any(
+            item.animation_manager and item.animation_manager.get(AnimType.Position) is not None
+            for item in self.items
+        )
+        if self._scroll_needs_update or has_animating_items:
             self._update_offset()
-            _very_light_update_helper(
+            update_items(
                 self.items,
                 self.cached_coordinates or [],
                 self.first_parent_menu.absolute_coordinates,
                 self._offset,
                 self,
+                False,
             )
             self.collided_items = scrollable_recollide_items(self, self.items)
             if self.actual_max_main > 0:
                 coords = self._get_scrollbar_coordinates()
                 if coords:
                     scroll_bar.coordinates = coords
-                    scroll_bar.absolute_coordinates = py_get_item_abs_coords(self, scroll_bar)
+                    scroll_bar.absolute_coordinates = get_absolute_coordinates(self, scroll_bar)
             self._scroll_needs_update = False
         scrollable_update_collided(self.collided_items)
 
@@ -325,7 +329,7 @@ class Scroll(BaseLayout, ABC):
             new_coords[main_axis] = self.coordinates[main_axis] + current_main + (spacing * 0.5)
             new_coords[cross_axis] = self.coordinates[cross_axis] + self._get_align_offset(item, align)
             item.set_coordinates(new_coords)
-            item.absolute_coordinates = py_get_item_abs_coords(self, item)
+            item.absolute_coordinates = get_absolute_coordinates(self, item)
             current_main += item.current_size[main_axis] + spacing
 
             cached_coordinates.append(item.coordinates.copy())
@@ -333,14 +337,20 @@ class Scroll(BaseLayout, ABC):
         self.cached_coordinates = cached_coordinates
         self._update_offset()
 
-        _very_light_update_helper(
+        update_items(
             items,
             self.cached_coordinates or [],
             self.first_parent_menu.absolute_coordinates,
             self._offset,
             self,
+            False
         )
         self.collided_items = scrollable_recollide_items(self, self.items)
+        if hasattr(self, "scroll_bar") and self.scroll_bar:
+            self._update_scroll_bar()
+            coords = self._get_scrollbar_coordinates()
+            self.scroll_bar.coordinates = coords
+            self.scroll_bar.absolute_coordinates = get_absolute_coordinates(self, self.scroll_bar)
 
     def _update_start(self):
         super()._update_start()
@@ -366,14 +376,14 @@ class Scroll(BaseLayout, ABC):
         main_axis = self.orientation.axis
         cross_axis = self.orientation.cross_axis
 
-        absolute_coords = self.absolute_coordinates
+        local_coords = self.coordinates
         local_start = Vector2.from_xy(0, 0)
         assert self.scroll_bar
-        local_start[cross_axis] = (absolute_coords + self.current_size - self.scroll_bar.current_size)[cross_axis]
-        local_start[main_axis] = absolute_coords[main_axis]
+        local_start[cross_axis] = (local_coords + self.current_size - self.scroll_bar.current_size)[cross_axis]
+        local_start[main_axis] = local_coords[main_axis]
         track_length = Vector2.from_xy(0, 0)
         track_length[main_axis] = self.current_size[main_axis]
-        self.scroll_bar.set_scroll_params(local_start, absolute_coords, track_length)
+        self.scroll_bar.set_scroll_params(local_start, track_length)
 
     def _resize_content(self, resize_ratio: Vector2):
         assert self.scroll_bar
@@ -388,12 +398,13 @@ class Scroll(BaseLayout, ABC):
         self.scroll_bar.scrolling = False
         self._update_offset()
         assert self.first_parent_menu
-        _very_light_update_helper(
+        update_items(
             self.items,
             self.cached_coordinates or [],
             self.first_parent_menu.absolute_coordinates,
             self._offset,
             self,
+            False
         )
 
     def _on_item_add(self, item: NevuObject):
@@ -413,12 +424,33 @@ class Scroll(BaseLayout, ABC):
 
     def add_item(self, item: NevuObject, alignment: Align | None = None):  # type: ignore
         alignment = alignment or self.basic_alignment or Align.CENTER
-        super().add_item(item)
         self.widgets_alignment.append(alignment)
+        try:
+            super().add_item(item)
+        except Exception:
+            self.widgets_alignment.pop()
+            raise
+
+    def _on_item_kill(self, item: NevuObject) -> None:
+        super()._on_item_kill(item)
+        if item in self.items:
+            idx = self.items.index(item)
+            if idx < len(self.widgets_alignment):
+                self.widgets_alignment.pop(idx)
+        if item in self.collided_items:
+            self.collided_items.remove(item)
 
     def clear(self):
+        for item in list(self.items):
+            item.kill()
         self.items.clear()
         self.widgets_alignment.clear()
+        self.collided_items.clear()
+        self.cached_coordinates = None
+        self._offset = Vector2()
+        if hasattr(self, "scroll_bar") and self.scroll_bar:
+            self.scroll_bar._percentage = 0.0
+        self._scroll_needs_update = True
         self._restart_coordinates()
 
     def set_items_style(self, style: Style):
@@ -440,7 +472,7 @@ class Scroll(BaseLayout, ABC):
         else:
             percentage = self.scrollbar_relative_size
         size = self.size / 100 * percentage
-        return ScrollBar(size, self.style, self.orientation, weakref.ref(self))
+        return ScrollBar(size, self.style(), self.orientation, weakref.ref(self))
 
     def _kill_base(self):
         super()._kill_base()
@@ -451,17 +483,16 @@ class Scroll(BaseLayout, ABC):
 
     def _get_scrollbar_coordinates(self) -> Vector2:
         main_axis = self.orientation.axis
+        cross_axis = self.orientation.cross_axis
         main_ratio = self._resize_ratio[main_axis]
         coordinates = self.coordinates
         size = self.size
         scroll_bar = self.scroll_bar
         assert scroll_bar
-        coordinates = Vector2.from_xy(
-            coordinates.x + self.relx(size.x - scroll_bar.size.x),
-            coordinates.y
-        )
-        coordinates[main_axis] = coordinates[main_axis] + main_ratio * (size.y - scroll_bar.size.y) / 100 * scroll_bar.percentage
-        return coordinates
+        res = Vector2.from_xy(0, 0)
+        res[cross_axis] = coordinates[cross_axis] + self.rel(size - scroll_bar.size)[cross_axis]
+        res[main_axis] = coordinates[main_axis] + main_ratio * (size[main_axis] - scroll_bar.size[main_axis]) / 100.0 * scroll_bar.percentage
+        return res
 
     def _update_offset(self):
         main_axis = self.orientation.axis
@@ -474,6 +505,9 @@ class Scroll(BaseLayout, ABC):
         assert nevu_state.window, "Window is not initialized"
         main_axis = self.orientation.axis
         main_ratio = self._resize_ratio[main_axis]
+        if main_ratio <= 0:
+            self.actual_max_main = 0
+            return
         spacing = self.spacing * main_ratio
         total_height = spacing
 
@@ -529,7 +563,7 @@ def _scrollable_on_scroll(self: Scroll, side: bool):
     self.scroll_bar._percentage = max(0, min(100, self.scroll_bar._percentage))
 
     if self.scroll_bar._percentage == old_percentage:
-        if self._parent_layout is not None and isinstance(self._parent_layout, Scroll):
+        if self._parent_layout is not None:
             self._parent_layout._run_callbacks(BindType.Scroll, side)
         return
 

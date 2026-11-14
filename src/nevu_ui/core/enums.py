@@ -1,5 +1,3 @@
-from collections.abc import Callable
-from dataclasses import dataclass
 from enum import Enum, IntEnum, IntFlag, StrEnum, auto
 
 # Svalka
@@ -14,10 +12,6 @@ class CustomFunctions(IntFlag):
     draw_main = 1 << 4
     draw_end = 1 << 5
 
-class CanvasType(StrEnum):
-    Rect = "rect"
-    Line = "line"
-    Circle = "circle"
 
 class FlexJustify(StrEnum):
     Start = "start"
@@ -72,6 +66,7 @@ class Align(StrEnum):
     RIGHT = "right"
     TOP = "top"
     BOTTOM = "bottom"
+    STRETCH = "stretch"
 
 
 class Malign(Enum):
@@ -90,18 +85,7 @@ class ParamLayer(IntEnum):
     Complicated = 3
     Lazy = 4
 
-
-class AnimationManagerState(IntEnum):
-    Start = 0
-    Continuous = 1
-    Transition = 2
-    Idle = 3
-    Ended = 4
-
-
-class GradientConfig(StrEnum):
-    pass
-
+class GradientConfig(StrEnum): ...
 
 class LinearSide(GradientConfig):
     Right = "to right"
@@ -112,7 +96,6 @@ class LinearSide(GradientConfig):
     TopLeft = "to top left"
     BottomRight = "to bottom right"
     BottomLeft = "to bottom left"
-
 
 class RadialPosition(GradientConfig):
     Center = "center"
@@ -157,40 +140,13 @@ class CacheType(Enum):
     RlFont = auto()
     ClickTexture = auto()
 
-class AnimationType(Enum):
-    Color = auto()
+class AnimType(Enum):
+    BgColor = auto()
+    BdColor = auto()
+    TextColor = auto()
     Size = auto()
     Position = auto()
-    Rotation = auto()
     Opacity = auto()
-
-
-#DEPRECATEEEEEEEED..
-# фу бяка тупая
-class EventType(Enum):
-    Resize = auto()
-    Render = auto()
-    Draw = auto()
-    Update = auto()
-    OnKeyUp = auto()
-    OnKeyDown = auto()
-    OnKeyUpAbandon = auto()
-    OnHover = auto()
-    OnUnhover = auto()
-    OnMouseScroll = auto()
-    OnCopy = auto()
-    OnChange = auto()
-
-
-class ZRequestType(Enum):
-    HoverCandidate = auto()
-    Action = auto()
-    Unclick = auto()
-
-
-class ScrollBarType(StrEnum):
-    Vertical = "vertical"
-    Horizontal = "horizontal"
 
 
 class HoverState(Enum):

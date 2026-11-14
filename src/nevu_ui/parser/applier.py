@@ -124,12 +124,19 @@ def _get_styles_from_verified_dict(styles_dict):
         kwargs = value.copy()
         if "colortheme" in kwargs:
             theme_name = kwargs["colortheme"]
-            theme_obj = colorthemes_buffer.final_init.get(theme_name)
+            theme_obj = colorthemes_buffer.final_init.get(theme_name) or (
+                getattr(ColorThemeLibrary, theme_name, None)
+                if theme_name in getattr(ColorThemeLibrary, "_names", [])
+                else None
+            )
             if not theme_obj:
                 raise ValueError(
                     f"Colortheme '{theme_name}' is not defined, but required in style '{name}'"
                 )
             kwargs["colortheme"] = theme_obj
+        for k in ("border_radius", "br", "background_color", "bg_color", "border_color", "bd_color", "font_color", "fn_color"):
+            if k in kwargs and isinstance(kwargs[k], list):
+                kwargs[k] = tuple(kwargs[k])
 
         styles[name] = Style(**kwargs)
 
@@ -377,7 +384,11 @@ def check_colortheme(key, value):
 
 def check_style(key, value):
     assert styles_buffer
+    if isinstance(value, str):
+        styles_buffer.lazy_init[key] = value
+        return True, f"Added {key} to lazy init"
     is_lazy = False
+    sample_params = Style()._params
     for param, _val in value.items():
         param = param.strip()
         if "_" in param:
@@ -398,14 +409,15 @@ def check_style(key, value):
                 )
             continue
 
-        result = Style().parameters_dict.get(param)
+        param_obj = sample_params.get(param)
 
-        if not result:
+        if not param_obj:
             return False, f"{param} is not in Style parameters"
 
-        _, validator_name = result  # type: ignore
-        validator = validator_name
-        if not validator(_val)[0]:
+        check_val = tuple(_val) if isinstance(_val, list) else _val
+        if not isinstance(check_val, param_obj.value_type):
+            return False, f"{_val} has invalid type for {param}, expected {param_obj.value_type}"
+        if param_obj.validator and not param_obj.validator(check_val)[0]:
             return False, f"{_val} is not valid for {param}"
 
     if not is_lazy:
@@ -414,7 +426,6 @@ def check_style(key, value):
         styles_buffer.lazy_init[key] = value
 
     return True, f"{value} is valid for {key}"
-
 
 def _is_color_value(value):
     if not isinstance(value, (list, tuple)):

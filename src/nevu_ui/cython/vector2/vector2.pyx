@@ -1,13 +1,11 @@
 cimport cython
 import nevu_ui.core.modules as md
-from libc.math cimport sqrt
 from cpython.list cimport PyList_GET_ITEM
 from cpython.tuple cimport PyTuple_GET_ITEM
 
 @cython.freelist(1000)
 @cython.final
 cdef class Vector2:
-
     @property
     def x(self) -> float:
         return self.data.x
@@ -225,36 +223,31 @@ cdef class Vector2:
     cpdef void sadd(self, Vector2 new_vec, Vector2 old_vec):
         self._sadd(new_vec, old_vec)
 
-    def to_int(self) -> Vector2:
-        self.data.x = <int>self.data.x
-        self.data.y = <int>self.data.y
-        return self
-
-    def get_int(self) -> Vector2:
-        return Vector2.new(<int>self.data.x, <int>self.data.y)
-
-    def to_round(self) -> Vector2:
+    def round(self) -> Vector2:
         self.data.x = round(self.data.x)
         self.data.y = round(self.data.y)
         return self
 
-    def get_round(self) -> Vector2:
+    @property
+    def rounded(self) -> Vector2:
         return Vector2.new(round(self.data.x), round(self.data.y))
 
-    def to_abs(self) -> Vector2:
+    def absolute(self) -> Vector2:
         self.data.x = abs(self.data.x)
         self.data.y = abs(self.data.y)
         return self
 
-    def get_abs(self) -> Vector2:
+    @property
+    def absoluted(self) -> Vector2:
         return Vector2.new(abs(self.data.x), abs(self.data.y))
 
-    def to_neg(self) -> Vector2:
+    def negative(self) -> Vector2:
         self.data.x = -self.data.x
         self.data.y = -self.data.y
         return self
 
-    def get_neg(self) -> Vector2:
+    @property
+    def negated(self) -> Vector2:
         return Vector2.new(-self.data.x, -self.data.y)
 
     def get_int_tuple(self) -> tuple[int, int]:
@@ -262,9 +255,6 @@ cdef class Vector2:
 
     cdef tuple c_get_int_tuple(self):
         return (<int>self.data.x, <int>self.data.y)
-
-    def to_pygame(self):
-        return md.pygame.Vector2(self.data.x, self.data.y)
 
     cpdef Vector2 copy(self):
         return Vector2.new(self.data.x, self.data.y)
@@ -291,12 +281,13 @@ cdef class Vector2:
         return nv_vector2_length(self.data)
 
     def normalize(self) -> Vector2:
-        cdef nv_vector2_t res = nv_vector2_normalize(self.data)
-        return Vector2.new(res.x, res.y)
-
-    def normalize_ip(self) -> Vector2:
         self.data = nv_vector2_normalize(self.data)
         return self
+
+    @property
+    def normalized(self) -> Vector2:
+        cdef nv_vector2_t res = nv_vector2_normalize(self.data)
+        return Vector2.new(res.x, res.y)
 
     def distance_to(self, Vector2 other):
         return nv_vector2_distance_to(self.data, other.data)

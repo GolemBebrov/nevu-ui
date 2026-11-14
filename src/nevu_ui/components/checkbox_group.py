@@ -47,9 +47,18 @@ class CheckBoxGroup:
     # === Functions ===
 
     def add_checkbox(self, checkbox: CheckBox):
-        checkbox._system_callbacks.bind(BindType.Click, self._on_toggle_single_wrapper if self.single_select else self._on_toggle_multiple_wrapper, weak=True)
-        checkbox._system_callbacks.bind(BindType.Copy, self._sub_add, weak=True)
+        if checkbox in self._content:
+            return
+        checkbox._system_callbacks.bind(
+            BindType.Click,
+            self._on_toggle_single_wrapper if self.single_select else self._on_toggle_multiple_wrapper,
+            weak=True,
+        )
+        checkbox._system_callbacks.bind(BindType.BeforeCopy, self._on_checkbox_copy, weak=True)
         self._sub_add(checkbox)
+
+    def _on_checkbox_copy(self, original: CheckBox, clone: CheckBox):
+        self.add_checkbox(clone)
 
     def _sub_add(self, checkbox: CheckBox):
         self._content.append(checkbox)

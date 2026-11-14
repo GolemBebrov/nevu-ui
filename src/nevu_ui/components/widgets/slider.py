@@ -1,4 +1,4 @@
-from typing import Any, Unpack, overload
+from typing import Unpack, overload
 
 import nevu_ui.core.modules as md
 from nevu_ui.components._typehints import (
@@ -23,9 +23,7 @@ from nevu_ui.presentation.style import Style
 from nevu_ui.rendering import DrawTextCall
 from nevu_ui.utils import mouse
 
-
 class Slider(ProgressBar):
-    bar_style: Style | None
     padding_x: int
     padding_y: int
     step: int | float
@@ -51,35 +49,24 @@ class Slider(ProgressBar):
         self,
         size: Annotations.nevuobj_size = None,
         style: Annotations.nevuobj_style = None,
-        **params: Unpack[_SliderKwargs] | Any,
+        **params: Unpack[_SliderKwargs],
     ):
         super().__init__(size, style, **params)
 
     def _init_booleans(self):
         super()._init_booleans()
-        self.hoverable = True
-        self._add_custom_flags(
-            CustomFunctions.draw_main | CustomFunctions.update_main
-        )
-
-    def _init_flags(self):
-        super()._init_flags()
         self.dragging = False
-
-    def _init_objects(self):
-        super()._init_objects()
-        self._text_rect = None
-        self._text_surface = None
+        self._add_custom_flags(CustomFunctions.draw_main | CustomFunctions.update_main)
 
     def _add_params(self):
         super()._add_params()
         self._add_param("step", int | float, 1)
-        self._add_param("bar_style", Style | type(None), None)
         self._add_param("padding_x", int, 10)
         self._add_param_link("pad_x", "padding_x")
         self._add_param("padding_y", int, 10)
         self._add_param_link("pad_y", "padding_y")
         self._add_param("bar_font_role", TupleColorRole, TupleColorRole.InversePrimary)
+        self._change_param_default("hoverable", True)
 
     def _system_callback_binds(self):
         super()._system_callback_binds()
@@ -91,8 +78,7 @@ class Slider(ProgressBar):
 
     def _current_value_setter(self, value):
         val = super()._current_value_setter(value)
-        if hasattr(self, "cache"):
-            self.cache.clear_selected(whitelist=[CacheType.TextArgs])
+        self.cache.clear_selected(whitelist=[CacheType.TextArgs])
         return val
 
     def _update_main(self):
@@ -131,11 +117,14 @@ class Slider(ProgressBar):
             DrawTextCall(
                 size=self.current_size,
                 text=str(round(self.current_value)),
+                style=self.style,
+                cache=self.cache,
+                relm=self.relm(1),
                 color=self.style.colortheme.get_tuple(self.bar_font_role),
                 return_type=RenderReturnType.CreateNew,
             )
         )
-        return result
+        return self.adjust_text_rect(result[0]), result[1]
 
     def adjust_text_rect(self, rect):
         result_rect = Rect(rect)
@@ -168,13 +157,11 @@ class Slider(ProgressBar):
     def _draw_text(self):
         surface = self.surface
         text_rect, text_surface = self.cache.get_or_exec(CacheType.TextArgs, self._create_text)
-        coords = (text_rect[0], text_rect[1])
-
         is_raylib = nevu_state.window.renderer_type.raylib
         with surface:
             if is_raylib:
                 begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
-            surface.blit(text_surface, coords)
+            surface.blit(text_surface, (text_rect[0], text_rect[1]))
             if is_raylib:
                 end_blend_mode()
 
@@ -182,8 +169,7 @@ class Slider(ProgressBar):
         super()._draw_main()
         if not self.surface:
             return
-        text_rect, text_surface = self.cache.get_or_exec(CacheType.TextArgs, self._create_text)
-        self.cache.set(CacheType.TextArgs, (self.adjust_text_rect(text_rect), text_surface))
+        self.cache.get_or_exec(CacheType.TextArgs, self._create_text)
         self._draw_text()
 
     def _resize_content(self, resize_ratio: Vector2):
@@ -191,24 +177,20 @@ class Slider(ProgressBar):
         self.cache.clear_selected(whitelist=[CacheType.TextArgs])
 
 
-def slider_on_click(self, *args, **kwargs):
+def slider_on_click(self: Slider, *args, **kwargs):
     self.dragging = True
     self._on_drag()
 
-
-def slider_on_keyup(self, *args, **kwargs):
+def slider_on_keyup(self: Slider, *args, **kwargs):
     self.dragging = False
 
-
-def slider_on_keyup_abandon(self, *args, **kwargs):
+def slider_on_keyup_abandon(self: Slider, *args, **kwargs):
     self.dragging = False
 
-
-def _slider_after_state_change(self, *args, **kwargs):
+def _slider_after_state_change(self: Slider, *args, **kwargs):
     self.cache.clear_selected(whitelist=[CacheType.TextArgs])
     self._changed = True
 
-
-def _slider_on_style_change(self, *args, **kwargs):
+def _slider_on_style_change(self: Slider, *args, **kwargs):
     self.cache.clear_selected(whitelist=[CacheType.TextArgs])
     self._changed = True

@@ -36,15 +36,37 @@ class Label(Widget):
         self._add_param("words_indent", bool, False)
         self._add_param("on_text_change", (type(None), Callable), None)
 
+    def _recalculate_auto_size(self):
+        if not self._auto_sized or not hasattr(self, "_auto_sized_padding"):
+            return
+        self.cache.clear_selected(whitelist=[CacheType.RelSize, CacheType.TextArgs])
+        _, text_surface = self.cache.get_or_exec(CacheType.TextArgs, self._create_text_surf)
+
+        ratio_x = self._resize_ratio.x if self._resize_ratio.x != 0 else 1.0
+        ratio_y = self._resize_ratio.y if self._resize_ratio.y != 0 else 1.0
+
+        pad_x = self._auto_sized_padding[0] * 2
+        pad_y = self._auto_sized_padding[1] * 2
+
+        self.size = Vector2.from_xy(
+            text_surface.width / ratio_x + pad_x,
+            text_surface.height / ratio_y + pad_y,
+        )
+        self.original_size = self.size.copy()
+        self.cache.clear_selected(whitelist=[CacheType.RelSize])
+        self._regen_surface()
+        self._changed = True
+        self.clear_surfaces()
+        self._normalize_borderradius()
+        if nevu_state.window is not None:
+            nevu_state.window.mark_dirty()
+
     def _lazy_init(self, size: Vector2 | list, text: str):  # type: ignore
         super()._lazy_init(size)
         assert isinstance(text, str)
         self.text = text
         if self._auto_sized:
-            _, text_surface = self.cache.get_or_exec(CacheType.TextArgs, self._create_text_surf)
-            self.size = Vector2.from_xy(text_surface.width, text_surface.height)
-            self._changed = True
-            self.clear_surfaces()
+            self._recalculate_auto_size()
 
     @property
     def text(self):
@@ -55,6 +77,8 @@ class Label(Widget):
         self._changed = True
         self.clear_surfaces()
         self._text = text
+        if self._auto_sized:
+            self._recalculate_auto_size()
         if self.on_text_change:
             self.on_text_change(self, text)
 
@@ -86,12 +110,7 @@ class Label(Widget):
     def _resize_content(self, resize_ratio: Vector2):
         super()._resize_content(resize_ratio)
         if self._auto_sized:
-            self.cache.clear_selected(whitelist=[CacheType.RelSize])
-            anti_rel = Vector2(1, 1) / self._resize_ratio
-            _, text_surface = self.cache.get_or_exec(CacheType.TextArgs, self._create_text_surf)
-            self.size = Vector2.from_xy(
-                text_surface.width * anti_rel.x + self._auto_sized_padding[0] * 2,
-                text_surface.height * anti_rel.y + self._auto_sized_padding[1] * 2)
+            self._recalculate_auto_size()
 
     def _draw_main(self):
         text_rect, text_surface = self.cache.get_or_exec(CacheType.TextArgs, self._create_text_surf)

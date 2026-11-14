@@ -1,6 +1,4 @@
 # distutils: language = c++
-# distutils: extra_compile_args = -fopenmp
-# distutils: extra_link_args = -fopenmp
 # cython: language_level=3
 # cython: boundscheck=False
 # cython: wraparound=False
@@ -32,7 +30,7 @@ cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input,
 
     if radii_type is int or radii_type is float:
         r_tl = r_tr = r_br = r_bl = <float>radii_input
-    elif len(radii_input) is 4:
+    elif len(radii_input) == 4:
         r_tl = <float>radii_input[0]
         r_tr = <float>radii_input[1]
         r_br = <float>radii_input[2]
@@ -59,7 +57,7 @@ cpdef void transform_into_outlined_rounded_rect(object surf, object radii_input,
         bg_a = background_color[3] if len(background_color) > 3 else 255
         bg_alpha_mult = bg_a / 255.0
 
-    if alpha_base is 0 and not has_bg:
+    if alpha_base == 0 and not has_bg:
         return
 
     cdef float stroke_alpha_mult = alpha_base / 255.0
@@ -289,14 +287,19 @@ cpdef void transform_into_rounded_rect(object surf, object radii_input, object c
     cdef float px, py, current_r
     cdef float qx, qy, dist_outside, dist_inside, signed_dist, alpha_f
     cdef float qy_base
+    cdef int lim_x, lim_y
 
     with nogil:
         if r_tl > 0.0:
             current_r = r_tl
-            for y in range(<int>r_tl):
+            lim_y = <int>ceilf(r_tl) + 1
+            if lim_y > height: lim_y = height
+            lim_x = <int>ceilf(r_tl) + 1
+            if lim_x > width: lim_x = width
+            for y in range(lim_y):
                 py = y - center_y
                 qy_base = fabsf(py) - box_half_h
-                for x in range(<int>r_tl):
+                for x in range(lim_x):
                     px = x - center_x
                     qx = fabsf(px) - box_half_w + current_r
                     qy = qy_base + current_r
@@ -314,10 +317,14 @@ cpdef void transform_into_rounded_rect(object surf, object radii_input, object c
 
         if r_tr > 0.0:
             current_r = r_tr
-            for y in range(<int>r_tr):
+            lim_y = <int>ceilf(r_tr) + 1
+            if lim_y > height: lim_y = height
+            lim_x = width - (<int>ceilf(r_tr) + 1)
+            if lim_x < 0: lim_x = 0
+            for y in range(lim_y):
                 py = y - center_y
                 qy_base = fabsf(py) - box_half_h
-                for x in range(width - <int>r_tr, width):
+                for x in range(lim_x, width):
                     px = x - center_x
                     qx = fabsf(px) - box_half_w + current_r
                     qy = qy_base + current_r
@@ -335,10 +342,14 @@ cpdef void transform_into_rounded_rect(object surf, object radii_input, object c
 
         if r_bl > 0.0:
             current_r = r_bl
-            for y in range(height - <int>r_bl, height):
+            lim_y = height - (<int>ceilf(r_bl) + 1)
+            if lim_y < 0: lim_y = 0
+            lim_x = <int>ceilf(r_bl) + 1
+            if lim_x > width: lim_x = width
+            for y in range(lim_y, height):
                 py = y - center_y
                 qy_base = fabsf(py) - box_half_h
-                for x in range(<int>r_bl):
+                for x in range(lim_x):
                     px = x - center_x
                     qx = fabsf(px) - box_half_w + current_r
                     qy = qy_base + current_r
@@ -356,10 +367,14 @@ cpdef void transform_into_rounded_rect(object surf, object radii_input, object c
 
         if r_br > 0.0:
             current_r = r_br
-            for y in range(height - <int>r_br, height):
+            lim_y = height - (<int>ceilf(r_br) + 1)
+            if lim_y < 0: lim_y = 0
+            lim_x = width - (<int>ceilf(r_br) + 1)
+            if lim_x < 0: lim_x = 0
+            for y in range(lim_y, height):
                 py = y - center_y
                 qy_base = fabsf(py) - box_half_h
-                for x in range(width - <int>r_br, width):
+                for x in range(lim_x, width):
                     px = x - center_x
                     qx = fabsf(px) - box_half_w + current_r
                     qy = qy_base + current_r

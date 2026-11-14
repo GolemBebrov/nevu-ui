@@ -7,7 +7,6 @@ from nevu_ui.components._typehints import _SwitchKwargs, _SwitchTemplate
 from nevu_ui.components.widgets.widget import Widget
 from nevu_ui.core import Annotations, nevu_state
 from nevu_ui.core.enums import (
-    AnimationManagerState,
     BindType,
     CacheType,
     CustomFunctions,
@@ -19,11 +18,10 @@ from nevu_ui.cython.surface.surface import Surface
 from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.cython.raylib.raylib import begin_blend_mode, end_blend_mode
 from nevu_ui.presentation.animations import (
-    AnimationManager,
     Vector2Animation,
     presets,
 )
-from nevu_ui.presentation.color import Color
+from nevu_ui.presentation import color
 from nevu_ui.rendering import DrawBaseCall
 from nevu_ui.utils import mouse, time
 
@@ -64,7 +62,6 @@ class Switch(Widget):
     def _init_objects(self):
         super()._init_objects()
         self._circle_surface = None
-        self._circle_anim_manager = None
         self._background = None
 
     def _init_numerical(self):
@@ -99,6 +96,7 @@ class Switch(Widget):
         self._system_callbacks.bind(BindType.Click, switch_on_click)
         self._system_callbacks.bind(BindType.KeyUp, switch_on_keyup)
         self._system_callbacks.bind(BindType.KeyUpAbandon, switch_on_keyup_abandon)
+        self._system_callbacks.bind(BindType.StyleChange, _switch_on_style_change)
 
     @property
     def bg_circle_coords(self):
@@ -110,17 +108,16 @@ class Switch(Widget):
 
     def _set_bg_circle_coords(self, value, anim_time=None):
         anim_time = anim_time or self.animation_time
-        self._circle_anim_manager = AnimationManager(warn=False)
         self._goal_circle_coords = Vector2(value)
-        self._circle_anim_manager.add_start_animation(
-            "main",
-            Vector2Animation(
-                self._circle_coordinates,
-                self._goal_circle_coords,
-                anim_time,
-                self.easing_func,
-            ),
+
+        anim = Vector2Animation(
+            self._circle_coordinates,
+            self._goal_circle_coords,
+            anim_time,
+            self.easing_func,
         )
+        self.animation_manager.bind("slide", "pos", anim)
+        self.animation_manager.call("slide")
 
     @property
     def state(self):
@@ -130,11 +127,12 @@ class Switch(Widget):
     def state(self, value):
         if not hasattr(self, "_state"):
             self._state = False
-        if self._state != value:
+        old_state = self._state
+        self._state = value
+        if old_state != value:
             on_switch_change = self.on_switch_change
             if on_switch_change is not None:
                 on_switch_change(self, value)
-        self._state = value
         axis = self._get_correct_axis()
         main_coord = 0 if axis == SwitchAxis.Horizontal else 1
         bg_coords = self._circle_coordinates.xy
@@ -158,7 +156,7 @@ class Switch(Widget):
         else:
             size = Vector2.from_xy(minimal_size, minimal_size)
         bg_texture = Surface(size)
-        bg_texture.fill(Color.Blank)
+        bg_texture.fill(color.Blank)
         if minimal_size <= 0:
             return bg_texture
         self.renderer.run_base(
@@ -186,11 +184,11 @@ class Switch(Widget):
             self._circle_coordinates
             + self._borders_of_current_size
             + Vector2.from_xy(circle_offset, circle_offset)
-        ).get_round()
+        ).rounded
 
         is_raylib = nevu_state.window.renderer_type.raylib
         with surface:
-            surface.clear(Color.Blank)
+            surface.clear(color.Blank)
             if is_raylib:
                 begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
             surface.blit(self._background, (0, 0))
@@ -204,19 +202,10 @@ class Switch(Widget):
         if self._after_key_down_time is not None:
             self._after_key_down_time += time.dt
 
-        bg_anim_manager = self._circle_anim_manager
-
-        if bg_anim_manager:
-            if bg_anim_manager.state != AnimationManagerState.Start:
-                self._circle_coordinates = self._goal_circle_coords.xy
-                self._circle_anim_manager = None
-                self._circle_changed = True
-                return
-            bg_anim_manager.update()
-            value = bg_anim_manager.get_animation_value("main")
-            if value is not None:
-                self._circle_coordinates = value
-                self._circle_changed = True
+        value = self.animation_manager.get("pos")
+        if value is not None:
+            self._circle_coordinates = value
+            self._circle_changed = True
 
         if not self._circle_surface:
             self._circle_surface = self._create_bg_circle()
@@ -272,11 +261,12 @@ class Switch(Widget):
             or self.cache.get(CacheType.Borders)
             or self.cache.get(CacheType.Background)
         )
+        if self._circle_surface is None:
+            self._circle_surface = self._create_bg_circle()
+        self._rebuild_bg()
 
     def _draw_end(self):
         super()._draw_end()
-        self._circle_surface = self._create_bg_circle()
-        self._rebuild_bg()
 
     def _get_correct_axis(self):
         axis = self.axis
@@ -305,7 +295,6 @@ class Switch(Widget):
         self._circle_coordinates = bg_coords
         self._goal_circle_coords = bg_coords.copy()
 
-        self._circle_anim_manager = None
         self._circle_changed = True
 
     def _create_clone(self):
@@ -337,3 +326,6 @@ def switch_on_keyup_abandon(self: Switch):
     if self._dragging:
         self._after_kup()
     self._after_key_down_time = None
+
+def _switch_on_style_change(self: Switch):
+    self._circle_surface = None

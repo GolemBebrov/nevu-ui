@@ -4,25 +4,35 @@ from nevu_ui.cython.vector2.vector2 cimport Vector2
 from nevu_ui.cython.raylib_shader.raylib_shader cimport RaylibShader
 import nevu_ui.core.modules as md
 from nevu_ui.assets.shader import ShaderLibrary
-from nevu_ui.rendering.pygame.gradient import GradientPygame
-from nevu_ui.core import GradientType
+from nevu_ui.core import GradientType, LinearSide, RadialPosition
 from nevu_ui.cython.surface.surface cimport _NvSurfRaylib
 from libcpp.vector cimport vector
 from nevu_ui.cython.raylib.raylib cimport (
-    begin_blend_mode, end_blend_mode, begin_texture_mode, end_texture_mode, begin_nvshader_mode, end_shader_mode, draw_texture_pro,
-    set_nvshader_value_float, get_nvshader_location, set_nvshader_value_vec4_v, set_nvshader_value_float_v, set_nvshader_value_int,
-    set_nvshader_value_vec2_nvvec, Vector4, set_nvshader_value_vec2_tuple
-    )
+    begin_blend_mode,
+    end_blend_mode,
+    begin_nvshader_mode,
+    end_shader_mode,
+    draw_texture_pro,
+    set_nvshader_value_float,
+    get_nvshader_location,
+    set_nvshader_value_vec4_v,
+    set_nvshader_value_float_v,
+    set_nvshader_value_int,
+    set_nvshader_value_vec2_nvvec,
+    Vector4,
+    set_nvshader_value_vec2_tuple
+)
 from libcpp.numeric cimport accumulate
 import copy
 
-cdef inline Vector4 tuple_to_vector4(tuple t):
+cdef inline Vector4 tuple_to_vector4(object t):
     cdef Vector4 v
-    v.x = t[0] / 255
-    v.y = t[1] / 255
-    v.z = t[2] / 255
-    v.w = t[3] / 255
+    v.x = t[0] / 255.0
+    v.y = t[1] / 255.0
+    v.z = t[2] / 255.0
+    v.w = (t[3] / 255.0) if len(t) > 3 else 1.0
     return v
+
 cdef RaylibShader _SHARED_SHADER = None
 cdef object _SHARED_BLANK_TEXTURE = None
 cdef int _LOC_TYPE = -1
@@ -34,50 +44,66 @@ cdef int _LOC_COUNT = -1
 cdef int _LOC_ALPHA = -1
 cdef int _LOC_SIZE = -1
 
+cdef dict _LINEAR_ANGLE_MAP = {
+    LinearSide.Right: 0.0,
+    LinearSide.Left: 180.0,
+    LinearSide.Bottom: 90.0,
+    LinearSide.Top: 270.0,
+    LinearSide.BottomRight: 45.0,
+    LinearSide.TopLeft: 225.0,
+    LinearSide.TopRight: 315.0,
+    LinearSide.BottomLeft: 135.0,
+}
+
+cdef dict _RADIAL_CENTER_MAP = {
+    RadialPosition.Center: (0.5, 0.5),
+    RadialPosition.TopCenter: (0.5, 0.0),
+    RadialPosition.TopLeft: (0.0, 0.0),
+    RadialPosition.TopRight: (1.0, 0.0),
+    RadialPosition.BottomCenter: (0.5, 1.0),
+    RadialPosition.BottomLeft: (0.0, 1.0),
+    RadialPosition.BottomRight: (1.0, 1.0),
+}
+
 cdef class GradientRaylib:
     cdef public list raw_colors
+    cdef public object type
     cdef int _transparency
     cdef float _angle
     cdef Vector2 _center
-    cdef public object type
     cdef vector[Vector4] _colors
     cdef vector[float] _stops
 
-    def __init__(self, list colors, type = GradientType.Linear, direction = None, angle = None, center = None, transparency = None):
+    def __init__(self, list colors, direction = None, angle = None, center = None, transparency = None):
         self.raw_colors = colors
-        self.type = type
         self._transparency = transparency if transparency is not None else 255
 
+        self.type = GradientType.Linear
         self._angle = 0.0
         self._center = Vector2.new(0.5, 0.5)
 
         if direction is not None:
-            if type == GradientType.Linear:
-                if hasattr(direction, 'name'):
-                    mapping = {
-                        "Right": 0.0, "Left": 180.0,
-                        "Bottom": 90.0, "Top": 270.0,
-                        "BottomRight": 45.0, "TopLeft": 225.0,
-                        "TopRight": 315.0, "BottomLeft": 135.0
-                    }
-                    self._angle = mapping.get(direction.name, 0.0)
-                elif isinstance(direction, (int, float)):
-                    self._angle = float(direction)
-            elif type == GradientType.Radial:
-                if hasattr(direction, 'name'):
-                    mapping = {
-                        "Center": (0.5, 0.5),
-                        "TopCenter": (0.5, 0.0), "TopLeft": (0.0, 0.0), "TopRight": (1.0, 0.0),
-                        "BottomCenter": (0.5, 1.0), "BottomLeft": (0.0, 1.0), "BottomRight": (1.0, 1.0)
-                    }
-                    center_coords = mapping.get(direction.name, (0.5, 0.5))
-                    self._center = Vector2.new(center_coords[0], center_coords[1])
-                elif isinstance(direction, tuple):
-                    self._center = Vector2.new(direction[0], direction[1])
+            if isinstance(direction, LinearSide):
+                self.type = GradientType.Linear
+                self._angle = _LINEAR_ANGLE_MAP.get(direction, 0.0)
+            elif isinstance(direction, (int, float)) and not isinstance(direction, bool):
+                self.type = GradientType.Linear
+                self._angle = float(direction)
+            elif isinstance(direction, RadialPosition):
+                self.type = GradientType.Radial
+                center_coords = _RADIAL_CENTER_MAP.get(direction, (0.5, 0.5))
+                self._center = Vector2.new(center_coords[0], center_coords[1])
+            elif isinstance(direction, Vector2) or (isinstance(direction, (tuple, list)) and len(direction) == 2):
+                self.type = GradientType.Radial
+                self._center = Vector2.new(direction[0], direction[1])
+            else:
+                raise ValueError(f"Unsupported gradient direction: {direction!r}")
 
         if angle is not None:
+            self.type = GradientType.Linear
             self._angle = <float>angle
         if center is not None:
+            self.type = GradientType.Radial
             self._center = Vector2.new(center[0], center[1])
 
         self._update_colors(colors)
@@ -190,7 +216,7 @@ cdef class GradientRaylib:
         set_nvshader_value_float(_SHARED_SHADER, _LOC_ANGLE, self._angle)
         set_nvshader_value_vec2_nvvec(_SHARED_SHADER, _LOC_CENTER, self._center)
         set_nvshader_value_int(_SHARED_SHADER, _LOC_COUNT, <int>self._colors.size())
-        set_nvshader_value_float(_SHARED_SHADER, _LOC_ALPHA, 1.0)
+        set_nvshader_value_float(_SHARED_SHADER, _LOC_ALPHA, self._transparency / 255.0)
         set_nvshader_value_vec4_v(_SHARED_SHADER, _LOC_COLORS, self._colors)
         set_nvshader_value_float_v(_SHARED_SHADER, _LOC_STOPS, self._stops)
         set_nvshader_value_vec2_nvvec(_SHARED_SHADER, _LOC_SIZE, size)
@@ -211,34 +237,49 @@ cdef class GradientRaylib:
         return target
 
     def copy(self):
+        cdef object angle = self._angle if self.type == GradientType.Linear else None
+        cdef object center = (
+            (self._center.x, self._center.y)
+            if self.type == GradientType.Radial and self._center is not None
+            else None
+        )
         cdef GradientRaylib new_grad = self.__class__(
             colors=[(c if not isinstance(c, tuple) or len(c) != 2 else (c[0], c[1])) for c in self.raw_colors],
-            type=self.type,
-            angle=self._angle,
-            center=(self._center.x, self._center.y) if self._center is not None else None,
+            angle=angle,
+            center=center,
             transparency=self._transparency
         )
+        new_grad.type = self.type
         return new_grad
 
     def __copy__(self):
         return self.copy()
 
     def __deepcopy__(self, memo):
+        cdef object angle = self._angle if self.type == GradientType.Linear else None
+        cdef object center = (
+            (self._center.x, self._center.y)
+            if self.type == GradientType.Radial and self._center is not None
+            else None
+        )
         cdef GradientRaylib new_grad = self.__class__(
             colors=copy.deepcopy(self.raw_colors, memo),
-            type=self.type,
-            angle=self._angle,
-            center=(self._center.x, self._center.y) if self._center is not None else None,
+            angle=angle,
+            center=center,
             transparency=self._transparency
         )
+        new_grad.type = self.type
         memo[id(self)] = new_grad
         return new_grad
+
 
 cdef class ClickGradient(GradientRaylib):
     cdef public vector[float] weights
 
-    def __init__(self, list colors, type = GradientType.Radial, direction = None, angle = None, center = None, transparency = None):
-        super().__init__(colors, type, direction, angle, center, transparency)
+    def __init__(self, list colors, direction = None, angle = None, center = None, transparency = None):
+        if direction is None and angle is None and center is None:
+            center = (0.5, 0.5)
+        super().__init__(colors, direction=direction, angle=angle, center=center, transparency=transparency)
 
     cdef void _update_colors(self, list colors):
         self.weights.clear()
@@ -264,7 +305,7 @@ cdef class ClickGradient(GradientRaylib):
             self.weights[index] = weight
             self._recalculate_stops()
         else:
-            raise IndexError(f"Color index out of range! Max: {self.weights.size() - 1}")
+            raise IndexError(f"color index out of range! Max: {self.weights.size() - 1}")
 
     def set_center(self, tuple center):
         self._center = Vector2.new(center[0], center[1])

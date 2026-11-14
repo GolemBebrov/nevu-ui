@@ -2,12 +2,7 @@ import inspect
 from collections.abc import Callable
 from typing import Any, Concatenate, ParamSpec
 from weakref import WeakMethod, ref
-from cpython.list cimport PyList_GET_SIZE
 from nevu_ui.core.enums import BindType
-from cpython.object cimport PyObject
-cdef extern from "Python.h":
-    ctypedef struct PyListObject:
-        PyObject **ob_item
 
 # FA
 # PU
@@ -29,7 +24,7 @@ cdef class Callbacks:
     def __init__(self, dict content: dict[BindType, CallbackList | CallbackType] | None = None):
         content = content or {}
         self._storage: dict[BindType, CallbackList] = {
-            bind_type: [callback] if inspect.isfunction(callback) else callback
+            bind_type: list(callback) if isinstance(callback, (list, tuple)) else [callback]
             for bind_type, callback in content.items()
         }
 
@@ -80,6 +75,13 @@ cdef class Callbacks:
         callbacks_list[:] = live_callbacks
 
     def run(self, bind_type: BindType, *args, **kwargs) -> bool:
+        cdef list callbacks_list
+        callbacks_list = self._storage.get(bind_type)
+        if not callbacks_list: return False
+        self.c_run(callbacks_list, args, kwargs)
+        return True
+
+    cpdef _frun(self, bind_type: BindType, tuple args, dict kwargs):
         cdef list callbacks_list
         callbacks_list = self._storage.get(bind_type)
         if not callbacks_list: return False

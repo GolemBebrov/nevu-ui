@@ -6,7 +6,6 @@
 # cython: nonecheck=False
 # cython: initializedcheck=False
 
-
 cimport cython
 import nevu_ui.core.modules as md
 from nevu_ui.cython.vector2.vector2 cimport Vector2, nv_vector2_t
@@ -112,48 +111,6 @@ cdef class Rect:
             self.h = args[3]
         else:
             raise TypeError(f"Rect() takes 0, 1, or 2 arguments, but {nargs} were given")
-
-    #2 chars swizzing
-    @property
-    def xx(self):
-        return Vector2.new(self.x, self.x)
-
-    @property
-    def yy(self):
-        return Vector2.new(self.y, self.y)
-
-    @property
-    def xy(self):
-        return Vector2.new(self.x, self.y)
-
-    @property
-    def yx(self):
-        return Vector2.new(self.y, self.x)
-
-    @property
-    def xw(self):
-        return Vector2.new(self.x, self.w)
-
-    @property
-    def yh(self):
-        return Vector2.new(self.y, self.h)
-
-    @property
-    def wh(self):
-        return Vector2.new(self.w, self.h)
-
-    @property
-    def hw(self):
-        return Vector2.new(self.h, self.w)
-
-    #4 chars swizzing
-    @property
-    def xywh(self):
-        return Rect.new(self.x, self.y, self.w, self.h)
-
-    @property
-    def whxy(self):
-        return Rect.new(self.w, self.h, self.x, self.y)
 
     #Python properties
     def __getitem__(self, int index):

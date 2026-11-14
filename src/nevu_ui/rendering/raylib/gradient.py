@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from typing import Any
 
-from nevu_ui.core import Annotations
+from nevu_ui.core import Annotations, GradientConfig, LinearSide, RadialPosition
 from nevu_ui.core.enums import GradientType
 from nevu_ui.cython.raylib_gradient.raylib_gradient import ClickGradient, GradientRaylib
 from nevu_ui.cython.vector2 import Vector2
@@ -12,6 +12,7 @@ from nevu_ui.presentation.animations import (
 )
 from nevu_ui.presentation.animations.manager import AnimationManager
 from nevu_ui.presentation.animations.presets import ease_in_out_quad
+
 
 def animated_slot(
     start: Any = None,
@@ -27,17 +28,25 @@ anim_color_slot = tuple[Annotations.rgba_color, Annotations.rgba_color, int, Cal
 
 _base_text = "__reserved_"
 
-
 class AnimatedGradient(GradientRaylib):
     ColorBase = f"{_base_text}color"
     AngleBase = f"{_base_text}angle"
     CenterBase = f"{_base_text}center"
     TransparencyBase = f"{_base_text}transparency"
 
+    def copy(self):
+        return self
+
+    def __copy__(self):
+        return self
+
+    def __deepcopy__(self, memo):
+        return self
+
     def __init__(
         self,
         colors: anim_color_slot,
-        type=GradientType.Linear,
+        direction: GradientConfig | tuple[float, float] | float | GradientType | None = None,
         angle: anim_slot | None = None,
         center: anim_slot | None = None,
         transparency: anim_slot | None = None,
@@ -62,12 +71,8 @@ class AnimatedGradient(GradientRaylib):
         colors_func = colors[func]
         self.colors_len = len(colors[start])
         for i in range(len(colors[start])):
-            anim = ColorAnimation(
-                colors[start][i], colors[end][i], colors_time, colors_func
-            )
-            self.animation_manager.add_continuous_animation(
-                self.ColorBase + str(i), anim
-            )
+            anim = ColorAnimation(colors[start][i], colors[end][i], colors_time, colors_func)
+            self.animation_manager.bind("start", self.ColorBase + str(i), anim)
         base_colors = colors[start]
 
         # === Angle ===
@@ -76,11 +81,10 @@ class AnimatedGradient(GradientRaylib):
             angle_anim = FloatAnimation(
                 base_angle, angle[end], angle[time], angle[func]
             )
-            self.animation_manager.add_continuous_animation(self.AngleBase, angle_anim)
+            self.animation_manager.bind("start", self.AngleBase, angle_anim)
             self.angle_initalized = True
         else:
-            angle_anim = None
-            base_angle = 255
+            base_angle = None
 
         # === Center ===
         if center is not None:
@@ -88,13 +92,10 @@ class AnimatedGradient(GradientRaylib):
             center_anim = Vector2Animation(
                 nvvec(base_center), nvvec(center[end]), center[time], center[func]
             )
-            self.animation_manager.add_continuous_animation(
-                self.CenterBase, center_anim
-            )
+            self.animation_manager.bind("start", self.CenterBase, center_anim)
             self.center_initalized = True
         else:
-            center_anim = None
-            base_center = (0.5, 0.5)
+            base_center = None
 
         # === Transparency ===
         if transparency is not None:
@@ -105,16 +106,25 @@ class AnimatedGradient(GradientRaylib):
                 transparency[time],
                 transparency[func],
             )
-            self.animation_manager.add_continuous_animation(
-                self.TransparencyBase, transparency_anim
-            )
+            self.animation_manager.bind("start", self.TransparencyBase, transparency_anim)
             self.transparency_initalized = True
         else:
-            transparency_anim = None
-            base_transparency = 0
+            base_transparency = 255
 
+        if isinstance(direction, GradientType):
+            direction = (
+                RadialPosition.Center
+                if direction == GradientType.Radial
+                else LinearSide.Right
+            )
+
+        self.animation_manager.call("start")
         super().__init__(
-            base_colors, type, None, base_angle, base_center, base_transparency
+            base_colors,
+            direction=direction,
+            angle=base_angle,
+            center=base_center,
+            transparency=base_transparency,
         )
 
     def update(self):
@@ -125,26 +135,24 @@ class AnimatedGradient(GradientRaylib):
         changed = False
         self.animation_manager.update()
         if self.angle_initalized:
-            new_angle = self.animation_manager.get_animation_value(self.AngleBase)
+            new_angle = self.animation_manager.get(self.AngleBase)
             if new_angle != old_angle and new_angle is not None:
                 self.angle = new_angle
                 changed = True
         if self.center_initalized:
-            new_center = self.animation_manager.get_animation_value(self.CenterBase)
-            if new_center is not None and old_center is not None and new_center != old_center :
+            new_center = self.animation_manager.get(self.CenterBase)
+            if new_center is not None and old_center is not None and new_center != old_center:
                 self.center = new_center
                 changed = True
         if self.transparency_initalized:
-            new_transparency = self.animation_manager.get_animation_value(
-                self.TransparencyBase
-            )
+            new_transparency = self.animation_manager.get(self.TransparencyBase)
             if new_transparency != old_transparency and new_transparency is not None:
                 self.transparency = new_transparency
                 changed = True
         new_colors = []
         skip_colors = False
         for i in range(self.colors_len):
-            color = self.animation_manager.get_animation_value(self.ColorBase + str(i))
+            color = self.animation_manager.get(self.ColorBase + str(i))
             if color is None:
                 skip_colors = True
                 break

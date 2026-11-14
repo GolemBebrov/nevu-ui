@@ -14,7 +14,7 @@ from nevu_ui.cython import Vector2
 from nevu_ui.cython.surface.surface import Surface
 from nevu_ui.cython.raylib.raylib import begin_blend_mode, end_blend_mode
 from nevu_ui.presentation.theme import PairColorRole
-from nevu_ui.presentation.color import Color
+from nevu_ui.presentation import color
 from nevu_ui.rendering import DrawBaseCall
 
 
@@ -139,7 +139,7 @@ class ProgressBar(Widget):
         bg_size = surface.size
         bg_surf = Surface(bg_size)
         with bg_surf:
-            bg_surf.clear(Color.Blank)
+            bg_surf.clear(color.Blank)
             if is_raylib:
                 begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
             bg_surf.blit(surface, (0, 0))
@@ -168,7 +168,7 @@ class ProgressBar(Widget):
 
         is_raylib = nevu_state.window.renderer_type.raylib
         with surface:
-            surface.clear(Color.Blank)
+            surface.clear(color.Blank)
             if is_raylib:
                 begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
             surface.blit(bg_surf, (0, 0))
@@ -200,10 +200,12 @@ class ProgressBar(Widget):
         size = Vector2.from_xy(width, height)
         half_size = size / 2
 
-        bw = relm(style.border_width)
-        radius = style.border_radius - bw
-        min_side = min(rsize.x // 2, rsize.y // 2)
-        radius = min(min_side, max(radius, 0))
+        if size.x <= 0 or size.y <= 0:
+            self._create_surface(None, (0, 0))
+            return
+
+        raw_br = style.border_radius[0] if isinstance(style.border_radius, (tuple, list)) else style.border_radius
+        radius = max(0.0, raw_br - style.border_width)
 
         y_decrease = 0
         if half_size.x < relm(radius):
@@ -215,9 +217,9 @@ class ProgressBar(Widget):
             self._create_surface(None, (0, 0))
             return
 
-        if isinstance(radius, int | float):
-            radius = min(half_size.x, half_size.y, radius)
-            radius = (radius, radius, radius, radius)
+        rel_unit = max(relm(1), 1e-6)
+        bar_radius = min(half_size.x / rel_unit, half_size.y / rel_unit, radius)
+        bar_style = self.style(br=bar_radius)
 
         color = self.style.get_pair_color(self.filled_rect_role, inverted = self.inverted)
 
@@ -230,7 +232,7 @@ class ProgressBar(Widget):
 
         renderer.run_base(
             DrawBaseCall(
-                style=self.style,
+                style=bar_style,
                 radius_support=True,
                 size=size,
                 color=color,
@@ -240,10 +242,8 @@ class ProgressBar(Widget):
                 glassy = self.glassy
             )
         )
-
         coords = Vector2.from_xy(
             self._borders_of_current_size.x, self._borders_of_current_size.y + y_decrease
         )
         assert self.surface
-
         self._create_surface(bar_surface, coords.to_tuple())

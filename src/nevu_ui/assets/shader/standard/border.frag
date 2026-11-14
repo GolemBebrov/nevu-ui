@@ -33,6 +33,7 @@ void main(){
     float alpha = smoothstep(-aa, aa, -d);
     float borderMix = smoothstep(-thickness - aa, -thickness + aa, d);
     vec4 texColor = texture(texture0, fragTexCoord) * fragColor * colDiffuse;
-    vec4 resultColor = mix(texColor, borderColor, borderMix);
+    vec4 premulBorder = vec4(borderColor.rgb * borderColor.a, borderColor.a);
+    vec4 resultColor = mix(texColor, premulBorder, borderMix);
     finalColor = resultColor * alpha;
 }

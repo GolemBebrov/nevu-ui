@@ -1,36 +1,37 @@
 import nevu_ui.core.modules as md
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from pyray import Texture
 from nevu_ui.core import Annotations
-from nevu_ui.presentation.color import Color
-from nevu_ui.assets.shader import ShaderLibrary #SdfShader, BorderShader, GlassySdfShader, GlassyBorderShader, LineSdfShader
-
-
+from nevu_ui.presentation import color
+from nevu_ui.assets.shader import ShaderLibrary
 from nevu_ui.cython.rect.rect cimport Rect
 from nevu_ui.cython.vector2.vector2 cimport Vector2
 from nevu_ui.cython.raylib.raylib cimport (
-    init_raylib_pointers, begin_blend_mode, end_blend_mode, begin_texture_mode, end_texture_mode,
-    c_draw_texture_pro, c_draw_texture_rec, c_draw_texture_vec, begin_nvshader_mode, end_shader_mode, begin_drawing, end_drawing,
-    get_nvshader_location, set_nvshader_value_float, set_nvshader_value_vec2_nvvec, set_nvshader_value_vec4_tuple, set_nvshader_value_vec2_tuple
+    init_raylib_pointers,
+    begin_blend_mode,
+    end_blend_mode,
+    c_draw_texture_pro,
+    c_draw_texture_rec,
+    c_draw_texture_vec,
+    begin_nvshader_mode,
+    end_shader_mode,
+    begin_drawing,
+    end_drawing,
+    get_nvshader_location,
+    set_nvshader_value_float,
+    set_nvshader_value_vec2_nvvec,
+    set_nvshader_value_vec4_tuple,
+    set_nvshader_value_vec2_tuple
 )
 from nevu_ui.cython.raylib_shader.raylib_shader cimport RaylibShader
 
-# Pygame
-cdef type pg_surface_t, pg_rect_t #type: ignore
-
 cdef bint window_renderer_created = False
-cdef tuple fill_color = Color.White
+cdef tuple fill_color = color.White
 
 cdef inline void check_singleton() noexcept:
     global window_renderer_created
-    #if window_renderer_created: raise RuntimeError("Window renderer already created")
     window_renderer_created = True
 
 cdef class WindowRendererBase:
-    def __init__(self):
-        pass #Used for typehints :D
-
+    def __init__(self): ...
     def get_tuple_rect(self) -> tuple: ...
     def get_rect(self) -> Rect: ...
     def get_width(self) -> int: ...
@@ -118,7 +119,7 @@ cdef class WindowRendererRaylib:
             "bboxSize": get_nvshader_location(self._line_sdf_shader, "bboxSize"),
         }
 
-        img = md.rl.gen_image_color(1, 1, md.rl.WHITE)
+        img = md.rl.gen_image_color(1, 1, color.White)
         self._blank_texture = md.rl.load_texture_from_image(img)
         md.rl.unload_image(img)
 
@@ -186,6 +187,9 @@ cdef class WindowRendererRaylib:
         if len(c) == 3:
             c = (c[0], c[1], c[2], 255)
 
+        cdef float a_norm = c[3] / 255.0
+        cdef tuple premul_c = (int(c[0] * a_norm), int(c[1] * a_norm), int(c[2] * a_norm), c[3])
+
         if glassy:
             self._begin_glassy_sdf(w, h, rad_tuple)
         else:
@@ -198,7 +202,7 @@ cdef class WindowRendererRaylib:
             (x, y, w, h),
             (0.0, 0.0),
             0.0,
-            c
+            premul_c
         )
         end_blend_mode()
         self._end_shader()
@@ -251,21 +255,21 @@ cdef class WindowRendererRaylib:
         self._end_shader()
 
     # === Blit ===
-    cpdef blit(self, source, tuple dest, bint flip = True, tuple color = Color.White, double angle = 0.0):
+    cpdef blit(self, source, tuple dest, bint flip = True, tuple color = color.White, double angle = 0.0):
         if isinstance(color, tuple) and len(color) == 3:
             color = (*color, 255)
         self.blit_rect_pro(source, (dest[0], dest[1], source.width, source.height), flip, color, angle)
 
-    cpdef fast_blit(self, source, tuple dest, tuple color = Color.White):
+    cpdef fast_blit(self, source, tuple dest, tuple color = color.White):
         c_draw_texture_vec(source, dest, color, True)
 
-    cpdef fast_blit_pro(self, source, tuple dest, bint flip = True, tuple color = Color.White):
+    cpdef fast_blit_pro(self, source, tuple dest, bint flip = True, tuple color = color.White):
         if isinstance(color, tuple) and len(color) == 3:
             color = (*color, 255)
         h = -source.height if flip else source.height
         c_draw_texture_rec(source, (0,0, source.width, h), dest, color)
 
-    cpdef blit_rect_pro(self, source, tuple dest, bint flip = True, tuple color = Color.White, double angle = 0.0, source_rect: Annotations.rect_like | None = None, int mode = 0):
+    cpdef blit_rect_pro(self, source, tuple dest, bint flip = True, tuple color = color.White, double angle = 0.0, source_rect: Annotations.rect_like | None = None, int mode = 0):
         if source_rect: source_rec = source_rect
         elif flip: source_rec = (0, 0, source.width, -source.height)
         else: source_rec = (0, 0, source.width, source.height)
@@ -273,7 +277,7 @@ cdef class WindowRendererRaylib:
         c_draw_texture_pro(source, <tuple>source_rec, dest, (0,0), angle, color)
         end_blend_mode()
 
-    cpdef blit_rect_vec(self, source, tuple coordinates, bint flip = True, tuple color = Color.White, source_rect: Annotations.rect_like | None = None, int mode = 0):
+    cpdef blit_rect_vec(self, source, tuple coordinates, bint flip = True, tuple color = color.White, source_rect: Annotations.rect_like | None = None, int mode = 0):
         if source_rect: source_rec = source_rect
         elif flip: source_rec = (0, 0, source.width, -source.height)
         else: source_rec = (0, 0, source.width, source.height)
@@ -299,24 +303,24 @@ cdef class WindowRendererRaylib:
         self.blit_rect_vec(source, coordinates, flip, mode=mode)
         self._end_shader()
 
-    cpdef fast_blit_sdf_vec(self, source, tuple coordinates, object radii, bint flip = True, tuple color = Color.White):
+    cpdef fast_blit_sdf_vec(self, source, tuple coordinates, object radii, bint flip = True, tuple color = color.White):
         if isinstance(radii, int | float): radii = (radii, radii, radii, radii)
         self._begin_sdf(source.width, source.height, <tuple>radii)
         self.fast_blit_pro(source, coordinates, flip, color = color)
         self._end_shader()
 
-    cpdef fast_blit_glassy_sdf_vec(self, source, tuple coordinates, object radii, bint flip = True, tuple color = Color.White):
+    cpdef fast_blit_glassy_sdf_vec(self, source, tuple coordinates, object radii, bint flip = True, tuple color = color.White):
         if isinstance(radii, int | float): radii = (radii, radii, radii, radii)
         self._begin_glassy_sdf(source.width, source.height, <tuple>radii)
         self.fast_blit_pro(source, coordinates, flip, color = color)
         self._end_shader()
 
-    cpdef blit_borders(self, source, tuple dest_rect, tuple radii, tuple border_color, tuple color = Color.White, double thickness = 1, bint flip = True, int mode = 0):
+    cpdef blit_borders(self, source, tuple dest_rect, tuple radii, tuple border_color, tuple color = color.White, double thickness = 1, bint flip = True, int mode = 0):
         self._begin_borders(dest_rect[2], dest_rect[3], radii, border_color, thickness)
         self.blit_rect_pro(source, dest_rect, flip, color, mode=mode)
         self._end_shader()
 
-    cpdef blit_borders_vec(self, source, tuple coordinates, tuple radii, tuple border_color, tuple color = Color.White, double thickness = 1, bint flip = True):
+    cpdef blit_borders_vec(self, source, tuple coordinates, tuple radii, tuple border_color, tuple color = color.White, double thickness = 1, bint flip = True):
         self._begin_borders(source.width, source.height, radii, border_color, thickness)
         self.blit_rect_vec(source, coordinates, flip, color)
         self._end_shader()
@@ -400,7 +404,7 @@ cdef class WindowRendererRaylib:
     cpdef tuple get_tuple_rect(self): return (0, 0, self.c_get_width(), self.c_get_height())
     cpdef Rect get_rect(self): return Rect.new(0, 0, self.c_get_width(), self.c_get_height())
 
-    cdef inline tuple c_get_tuple_size(self) noexcept: return (md.rl.get_screen_width(), md.rl.get_screen_height())
+    cdef inline tuple c_get_tuple_size(self): return (md.rl.get_screen_width(), md.rl.get_screen_height())
     cdef inline Vector2 c_get_nvvec_size(self): return Vector2.cfrom_ints(md.rl.get_screen_width(), md.rl.get_screen_height())
     cdef inline int c_get_width(self) noexcept: return md.rl.get_screen_width()
     cdef inline int c_get_height(self) noexcept: return md.rl.get_screen_height()
@@ -445,7 +449,7 @@ cdef class WindowRendererPygame:
     cpdef tuple get_tuple_rect(self): return (0, 0, self.c_get_width(), self.c_get_height())
     cpdef Rect get_rect(self): return Rect.new(0, 0, self.c_get_width(), self.c_get_height())
 
-    cdef inline tuple c_get_tuple_size(self) noexcept: return self.window.size
+    cdef inline tuple c_get_tuple_size(self): return self.window.size
     cdef inline Vector2 c_get_nvvec_size(self): return Vector2.cfrom_ints(self.window.width, self.window.height)
     cdef inline int c_get_width(self) noexcept: return self.window.width
     cdef inline int c_get_height(self) noexcept: return self.window.height

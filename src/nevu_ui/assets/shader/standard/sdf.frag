@@ -32,5 +32,6 @@ void main(){
     float alpha = smoothstep(-aa, aa, -d);
 
     vec4 baseColor = texture(texture0, fragTexCoord) * fragColor * colDiffuse;
-    finalColor = baseColor * alpha;
+    vec4 premulColor = vec4(baseColor.rgb * baseColor.a, baseColor.a);
+    finalColor = premulColor * alpha;
 }

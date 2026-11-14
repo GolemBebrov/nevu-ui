@@ -3,7 +3,6 @@ from typing import Any
 from nevu_ui.cython.surface.surface import Surface
 
 import nevu_ui.core.modules as md
-from nevu_ui.core.classes import SurfaceLike
 from nevu_ui.core.enums import Backend, OvItemType
 from nevu_ui.core.state import nevu_state
 from nevu_ui.cython import Vector2
@@ -184,9 +183,8 @@ class OverlayManager:
                 display = nevu_state.window.renderer
                 assert nevu_state.window.is_raylib(display)
                 md.rl.begin_texture_mode(surface.native)
-                display.blit(self._rendered_cache, (0, 0))
+                display.fast_blit(self._rendered_cache.native.texture, (0, 0))
                 md.rl.end_texture_mode()
-
             else:
                 surface.blit(self._rendered_cache, (0, 0))
             return
@@ -195,7 +193,10 @@ class OverlayManager:
             for element in self.sorted_pipeline:
                 surf = element[1][0]
                 coords: Vector2 = element[1][1]
-                surface.blit(surf, coords.to_tuple())
+                if element[1][3] == OvItemType.DrawCall:
+                    surf()
+                else:
+                    surface.blit(surf, coords.to_tuple())
         else:
             md.rl.begin_blend_mode(md.rl.BlendMode.BLEND_ALPHA_PREMULTIPLY)
             md.rl.begin_texture_mode(surface.native)
@@ -208,9 +209,19 @@ class OverlayManager:
                     func = element[1][0]
                     func()
                 else:
-                    display.blit(surf.native.texture, coords.to_tuple())
+                    display.fast_blit(surf.native.texture, coords.to_tuple())
             md.rl.end_texture_mode()
             md.rl.end_blend_mode()
+
+    def _get_result_surface(self, size):
+        surface = Surface(size)
+        if nevu_state.window.renderer_type.raylib:
+            surface.clear((0, 0, 0, 0))
+            rl = md.rl
+            rl.set_texture_filter(
+                surface.native.texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR
+            )
+        return surface
 
     def get_result(self, size):
         if self._cached_size is None or size != self._cached_size:
@@ -237,15 +248,5 @@ class OverlayManager:
         match nevu_state.window.backend:
             case Backend.Pygame | Backend.RayLib:
                 return result
-
-    def _get_result_surface(self, size):
-        surface = Surface(size)
-        if nevu_state.window.renderer_type.raylib:
-            rl = md.rl
-            rl.set_texture_filter(
-                surface.native.texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR
-            )
-        return surface
-
 
 overlay = OverlayManager()

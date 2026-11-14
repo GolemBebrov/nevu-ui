@@ -3,14 +3,14 @@ import math
 from typing import Any, override
 
 from nevu_ui.cython.surface.surface import Surface
-from nevu_ui.presentation.style import Style, default_style
+from nevu_ui.presentation.style import Style
 import nevu_ui.core.modules as md
 from nevu_ui.core.annotations import Annotations
 from nevu_ui.core.enums import CacheType
 from nevu_ui.core.state import nevu_state
 from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.cython.raylib.raylib import begin_blend_mode, end_blend_mode
-from nevu_ui.presentation.color import Color
+from nevu_ui.presentation import color
 from nevu_ui.rendering.base_renderer import (
     BaseRenderer,
     DrawBaseCall,
@@ -43,8 +43,8 @@ class _RaylibCoreNamespace(_BaseCoreNamespace):
         pos_from: Annotations.vec2_like_v,
         pos_to: Annotations.vec2_like_v,
         *,
-        style: Style = default_style,
-        color: Annotations.rgb_like_color = Color.White,
+        style: Style | None = None,
+        color: Annotations.rgb_like_color = color.White,
         radius: Annotations.rad_like | None = None,
         width: float | None = None,
 
@@ -53,6 +53,7 @@ class _RaylibCoreNamespace(_BaseCoreNamespace):
 
         normalize_color: bool = True
     ) -> None:
+        style = style or Style()
         border_width = width or style.border_width
         radius = radius or style.border_radius
 
@@ -82,7 +83,7 @@ class _RaylibCoreNamespace(_BaseCoreNamespace):
     #    self,
     #    size: Annotations.vec2_like_v,
     #    *,
-    #    clear_color: Annotations.rgb_like_color | None = Color.Blank,
+    #    clear_color: Annotations.rgb_like_color | None = color.Blank,
     #    normalize_color: bool = True,
     #) -> SurfaceLike:
     #    texture = NvRenderTexture(Vector2(size))
@@ -99,12 +100,12 @@ class _RaylibCoreNamespace(_BaseCoreNamespace):
         pos: Annotations.vec2_like_v,
         size: Annotations.vec2_like_v,
         *,
-        color: Annotations.rgb_like_color = Color.White,
-        style: Style = default_style,
+        color: Annotations.rgb_like_color = color.White,
+        style: Style | None = None,
         glassy: bool = False,
     ):
         Annotations.window_check()
-
+        style = style or Style()
         w, h = float(size[0]), float(size[1])
         if w <= 0.0 or h <= 0.0:
             return
@@ -143,7 +144,7 @@ class _RaylibCoreNamespace(_BaseCoreNamespace):
         md.rl.unload_image(image)
         return texture
 
-_gradient_base_color = Color.White
+_gradient_base_color = color.White
 
 class RaylibRenderer(BaseRenderer):
     @override
@@ -159,7 +160,7 @@ class RaylibRenderer(BaseRenderer):
         blend_mode = md.rl.BlendMode
 
         cache = call.cache
-        style = call.style
+        style = call.style or Style()
         size = call.size
         color = call.color
         color = self.core.normalize_color(color)
@@ -203,14 +204,14 @@ class RaylibRenderer(BaseRenderer):
 
             radius = self.core.normalize_radius(style.border_radius, relative=True)
 
-            begin_blend_mode(blend_mode.BLEND_ALPHA)
+            begin_blend_mode(blend_mode.BLEND_ALPHA_PREMULTIPLY)
             with surface:
                 if call.radius_support:
                     renderer.fast_blit_sdf_vec(
-                        image, (0, 0), radii = radius, color = _gradient_base_color
+                        image, (0, 0), radii = radius, flip=False, color = _gradient_base_color
                     )
                 else:
-                    surface.blit(image, (0, 0))
+                    renderer.fast_blit_pro(image, (0, 0), flip=False, color = _gradient_base_color)
 
         elif call.radius_support:
             radius = self.core.normalize_radius(style.border_radius, relative=True)
@@ -231,7 +232,7 @@ class RaylibRenderer(BaseRenderer):
         pos: Annotations.vec2_like_v | None = None,
     ) -> tuple[list[str], Vector2, Vector2]:
         cache = call.cache
-        style = call.style
+        style = call.style or Style()
         relative = call.relative
         relm = call.relm
         text = call.text
@@ -250,7 +251,12 @@ class RaylibRenderer(BaseRenderer):
         else:
             line_height_px = round(font_size * call.line_height)
             if call.words_indent:
-                text_to_wrap = text.strip().split(" ")
+                text_to_wrap = []
+                for p_idx, paragraph in enumerate(text.split("\n")):
+                    if p_idx > 0:
+                        text_to_wrap.append("\n")
+                    if paragraph.strip():
+                        text_to_wrap.extend(paragraph.strip().split(" "))
                 separator = " "
             else:
                 text_to_wrap = list(text)
@@ -261,7 +267,10 @@ class RaylibRenderer(BaseRenderer):
 
             if not call.unlimited_y:
                 y_cropped = False
-                while len(text_lines) * line_height_px > max_size.y:
+                while (
+                    text_lines
+                    and (len(text_lines) - 1) * line_height_px + font_size > max_size.y
+                ):
                     text_lines.pop()
                     y_cropped = True
 
@@ -269,7 +278,7 @@ class RaylibRenderer(BaseRenderer):
                     text_lines[-1] = text_lines[-1][:-3] + "..."
 
             text_sizes = [self.core.measure_text(line, font=font, font_size=font_size) for line in text_lines]
-            text_size_y = len(text_lines) * line_height_px
+            text_size_y = (len(text_lines) - 1) * line_height_px + font_size if text_lines else 0
             if text_sizes:
                 text_size = Vector2.from_xy(max(text_sizes, key=lambda s: s.x).x, text_size_y)
             else:
@@ -293,7 +302,7 @@ class RaylibRenderer(BaseRenderer):
         pos: Vector2 | None = None,
     ):
         cache = call.cache
-        style = call.style
+        style = call.style or Style()
         relm = call.relm
         relative = call.relative
         pos = Vector2(pos or call.pos or Vector2(0, 0))
@@ -301,7 +310,7 @@ class RaylibRenderer(BaseRenderer):
         font, font_size = self.core.get_font(style=style, cache=cache, relative=relative, relm=relm, size=call.font_size, container_size=call.size)
         line_height_px = round(font_size * call.line_height)
         half_leading = (line_height_px - font_size) / 2
-        color = self.core.normalize_color(call.color or Color.White)
+        color = self.core.normalize_color(call.color or color.White)
 
         widths = [
             self.core.measure_text(line, font=font, font_size=font_size).x
@@ -315,7 +324,9 @@ class RaylibRenderer(BaseRenderer):
         with surface:
             begin_blend_mode(rl.BlendMode.BLEND_CUSTOM_SEPARATE)
             for i, (line, w) in enumerate(zip(text_lines, widths)):
-                dx, dy = self.core.align_text_line(block_w, w, i, line_height_px=line_height_px, half_leading=half_leading)
+                dx, dy = self.core.align_text_line(
+                    block_w, w, i, line_height_px=line_height_px, half_leading=0, style=style
+                )
                 coordinates = (round(pos.x + dx), round(pos.y + dy))
                 rl.draw_text_ex(font.native, line, coordinates, font_size, 0, color)
             end_blend_mode()
@@ -325,8 +336,8 @@ class RaylibRenderer(BaseRenderer):
         surface: Surface,
         call: DrawBordersCall,
     ):
-        color = call.color or Color.White
-        style = call.style
+        color = call.color or color.White
+        style = call.style or Style()
         pos = call.pos or (0, 0)
         pos = (pos[0], pos[1])
         relm = self.core.get_relm()
@@ -371,7 +382,7 @@ class RaylibRenderer(BaseRenderer):
         radius = call.radius if call.radius is not None else 0
         radius = self.core.normalize_radius(radius, relative=True)
         with effect_texture:
-            effect_texture.clear(Color.Blank)
+            effect_texture.clear(color.Blank)
             gradient.draw(0, 0, effect_texture.width, effect_texture.height)
         with surface:
             display.fast_blit_sdf_vec(effect_texture.native.texture, (pos[0], pos[1]), radius)

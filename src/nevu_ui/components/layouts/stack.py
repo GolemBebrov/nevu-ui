@@ -9,14 +9,18 @@ from nevu_ui.components.layouts.menu import Menu
 from nevu_ui.components.nevuobject import NevuObject
 from nevu_ui.components.widgets import Widget
 from nevu_ui.core import Annotations
+from nevu_ui.core.enums import Align, CacheType, CustomFunctions, Orientation
 from nevu_ui.core.error_formats import format_nvtype_nvobject_error
-from nevu_ui.core.enums import Align, CustomFunctions, Orientation
-from nevu_ui.core.size.rules import (
-    _all_fillx,
-    _SizeRule,
+from nevu_ui.core.size import _SizeRule
+from nevu_ui.core.size.rules import _all_fillx
+from nevu_ui.cython.logic.logic import (
+    draw_items,
+    get_absolute_coordinates,
+    update_items,
 )
-from nevu_ui.cython.logic.logic import base_light_update, draw_widgets_optimized, py_get_item_abs_coords
 from nevu_ui.cython.vector2 import Vector2
+
+_still_offset = Vector2()
 
 # Nnna nanachi approved!
 class Stack(BaseLayout):
@@ -58,7 +62,7 @@ class Stack(BaseLayout):
 
     def _add_params(self):
         super()._add_params()
-        self._add_param("spacing", (int, float), 10)
+        self._add_param("spacing", int | float, 10)
         self._add_param("basic_alignment", Align, Align.CENTER)
         self._add_param("orientation", Orientation, Orientation.Row)
 
@@ -68,24 +72,37 @@ class Stack(BaseLayout):
             CustomFunctions.draw_main
         )
 
-    def add_item(self, item: NevuObject, alignment: Align = Align.CENTER):
-        item = super().add_item(item)
-        self.widgets_alignment.append(alignment)
-        self.cached_coordinates = None
-        return item
-
     def _parse_fillx(self, fill_rule: _SizeRule, fill_type: type[_SizeRule], pos: int) -> float | None:
         if fill_rule in _all_fillx:
             raise ValueError(
                 f"Handling for SizeRule '{fill_type.__name__}' is not supported in {type(self).__name__}"
             )
 
+    def add_item(self, item: NevuObject, alignment: Align = Align.CENTER):
+        self.widgets_alignment.append(alignment)
+        try:
+            item = super().add_item(item)
+        except Exception:
+            self.widgets_alignment.pop()
+            raise
+        self.cached_coordinates = None
+        return item
+
+    def _on_item_kill(self, item: NevuObject) -> None:
+        super()._on_item_kill(item)
+        if item in self.items:
+            idx = self.items.index(item)
+            if idx < len(self.widgets_alignment):
+                self.widgets_alignment.pop(idx)
+
     def insert_item(self, item: NevuObject, id: int = -1):
         try:
-            self.kill_item(self.items[id])
+            n = len(self.items)
+            idx = n + id if id < 0 else id
+            self.kill_item(self.items[idx])
             item = self._item_add(item)
-            self.items.insert(id, item)
-            self.widgets_alignment.insert(id, Align.CENTER)
+            self.items.insert(idx, item)
+            self.widgets_alignment.insert(idx, Align.CENTER)
             self._recalculate_size()
             if self._parent_layout:
                 self._parent_layout._on_item_add(item)
@@ -126,10 +143,17 @@ class Stack(BaseLayout):
         if need_rebuild:
             self._regenerate_coordinates()
 
-        base_light_update(self)
+        update_items(
+            self.items,
+            self.cached_coordinates,
+            self.first_parent_menu.absolute_coordinates,
+            _still_offset,
+            self,
+            False,
+        )
 
     def _draw_main(self):
-        draw_widgets_optimized(self, self.items, BaseLayout, Widget)
+        draw_items(self, self.items, BaseLayout, Widget)
 
     def _regenerate_coordinates(self):
         super()._regenerate_coordinates()
@@ -157,7 +181,9 @@ class Stack(BaseLayout):
         if not items or not self._visible_items:
             size[0] = 0
             size[1] = 0
+            self.cache.clear_selected(whitelist=[CacheType.RelSize])
             return
+
         if any(not item.booted for item in items): return
         orientation = self.orientation
         main_axis = orientation.axis
@@ -165,6 +191,12 @@ class Stack(BaseLayout):
 
         size[main_axis] = sum(item.size[main_axis] for item in self._visible_items) + len(self._visible_items) * self.spacing
         size[cross_axis] = max(item.size[cross_axis] for item in self._visible_items)
+        self.cache.clear_selected(whitelist=[CacheType.RelSize])
+        if self.bg_widget and self.bg_widget.booted:
+            self.bg_widget.size = self.size.xy
+            self.bg_widget._regen_surface()
+            self.bg_widget._changed = True
+            self.bg_widget.clear_all()
 
     def _get_align_offset(self, item: NevuObject, alignment: Align) -> float:
         cross_axis = self.orientation.cross_axis
@@ -213,20 +245,20 @@ class Stack(BaseLayout):
             new_coords[main_axis] = self_coordinates[main_axis] + current_main + (spacing * 0.5)
             new_coords[cross_axis] = self_coordinates[cross_axis] + self._get_align_offset(item, alignment)
             item.set_coordinates(new_coords)
-            item.absolute_coordinates = py_get_item_abs_coords(self, item)
+            item.absolute_coordinates = get_absolute_coordinates(self, item)
 
             current_main += item.get_actual_size()[main_axis] + spacing
             cached_coordinates.append(new_coords.copy())
 
         self.cached_coordinates = cached_coordinates
 
-class VStack(BaseLayout):
+class VStack(Stack):
     def _add_params(self):
         super()._add_params()
         self._change_param_default("orientation", Orientation.Column)
         self._block_param("orientation")
 
-class HStack(BaseLayout):
+class HStack(Stack):
     def _add_params(self):
         super()._add_params()
         self._change_param_default("orientation", Orientation.Row)

@@ -12,7 +12,7 @@ from nevu_ui.cython.rect import Rect
 from nevu_ui.cython.surface.surface import Surface
 from nevu_ui.cython.vector2 import Vector2
 from nevu_ui.cython.raylib.raylib import begin_blend_mode, end_blend_mode
-from nevu_ui.presentation.color import Color
+from nevu_ui.presentation import color
 from nevu_ui.rendering import DrawTextCall
 from nevu_ui.utils import Keys, keyboard, mouse
 
@@ -76,13 +76,7 @@ class Input(Widget):
         super()._init_booleans()
         self.hoverable = False
         self.selected = False
-        self._changed_text = False
-        self._changed_cursor = False
         self._add_custom_flags(CustomFunctions.update_start)
-
-    def _init_text_cache(self):
-        self._text_surface = None
-        self._text_rect = Rect(0, 0, 0, 0)
 
     def _lazy_init(self, size: Vector2 | list):
         super()._lazy_init(size)
@@ -111,13 +105,17 @@ class Input(Widget):
             value = value.replace("\r\n", " ").replace("\r", " ").replace("\n", " ")
         if self.max_characters is not None:
             value = value[: self.max_characters]
-        self.cursor_place = min(len(value), self.cursor_place)
-        if self._selection_anchor is not None:
-            self._selection_anchor = min(len(value), self._selection_anchor)
         self._changed = True
 
         if not self.booted:
+            self.cursor_place = min(len(value), self.cursor_place)
+            if self._selection_anchor is not None:
+                self._selection_anchor = min(len(value), self._selection_anchor)
             return value
+
+        self.cursor_place = min(len(value), self.cursor_place)
+        if self._selection_anchor is not None:
+            self._selection_anchor = min(len(value), self._selection_anchor)
 
         self._draw_text(text_override=value)
 
@@ -297,7 +295,7 @@ class Input(Widget):
                 texture, rl.TextureFilter.TEXTURE_FILTER_BILINEAR
             )
 
-        surface.clear(Color.Blank)
+        surface.clear(color.Blank)
         self._text_surface = surface
 
     def _draw_continuous_text(self, text: str):
@@ -316,7 +314,7 @@ class Input(Widget):
         )
         assert result
 
-        self._text_rect, self._text_surface = result
+        _, self._text_surface = result
         rtype = nevu_state.window.renderer_type
         if rtype.raylib:
             rl = md.rl
@@ -543,7 +541,6 @@ class Input(Widget):
         self.cursor_place = cursor_place
 
     def _parse_key_right(self, ctrl, initial_cursor_place: int, shift: bool = False):
-        self._changed_cursor = True
         cursor_place = int(self.cursor_place)
         text = self.text
 
@@ -578,7 +575,6 @@ class Input(Widget):
             self._selection_anchor = None
 
     def _parse_key_left(self, ctrl, initial_cursor_place: int, shift: bool = False):
-        self._changed_cursor = True
         cursor_place = int(self.cursor_place)
         text = self.text
 
@@ -815,42 +811,23 @@ class Input(Widget):
                 upd_scrollx()
                 upd_scrolly()
 
-        if prev_selected != selected:
-            if selected:
-                upd_scrollx()
-                upd_scrolly()
-            else:
-                self._changed_cursor = True
+        if prev_selected != selected and selected:
+            upd_scrollx()
+            upd_scrolly()
 
         if selected:
             cursor_moved = False
-            changed_text = self._changed_text
             initial_cursor_place = self.cursor_place
             initial_text = self.text
             self._parse_keydown()
             if self.cursor_place != initial_cursor_place:
                 cursor_moved = True
-            if self.text != initial_text:
-                changed_text = True
-            if changed_text or cursor_moved:
+            if self.text != initial_text or cursor_moved:
                 self._changed = True
 
-            if changed_text:
-                self._draw_text()
-                changed_text = False
-                if on_change := self.on_change_function:
-                    try:
-                        on_change(self, self.text)
-                    except Exception as e:
-                        print(
-                            f"Error in Input with {self.id} in on_change_function.\nCause: {e}"
-                        )
-
-            elif cursor_moved:
+            if cursor_moved:
                 upd_scrollx()
                 upd_scrolly()
-
-            self._changed_text = changed_text
 
         self.selected = selected
 
@@ -927,7 +904,7 @@ class Input(Widget):
 
         top_left_scrolled = top_left_padding - self._scroll_offset
 
-        clip = (curr_size - top_left_padding - bottom_right_padding).to_round()
+        clip = (curr_size - top_left_padding - bottom_right_padding).round()
         clip.x, clip.y = max(clip.x, 0), max(clip.y, 0)
 
         if clip.x == 0 or clip.y == 0: return
@@ -1011,7 +988,8 @@ class Input(Widget):
                         top_left_padding.y + text_additional_y
                     )
                     dest_pos = text_vec.get_int_tuple()
-                surface.blit(text_surface, dest_pos)
+                if text_surface:
+                    surface.blit(text_surface, dest_pos)
                 end_blend_mode()
                 rl.end_scissor_mode()
 
@@ -1044,7 +1022,7 @@ class Input(Widget):
         line_height = self._get_line_height()
         measure = self._measure_text
 
-        selection_color = Color.with_alpha(self.style.get_content_color(self.subtheme_role, inverted = not self.inverted), 180)
+        selection_color = color.set_alpha(self.style.get_content_color(self.subtheme_role, inverted = not self.inverted), 180)
         selection_tuple_color = (selection_color[0], selection_color[1], selection_color[2], selection_color[3])
 
         if multi_line:
@@ -1166,7 +1144,7 @@ class Input(Widget):
             if not rl.check_collision_recs(cursor_rect_rl, clip_rect_rl):
                 return
             with surface:
-                color = self.subtheme.oncolor
+                color = self.subtheme.on_color
                 if len(color) == 3:
                     color = (*color, 255)
                 rl.draw_rectangle(
@@ -1176,12 +1154,14 @@ class Input(Widget):
                     int(cursor_size.y),
                     color,
                 )
-
+    def _kill_base(self):
+        self.selected = False
+        super()._kill_base()
 
 # === NOT CLASS FUNCTIONS ===
-
-
-def _input_on_scroll(self, side: bool):
+def _input_on_scroll(self: Input, side: bool):
+    if not self.multi_line:
+        return
     direction = -1 if side else 1
 
     scroll_multiplier = 3
@@ -1194,7 +1174,7 @@ def _input_on_scroll(self, side: bool):
     self._changed = True
 
 
-def _input_on_style_change(self):
+def _input_on_style_change(self: Input):
     self._process_padding()
     self.clear_surfaces()
     if not self.booted:
@@ -1202,5 +1182,5 @@ def _input_on_style_change(self):
     self._draw_text()
     self._changed = True
 
-def _input_on_click(self):
+def _input_on_click(self: Input):
     self.check_selected()

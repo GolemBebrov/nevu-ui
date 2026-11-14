@@ -4,7 +4,6 @@ import nevu_ui.core.modules as md
 from nevu_ui.components.layouts.menu import Menu
 from nevu_ui.core.annotations import Annotations
 from nevu_ui.cython.callbacks.callbacks import Callbacks
-from nevu_ui.cython.logic.logic import fast_cycle_in_list
 from nevu_ui.cython.logic.logic import (
     _manager_main_loop_main,
 )
@@ -156,10 +155,12 @@ class Manager:
         self.on_start()
         self._started = True
         if self.menus is not None:
-            fast_cycle_in_list("update", self.menus)
+            for menu in self.menus:
+                menu.update()
         self.first_update()
         if self.menus is not None:
-            fast_cycle_in_list("draw", self.menus)
+            for menu in self.menus:
+                menu.draw()
         self.first_draw()
         end_frame()
 

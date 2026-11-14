@@ -19,8 +19,7 @@ from nevu_ui.cython.pygame_shapes import (
     transform_into_rounded_rect,
 )
 from nevu_ui.cython.pygame_shapes.pygame_shapes import draw_sdf_line
-from nevu_ui.presentation.color import Color
-from nevu_ui.presentation.style import default_style
+from nevu_ui.presentation import color
 from nevu_ui.rendering.base_renderer import (
     BaseRenderer,
     DrawBaseCall,
@@ -29,8 +28,6 @@ from nevu_ui.rendering.base_renderer import (
     DrawTextCall,
     _BaseCoreNamespace,
 )
-
-_pygame_font_cache: dict[tuple[str, int], tuple[Any, int]] = {}
 
 class _PygameCoreNamespace(_BaseCoreNamespace):
     @override
@@ -47,9 +44,10 @@ class _PygameCoreNamespace(_BaseCoreNamespace):
         pos: Annotations.vec2_like_v,
         size: Annotations.vec2_like_v,
         *,
-        color: Annotations.rgb_like_color = Color.White,
-        style: Style = default_style,
+        color: Annotations.rgb_like_color = color.White,
+        style: Style | None = None,
     ) -> None:
+        style = style or Style()
         radius = self.normalize_radius(style.border_radius, relative=True)
         color = self.normalize_color(color)
         x, y = int(pos[0]), int(pos[1])
@@ -77,9 +75,10 @@ class _PygameCoreNamespace(_BaseCoreNamespace):
         radius: Annotations.rad_like | None = None,
         relative: bool = False,
         relm: float | None = None,
-        color: Annotations.rgb_like_color = Color.White,
-        style: Style = default_style,
+        color: Annotations.rgb_like_color = color.White,
+        style: Style | None = None,
     ) -> None:
+        style = style or Style()
         relm = relm or self.get_relm()
 
         line_width = width if width is not None else style.border_width
@@ -130,7 +129,7 @@ class PygameRenderer(BaseRenderer):
         call: DrawBaseCall,
     ):
         cache = call.cache
-        style = call.style
+        style = call.style or Style()
         size = call.size
         w, h = int(size[0]), int(size[1])
         color = self.core.normalize_color(call.color)
@@ -201,7 +200,7 @@ class PygameRenderer(BaseRenderer):
         pos: Annotations.vec2_like_v | None = None,
     ) -> tuple[list[str], Vector2, Vector2]:
         cache = call.cache
-        style = call.style
+        style = call.style or Style()
         text = call.text
         size = call.size
         max_size = call.max_size
@@ -220,7 +219,12 @@ class PygameRenderer(BaseRenderer):
         else:
             line_height_px = round(font_size * call.line_height)
             if call.words_indent:
-                text_to_wrap = text.strip().split(" ")
+                text_to_wrap = []
+                for p_idx, paragraph in enumerate(text.split("\n")):
+                    if p_idx > 0:
+                        text_to_wrap.append("\n")
+                    if paragraph.strip():
+                        text_to_wrap.extend(paragraph.strip().split(" "))
                 separator = " "
             else:
                 text_to_wrap = list(text)
@@ -273,7 +277,7 @@ class PygameRenderer(BaseRenderer):
         pos: Vector2 | None = None,
     ):
         cache = call.cache
-        style = call.style
+        style = call.style or Style()
         pos = Vector2(pos or call.pos or Vector2(0, 0))
 
         font, font_size = self.core.get_font(
@@ -281,7 +285,7 @@ class PygameRenderer(BaseRenderer):
         )
         line_height_px = round(font_size * call.line_height)
         half_leading = (line_height_px - font_size) / 2
-        color = self.core.normalize_color(call.color or Color.White)
+        color = self.core.normalize_color(call.color or color.White)
 
         widths = [
             self.core.measure_text(line, font=font, font_size=font_size).x
@@ -310,8 +314,8 @@ class PygameRenderer(BaseRenderer):
         surface: Surface,
         call: DrawBordersCall,
     ):
-        color = self.core.normalize_color(call.color or Color.White)
-        style = call.style
+        color = self.core.normalize_color(call.color or color.White)
+        style = call.style or Style()
         pos = call.pos or (0, 0)
         pos_xy = (int(pos[0]), int(pos[1]))
         relm = self.core.get_relm()
