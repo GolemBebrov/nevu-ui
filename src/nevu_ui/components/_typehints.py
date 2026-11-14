@@ -57,7 +57,7 @@ class _NevuObjectGlobalsKwargs(TypedDict, total=False):
 
 
 class _NevuObjectGlobalsKwargsFull(_NevuObjectGlobalsKwargs, _NevuObjectKwargs): ...
-class _NevuObjectGlobals(GlobalsBase):
+class _NevuObjectDefaults(GlobalsBase):
     def modify(self, **kwargs: Unpack[_NevuObjectGlobalsKwargsFull]):
         return super().modify(**kwargs)
 
@@ -210,7 +210,7 @@ class _SwitchTemplate(_WidgetTemplate):
 
 
 class _WidgetGlobalsKwargs(_NevuObjectGlobalsKwargsFull, _WidgetKwargs): ...
-class _WidgetGlobals(GlobalsBase):
+class _WidgetDefaults(GlobalsBase):
     def modify(self, **kwargs: Unpack[_WidgetGlobalsKwargs]):
         return super().modify(**kwargs)
 
@@ -358,5 +358,35 @@ class KwargsLibrary:
     # Flex
     type FlexAll = _FlexKwargs
 
-nevu_object_globals = _NevuObjectGlobals()
-widget_globals = _WidgetGlobals()
+#OH MY FING GOD.
+class _ParamGlobalsKwargs(
+    _NevuObjectGlobalsKwargsFull,
+    _SwitchKwargs,
+    _ButtonKwargs,
+    _ElementSwitcherKwargs,
+    _InputKwargs,
+    _SliderKwargs,
+    _RectCheckBoxKwargs,
+    _LayoutTypeKwargs,
+    _StackKwargs,
+    _ScrollableKwargs,
+    _GridKwargs_uni,
+    _MenuKwargs,
+    _FlexKwargs,
+    total=False,
+):
+    text: str
+    state: bool
+    elements: Any | list | None
+    content: Any
+
+class _ParamDefaults(GlobalsBase):
+    def modify(self, **kwargs: Unpack[_ParamGlobalsKwargs]):
+        return super().modify(**kwargs)
+
+    def modify_temp(self, **kwargs: Unpack[_ParamGlobalsKwargs]):
+        return super().modify_temp(**kwargs)
+
+nevu_object_defaults = _NevuObjectDefaults()
+widget_defaults = _WidgetDefaults()
+defaults = _ParamDefaults()

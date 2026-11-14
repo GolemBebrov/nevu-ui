@@ -2,7 +2,7 @@ from .core import size
 from .core.annotations import VERSION, Annotations
 from .core.classes import TooltipType, nevu_globals
 from .components.nevuobject import NevuObject  # noqa: I001
-from .components._typehints import nevu_object_globals
+from .components._typehints import nevu_object_defaults
 from .components.widgets import (
     Button,
     Element,
@@ -33,17 +33,16 @@ from .components.layouts import (
 )
 from .components import CheckBoxGroup
 from . import components, core, presentation, utils
-from .components._typehints import widget_globals
+from .components._typehints import widget_defaults, defaults
 
 from .cython.callbacks.callbacks import Callbacks
 from .core.enums import (
     Align,
-    AnimationType,
+    AnimType,
     Backend,
     CacheType,
     Orientation,
     ConfigLoadType,
-    EventType,
     GradientType,
     HoverState,
     LinearSide,
@@ -115,8 +114,8 @@ from .presentation.theme import (
     SubThemeRole,
     TupleColorRole,
 )
-from .presentation.color import Color
-from .presentation.style import StateVariable, Style, default_style
+from .presentation import color
+from .presentation.style import StateVariable, Style
 from .rendering import Gradient
 from .assets.font import FontLibrary
 from .utils import InputType, Keys, Time, keyboard, load_font, mouse, time
@@ -142,8 +141,9 @@ __all__ = [  # noqa: RUF022
     "get_all_colorthemes",
     "get_colortheme",
     "NevuObject",
-    "nevu_object_globals",
-    "widget_globals",
+    "nevu_object_defaults",
+    "widget_defaults",
+    "defaults",
     "Manager",
     "Vector2",
     "nevu_state",
@@ -224,8 +224,8 @@ __all__ = [  # noqa: RUF022
     "cgc",
     "cgcw",
     "cgch",
-    # ===Color===
-    "Color",
+    # ===color===
+    "color",
     "ColorTheme",
     "ColorSubTheme",
     "ColorPair",
@@ -235,7 +235,6 @@ __all__ = [  # noqa: RUF022
     "TupleColorRole",
     # ===Style===
     "Style",
-    "default_style",
     "StateVariable",
     "Gradient",
     "ConfigLoadType",
@@ -244,9 +243,8 @@ __all__ = [  # noqa: RUF022
     "LinearSide",
     "RadialPosition",
     "GradientType",
-    "EventType",
     "Backend",
-    "AnimationType",
+    "AnimType",
     "FlexJustify",
     "Orientation",
     # ===Submodules===

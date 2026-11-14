@@ -5,12 +5,10 @@ from nevu_ui.utils.time import time
 
 
 class Animation:
-    """
-    Base Nevu-UI animation class.
-    ### do not use.
-    """
     __slots__ = [
         "_check_errors",
+        "_reversing_start",
+        "_shortening_factor",
         "current_time",
         "current_value",
         "easing_func",
@@ -33,9 +31,11 @@ class Animation:
         self.start = start
         self.end = end
         self.ended = False
-        self.current_value = None
+        self.current_value = start
         self.easing_func = easing_func
         self._check_errors = check_errors
+        self._reversing_start = start
+        self._shortening_factor = 1.0
 
     def _update_current_value(self, value):
         easing_func = self.easing_func
@@ -49,6 +49,14 @@ class Animation:
             print(f"Error occured during execution of Animation easing function: {e}")
             return value
 
+    def output_progress(self) -> float:
+        if self.max_time <= 0:
+            return 1.0
+        eased = self._update_current_value(self.current_time / self.max_time)
+        if isinstance(eased, tuple):
+            return float(eased[0])
+        return float(eased)
+
     def _apply_easing(self, eased_value: float):
         pass
 
@@ -57,6 +65,11 @@ class Animation:
             return
         current_time = self.current_time
         max_time = self.max_time
+        if max_time <= 0:
+            self.current_time = max_time
+            self.ended = True
+            self.current_value = self.end
+            return
         eased_value = self._update_current_value(current_time / max_time)
         self._apply_easing(eased_value)
         current_time += time.dt
@@ -69,12 +82,14 @@ class Animation:
     def reset(self):
         self.current_time = 0
         self.ended = False
+        self.current_value = self.start
 
     def revert_time(self):
         self.current_time = self.max_time
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}<from {self.start} to {self.end}; {self.current_time:.2f}:{self.max_time}s>"
+
 
 class Vector2Animation(Animation):
     __slots__ = ()
@@ -120,7 +135,42 @@ class ColorAnimation(Animation):
         easing_func: Callable | None = None,
         check_errors: bool = False,
     ):
+        if len(start) == 3 and len(end) == 4:
+            start = (start[0], start[1], start[2], 255)
+        elif len(start) == 4 and len(end) == 3:
+            end = (end[0], end[1], end[2], 255)
         super().__init__(start, end, time, easing_func, check_errors)
+
+    def _apply_easing(self, eased_value):
+        length = min(len(self.start), len(self.end))
+        if isinstance(eased_value, tuple):
+            progress, offset = eased_value
+            is_seq = isinstance(offset, (tuple, list)) or hasattr(offset, "__getitem__")
+            self.current_value = tuple(
+                self.start[i]
+                + (self.end[i] - self.start[i]) * progress
+                + (offset[i] if is_seq else offset)
+                for i in range(length)
+            )
+        else:
+            self.current_value = tuple(
+                self.start[i] + (self.end[i] - self.start[i]) * eased_value
+                for i in range(length)
+            )
+
+
+class TupleAnimation(Animation):
+    __slots__ = ()
+
+    def __init__(
+        self,
+        start: tuple[float, ...] | list[float],
+        end: tuple[float, ...] | list[float],
+        time: float = 1,
+        easing_func: Callable | None = None,
+        check_errors: bool = False,
+    ):
+        super().__init__(tuple(start), tuple(end), time, easing_func, check_errors)
 
     def _apply_easing(self, eased_value):
         length = min(len(self.start), len(self.end))
@@ -247,18 +297,56 @@ from .presets import (  # noqa: E402
     spring,
     pulse,
     breathe,
-    smooth_shake_easing
+    smooth_shake_easing,
 )
 from .manager import AnimationManager  # noqa: E402
 
 __all__ = [
-    "Vector2Animation", "FloatAnimation", "ColorAnimation",
-    "linear", "ease_in_sine", "ease_out_sine", "ease_in_out_sine",
-    "ease_in_quad", "ease_out_quad", "ease_in_out_quad", "ease_in_cubic", "ease_out_cubic", "ease_in_out_cubic",
-    "ease_in_quart", "ease_out_quart", "ease_in_out_quart", "ease_in_quint", "ease_out_quint", "ease_in_out_quint",
-    "ease_in_expo", "ease_out_expo", "ease_in_out_expo", "ease_in_circ", "ease_out_circ", "ease_in_out_circ",
-    "ease_in_back", "ease_out_back", "ease_in_out_back", "ease_in_elastic", "ease_out_elastic",
-    "ease_in_power", "ease_out_power", "steps",
-    "AnimationManager", "ease_out_bounce", "shake_easing", "smoothstep", "smootherstep",
-    "cubic_bezier", "spring", "pulse", "breathe", "smooth_shake_easing", "AnimationQueue", "ease_in_out_bounce", "ease_in_bounce"
+    "Vector2Animation",
+    "FloatAnimation",
+    "ColorAnimation",
+    "TupleAnimation",
+    "linear",
+    "ease_in_sine",
+    "ease_out_sine",
+    "ease_in_out_sine",
+    "ease_in_quad",
+    "ease_out_quad",
+    "ease_in_out_quad",
+    "ease_in_cubic",
+    "ease_out_cubic",
+    "ease_in_out_cubic",
+    "ease_in_quart",
+    "ease_out_quart",
+    "ease_in_out_quart",
+    "ease_in_quint",
+    "ease_out_quint",
+    "ease_in_out_quint",
+    "ease_in_expo",
+    "ease_out_expo",
+    "ease_in_out_expo",
+    "ease_in_circ",
+    "ease_out_circ",
+    "ease_in_out_circ",
+    "ease_in_back",
+    "ease_out_back",
+    "ease_in_out_back",
+    "ease_in_elastic",
+    "ease_out_elastic",
+    "ease_in_power",
+    "ease_out_power",
+    "steps",
+    "AnimationManager",
+    "ease_out_bounce",
+    "shake_easing",
+    "smoothstep",
+    "smootherstep",
+    "cubic_bezier",
+    "spring",
+    "pulse",
+    "breathe",
+    "smooth_shake_easing",
+    "AnimationQueue",
+    "ease_in_out_bounce",
+    "ease_in_bounce",
 ]
