@@ -12,16 +12,37 @@ from nevu_ui.core.enums import (
     FlexJustify,
     Orientation,
 )
+from nevu_ui.core.size.rules import (
+    Auto,
+    Px,
+    _all_fillx,
+    _all_gcx,
+    _all_vx,
+    _SizeRule,
+)
 from nevu_ui.cython.logic.logic import (
-    base_light_update,
-    draw_widgets_optimized,
-    py_get_item_abs_coords,
+    update_items,
+    draw_items,
+    get_absolute_coordinates,
 )
 from nevu_ui.cython.vector2 import Vector2
 
+
+_still_offset = Vector2()
 MAIN_LEN_STR = "main_len"
 SEC_LEN_STR = "sec_len"
 ITEMS_STR = "items"
+BASES_STR = "bases"
+BASE_STR = "base"
+GROW_STR = "grow"
+SHRINK_STR = "shrink"
+ALIGN_STR = "align"
+MIN_MAIN_STR = "min_main"
+MAX_MAIN_STR = "max_main"
+MIN_SEC_STR = "min_sec"
+MAX_SEC_STR = "max_sec"
+
+FLEX_EPS = 0.01
 
 class Flex(BaseLayout):
     _supports_global_size = False
@@ -166,31 +187,119 @@ class Flex(BaseLayout):
             return
         self._recalculate_layout()
 
-    def _create_line_dicts(self, is_row: bool, gap_size: Vector2):
-        available_space = self._get_available_space(is_row)
+    def _resolve_flex_rule(self, rule, is_row_axis: bool) -> float | None:
+        if rule is None:
+            return None
+        if not isinstance(rule, _SizeRule):
+            return float(rule)
+        if isinstance(rule, Px):
+            return float(rule.value)
+        if isinstance(rule, Auto):
+            return None
+        rule_type = type(rule)
+        if rule_type in _all_vx:
+            return self._parse_vx(rule, rule_type, 0)
+        if rule_type in _all_fillx:
+            if rule_type.__name__.endswith("W"):
+                target_is_row = True
+            elif rule_type.__name__.endswith("H"):
+                target_is_row = False
+            else:
+                target_is_row = is_row_axis
+            space = self._get_available_space(target_is_row)
+            if space == float("inf"):
+                return None
+            return self._percent_helper(space, rule.value)
+        if rule_type in _all_gcx:
+            raise ValueError(
+                f"Handling for SizeRule '{rule_type.__name__}' is only Grid feature"
+            )
+        raise ValueError(f"Handling for SizeRule '{rule_type.__name__}' is not implemented")
 
+    def _resolve_config_size(self, size, is_row: bool) -> tuple[float | None, float | None]:
+        if size is None:
+            return None, None
+        if isinstance(size, int | float):
+            return float(size), float(size)
+        try:
+            x, y = size[0], size[1]
+        except (TypeError, IndexError, KeyError):
+            raise ValueError(f"Invalid FlexConfig size: {size}") from None
+        main = self._resolve_flex_rule(x if is_row else y, is_row)
+        sec = self._resolve_flex_rule(y if is_row else x, not is_row)
+        return main, sec
+
+    def _collect_flex_data(self, is_row: bool) -> dict:
+        flex_data = {}
+        main_pos = 0 if is_row else 1
+        sec_pos = 1 if is_row else 0
+        for item in self.items:
+            config = item.flex_config
+            if config is None:
+                continue
+            grow = max(0.0, float(config.grow))
+            shrink = max(0.0, float(config.shrink))
+            align_self = config.align_self
+            basis = self._resolve_flex_rule(config.basis, is_row) if config.basis is not None else None
+            min_main, min_sec = self._resolve_config_size(config.min_size, is_row)
+            max_main, max_sec = self._resolve_config_size(config.max_size, is_row)
+            if (
+                not grow and not shrink
+                and align_self is None and basis is None
+                and min_main is None and min_sec is None
+                and max_main is None and max_sec is None
+            ):
+                continue
+            base = item.size.copy()
+            if basis is not None:
+                base[main_pos] = basis
+            if min_main is not None and base[main_pos] < min_main:
+                base[main_pos] = min_main
+            if max_main is not None and base[main_pos] > max_main:
+                base[main_pos] = max_main
+            if min_sec is not None and base[sec_pos] < min_sec:
+                base[sec_pos] = min_sec
+            if max_sec is not None and base[sec_pos] > max_sec:
+                base[sec_pos] = max_sec
+            flex_data[item] = {
+                BASE_STR: base,
+                GROW_STR: grow,
+                SHRINK_STR: shrink,
+                ALIGN_STR: align_self,
+                MIN_MAIN_STR: min_main,
+                MAX_MAIN_STR: max_main,
+                MIN_SEC_STR: min_sec,
+                MAX_SEC_STR: max_sec,
+            }
+        return flex_data
+
+    def _create_line_dicts(self, is_row: bool, gap_size: Vector2, flex_data: dict, available_space: float):
         wrap = self.wrap
 
         lines = []
         curr_line = []
+        curr_bases = []
         curr_main_size = 0
         curr_sec_max = 0
 
         def next_line():
-            nonlocal curr_line, curr_main_size, curr_sec_max
+            nonlocal curr_line, curr_bases, curr_main_size, curr_sec_max
             if not curr_line: return
             lines.append({
                 ITEMS_STR: curr_line,
+                BASES_STR: curr_bases,
                 MAIN_LEN_STR: curr_main_size - gap_size.x,
                 SEC_LEN_STR: curr_sec_max,
             })
             curr_line = []
+            curr_bases = []
             curr_main_size = 0
             curr_sec_max = 0
 
         items = self.items
         for item in items:
-            item_size = item.size
+            data = flex_data.get(item)
+            item_size = data[BASE_STR] if data is not None else item.size
             if is_row:
                 main_width = item_size.x
                 sec_width = item_size.y
@@ -202,11 +311,105 @@ class Flex(BaseLayout):
                 next_line()
 
             curr_line.append(item)
+            curr_bases.append(data[BASE_STR] if data is not None else item.size.copy())
             curr_main_size += main_width + gap_size.x
             curr_sec_max = max(sec_width, curr_sec_max)
 
         next_line()
         return lines
+
+    def _distribute_grow(self, bases, datas, free_space: float, is_row: bool):
+        main_pos = 0 if is_row else 1
+        active = [i for i, data in enumerate(datas) if data is not None and data[GROW_STR] > 0.0]
+        while active and free_space > FLEX_EPS:
+            total_grow = 0.0
+            for i in active:
+                total_grow += datas[i][GROW_STR]
+            if total_grow <= 0.0:
+                return
+            unit = free_space / total_grow
+            clamped = []
+            for i in active:
+                max_main = datas[i][MAX_MAIN_STR]
+                if max_main is None:
+                    continue
+                if bases[i][main_pos] + unit * datas[i][GROW_STR] > max_main + FLEX_EPS:
+                    clamped.append((i, max_main))
+            if not clamped:
+                for i in active:
+                    bases[i][main_pos] += unit * datas[i][GROW_STR]
+                return
+            for i, limit in clamped:
+                free_space -= limit - bases[i][main_pos]
+                bases[i][main_pos] = limit
+                active.remove(i)
+
+    def _distribute_shrink(self, bases, datas, overflow: float, is_row: bool):
+        main_pos = 0 if is_row else 1
+        active = [i for i, data in enumerate(datas) if data is not None and data[SHRINK_STR] > 0.0]
+        while active and overflow > FLEX_EPS:
+            weighted = 0.0
+            for i in active:
+                weighted += datas[i][SHRINK_STR] * bases[i][main_pos]
+            if weighted <= 0.0:
+                return
+            unit = overflow / weighted
+            clamped = []
+            for i in active:
+                min_main = datas[i][MIN_MAIN_STR]
+                floor = min_main if min_main is not None else 0.0
+                if bases[i][main_pos] * (1.0 - unit * datas[i][SHRINK_STR]) < floor - FLEX_EPS:
+                    clamped.append((i, floor))
+            if not clamped:
+                for i in active:
+                    bases[i][main_pos] *= 1.0 - unit * datas[i][SHRINK_STR]
+                return
+            for i, floor in clamped:
+                overflow -= bases[i][main_pos] - floor
+                bases[i][main_pos] = floor
+                active.remove(i)
+
+    def _resolve_flex_sizes(self, lines, flex_data: dict, available_space: float, gap_size: Vector2, is_row: bool):
+        main_pos = 0 if is_row else 1
+        sec_pos = 1 if is_row else 0
+        align = self.align_items
+        for line in lines:
+            items = line[ITEMS_STR]
+            bases = line[BASES_STR]
+            datas = [flex_data.get(item) for item in items]
+
+            if available_space != float("inf"):
+                free_space = available_space - line[MAIN_LEN_STR]
+                if free_space > FLEX_EPS and any(data is not None and data[GROW_STR] > 0.0 for data in datas):
+                    self._distribute_grow(bases, datas, free_space, is_row)
+                elif free_space < -FLEX_EPS and any(data is not None and data[SHRINK_STR] > 0.0 for data in datas):
+                    self._distribute_shrink(bases, datas, -free_space, is_row)
+
+            sec_len = line[SEC_LEN_STR]
+            for base, data in zip(bases, datas):
+                item_align = data[ALIGN_STR] if data is not None and data[ALIGN_STR] is not None else align
+                if item_align != Align.STRETCH:
+                    continue
+                target = sec_len
+                if data is not None:
+                    if data[MIN_SEC_STR] is not None and target < data[MIN_SEC_STR]:
+                        target = data[MIN_SEC_STR]
+                    if data[MAX_SEC_STR] is not None and target > data[MAX_SEC_STR]:
+                        target = data[MAX_SEC_STR]
+                base[sec_pos] = target
+
+            line[MAIN_LEN_STR] = sum(base[main_pos] for base in bases) + (len(items) - 1) * gap_size.x
+
+    def _apply_flex_sizes(self, lines):
+        for line in lines:
+            for item, base in zip(line[ITEMS_STR], line[BASES_STR]):
+                if item.size != base:
+                    item.size = base.copy()
+                    item.cache.clear_selected(whitelist=[CacheType.RelSize])
+                    if isinstance(item, Widget):
+                        item.clear_surfaces()
+                        item._regen_surface()
+                        item._changed = True
 
     def _recalculate_layout(self):
         if self._is_recalculating: return
@@ -224,7 +427,11 @@ class Flex(BaseLayout):
         if not is_row:
             gap_size = gap_size.yx
 
-        lines = self._create_line_dicts(is_row, gap_size)
+        available_space = self._get_available_space(is_row)
+        flex_data = self._collect_flex_data(is_row)
+
+        lines = self._create_line_dicts(is_row, gap_size, flex_data, available_space)
+        self._resolve_flex_sizes(lines, flex_data, available_space, gap_size, is_row)
 
         if is_row:
             total_size_vec = Vector2.from_xy(
@@ -242,6 +449,8 @@ class Flex(BaseLayout):
 
         self.cache.clear_selected(whitelist=[CacheType.RelSize])
 
+        self._apply_flex_sizes(lines)
+
         cached_coordinates = []
         current_sec_pos = 0.0
 
@@ -253,6 +462,7 @@ class Flex(BaseLayout):
             spacing = gap_size.x
             main_len = line[MAIN_LEN_STR]
             items = line[ITEMS_STR]
+            bases = line[BASES_STR]
             sec_len = line[SEC_LEN_STR]
             n_items = len(items)
 
@@ -263,9 +473,10 @@ class Flex(BaseLayout):
                 case FlexJustify.End:
                     start_main_pos = total_main_len - main_len
                 case FlexJustify.SpaceBetween:
-                    if not n_items > 1: ...
                     items_sum = sum((it.size.x if is_row else it.size.y) for it in items)
-                    spacing = (total_main_len - items_sum) / (n_items - 1)
+                    if n_items > 1:
+                        spacing = (total_main_len - items_sum) / (n_items - 1)
+                    start_main_pos = 0.0
                 case FlexJustify.SpaceAround:
                     if not n_items: ...
                     items_sum = sum((it.size.x if is_row else it.size.y) for it in items)
@@ -285,13 +496,15 @@ class Flex(BaseLayout):
 
             current_main_pos = start_main_pos
 
-            for item in items:
+            for item, base in zip(items, bases):
+                data = flex_data.get(item)
+                item_align = data[ALIGN_STR] if data is not None and data[ALIGN_STR] is not None else align
                 item_sec = item.size.y if is_row else item.size.x
                 sec_offset = 0.0
 
-                if align == Align.CENTER:
+                if item_align == Align.CENTER:
                     sec_offset = (sec_len - item_sec) / 2.0
-                elif align in (Align.BOTTOM, Align.RIGHT):
+                elif item_align in (Align.BOTTOM, Align.RIGHT):
                     sec_offset = sec_len - item_sec
 
                 if is_row:
@@ -307,8 +520,11 @@ class Flex(BaseLayout):
                 item.set_coordinates(new_coords)
                 if isinstance(item, BaseLayout):
                     item._regenerate_coordinates()
+                    if not item._supports_global_size and item.size != base:
+                        item.size = base.copy()
+                        item.cache.clear_selected(whitelist=[CacheType.RelSize])
 
-                item.absolute_coordinates = py_get_item_abs_coords(self, item)
+                item.absolute_coordinates = get_absolute_coordinates(self, item)
                 cached_coordinates.append(item.coordinates.copy())
 
                 current_main_pos += (item.size.x if is_row else item.size.y) + spacing
@@ -324,6 +540,7 @@ class Flex(BaseLayout):
         if size_changed:
             if self.bg_widget:
                 self.bg_widget.size = self.size.xy
+                self.bg_widget._regen_surface()
                 self.bg_widget._changed = True
                 self.bg_widget.clear_all()
 
@@ -336,19 +553,22 @@ class Flex(BaseLayout):
                 else:
                     parent.cached_coordinates = None
 
-            elif self._parent_menu and hasattr(self._parent_menu, "_rel_size"):
-                new_coords = (self._parent_menu._rel_size - self.current_size) / 2
-                self.set_coordinates(new_coords)
-                self.absolute_coordinates = self.coordinates + self._parent_menu.absolute_coordinates
         self._is_recalculating = False
 
     def _update_main(self):
-        if not self.items or not self.cached_coordinates or not self.first_parent_menu:
-            return
-        base_light_update(self)
+            if not self.items or not self.cached_coordinates or not self.first_parent_menu:
+                return
+            update_items(
+                self.items,
+                self.cached_coordinates,
+                self.first_parent_menu.absolute_coordinates,
+                _still_offset,
+                self,
+                False,
+            )
 
     def _draw_main(self):
-        draw_widgets_optimized(self, self.items, BaseLayout, Widget)
+        draw_items(self, self.items, BaseLayout, Widget)
 
     def _create_clone(self):
         return self.__class__(
